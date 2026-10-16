@@ -13,6 +13,7 @@ import {
   Filter
 } from 'lucide-react';
 import { ClubEvent } from '../types';
+import { useModalBehavior } from '../utils/useModalBehavior';
 
 interface EventsViewProps {
   events: ClubEvent[];
@@ -26,6 +27,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [selectedWebinar, setSelectedWebinar] = useState<ClubEvent | null>(null);
   const [enrolledEventIds, setEnrolledEventIds] = useState<string[]>([]);
+
+  // S1: shared dialog behaviour (Escape / scroll-lock / focus) for the webinar modal
+  useModalBehavior(selectedWebinar !== null, () => setSelectedWebinar(null));
 
 
   const categories = ['All', 'Quiz', 'Webinar', 'Reading Challenge', 'Workshop'];
@@ -71,8 +75,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
       {/* Live Webinar Simulator Modal */}
       {selectedWebinar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
-          <div className="bg-slate-900 text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-800 space-y-4 animate-in fade-in">
+        <div onClick={() => setSelectedWebinar(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Live webinar stream" tabIndex={-1} className="bg-slate-900 text-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-800 space-y-4 animate-in fade-in">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-2 text-xs text-rose-400 font-bold">
                 <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping"></span>

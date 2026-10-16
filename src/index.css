@@ -54,3 +54,13 @@
     padding: 0;
   }
 }
+
+/* --- S1 interaction polish ---------------------------------------------
+   Keep programmatically scrolled / focused targets clear of the sticky
+   header (WCAG 2.4.11 "Focus Not Obscured"). */
+html {
+  scroll-padding-top: 7rem;
+}
+a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]) {
+  scroll-margin-top: 7rem;
+}

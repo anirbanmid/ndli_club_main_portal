@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, X, CheckCircle2, Building2, User, Mail, ArrowRight } from 'lucide-react';
 import { InstituteClub } from '../types';
+import { useModalBehavior } from '../utils/useModalBehavior';
 
 interface JoinClubModalProps {
   isOpen: boolean;
@@ -21,6 +22,10 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   const [rollNumber, setRollNumber] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [joinedClub, setJoinedClub] = useState<InstituteClub | null>(null);
+
+  // S1: shared dialog behaviour (Escape / scroll-lock / focus). The callback
+  // is deferred through the arrow so it stays safe regardless of definition order.
+  useModalBehavior(isOpen, () => resetForm());
 
   if (!isOpen) return null;
 
@@ -62,12 +67,12 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in">
+    <div onClick={resetForm} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Join club with passkey" tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in">
         {/* Close Button */}
         <button
           onClick={resetForm}
-          className="absolute right-5 top-5 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close dialog" className="absolute right-5 top-5 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         >
           <X className="h-5 w-5" />
         </button>

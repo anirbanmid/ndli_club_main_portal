@@ -36,6 +36,7 @@ import {
   AuthorityChangeRequest,
   CertificateData 
 } from '../types';
+import { useModalBehavior } from '../utils/useModalBehavior';
 
 interface ClubModuleViewProps {
   activeClub: InstituteClub;
@@ -122,6 +123,21 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
   // NAAC Preview
   const [showNaacPreview, setShowNaacPreview] = useState(false);
+
+  // S1: shared dialog behaviour for the 6 inline dialogs — backdrop click and
+  // Escape close whichever dialog is open (only one is open at a time).
+  const anyDialogOpen =
+    showAddStudentModal || showBulkCsvModal || showNewActivityModal ||
+    showNewTicketModal || showSuccessionModal || showNaacPreview;
+  const closeAnyDialog = () => {
+    setShowAddStudentModal(false);
+    setShowBulkCsvModal(false);
+    setShowNewActivityModal(false);
+    setShowNewTicketModal(false);
+    setShowSuccessionModal(false);
+    setShowNaacPreview(false);
+  };
+  useModalBehavior(anyDialogOpen, closeAnyDialog);
 
   // Filter students for active club
   const clubStudents = students.filter(s => s.clubId === activeClub.id);
@@ -962,8 +978,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 1: Add Single Student */}
       {showAddStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Add Enrolled Student to Roster" tabIndex={-1} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">Add Enrolled Student to Roster</h3>
             <form onSubmit={handleAddStudentSubmit} className="space-y-3 text-xs">
               <div>
@@ -1021,8 +1037,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 2: Bulk CSV Upload */}
       {showBulkCsvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Bulk Student Enrollment via CSV" tabIndex={-1} className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <div className="flex justify-between items-center">
               <h3 className="text-base font-bold text-[#103125]">Bulk Student Enrollment via CSV</h3>
               <button
@@ -1070,8 +1086,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 3: Create New Activity */}
       {showNewActivityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Schedule & Publish Club Activity" tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">Schedule & Publish Club Activity</h3>
             <form onSubmit={handleCreateActivitySubmit} className="space-y-3 text-xs">
               <div>
@@ -1158,8 +1174,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 4: Raise Support Ticket */}
       {showNewTicketModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Raise Support Ticket to IIT Kharagpur" tabIndex={-1} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">Raise Support Ticket to IIT Kharagpur</h3>
             <form onSubmit={handleCreateTicketSubmit} className="space-y-3 text-xs">
               <div>
@@ -1232,8 +1248,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 5: Authority Succession Dual Verification */}
       {showSuccessionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Initiate Official Authority Succession" tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
                 Dual-Verification Security Gate
@@ -1326,8 +1342,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 6: NAAC Report Preview */}
       {showNaacPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl border border-[#E2ECE7] space-y-6 animate-in fade-in my-8">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="NAAC compliance record preview" tabIndex={-1} className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl border border-[#E2ECE7] space-y-6 animate-in fade-in my-8">
             <div className="flex justify-between items-start border-b border-[#E2ECE7] pb-4">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0D7751]">

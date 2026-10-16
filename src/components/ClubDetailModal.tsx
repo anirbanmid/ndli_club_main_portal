@@ -13,6 +13,7 @@ import {
   Award
 } from 'lucide-react';
 import { InstituteClub } from '../types';
+import { useModalBehavior } from '../utils/useModalBehavior';
 
 interface ClubDetailModalProps {
   club: InstituteClub | null;
@@ -27,6 +28,9 @@ export const ClubDetailModal: React.FC<ClubDetailModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
+  // S1: shared dialog behaviour (Escape / scroll-lock / focus)
+  useModalBehavior(club !== null, onClose);
+
   if (!club) return null;
 
   const handleCopyPasskey = () => {
@@ -36,11 +40,11 @@ export const ClubDetailModal: React.FC<ClubDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in my-8">
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Club details" tabIndex={-1} className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in my-8">
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close dialog" className="absolute right-5 top-5 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         >
           <X className="h-5 w-5" />
         </button>

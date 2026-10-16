@@ -60,6 +60,8 @@ export interface StudentMember {
   status: 'Active' | 'Alumni' | 'Suspended';
   joinedDate: string;
   approvedCertificateCount: number;
+  apaarId?: string;
+  nadStatus?: 'Deposited to NAD-ABC' | 'Pending Sync' | 'Not Linked';
 }
 
 export interface ClubActivity {
@@ -133,6 +135,8 @@ export interface CertificateData {
   qrDataUrl: string;
   verified: boolean;
   authorityApproved: boolean;
+  apaarId?: string;
+  nadStatus?: 'Deposited to NAD-ABC' | 'Pending Sync' | 'Not Linked';
 }
 
 export interface ForensicQuarantineRecord {

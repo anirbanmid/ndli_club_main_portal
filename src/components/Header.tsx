@@ -1,21 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Building2, 
   KeyRound, 
   CalendarDays, 
   Award, 
   BarChart3, 
-  Presentation, 
   Search,
   BookOpen,
-  Sparkles,
   ShieldCheck,
   Compass,
   GraduationCap,
   Landmark,
-  Layers
+  Languages,
+  Globe
 } from 'lucide-react';
 import { BranchType } from '../types';
+
+export const NDLI_24_LANGUAGES = [
+  { code: 'en', name: 'English', native: 'English', status: 'Active' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी', status: 'Active' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', status: 'Scaffolded' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', status: 'Scaffolded' },
+  { code: 'brx', name: 'Bodo', native: 'बड़ो', status: 'Scaffolded' },
+  { code: 'doi', name: 'Dogri', native: 'डोगरी', status: 'Scaffolded' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', status: 'Scaffolded' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', status: 'Scaffolded' },
+  { code: 'ks', name: 'Kashmiri', native: 'कॉशुर', status: 'Scaffolded' },
+  { code: 'kok', name: 'Konkani', native: 'कोंकणी', status: 'Scaffolded' },
+  { code: 'mai', name: 'Maithili', native: 'मैथिली', status: 'Scaffolded' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', status: 'Scaffolded' },
+  { code: 'mni', name: 'Manipuri', native: 'মৈতৈলোন্', status: 'Scaffolded' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी', status: 'Scaffolded' },
+  { code: 'ne', name: 'Nepali', native: 'नेपाली', status: 'Scaffolded' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', status: 'Scaffolded' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', status: 'Scaffolded' },
+  { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', status: 'Scaffolded' },
+  { code: 'sat', name: 'Santali', native: 'संताली', status: 'Scaffolded' },
+  { code: 'sd', name: 'Sindhi', native: 'सिन्धी', status: 'Scaffolded' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', status: 'Scaffolded' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', status: 'Scaffolded' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', status: 'Scaffolded' },
+  { code: 'scf', name: '24th Language (Scaffolded)', native: 'भारतीय भाषा', status: 'Scaffolded' },
+];
 
 interface HeaderProps {
   currentBranch: BranchType;
@@ -23,7 +49,6 @@ interface HeaderProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
   openPasskeyModal: () => void;
-  openPitchModal: () => void;
   fontSize: 'normal' | 'large' | 'larger';
   setFontSize: (size: 'normal' | 'large' | 'larger') => void;
   highContrast: boolean;
@@ -36,12 +61,13 @@ export const Header: React.FC<HeaderProps> = ({
   currentTab,
   setCurrentTab,
   openPasskeyModal,
-  openPitchModal,
   fontSize,
   setFontSize,
   highContrast,
   setHighContrast,
 }) => {
+  const [selectedLang, setSelectedLang] = useState('en');
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E2ECE7] shadow-xs">
       {/* Tricolor National Identity Ribbon */}
@@ -51,12 +77,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="h-full w-1/3 bg-[#138808]"></div>
       </div>
 
-      {/* Top GIGW Accessibility & Ministry Bar */}
-      <div className="bg-[#103125] text-emerald-100/90 text-xs py-1.5 px-4 md:px-8 flex flex-wrap justify-between items-center gap-2 border-b border-[#1A503E]">
-        <div className="flex items-center space-x-3">
-          <span className="font-bold text-white tracking-wide">भारत सरकार | Government of India</span>
-          <span className="text-emerald-700">|</span>
-          <span className="hidden sm:inline">Ministry of Education (MoE)</span>
+      {/* GIGW 3.0 / Accessibility & Multilingual Bar */}
+      <div className="bg-[#103125] text-white px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs border-b border-[#1A503E]">
+        <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] text-emerald-100">
+          <span className="font-semibold tracking-wide">Government of India</span>
+          <span className="text-emerald-700 hidden sm:inline">|</span>
+          <span className="hidden sm:inline">Ministry of Education</span>
           <span className="text-emerald-700 hidden sm:inline">|</span>
           <span className="hidden md:inline text-amber-300 font-medium">National Digital Library of India • IIT Kharagpur</span>
         </div>
@@ -99,7 +125,22 @@ export const Header: React.FC<HeaderProps> = ({
             {highContrast ? 'Standard Mode' : 'High Contrast'}
           </button>
 
-          <span className="text-emerald-300 font-semibold text-[11px]">English / हिंदी</span>
+          {/* 24 Indian Languages Selector */}
+          <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
+            <Globe className="h-3 w-3 text-amber-300 shrink-0" />
+            <select
+              value={selectedLang}
+              onChange={(e) => setSelectedLang(e.target.value)}
+              className="bg-transparent text-emerald-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
+              title="Select Language (24 Languages Scaffolded)"
+            >
+              {NDLI_24_LANGUAGES.map(lang => (
+                <option key={lang.code} value={lang.code} className="bg-[#103125] text-white">
+                  {lang.native} ({lang.name}) {lang.status === 'Active' ? '✓' : '•'}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -123,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
                   NDLI Club
                 </span>
                 <span className="bg-[#E9F5EF] text-[#0D7751] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-[#0D7751]/30">
-                  v2.0 NextGen
+                  National Portal
                 </span>
               </div>
               <p className="text-xs text-[#5F7B6E] font-medium">
@@ -131,15 +172,6 @@ export const Header: React.FC<HeaderProps> = ({
               </p>
             </div>
           </div>
-
-          {/* Mobile Pitch button */}
-          <button
-            onClick={openPitchModal}
-            className="lg:hidden flex items-center space-x-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D97706] text-white shadow-sm"
-          >
-            <Presentation className="h-3.5 w-3.5" />
-            <span>Pitch</span>
-          </button>
         </div>
 
         {/* 3 Master Branches Switcher (The Core Portal Partition) */}
@@ -173,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <GraduationCap className="h-4 w-4" />
-            <span>2. Club Module</span>
+            <span>2. Institutional Club Module</span>
             <span className="bg-[#D97706] text-white text-[9px] px-1.5 py-0.2 rounded font-black">CAMPUS</span>
           </button>
 
@@ -190,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Landmark className="h-4 w-4" />
-            <span>3. IIT KGP Admin</span>
+            <span>3. IIT KGP Admin Module</span>
             <span className="bg-[#0D7751] text-white text-[9px] px-1.5 py-0.2 rounded font-black">7 ZONES</span>
           </button>
         </div>
@@ -199,19 +231,10 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden lg:flex items-center space-x-2.5">
           <button
             onClick={openPasskeyModal}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#E2ECE7] bg-white hover:bg-[#F4F8F6] text-[#17332A] shadow-xs transition-all"
+            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#0D7751] bg-[#1A503E] text-white shadow-xs hover:bg-[#103125] transition-all"
           >
-            <KeyRound className="h-3.5 w-3.5 text-[#0D7751]" />
+            <KeyRound className="h-3.5 w-3.5 text-amber-300" />
             <span>Student Passkey Join</span>
-          </button>
-
-          <button
-            onClick={openPitchModal}
-            className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white shadow-sm hover:from-[#B45309] hover:to-[#D97706] hover:scale-[1.02] transition-all"
-          >
-            <Presentation className="h-4 w-4" />
-            <span>Pitch Deck</span>
-            <Sparkles className="h-3 w-3 text-amber-200 animate-pulse" />
           </button>
         </div>
       </div>

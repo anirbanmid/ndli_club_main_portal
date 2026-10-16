@@ -155,13 +155,13 @@ export const INITIAL_CLUBS: InstituteClub[] = [
 ];
 
 export const INITIAL_STUDENTS: StudentMember[] = [
-  { id: 'STU-001', clubId: 'CLUB-IITKGP-001', name: 'Aarav Mukherjee', rollNo: '22CS30045', email: 'aarav.m@demo.example.edu', department: 'Computer Science', year: '4th Year', readingPoints: 850, tier: 'Diamond Scholar', status: 'Active', joinedDate: '2024-01-15', approvedCertificateCount: 5 },
-  { id: 'STU-002', clubId: 'CLUB-IITKGP-001', name: 'Ritika Sen', rollNo: '23EC10012', email: 'ritika.s@demo.example.edu', department: 'Electronics', year: '3rd Year', readingPoints: 620, tier: 'Gold', status: 'Active', joinedDate: '2024-03-20', approvedCertificateCount: 3 },
-  { id: 'STU-003', clubId: 'CLUB-IITKGP-001', name: 'Debrup Ghosh', rollNo: '23ME10088', email: 'debrup.g@demo.example.edu', department: 'Mechanical', year: '3rd Year', readingPoints: 340, tier: 'Silver', status: 'Active', joinedDate: '2024-08-10', approvedCertificateCount: 2 },
-  { id: 'STU-004', clubId: 'CLUB-IITKGP-001', name: 'Ananya Roy', rollNo: '24PH20004', email: 'ananya.r@demo.example.edu', department: 'Physics', year: '2nd Year', readingPoints: 180, tier: 'Bronze', status: 'Active', joinedDate: '2025-01-12', approvedCertificateCount: 1 },
-  { id: 'STU-005', clubId: 'CLUB-IITKGP-001', name: 'Siddhartha Paul', rollNo: '21CH10002', email: 'sid.paul@demo.example.edu', department: 'Chemical', year: 'Alumni', readingPoints: 920, tier: 'Diamond Scholar', status: 'Alumni', joinedDate: '2022-09-01', approvedCertificateCount: 7 },
-  { id: 'STU-006', clubId: 'CLUB-IITB-002', name: 'Sneha Deshmukh', rollNo: '23EE10012', email: 'sneha.d@demo.example.edu', department: 'Electrical', year: '3rd Year', readingPoints: 710, tier: 'Gold', status: 'Active', joinedDate: '2024-02-14', approvedCertificateCount: 4 },
-  { id: 'STU-007', clubId: 'CLUB-IITB-002', name: 'Tanmay Joshi', rollNo: '24CS20033', email: 'tanmay.j@demo.example.edu', department: 'Computer Science', year: '2nd Year', readingPoints: 410, tier: 'Silver', status: 'Active', joinedDate: '2024-09-05', approvedCertificateCount: 2 },
+  { id: 'STU-001', clubId: 'CLUB-IITKGP-001', name: 'Aarav Mukherjee', rollNo: '22CS30045', email: 'aarav.m@demo.example.edu', department: 'Computer Science', year: '4th Year', readingPoints: 850, tier: 'Diamond Scholar', status: 'Active', joinedDate: '2024-01-15', approvedCertificateCount: 5, apaarId: '9842-1049-5501', nadStatus: 'Deposited to NAD-ABC' },
+  { id: 'STU-002', clubId: 'CLUB-IITKGP-001', name: 'Ritika Sen', rollNo: '23EC10012', email: 'ritika.s@demo.example.edu', department: 'Electronics', year: '3rd Year', readingPoints: 620, tier: 'Gold', status: 'Active', joinedDate: '2024-03-20', approvedCertificateCount: 3, apaarId: '9842-1049-5502', nadStatus: 'Deposited to NAD-ABC' },
+  { id: 'STU-003', clubId: 'CLUB-IITKGP-001', name: 'Debrup Ghosh', rollNo: '23ME10088', email: 'debrup.g@demo.example.edu', department: 'Mechanical', year: '3rd Year', readingPoints: 340, tier: 'Silver', status: 'Active', joinedDate: '2024-08-10', approvedCertificateCount: 2, apaarId: '9842-1049-5503', nadStatus: 'Pending Sync' },
+  { id: 'STU-004', clubId: 'CLUB-IITKGP-001', name: 'Ananya Roy', rollNo: '24PH20004', email: 'ananya.r@demo.example.edu', department: 'Physics', year: '2nd Year', readingPoints: 180, tier: 'Bronze', status: 'Active', joinedDate: '2025-01-12', approvedCertificateCount: 1, nadStatus: 'Not Linked' },
+  { id: 'STU-005', clubId: 'CLUB-IITKGP-001', name: 'Siddhartha Paul', rollNo: '21CH10002', email: 'sid.paul@demo.example.edu', department: 'Chemical', year: 'Alumni', readingPoints: 920, tier: 'Diamond Scholar', status: 'Alumni', joinedDate: '2022-09-01', approvedCertificateCount: 7, apaarId: '9842-1049-5505', nadStatus: 'Deposited to NAD-ABC' },
+  { id: 'STU-006', clubId: 'CLUB-IITB-002', name: 'Sneha Deshmukh', rollNo: '23EE10012', email: 'sneha.d@demo.example.edu', department: 'Electrical', year: '3rd Year', readingPoints: 710, tier: 'Gold', status: 'Active', joinedDate: '2024-02-14', approvedCertificateCount: 4, apaarId: '8831-2940-1120', nadStatus: 'Deposited to NAD-ABC' },
+  { id: 'STU-007', clubId: 'CLUB-IITB-002', name: 'Tanmay Joshi', rollNo: '24CS20033', email: 'tanmay.j@demo.example.edu', department: 'Computer Science', year: '2nd Year', readingPoints: 410, tier: 'Silver', status: 'Active', joinedDate: '2024-09-05', approvedCertificateCount: 2, nadStatus: 'Pending Sync' },
 ];
 
 export const INITIAL_ACTIVITIES: ClubActivity[] = [
@@ -311,11 +311,13 @@ export const INITIAL_CERTIFICATES: CertificateData[] = [
     eventName: 'National Reading Month: Open Research & Digital Ethics Assessment',
     eventDate: '15th October 2026',
     category: 'Merit',
-    score: '100% (4/4 Correct)',
+    score: '100% (Verified)',
     issuedAt: '2026-10-15T10:30:00Z',
     qrDataUrl: '',
     verified: true,
-    authorityApproved: true
+    authorityApproved: true,
+    apaarId: '9842-1049-5501',
+    nadStatus: 'Deposited to NAD-ABC'
   },
   {
     certId: 'NDLI-2026-7731-B',
@@ -329,7 +331,9 @@ export const INITIAL_CERTIFICATES: CertificateData[] = [
     issuedAt: '2026-10-12T13:45:00Z',
     qrDataUrl: '',
     verified: true,
-    authorityApproved: true
+    authorityApproved: true,
+    apaarId: '8831-2940-1120',
+    nadStatus: 'Deposited to NAD-ABC'
   }
 ];
 

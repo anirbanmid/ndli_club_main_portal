@@ -9,7 +9,6 @@ import { RegisterClubView } from './components/RegisterClubView';
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
 import { JoinClubModal } from './components/JoinClubModal';
-import { PitchDeckModal } from './components/PitchDeckModal';
 import { 
   INITIAL_CLUBS, 
   INITIAL_ACTIVITIES, 
@@ -51,7 +50,6 @@ export function App() {
   const [selectedClubForPublicProfile, setSelectedClubForPublicProfile] = useState<InstituteClub | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
-  const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
   const [verifyInitialCertId, setVerifyInitialCertId] = useState('');
 
   // Accessibility States
@@ -186,7 +184,6 @@ export function App() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         openPasskeyModal={() => setIsPasskeyModalOpen(true)}
-        openPitchModal={() => setIsPitchModalOpen(true)}
         fontSize={fontSize}
         setFontSize={setFontSize}
         highContrast={highContrast}
@@ -321,16 +318,6 @@ export function App() {
         clubs={clubs}
         onMemberJoined={(club) => {
           setClubs(prev => prev.map(c => c.id === club.id ? { ...c, memberCount: c.memberCount + 1 } : c));
-        }}
-      />
-
-      {/* Pitch Deck Presentation Modal */}
-      <PitchDeckModal
-        isOpen={isPitchModalOpen}
-        onClose={() => setIsPitchModalOpen(false)}
-        onLaunchDemo={() => {
-          setCurrentBranch('landing');
-          setCurrentTab('home');
         }}
       />
     </div>

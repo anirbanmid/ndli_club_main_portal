@@ -557,9 +557,10 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <tr>
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4">Roll / Enrolment No</th>
+                  <th className="py-3 px-4">APAAR ID (ABC)</th>
                   <th className="py-3 px-4">Department & Year</th>
                   <th className="py-3 px-4">Reading Score</th>
-                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">NAD-ABC Status</th>
                   <th className="py-3 px-4">Certificates</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -572,6 +573,15 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                       <span className="block font-normal font-mono text-[10px] text-[#5F7B6E]">{student.email}</span>
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#2E4A3E]">{student.rollNo}</td>
+                    <td className="py-3 px-4 font-mono text-[11px]">
+                      {student.apaarId ? (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+                          <span>APAAR: {student.apaarId}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-[10px]">Unanchored (Roll No)</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-[#5F7B6E]">{student.department} • {student.year}</td>
                     <td className="py-3 px-4">
                       <span className="font-bold text-[#D97706]">{student.readingPoints} pts</span>
@@ -579,9 +589,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                     </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        student.status === 'Active' ? 'bg-[#E9F5EF] text-[#0D7751]' : 'bg-slate-100 text-slate-600'
+                        student.nadStatus === 'Deposited to NAD-ABC' ? 'bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20' :
+                        student.nadStatus === 'Pending Sync' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                        'bg-slate-100 text-slate-500'
                       }`}>
-                        {student.status}
+                        {student.nadStatus || 'Not Linked'}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-semibold text-[#0D7751]">

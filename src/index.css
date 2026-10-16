@@ -65,3 +65,20 @@ html {
 a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]) {
   scroll-margin-top: 7rem;
 }
+
+/* --- S2: real thin scrollbar for the horizontal tab strips (the old
+   `scrollbar-none` class was defined nowhere = no-op) --- */
+.tab-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 119, 81, 0.35) transparent;
+}
+.tab-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+.tab-scroll::-webkit-scrollbar-thumb {
+  background: rgba(13, 119, 81, 0.35);
+  border-radius: 3px;
+}
+.tab-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

@@ -101,7 +101,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       {/* Zone Selector & Navigation Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 rounded-2xl border border-[#E2ECE7] shadow-xs">
         {/* Navigation Desks */}
-        <div className="flex items-center space-x-1 overflow-x-auto w-full sm:w-auto scrollbar-none">
+        <div className="tab-scroll flex items-center space-x-1 overflow-x-auto w-full sm:w-auto">
           <button
             onClick={() => setAdminTab('approvals')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${

@@ -159,15 +159,16 @@ export function App() {
     setForensicRecords(prev => prev.map(r => r.id === recordId ? { ...r, recoveryStatus: 'Auto-Healed' } : r));
   };
 
-  // Font size class mapper
-  const getFontSizeClass = () => {
-    if (fontSize === 'large') return 'text-[17px]';
-    if (fontSize === 'larger') return 'text-[19px]';
-    return 'text-[15px]';
+  // Font size mapper (S2 fix: zoom scales EVERY text size incl. the px-based
+  // labels — the old root font-size class was overridden by explicit text-*).
+  const getFontZoom = (): number => {
+    if (fontSize === 'large') return 1.125;
+    if (fontSize === 'larger') return 1.25;
+    return 1;
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${getFontSizeClass()} ${highContrast ? 'contrast-125 bg-black text-amber-300' : 'bg-[#F4F8F6] text-[#17332A]'}`}>
+    <div style={{ zoom: getFontZoom() } as React.CSSProperties} className={`min-h-screen flex flex-col ${highContrast ? 'contrast-125 bg-black text-amber-300' : 'bg-[#F4F8F6] text-[#17332A]'}`}>
       {/* Header */}
       <Header
         currentBranch={currentBranch}

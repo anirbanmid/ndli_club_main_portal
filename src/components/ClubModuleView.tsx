@@ -365,10 +365,10 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
       </div>
 
       {/* Internal Navigation Tabs (Requirements 3c.i to 3c.vii) */}
-      <div className="flex flex-wrap items-center gap-1 overflow-x-auto p-1.5 bg-white rounded-2xl border border-[#E2ECE7] shadow-2xs scrollbar-none">
+      <div className="tab-scroll flex items-center gap-1 overflow-x-auto p-1.5 bg-white rounded-2xl border border-[#E2ECE7] shadow-2xs">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'overview'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -380,7 +380,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('roster')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'roster'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -392,7 +392,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('activities')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'activities'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -404,7 +404,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('shield')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'shield'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -417,7 +417,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('tickets')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'tickets'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -429,7 +429,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('succession')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'succession'
               ? 'bg-[#1A503E] text-white shadow-xs'
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -441,7 +441,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
         <button
           onClick={() => setActiveTab('student_dash')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'student_dash'
               ? 'bg-[#B45309] text-white shadow-xs'
               : 'text-[#B45309] hover:bg-amber-50'

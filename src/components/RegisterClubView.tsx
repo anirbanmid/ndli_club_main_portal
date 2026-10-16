@@ -118,8 +118,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
       district,
       zone: (['Delhi', 'Uttar Pradesh', 'Punjab', 'Haryana', 'J&K', 'Himachal Pradesh'].includes(state) ? 'North' :
              ['Maharashtra', 'Gujarat', 'Rajasthan', 'Goa'].includes(state) ? 'West' :
-             ['Tamil Nadu', 'Kerala', 'Puducherry'].includes(state) ? 'South 2' :
-             ['Karnataka', 'Telangana', 'Andhra Pradesh'].includes(state) ? 'South 1' :
+             ['Tamil Nadu', 'Kerala', 'Puducherry', 'Karnataka', 'Telangana', 'Andhra Pradesh'].includes(state) ? 'South' :
              ['Madhya Pradesh', 'Chhattisgarh'].includes(state) ? 'Central' :
              ['Assam', 'Meghalaya', 'Manipur', 'Tripura'].includes(state) ? 'North East' : 'East') as any,
       category,

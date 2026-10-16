@@ -22,7 +22,7 @@ The portal is architected around a unified **Three-Branch Modular Model** that d
 └────────────────────────────────────────────────────────────────────────┘
 
   BRANCH 1: PUBLIC COMMON LANDING
-  ├── Live National Telemetry (4,820+ Clubs, 2.85M+ Members, 1.42M+ Certificates)
+  ├── Live National Telemetry (live counts in production; prototype shows SAMPLE ONLY demo figures)
   ├── Searchable Institutional Directory (By State, District, AISHE, Name)
   ├── Public Certificate Verifier (Cryptographic Lookup & Dynamic QR Scan)
   └── GIGW 3.0 Accessibility (A+/A- font resizing, High Contrast, Bilingual)
@@ -33,12 +33,12 @@ The portal is architected around a unified **Three-Branch Modular Model** that d
   ├── 360° Club Analytics & Direct NAAC Criterion 3.3.3/3.3.4 Report Exporter
   ├── Dynamic Student Roster (Inline Editing, Single Add, Bulk CSV Import)
   ├── Cocurricular Activity Logger (Online, Offline, Hybrid with Notification Triggers)
-  ├── Dual-Factor Authority Succession Desk (Zero-Disruption Leadership Handoff)
+  ├── Dual-Factor Authority Succession Desk (Dual-Verified Leadership Handoff)
   ├── Student Scholar Workspace (Reading Points, Tier Badging, Certificate Vault)
   └── Inter-Institutional Sharing Shield (Secure Cross-Campus Resource & Activity Hub)
 
   BRANCH 3: IIT KHARAGPUR CENTRAL ADMINISTRATION MODULE
-  ├── 7-Zone Regional Governance Model (EMP01 North to EMP07 South 2)
+  ├── 6-Zone Regional Governance Model (7 officers: EMP01 North to EMP07 South Zone 2)
   ├── Institutional Charter Verification & Sanction Gate
   ├── Central Grievance & Technical SLA Dispatcher
   ├── Authority Transition Seal & Approvals
@@ -60,9 +60,9 @@ The portal is architected around a unified **Three-Branch Modular Model** that d
    - Retains relational join tables (`club_members`) and passkey transaction logs directly from the database rather than relying on email domain matching.
    - Uses historical event attendance tables and certificate logs as permanent academic audit trails.
    - Provides a 1-click college link fallback on the student's first OTP login for any severed orphan records.
-4. **Bypassing the Fraudulent Legacy Developer:**
-   - Direct inspection revealed that the legacy backend is Django REST Framework (DRF).
-   - Relies on the self-documenting `django_migrations` table to automatically reverse-engineer the complete schema history without needing the original developer.
+4. **Migration Without Undocumented Legacy Dependencies:**
+   - The legacy backend is consistent with Django REST Framework (DRF) [TO CONFIRM in Phase 1].
+   - Relies on the self-documenting `django_migrations` table to automatically reverse-engineer the complete schema history without needing undocumented external knowledge.
 5. **Authentic NDLI Brand Palette:**
    - Primary: Deep Forest Green (`#103125`), NDLI Green (`#1A503E`), Emerald Accent (`#0D7751`).
    - Complementary: Warm Amber (`#D97706`, `#F59E0B`) and clean canvas backgrounds (`#F4F8F6`).
@@ -81,7 +81,7 @@ The portal is architected around a unified **Three-Branch Modular Model** that d
   [Phase 3: Days 56–80]  Data Cleansing, Dry-Run Ingestion & Quarantine Review
   [Phase 4: Days 81–100] 100-Club Regional Pilot (UAT), CERT-In Audit & 50k Load Tests
   [Phase 5: Days 101–115] Edge-Case Polish, Regional Training & Disaster Failover Drills
-  [Phase 6: Days 116–120] Final Delta Sync, Zero-Downtime DNS Cutover & National Launch
+  [Phase 6: Days 116–120] Final Delta Sync, Controlled DNS Cutover & National Launch
   
   ★ FAST-TRACK TARGET: Technical Readiness & UAT Complete by Day 85 (35-Day Buffer)
 ```

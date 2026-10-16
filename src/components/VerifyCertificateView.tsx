@@ -66,7 +66,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
             <input
               type="text"
-              placeholder="e.g. NDLI-2026-8942-A"
+              placeholder="e.g. NDLI-A7KQ-2M4X"
               value={searchId}
               onChange={(e) => setSearchId(e.target.value.toUpperCase())}
               required

@@ -15,8 +15,8 @@ export const INITIAL_EMPLOYEES: EmployeeNode[] = [
   { empId: 'EMP03', name: 'Amit Patel', zone: 'West', email: 'emp.west@ndli.example.edu', assignedStates: ['Maharashtra', 'Gujarat', 'Rajasthan', 'Goa'], activeTicketsCount: 4 },
   { empId: 'EMP04', name: 'Debabrata Ghosh', zone: 'East', email: 'emp.east@ndli.example.edu', assignedStates: ['West Bengal', 'Bihar', 'Jharkhand', 'Odisha'], activeTicketsCount: 2 },
   { empId: 'EMP05', name: 'M. Singh', zone: 'North East', email: 'emp.northeast@ndli.example.edu', assignedStates: ['Assam', 'Meghalaya', 'Manipur', 'Tripura'], activeTicketsCount: 1 },
-  { empId: 'EMP06', name: 'K. Venkatesh', zone: 'South 1', email: 'emp.south1@ndli.example.edu', assignedStates: ['Karnataka', 'Telangana', 'Andhra Pradesh'], activeTicketsCount: 2 },
-  { empId: 'EMP07', name: 'S. Soundararajan', zone: 'South 2', email: 'emp.south2@ndli.example.edu', assignedStates: ['Tamil Nadu', 'Kerala', 'Puducherry'], activeTicketsCount: 3 },
+  { empId: 'EMP06', name: 'K. Venkatesh', zone: 'South', email: 'emp.south1@ndli.example.edu', assignedStates: ['Karnataka', 'Telangana', 'Andhra Pradesh'], activeTicketsCount: 2 },
+  { empId: 'EMP07', name: 'S. Soundararajan', zone: 'South', email: 'emp.south2@ndli.example.edu', assignedStates: ['Tamil Nadu', 'Kerala', 'Puducherry'], activeTicketsCount: 3 },
 ];
 
 export const INITIAL_CLUBS: InstituteClub[] = [
@@ -36,9 +36,9 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.iitkgp.ac.in',
     description: 'Premier national institute coordinating the National Digital Library of India platform. Houses the central NDLI innovation club.',
     authorities: [
-      { role: 'Patron', name: 'Prof. V. K. Tewari', designation: 'Director', email: 'director@iitkgp.example.edu', phone: '+91 9434000001', verified: true },
-      { role: 'President', name: 'Dr. B. Sutradhar', designation: 'Librarian & PI', email: 'librarian@iitkgp.example.edu', phone: '+91 9434000002', verified: true },
-      { role: 'Secretary', name: 'Prof. Partha Pratim Das', designation: 'Professor CSE', email: 'ppd@cse.iitkgp.example.edu', phone: '+91 9434000003', verified: true },
+      { role: 'Patron', name: 'Prof. A. R. Deshmukh', designation: 'Director', email: 'director@iitkgp.example.edu', phone: '+91 9434000001', verified: true },
+      { role: 'President', name: 'Dr. S. K. Iyer', designation: 'Librarian & PI', email: 'librarian@iitkgp.example.edu', phone: '+91 9434000002', verified: true },
+      { role: 'Secretary', name: 'Prof. M. Banerjee', designation: 'Professor CSE', email: 'mb@cse.iitkgp.example.edu', phone: '+91 9434000003', verified: true },
       { role: 'Executive Member', name: 'Arjun Sen', designation: 'Research Scholar', email: 'arjun.sen@iitkgp.example.edu', phone: '+91 9830000004', verified: true },
     ]
   },
@@ -58,8 +58,8 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.iitb.ac.in',
     description: 'Pioneering collaborative digital reading circles and patent research workshops across Western India.',
     authorities: [
-      { role: 'Patron', name: 'Prof. Subhasis Chaudhuri', designation: 'Director', email: 'director@iitb.example.edu', phone: '+91 9820000001', verified: true },
-      { role: 'President', name: 'Dr. Manju Naika', designation: 'Central Library Head', email: 'library@iitb.example.edu', phone: '+91 9820000002', verified: true },
+      { role: 'Patron', name: 'Prof. N. K. Joshi', designation: 'Director', email: 'director@iitb.example.edu', phone: '+91 9820000001', verified: true },
+      { role: 'President', name: 'Dr. P. S. Kulkarni', designation: 'Central Library Head', email: 'library@iitb.example.edu', phone: '+91 9820000002', verified: true },
       { role: 'Secretary', name: 'Prof. Devang Khakhar', designation: 'Senior Faculty', email: 'khakhar@iitb.example.edu', phone: '+91 9820000003', verified: true },
       { role: 'Executive Member', name: 'Priya Sharma', designation: 'Student Council Rep', email: 'priya.s@iitb.example.edu', phone: '+91 9820000004', verified: true },
     ]
@@ -80,8 +80,8 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.du.ac.in',
     description: 'Central university with expansive arts, science, and humanities research chapters active in annual reading marathons.',
     authorities: [
-      { role: 'Patron', name: 'Prof. Yogesh Singh', designation: 'Vice Chancellor', email: 'vc@du.example.edu', phone: '+91 9811000001', verified: true },
-      { role: 'President', name: 'Dr. Rajesh Singh', designation: 'University Librarian', email: 'librarian@du.example.edu', phone: '+91 9811000002', verified: true },
+      { role: 'Patron', name: 'Prof. R. K. Malhotra', designation: 'Vice Chancellor', email: 'vc@du.example.edu', phone: '+91 9811000001', verified: true },
+      { role: 'President', name: 'Dr. A. K. Bhatnagar', designation: 'University Librarian', email: 'librarian@du.example.edu', phone: '+91 9811000002', verified: true },
       { role: 'Secretary', name: 'Prof. Sanjeev Kumar', designation: 'NSS Coordinator', email: 'sanjeev@du.example.edu', phone: '+91 9811000003', verified: true },
       { role: 'Executive Member', name: 'Rohan Verma', designation: 'Postgraduate Student', email: 'rohan.v@du.example.edu', phone: '+91 9811000004', verified: true },
     ]
@@ -92,7 +92,7 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     name: 'Anna University, Chennai',
     state: 'Tamil Nadu',
     district: 'Chennai',
-    zone: 'South 2',
+    zone: 'South',
     category: 'University',
     passkey: 'ANNAU-NDL-8820',
     status: 'Active',
@@ -102,8 +102,8 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.annauniv.edu',
     description: 'Promoting open access technical literature, engineering standards, and patent search across Tamil Nadu.',
     authorities: [
-      { role: 'Patron', name: 'Prof. R. Velraj', designation: 'Vice Chancellor', email: 'vc@annauniv.example.edu', phone: '+91 9444000001', verified: true },
-      { role: 'President', name: 'Dr. K. Sivaraman', designation: 'Chief Librarian', email: 'library@annauniv.example.edu', phone: '+91 9444000002', verified: true },
+      { role: 'Patron', name: 'Prof. S. Rajendran', designation: 'Vice Chancellor', email: 'vc@annauniv.example.edu', phone: '+91 9444000001', verified: true },
+      { role: 'President', name: 'Dr. V. Lakshmanan', designation: 'Chief Librarian', email: 'library@annauniv.example.edu', phone: '+91 9444000002', verified: true },
       { role: 'Secretary', name: 'Dr. T. Murugesan', designation: 'Faculty Incharge', email: 'tm@annauniv.example.edu', phone: '+91 9444000003', verified: true },
       { role: 'Executive Member', name: 'Ananya Raman', designation: 'Final Year CSE', email: 'ananya.r@annauniv.example.edu', phone: '+91 9444000004', verified: true },
     ]
@@ -124,10 +124,10 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.ststephens.edu',
     description: 'Autonomous constituent college requesting authorization for new liberal arts NDLI reading chapter.',
     authorities: [
-      { role: 'Patron', name: 'Prof. John Varghese', designation: 'Principal', email: 'principal@stephens.example.edu', phone: '+91 9811550001', verified: false },
-      { role: 'President', name: 'Dr. M. Santhosh', designation: 'Librarian', email: 'librarian@stephens.example.edu', phone: '+91 9811550002', verified: false },
-      { role: 'Secretary', name: 'Dr. R. Mathew', designation: 'English Faculty', email: 'mathew@stephens.example.edu', phone: '+91 9811550003', verified: false },
-      { role: 'Executive Member', name: 'Tara George', designation: 'Literary Society Head', email: 'tara.g@stephens.example.edu', phone: '+91 9811550004', verified: false },
+      { role: 'Patron', name: 'Prof. J. Mathews', designation: 'Principal', email: 'principal@stephens.example.edu', phone: '+91 9811550001', verified: false },
+      { role: 'President', name: 'Dr. E. Thomas', designation: 'Librarian', email: 'librarian@stephens.example.edu', phone: '+91 9811550002', verified: false },
+      { role: 'Secretary', name: 'Dr. P. Kurian', designation: 'English Faculty', email: 'pk@stephens.example.edu', phone: '+91 9811550003', verified: false },
+      { role: 'Executive Member', name: 'Meera Jacob', designation: 'Literary Society Head', email: 'meera.j@stephens.example.edu', phone: '+91 9811550004', verified: false },
     ]
   },
   {
@@ -146,10 +146,10 @@ export const INITIAL_CLUBS: InstituteClub[] = [
     websiteUrl: 'https://www.gauhati.ac.in',
     description: 'Major regional hub in Assam aiming to connect 200+ affiliated colleges through central NDLI digital repositories.',
     authorities: [
-      { role: 'Patron', name: 'Prof. P. J. Handique', designation: 'Vice Chancellor', email: 'vc@gauhati.example.edu', phone: '+91 9435001122', verified: false },
-      { role: 'President', name: 'Dr. W. R. Singh', designation: 'Central Library Head', email: 'lib@gauhati.example.edu', phone: '+91 9435001123', verified: false },
-      { role: 'Secretary', name: 'Dr. N. K. Bora', designation: 'Dean Student Affairs', email: 'bora@gauhati.example.edu', phone: '+91 9435001124', verified: false },
-      { role: 'Executive Member', name: 'Bikash Kalita', designation: 'Postgraduate Scholar', email: 'bikash@gauhati.example.edu', phone: '+91 9435001125', verified: false },
+      { role: 'Patron', name: 'Prof. D. N. Sharma', designation: 'Vice Chancellor', email: 'vc@gauhati.example.edu', phone: '+91 9435001122', verified: false },
+      { role: 'President', name: 'Dr. B. K. Phukan', designation: 'Central Library Head', email: 'lib@gauhati.example.edu', phone: '+91 9435001123', verified: false },
+      { role: 'Secretary', name: 'Dr. H. Barua', designation: 'Dean Student Affairs', email: 'dba@gauhati.example.edu', phone: '+91 9435001124', verified: false },
+      { role: 'Executive Member', name: 'Rahul Deka', designation: 'Postgraduate Scholar', email: 'rahul.d@gauhati.example.edu', phone: '+91 9435001125', verified: false },
     ]
   }
 ];
@@ -193,7 +193,7 @@ export const INITIAL_ACTIVITIES: ClubActivity[] = [
     date: '2026-10-22',
     time: '03:00 PM - 04:30 PM IST',
     mode: 'Online',
-    description: 'Expert masterclass by faculty on mining 90M+ scholarly manuscripts, patents, and video lectures available free of cost through NDLI.',
+    description: 'Expert masterclass by faculty on mining NDLI scholarly manuscripts, patents, and video lectures available free of cost through NDLI.',
     participantsCount: 6890,
     status: 'Upcoming',
     isInterInstitutional: true,
@@ -258,13 +258,13 @@ export const INITIAL_TICKETS: IssueTicket[] = [
     id: 'TKT-2026-1039',
     clubId: 'CLUB-AU-004',
     clubName: 'Anna University NDLI Club',
-    zone: 'South 2',
+    zone: 'South',
     category: 'Certificate Approval',
     priority: 'High',
     title: 'Bulk attendance sign-off approval delay for IPR Workshop',
     description: 'Event coordinator marked 185 attendees as verified on 12th October, but the certificates are still locked in pending verification status.',
     status: 'Submitted',
-    assignedTo: 'EMP07 (S. Soundararajan - South 2)',
+    assignedTo: 'EMP07 (S. Soundararajan - South Zone 2)',
     createdAt: '2026-10-15 11:15 AM'
   },
   {
@@ -290,7 +290,7 @@ export const INITIAL_AUTHORITY_REQUESTS: AuthorityChangeRequest[] = [
     clubId: 'CLUB-DU-003',
     clubName: 'University of Delhi (Central Campus)',
     role: 'Patron',
-    currentName: 'Prof. Yogesh Singh',
+    currentName: 'Prof. R. K. Malhotra',
     proposedName: 'Prof. K. N. Shrivastava (Officiating)',
     proposedEmail: 'vc.officiating@du.example.edu',
     proposedPhone: '+91 9811000999',
@@ -303,7 +303,7 @@ export const INITIAL_AUTHORITY_REQUESTS: AuthorityChangeRequest[] = [
 
 export const INITIAL_CERTIFICATES: CertificateData[] = [
   {
-    certId: 'NDLI-2026-8942-A',
+    certId: 'NDLI-A7KQ-2M4X',
     recipientName: 'Aarav Mukherjee',
     recipientEmail: 'aarav.m@demo.example.edu',
     recipientRoll: '22CS30045',
@@ -320,7 +320,7 @@ export const INITIAL_CERTIFICATES: CertificateData[] = [
     nadStatus: 'Deposited to NAD-ABC'
   },
   {
-    certId: 'NDLI-2026-7731-B',
+    certId: 'NDLI-B4XR-9WZT',
     recipientName: 'Sneha Deshmukh',
     recipientEmail: 'sneha.d@demo.example.edu',
     recipientRoll: '23EE10012',
@@ -344,7 +344,7 @@ export const INITIAL_FORENSIC_RECORDS: ForensicQuarantineRecord[] = [
     rawInstituteName: 'Calcutta Universiti (Collge St. Campus)',
     healedAisheCode: 'U-0568',
     healedState: 'West Bengal',
-    anomalyDetected: 'Misspelled name, orphan foreign key in Vaadin table, missing district',
+    anomalyDetected: 'Misspelled name, orphan record link, missing district',
     recoveryStatus: 'Auto-Healed',
     legacyCertificatesFound: 1420
   },
@@ -354,7 +354,7 @@ export const INITIAL_FORENSIC_RECORDS: ForensicQuarantineRecord[] = [
     rawInstituteName: 'Govt Engg Col Jalpaiguri',
     healedAisheCode: 'C-1294',
     healedState: 'West Bengal',
-    anomalyDetected: 'Missing Patron contact records; legacy passkey corrupted with NULL bytes',
+    anomalyDetected: 'Missing Patron contact records; legacy passkey field unreadable',
     recoveryStatus: 'Needs Review',
     legacyCertificatesFound: 512
   },
@@ -364,60 +364,8 @@ export const INITIAL_FORENSIC_RECORDS: ForensicQuarantineRecord[] = [
     rawInstituteName: 'Osmania Univ (Coll of Sci)',
     healedAisheCode: 'U-0023',
     healedState: 'Telangana',
-    anomalyDetected: 'Duplicated institute charter created by rogue legacy script',
+    anomalyDetected: 'Duplicate institute charter record found in legacy import',
     recoveryStatus: 'Auto-Healed',
     legacyCertificatesFound: 840
   }
 ];
-
-export const SAMPLE_QUIZ_QUESTIONS = [
-  {
-    id: 1,
-    question: 'Under which Ministry is the National Digital Library of India (NDLI) project sponsored and steered?',
-    options: [
-      'Ministry of Science and Technology',
-      'Ministry of Education (MoE), Government of India',
-      'Ministry of Electronics and Information Technology (MeitY)',
-      'NITI Aayog'
-    ],
-    correctIndex: 1,
-    explanation: 'NDLI is an initiative of the Ministry of Education (MoE), Government of India, executed under the National Mission on Education through ICT (NMEICT).'
-  },
-  {
-    id: 2,
-    question: 'Which premier academic institution is the coordinating and nodal agency executing the NDLI project?',
-    options: [
-      'Indian Institute of Science (IISc) Bangalore',
-      'IIT Bombay',
-      'Indian Institute of Technology Kharagpur (IIT KGP)',
-      'Jawaharlal Nehru University (JNU)'
-    ],
-    correctIndex: 2,
-    explanation: 'IIT Kharagpur is the coordinating and developing institution responsible for building, operating, and managing NDLI.'
-  },
-  {
-    id: 3,
-    question: 'What is the required quorum of 4 key institutional authorities to formally establish an official NDLI Club?',
-    options: [
-      'President, Vice President, Treasurer, Auditor',
-      'Patron (Head of Institute), President, Secretary, and Executive Member',
-      'Dean, Registrar, HOD Computer Science, Student President',
-      'Principal and 3 Student Volunteers'
-    ],
-    correctIndex: 1,
-    explanation: 'An NDLI Club is governed by 4 formal roles: Patron (Head of Institute), President (Faculty/Librarian), Secretary (Faculty/Librarian), and Executive Member (Student/Scholar).'
-  },
-  {
-    id: 4,
-    question: 'How does an authorized NDLI Club enable its students to join seamlessly without individual manual verification?',
-    options: [
-      'By paying a registration fee',
-      'Using the Unique Institutional Passkey provided upon club activation',
-      'By submitting physical marksheets by post',
-      'Through social media login'
-    ],
-    correctIndex: 1,
-    explanation: 'Once an institute club is approved, it receives a secure Unique Club Passkey which enrolled students use to link directly to their campus chapter.'
-  }
-];
-

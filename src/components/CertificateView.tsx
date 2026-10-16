@@ -173,7 +173,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
         <div className="pt-8 border-t-2 border-[#8C6D3F]/30 grid grid-cols-3 items-end gap-4 text-xs">
           {/* Signatory 1 */}
           <div className="text-center space-y-1">
-            <div className="font-serif italic text-base text-slate-800 font-bold">Prof. V. K. Tewari</div>
+            <div className="font-serif italic text-base text-slate-800 font-bold">Prof. A. R. Deshmukh</div>
             <div className="h-0.5 w-28 bg-slate-400 mx-auto"></div>
             <div className="text-[10px] uppercase font-bold text-slate-600">Patron, NDLI Project</div>
             <div className="text-[9px] text-slate-400">Director, IIT Kharagpur</div>

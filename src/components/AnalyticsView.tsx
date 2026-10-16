@@ -59,7 +59,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
         </div>
       </div>
 
-      {/* High-Level Comparison KPIs (New Portal vs Old Malfunctioning Portal) */}
+      {/* High-Level Comparison KPIs (New Portal vs Legacy Portal) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase">
@@ -119,7 +119,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <MapPin className="h-5 w-5 text-blue-600" />
               <span>Pan-India State Distribution</span>
             </h3>
-            <span className="text-xs text-slate-500 font-semibold">4,820 Total Clubs</span>
+            <span className="text-xs text-slate-500 font-semibold">{clubs.length} Sample Clubs</span>
           </div>
 
           <div className="space-y-4">

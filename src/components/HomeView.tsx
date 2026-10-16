@@ -73,7 +73,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
             Connecting India's Campuses to <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-100 bg-clip-text text-transparent">
-              90+ Million Academic Resources
+              India's National Academic Resources
             </span>
           </h1>
 
@@ -109,15 +109,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Live National Telemetry Counters */}
+        {/* Demonstration Telemetry Counters (SAMPLE ONLY — live counters ship with the data platform) */}
         <div className="relative mt-12 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 bg-[#103125]/80 backdrop-blur-md p-6 rounded-2xl border border-emerald-800/40 shadow-xl">
+          <div className="absolute -top-3 right-4 bg-amber-400 text-[#103125] text-[10px] font-black px-2.5 py-1 rounded-full shadow">SAMPLE ONLY — DEMO FIGURES</div>
           <div className="text-center">
             <div className="flex items-center justify-center space-x-1.5 text-emerald-300 mb-1">
               <Building2 className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Active Clubs</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-amber-300">4,820+</div>
-            <div className="text-[11px] text-emerald-200">Across 7 Zonal Regions</div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-300">324</div>
+            <div className="text-[11px] text-emerald-200">Across 6 Zonal Regions</div>
           </div>
 
           <div className="text-center border-l border-emerald-900/60">
@@ -125,7 +126,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Users className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Enrolled Scholars</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">2.85M+</div>
+            <div className="text-2xl sm:text-3xl font-black text-white">12,800</div>
             <div className="text-[11px] text-emerald-200">Students & Researchers</div>
           </div>
 
@@ -134,8 +135,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Calendar className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Co-Curriculars</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">18,450+</div>
-            <div className="text-[11px] text-emerald-200">Annual NAAC 3.3 Logs</div>
+            <div className="text-2xl sm:text-3xl font-black text-white">486</div>
+            <div className="text-[11px] text-emerald-200">Sample NAAC 3.3 Logs</div>
           </div>
 
           <div className="text-center border-l border-emerald-900/60">
@@ -143,7 +144,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Award className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">Certificates</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-amber-300">1.42M+</div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-300">3,910</div>
             <div className="text-[11px] text-emerald-200">QR-Verified Micro-Credentials</div>
           </div>
         </div>
@@ -290,7 +291,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               Three Seamless Modules Powering NDLI Club 2.0
             </h2>
             <p className="text-xs sm:text-sm text-emerald-200/90 leading-relaxed">
-              Replacing fragmented and malfunctioning legacy scripts with an enterprise-grade triple-branch platform.
+              Replacing the legacy portal with an enterprise-grade triple-branch platform.
             </p>
           </div>
 
@@ -333,7 +334,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <ArrowRight className="h-4 w-4 text-amber-300" />
               </h3>
               <p className="text-xs text-emerald-200/80 leading-relaxed">
-                7-Zone regional governance (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.
+                6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.
               </p>
             </div>
           </div>

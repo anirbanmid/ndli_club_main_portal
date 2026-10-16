@@ -2,13 +2,13 @@
 
 > **Client:** National Digital Library of India (NDLI), IIT Kharagpur & Ministry of Education, Government of India  
 > **Lead Architect & Developer:** Dr. Anirban Mukherjee  
-> **Strategic Goal:** Deliver a world-class, high-security, elegant, and fault-tolerant portal to replace the legacy malfunctioning system (`club.ndl.iitkgp.ac.in`), outperforming delayed internal efforts and securing the official development contract.
+> **Strategic Goal:** Deliver a world-class, high-security, elegant, and fault-tolerant portal to replace the legacy system (`club.ndl.iitkgp.ac.in`), outperforming delayed internal efforts and securing the official development contract.
 
 ---
 
 ## 1. Executive Summary & Design Tenets
 
-The next-generation NDLI Club platform connects thousands of schools, colleges, and universities across India with over **90+ Million academic resources**. To satisfy national educational goals (NEP 2020) and overcome past operational failures, the portal is designed around three non-negotiable pillars:
+The next-generation NDLI Club platform connects thousands of schools, colleges, and universities across India to NDLI's academic resource repository (headline scale figures [NDLI TO CONFIRM]; see the proposal). To satisfy national educational goals (NEP 2020) and overcome past operational failures, the portal is designed around three non-negotiable pillars:
 
 1. **Brand Identity & Visual Elegance (Direction C — Soft Modern SaaS):**
    - Rooted in the official NDLI primary palette: Deep Forest Green (`#103125`), NDLI Brand Green (`#1A503E`), Emerald (`#0D7751`), and soft pastel canvas surfaces (`#F4F8F6`, `#E9F5EF`).
@@ -46,7 +46,7 @@ flowchart TD
     end
 
     subgraph B3 ["BRANCH 3: IIT Kharagpur Central Management"]
-        B3_Zones["7-Zone Regional Governance\n(North, Central, West, East, NE, South 1, South 2)"]
+        B3_Zones["6-Zone Regional Governance\n(North, Central, West, East, NE, South)\n7 officers EMP01-EMP07"]
         B3_Approvals["Registration Approval Desk\n• Review Institutional Requests & AISHE Data\n• Approve, Charter & Issue Passkey"]
         B3_Tickets["National Issue Resolution Hub\n• SLA Tracking, Assignment to EMP01-EMP07\n• Real-Time Resolution Feed to Colleges"]
         B3_AuthorityMod["Authority Change Review Gate\n• Validate College Principal/President Transfers"]
@@ -82,7 +82,7 @@ flowchart TD
    - Multi-parameter filter across Indian States, Union Territories, AISHE codes, and institution types (Universities, Autonomous Colleges, Schools).
    - Generates clean public showcase profile URLs (e.g. `/clubs/IITKGP-NDL-9021`).
 4. **Public Credential Verification Portal:**
-   - Direct verification lookup by Certificate ID (`NDLI-2026-XXXX`) or scanned QR code, showing cryptographic validation seal, recipient details, and issuing authority.
+   - Direct verification lookup by Certificate ID (`NDLI-XXXX-XXXX`, unambiguous alphabet) or scanned QR code, showing cryptographic validation seal, recipient details, and issuing authority.
 
 ---
 
@@ -157,14 +157,13 @@ flowchart TD
 ### Branch 3: IIT Kharagpur NDLI Administration / Management Module
 Harmonized with Dr. Anirban Mukherjee's existing **`ndli-club-management`** 7-zone operational architecture:
 
-1. **7-Zone Regional Structure:**
+1. **6-Zone Regional Structure (7 Officers):**
    - **North:** J&K, Ladakh, HP, Punjab, Haryana, Delhi, UP, Uttarakhand (`EMP01`).
    - **Central:** Madhya Pradesh, Chhattisgarh (`EMP02`).
    - **West:** Rajasthan, Gujarat, Maharashtra, Goa (`EMP03`).
    - **East:** West Bengal, Bihar, Jharkhand, Odisha (`EMP04`).
    - **North East:** Assam, Meghalaya, Manipur, Mizoram, Tripura, Nagaland, Arunachal, Sikkim (`EMP05`).
-   - **South 1:** Andhra Pradesh, Telangana, Karnataka (`EMP06`).
-   - **South 2:** Tamil Nadu, Kerala, Puducherry, Islands (`EMP07`).
+   - **South:** one zone served by two officers — Andhra Pradesh, Telangana, Karnataka (`EMP06`, "South Zone 1") and Tamil Nadu, Kerala, Puducherry, Islands (`EMP07`, "South Zone 2").
 2. **Master Control Desks:**
    - **Institutional Approval Desk:** Filter pending onboarding requests by Zone and State. Review AISHE accreditation, contact authenticity, and 1-click Approve with Passkey generation or Request Resubmission.
    - **National Ticket Dispatch & Resolution Desk:** View all tickets raised across India; assign to respective zonal employee nodes (`EMP01` to `EMP07`); track resolution SLAs (e.g. 24h for critical passkey issues).
@@ -174,21 +173,21 @@ Harmonized with Dr. Anirban Mukherjee's existing **`ndli-club-management`** 7-zo
 
 ---
 
-## 4. The Data Migration Strategy (Handling the Fraudulent Legacy System)
+## 4. The Data Migration Strategy (Handling the Legacy System)
 
 > [!CAUTION]
 > **The Real-World Dilemma:**
-> The legacy system (`club.ndl.iitkgp.ac.in`) was damaged by a previous fraudulent developer, leaving undocumented schemas, broken entity relationships, and possible data corruption. Neither the internal team nor external stakeholders possess a clean data dictionary.
+> The legacy system (`club.ndl.iitkgp.ac.in`) is being replaced; it ships undocumented schemas, broken entity relationships, and possible data corruption. Neither the internal team nor external stakeholders possess a clean data dictionary.
 
 ### The 5-Stage Forensic Data Extraction & Healing Pipeline
 
 ```mermaid
 flowchart TD
-    LegacyDump["Legacy Database / API / CSV Dumps\n(Corrupted, Incomplete, Fraudulent Schema)"] --> S1["Stage 1: Forensic Data Ingestion & Sanitization\n• Strip malicious/garbage code & orphaned tables\n• UTF-8 encoding normalization & deduplication"]
+    LegacyDump["Legacy Database / API / CSV Dumps\n(Corrupted or Incomplete Schema)"] --> S1["Stage 1: Forensic Data Ingestion & Sanitization\n• Strip garbage rows & orphaned tables\n• UTF-8 encoding normalization & deduplication"]
     S1 --> S2["Stage 2: Heuristic Entity Inference\n• Reconstruct Institutes via AISHE Code & Name matching\n• Reconstruct 4-Authorities from legacy contact tables\n• Reconstruct Passkeys and historical event logs"]
     S2 --> S3["Stage 3: Certificate Cryptographic Re-Anchoring\n• Validate legacy certificate IDs\n• Generate new deterministic SHA-256 verification hashes\n• Issue backwards-compatible QR codes"]
-    S3 --> S4["Stage 4: Staging Dry-Run & Discrepancy Reporting\n• Zero data lost; anomalies isolated in quarantine table\n• Inspection dashboard for IIT KGP admin review"]
-    S4 --> S5["Stage 5: Idempotent Production Upsert\n• Seamless switchover with zero disruption to active clubs"]
+    S3 --> S4["Stage 4: Staging Dry-Run & Discrepancy Reporting\n• Every record reconciled (in = migrated + quarantined + justified); anomalies isolated in quarantine table\n• Inspection dashboard for IIT KGP admin review"]
+    S4 --> S5["Stage 5: Idempotent Production Upsert\n• Controlled switchover with continuity for active clubs"]
 ```
 
 1. **Stage 1: Raw Forensic Extraction & Sanitization:**
@@ -200,11 +199,11 @@ flowchart TD
    - *Authorities:* Consolidate disparate user records into the clean 4-tier model (Patron, President, Secretary, Executive Member).
 3. **Stage 3: Certificate Re-Anchoring (Backwards Compatibility):**
    - Every legacy certificate record is preserved.
-   - Re-anchor past certificates with unique verification hashes so that old certificate links and printouts remain 100% verifiable on the new portal (`/verify/{legacy_id}`).
+   - Re-anchor past certificates with unique verification hashes so that old certificate links and printouts remain verifiable on the new portal (`/verify/{legacy_id}`).
 4. **Stage 4: Quarantine & Discrepancy Auditing:**
    - Any record with unresolvable integrity errors (e.g. invalid institute name, corrupted timestamps) is placed into a dedicated **Migration Quarantine Table**.
    - Admin module provides an interactive interface for regional officers (`EMP01`-`EMP07`) to review and approve healed records.
-5. **Stage 5: Idempotent Dual-Write & Zero-Downtime Cutover:**
+5. **Stage 5: Idempotent Dual-Write & Controlled Cutover:**
    - Automated import scripts can be run repeatedly without duplicating records (`UPSERT` on AISHE / Club ID).
 
 ---
@@ -214,7 +213,7 @@ flowchart TD
 1. **Role-Based Access Control (RBAC):**
    - Strictly enforced roles: `SUPER_ADMIN` (IIT KGP Office), `REGIONAL_OFFICER` (Zonal Nodes EMP01-EMP07), `CLUB_PATRON`, `CLUB_PRESIDENT`, `CLUB_SECRETARY`, `CLUB_EXECUTIVE`, and `STUDENT_MEMBER`.
 2. **Input Sanitization & Injection Prevention:**
-   - Zero raw SQL; 100% parameterized queries or ORM sanitization.
+   - No raw SQL; all queries parameterized or ORM-sanitized.
    - Strict XSS filtering on all activity descriptions and student discussion submissions.
 3. **CERT-In & GIGW 3.0 Hardening:**
    - Content Security Policy (CSP), HTTP Strict Transport Security (HSTS), X-Frame-Options (`DENY`), and secure cookie headers.
@@ -237,7 +236,7 @@ flowchart TD
      - Student Member Dashboard (ratings, event certificates, campus notes).
      - Inter-Institutional Activity Sharing Shield (co-hosted cross-campus events with security audit badges).
   3. *IIT Kharagpur Administration Module:*
-     - 7-Zone regional breakdown (`EMP01`-`EMP07`).
+     - 6-zone regional breakdown (7 officers, `EMP01`-`EMP07`).
      - Club Registration Approval queue.
      - Central Ticket Grievance Desk.
      - Authority Change approval workflow.

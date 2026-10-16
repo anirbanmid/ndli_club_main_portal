@@ -1,6 +1,6 @@
 export type BranchType = 'landing' | 'club_module' | 'admin_module';
 
-export type RegionalZone = 'North' | 'Central' | 'West' | 'East' | 'North East' | 'South 1' | 'South 2';
+export type RegionalZone = 'North' | 'Central' | 'West' | 'East' | 'North East' | 'South';
 
 export interface QuizQuestion {
   id: number;

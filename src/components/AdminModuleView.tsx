@@ -72,7 +72,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
               IIT KHARAGPUR NODAL COMMAND
             </span>
             <span className="text-xs text-amber-300 font-semibold">
-              7-Zone National Governance Core
+              6-Zone National Governance Core
             </span>
           </div>
 
@@ -150,7 +150,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Landmark className="h-4 w-4" />
-            <span>7 Regional Nodes</span>
+            <span>7 Regional Officers</span>
           </button>
         </div>
 
@@ -163,14 +163,13 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             onChange={(e) => setSelectedZone(e.target.value)}
             className="px-2.5 py-1.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] font-bold text-[#103125] focus:outline-hidden"
           >
-            <option value="All">All 7 Zones</option>
+            <option value="All">All 6 Zones</option>
             <option value="North">North Zone (EMP01)</option>
             <option value="Central">Central Zone (EMP02)</option>
             <option value="West">West Zone (EMP03)</option>
             <option value="East">East Zone (EMP04)</option>
             <option value="North East">North East Zone (EMP05)</option>
-            <option value="South 1">South 1 Zone (EMP06)</option>
-            <option value="South 2">South 2 Zone (EMP07)</option>
+            <option value="South">South Zone (EMP06 • EMP07)</option>
           </select>
         </div>
       </div>
@@ -384,27 +383,27 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                 <span>Legacy Database Recovery & Reconciliation Pipeline</span>
               </div>
               <h3 className="text-xl font-bold text-[#103125]">
-                Forensic Migration of Fraudulent/Corrupted Legacy Data
+                Forensic Migration & Recovery of Legacy Data
               </h3>
               <p className="text-xs text-[#5F7B6E] mt-0.5">
-                Automated schema reverse-engineering, entity inference against AISHE master, and zero-data-loss healing.
+                Automated schema reverse-engineering, entity inference against AISHE master, and reconciliation-accounted healing.
               </p>
             </div>
 
             <div className="text-right">
-              <span className="text-2xl font-black text-[#0D7751]">94.2%</span>
-              <span className="block text-[10px] font-bold uppercase text-[#5F7B6E]">Auto-Healing Rate</span>
+              <span className="text-2xl font-black text-[#0D7751]">{forensicRecords.length ? Math.round(forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length / forensicRecords.length * 100) : 0}%</span>
+              <span className="block text-[10px] font-bold uppercase text-[#5F7B6E]">Auto-Healing Rate (Sample)</span>
             </div>
           </div>
 
           {/* Migration Pipeline Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-center">
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-[#103125]">14,280</div>
+              <div className="font-mono text-xl font-black text-[#103125]">{forensicRecords.length}</div>
               <div className="text-[#5F7B6E] text-[10px] font-bold uppercase">Legacy Records Scanned</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-emerald-700">13,450</div>
+              <div className="font-mono text-xl font-black text-emerald-700">{forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length}</div>
               <div className="text-[#5F7B6E] text-[10px] font-bold uppercase">Reconstructed & Healed</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
@@ -412,8 +411,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
               <div className="text-[#5F7B6E] text-[10px] font-bold uppercase">Quarantined for Review</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-[#0D7751]">1.42M</div>
-              <div className="text-[#5F7B6E] text-[10px] font-bold uppercase">Past Certs Re-Anchored</div>
+              <div className="font-mono text-xl font-black text-[#0D7751]">—</div>
+              <div className="text-[#5F7B6E] text-[10px] font-bold uppercase">Past Certs Re-Anchored (live count at M8)</div>
             </div>
           </div>
 
@@ -467,12 +466,12 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         </div>
       )}
 
-      {/* DESK 5: The 7 Regional Zonal Nodes */}
+      {/* DESK 5: The 6 Zonal Regions / 7 Regional Officers */}
       {adminTab === 'zones' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4">
             <h3 className="text-lg font-bold text-[#103125]">
-              National 7-Zone Operational Network (Regional Employee Nodes)
+              National 6-Zone Operational Network (7 Regional Officers)
             </h3>
             <p className="text-xs text-[#5F7B6E]">
               Regional deployment nodes coordinating institutional outreach, support ticket queues, and local university workshops.

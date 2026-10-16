@@ -31,7 +31,7 @@ export const Footer: React.FC = () => {
               <li><a href="#guidelines" className="hover:text-blue-400 transition-colors">Club Constitution & Guidelines</a></li>
               <li><a href="#naac" className="hover:text-blue-400 transition-colors">NAAC Extension Credit Guidelines</a></li>
               <li><a href="#events" className="hover:text-blue-400 transition-colors">National Reading Calendar 2026</a></li>
-              <li><a href="https://ndl.gov.in" target="_blank" rel="noreferrer" className="hover:text-blue-400 inline-flex items-center gap-1">Core NDLI Repository (90M+ Books) <ExternalLink className="h-3 w-3" /></a></li>
+              <li><a href="https://ndl.gov.in" target="_blank" rel="noreferrer" className="hover:text-blue-400 inline-flex items-center gap-1">Core NDLI Repository <ExternalLink className="h-3 w-3" /></a></li>
             </ul>
           </div>
 
@@ -64,11 +64,11 @@ export const Footer: React.FC = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <Mail className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>ndl-support@iitkgp.ac.in</span>
+                <span>clubsupport@ndl.gov.in</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Phone className="h-4 w-4 text-blue-400 shrink-0" />
-                <span>+91 3222 282435 / Toll Free: 1800-120-1080</span>
+                <span>Official nodal office phone: [TO CONFIRM]</span>
               </li>
             </ul>
           </div>
@@ -81,7 +81,7 @@ export const Footer: React.FC = () => {
           </p>
           <div className="flex space-x-6">
             <span className="text-slate-400">Portal Architecture: Cloud-Native Microservices 2.0</span>
-            <span className="text-slate-400">Status: Operational (99.98% Uptime)</span>
+            <span className="text-slate-400">Status: Prototype Demonstration Environment</span>
           </div>
         </div>
       </div>

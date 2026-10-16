@@ -101,7 +101,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
             </div>
 
             <div className="flex justify-between items-center text-xs text-slate-400 pt-2">
-              <span>Speaker: Dr. B. Sutradhar (PI, NDLI Project)</span>
+              <span>Speaker: Dr. S. K. Iyer (PI, NDLI Project)</span>
               <span>Concurrent Viewers: 6,890 Active Students</span>
             </div>
           </div>

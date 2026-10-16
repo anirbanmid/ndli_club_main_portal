@@ -223,7 +223,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Landmark className="h-4 w-4" />
             <span>3. IIT KGP Admin Module</span>
-            <span className="bg-[#0D7751] text-white text-[9px] px-1.5 py-0.2 rounded font-black">7 ZONES</span>
+            <span className="bg-[#0D7751] text-white text-[9px] px-1.5 py-0.2 rounded font-black">6 ZONES</span>
           </button>
         </div>
 

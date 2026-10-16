@@ -1,7 +1,7 @@
 # Walkthrough: Next-Generation NDLI Club Portal & Pitch Solution
 
 > **Target Audience:** IIT Kharagpur (NDLI Central Management Team) & Ministry of Education, Government of India  
-> **Replaces:** Legacy malfunctioning portal at `https://club.ndl.iitkgp.ac.in/`  
+> **Replaces:** Legacy portal at `https://club.ndl.iitkgp.ac.in/`  
 > **Development Status:** Operational & Verified on `http://localhost:5173/`  
 > **Architecture:** 3-Branch Modular System (Public Landing, Institutional Club Module, IIT KGP Admin Module)
 
@@ -17,8 +17,8 @@ The solution addresses every critical pain point of the legacy system:
    - **Branch 1: Main / Common Public Landing Page** (Public Directory, National Telemetry, Public Verification, GIGW 3.0 accessibility).
    - **Branch 2: Institutional Club Module** (Onboarding request, Public Club Profile showcase, Club Dashboard with 360 analytics, Student Roster with Passkey/QR + Bulk CSV + inline editing, Activity creator with notification engine, Grievance ticketing, Dual-factor authority succession, Student Workspace, and the Inter-Institutional Resource & Activity Sharing Shield).
    - **Branch 3: IIT Kharagpur Central Administration Module** (Harmonized with the 7-zone regional governance model `EMP01`-`EMP07`, institutional approvals, ticket SLA dispatch, authority transition sanctioning, and forensic corrupted data healing pipeline).
-3. **Cyber Security & CERT-In Standards:** Strict zero-trust cross-campus gate, tamper-proof cryptographic QR hashes, pure client-side PDF downloads with zero external email dispatches, and synthetic RFC 2606 demo addresses (`.example.edu`).
-4. **Legacy Data Migration Healing:** A forensic quarantine and healing workflow to recover corrupted records left behind by previous developers without data loss.
+3. **Cyber Security & CERT-In Standards:** Strict zero-trust cross-campus gate, tamper-evident cryptographic QR hashes, pure client-side PDF downloads with zero external email dispatches, and synthetic RFC 2606 demo addresses (`.example.edu`).
+4. **Legacy Data Migration Healing:** A forensic quarantine and healing workflow to recover corrupted legacy records, with every recovered record reconciled and reported.
 
 ---
 
@@ -28,7 +28,7 @@ The solution addresses every critical pain point of the legacy system:
 ```markdown
 ### Branch 1: Main Public Portal & Landing Page
 - **Brand Palette:** NDLI Forest Green (`#103125`) with Warm Amber accents (`#D97706`).
-- **Telemetry Counter:** 4,820+ Chartered Clubs, 2.85M+ Student Members, 1.42M+ Verifiable Certificates across 36 States & UTs.
+- **Telemetry Counter:** Sample demo figures labelled SAMPLE ONLY (live national counters ship with the data platform) across 36 States & UTs.
 - **Public Directory:** Instant search across Indian states, AISHE codes, and institutions with public profile links.
 - **Accessibility:** GIGW 3.0 compliant text-resizing (`A-`, `A`, `A+`), high-contrast toggle, and bilingual readiness.
 - **Top Bar Switcher:** Seamless instantaneous tab switching between Public Landing, Club Module, and IIT KGP Admin.
@@ -75,7 +75,7 @@ The solution addresses every critical pain point of the legacy system:
 <!-- slide -->
 ```markdown
 ### Branch 3: Central IIT Kharagpur Administration Module
-- **7-Zone Regional Governance:** Integrated operational hierarchy (`EMP01` North to `EMP07` South 2) providing 100% architectural continuity with your previous regional management blueprint.
+- **6-Zone Regional Governance (7 Officers):** Integrated operational hierarchy (`EMP01` North to `EMP07` South Zone 2) aligned with the existing regional management blueprint.
 - **Charter Approval Desk:** Review pending college applications, inspect AISHE codes, verify authorities, and sanction or request revision.
 - **Ticket Dispatcher & SLA Monitor:** Central helpdesk routing issues to specific regional node officers.
 - **Authority Transition Gate:** Sanction leadership updates with official seal.
@@ -117,10 +117,10 @@ The development server is running in daemon mode:
    - View the campus passkey banner (`PRESI-NDL-4412`), dynamic QR code, 4 executive authorities, and verified annual events.
 5. **Test the IIT Kharagpur Administration Module:**
    - Click **"IIT KGP Admin"** in the header.
-   - Select between the **7 Regional Employee Nodes** (`EMP01` North to `EMP07` South 2) to filter regional workloads.
+   - Select between the **7 Regional Officers** (`EMP01` North to `EMP07` South Zone 2) to filter regional workloads.
    - Test approving a pending institutional club application.
    - Review and resolve an active grievance ticket.
-   - Click the **"Legacy Forensic Migration"** tab: View corrupted legacy records and click **"Auto-Heal & Validate"** to see how the platform restores broken data without loss.
+   - Click the **"Legacy Forensic Migration"** tab: View corrupted legacy records and click **"Auto-Heal & Validate"** to see how the platform restores broken data through the reconciliation workflow.
 6. **Test Student Passkey Join:**
    - In the top header, click **"Join with Passkey"**.
    - Enter `IITKGP-NDL-9021` to simulate instant campus chapter enrollment.
@@ -128,4 +128,4 @@ The development server is running in daemon mode:
    - Navigate to *Register Institute* -> Click *Auto-fill Sample Data* -> Proceed through the 4 steps -> Click **"Download Official Charter PDF"**.
    - Notice that it triggers a local browser file download and native Print dialog with zero external network email calls.
 8. **Test Public Certificate Verification:**
-   - Navigate to *Verify Certificate* -> Lookup `NDLI-2026-8942-A` to inspect tamper-proof verification details.
+   - Navigate to *Verify Certificate* -> Lookup `NDLI-A7KQ-2M4X` to inspect tamper-evident verification details.

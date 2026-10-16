@@ -450,7 +450,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Annual Activities</span>
               <div className="text-3xl font-extrabold text-[#103125]">{clubActivities.length}</div>
-              <div className="text-[11px] text-[#0D7751] font-semibold">100% NAAC 3.3 Verified</div>
+              <div className="text-[11px] text-[#0D7751] font-semibold">Sample NAAC 3.3 records prepared</div>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
@@ -733,7 +733,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             </div>
             <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-1.5">
               <span className="font-bold text-blue-900 block">3. Academic Compliance</span>
-              <p className="text-slate-600 text-[11px]">Monitored by IIT Kharagpur zonal coordinators to ensure highest scholarly standards and zero spam.</p>
+              <p className="text-slate-600 text-[11px]">Monitored by IIT Kharagpur zonal coordinators with content moderation and review on every shared item.</p>
             </div>
           </div>
 
@@ -848,7 +848,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <span>Institutional Authority Succession & Transition</span>
               </h3>
               <p className="text-xs text-[#5F7B6E] mt-0.5">
-                Secure dual-verification process to transfer Patron, President, or Secretary leadership without security vulnerabilities.
+                Secure dual-verification process to transfer Patron, President, or Secretary leadership with appointment-letter review and a full audit trail.
               </p>
             </div>
 
@@ -928,13 +928,13 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   ✓ Attendance Approved by Club Coordinator
                 </span>
                 <h5 className="font-bold text-sm text-[#103125]">National Reading Month: Digital Research & Open Ethics Assessment</h5>
-                <p className="text-xs text-[#5F7B6E]">Performance Grade: 100% Excellence • CID: NDLI-2026-8942-A</p>
+                <p className="text-xs text-[#5F7B6E]">Performance Grade: A+ (sample record) • CID: NDLI-A7KQ-2M4X</p>
               </div>
 
               <button
                 onClick={() => {
                   const cert: CertificateData = {
-                    certId: 'NDLI-2026-8942-A',
+                    certId: 'NDLI-A7KQ-2M4X',
                     recipientName: 'Aarav Mukherjee',
                     recipientEmail: 'aarav.m@demo.example.edu',
                     recipientRoll: '22CS30045',

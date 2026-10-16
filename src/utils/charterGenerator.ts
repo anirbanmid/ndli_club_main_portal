@@ -291,7 +291,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
 
     <div class="footer-signatures">
       <div class="sig-box">
-        <div class="sig-name">Prof. V. K. Tewari</div>
+        <div class="sig-name">Prof. A. R. Deshmukh</div>
         <div class="sig-line"></div>
         <div class="sig-title">Director, IIT Kharagpur<br>Patron, NDLI Initiative</div>
       </div>

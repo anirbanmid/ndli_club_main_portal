@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary-dark: #103125;
+    --primary: #1A503E;
+    --primary-light: #0D7751;
+    --primary-subtle: #E9F5EF;
+    --c-bg: #F4F8F6;
+    --c-card: #FFFFFF;
+    --c-line: #E2ECE7;
+    --amber: #D97706;
+    --amber-bright: #F59E0B;
+    --amber-light: #FEF3C7;
+  }
+
+  body {
+    background-color: #F4F8F6;
+    color: #17332A;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', 'Inter', sans-serif;
+  }
+}
+
+/* Custom smooth transitions and animations */
+.fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-certificate, #printable-certificate *,
+  #printable-charter, #printable-charter *,
+  #printable-naac, #printable-naac * {
+    visibility: visible;
+  }
+  #printable-certificate, #printable-charter, #printable-naac {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}

@@ -47,7 +47,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             National Impact Analytics & NAAC Accreditation Engine
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             Real-time platform performance metrics, nationwide state penetration, and automated NAAC Criterion 3.3 audit compliance.
           </p>
         </div>
@@ -62,50 +62,50 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
       {/* High-Level Comparison KPIs (New Portal vs Legacy Portal) */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
             <span>Certificate Throughput</span>
             <Zap className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">50,000 / min</div>
-          <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+          <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <span>↑ 1,200% faster</span>
-            <span className="text-slate-400 font-normal">(Prev: 40/min timeout lock)</span>
+            <span className="text-slate-600 font-normal">(Prev: 40/min timeout lock)</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
             <span>Passkey Sync Latency</span>
             <TrendingUp className="h-4 w-4 text-blue-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">&lt; 0.4 seconds</div>
-          <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+          <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <span>Instant Validation</span>
-            <span className="text-slate-400 font-normal">(Prev: manual 4-day queue)</span>
+            <span className="text-slate-600 font-normal">(Prev: manual 4-day queue)</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
             <span>Mobile Core Web Vitals</span>
             <ShieldCheck className="h-4 w-4 text-purple-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">99 / 100 Score</div>
-          <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+          <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <span>Modern PWA</span>
-            <span className="text-slate-400 font-normal">(Prev: Polymer 1.0 crash)</span>
+            <span className="text-slate-600 font-normal">(Prev: Polymer 1.0 crash)</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <div className="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase">
+          <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
             <span>NAAC Audit Readiness</span>
             <Award className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">100% Automated</div>
-          <div className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+          <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <span>Single-click export</span>
-            <span className="text-slate-400 font-normal">Formats NAAC Criteria 3.3</span>
+            <span className="text-slate-600 font-normal">Formats NAAC Criteria 3.3</span>
           </div>
         </div>
       </div>
@@ -119,7 +119,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <MapPin className="h-5 w-5 text-blue-600" />
               <span>Pan-India State Distribution</span>
             </h3>
-            <span className="text-xs text-slate-500 font-semibold">{clubs.length} Sample Clubs</span>
+            <span className="text-xs text-slate-600 font-semibold">{clubs.length} Sample Clubs</span>
           </div>
 
           <div className="space-y-4">
@@ -127,7 +127,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <div key={item.state} className="space-y-1.5">
                 <div className="flex justify-between text-xs font-medium">
                   <span className="text-slate-800">{item.state}</span>
-                  <span className="text-slate-500">{item.count} clubs ({item.percentage})</span>
+                  <span className="text-slate-600">{item.count} clubs ({item.percentage})</span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div 
@@ -157,7 +157,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-600">
             Select any registered institution to compile its verified annual NDLI Club activity report formatted according to National Assessment and Accreditation Council (NAAC) inspection guidelines.
           </p>
 
@@ -196,11 +196,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
             <div className="bg-slate-50 border-2 border-purple-200 rounded-xl p-5 space-y-4 animate-in fade-in text-xs">
               <div className="flex justify-between items-start border-b border-purple-100 pb-3">
                 <div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-purple-800">
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-purple-800">
                     IQAC NAAC Criterion 3.3.3 / 3.3.4 Compliance Record
                   </div>
                   <div className="font-bold text-sm text-slate-900 mt-0.5">{selectedClub.name}</div>
-                  <div className="text-slate-500">AISHE: {selectedClub.aisheCode} • Academic Year 2025-2026</div>
+                  <div className="text-slate-600">AISHE: {selectedClub.aisheCode} • Academic Year 2025-2026</div>
                 </div>
 
                 <button
@@ -216,7 +216,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-200 text-slate-400 text-[10px] uppercase">
+                    <tr className="border-b border-slate-200 text-slate-600 text-[11px] uppercase">
                       <th className="py-2">Activity Name</th>
                       <th className="py-2">Date</th>
                       <th className="py-2">Organizing Body</th>
@@ -250,7 +250,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
                 </table>
               </div>
 
-              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-500">
+              <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-600">
                 <span className="flex items-center space-x-1 text-emerald-700 font-semibold">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   <span>Digitally certified by NDLI Nodal Center, IIT Kharagpur</span>

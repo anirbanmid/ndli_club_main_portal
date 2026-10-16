@@ -44,13 +44,13 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
       {/* Title */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-1 rounded-full text-xs font-bold">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <ShieldCheck className="h-4 w-4 text-emerald-700" />
           <span>Public Credential Verification Portal</span>
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
           Verify Official NDLI Club Certificate
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+        <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
           Every certificate issued by NDLI Club contains an immutable cryptographic ID and digital signature verified against IIT Kharagpur records.
         </p>
       </div>
@@ -63,7 +63,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
         
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative grow">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
             <input
               type="text"
               placeholder="e.g. NDLI-A7KQ-2M4X"
@@ -85,7 +85,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
 
         {/* Quick sample chips */}
         <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
-          <span className="text-slate-400 font-medium">Try Sample Verified IDs:</span>
+          <span className="text-slate-600 font-medium">Try Sample Verified IDs:</span>
           {certificates.slice(0, 2).map(c => (
             <button
               key={c.certId}
@@ -106,7 +106,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
             <div className="bg-white rounded-2xl border-2 border-emerald-400/80 p-6 sm:p-8 shadow-xl space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-100 pb-5">
                 <div className="flex items-center space-x-3">
-                  <div className="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
                     <CheckCircle2 className="h-7 w-7" />
                   </div>
                   <div>
@@ -129,18 +129,18 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
               {/* Data Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <User className="h-3.5 w-3.5 text-blue-600" />
                     <span>Recipient Name</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.recipientName}</div>
                   {foundCert.recipientRoll && (
-                    <div className="text-[11px] text-slate-500 font-mono">Roll: {foundCert.recipientRoll}</div>
+                    <div className="text-[11px] text-slate-600 font-mono">Roll: {foundCert.recipientRoll}</div>
                   )}
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Building2 className="h-3.5 w-3.5 text-blue-600" />
                     <span>Associated Institution</span>
                   </div>
@@ -148,7 +148,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Award className="h-3.5 w-3.5 text-blue-600" />
                     <span>Event & Classification</span>
                   </div>
@@ -157,12 +157,12 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Calendar className="h-3.5 w-3.5 text-blue-600" />
                     <span>Issuance & Authority</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.eventDate}</div>
-                  <div className="text-[11px] text-slate-500">Issued by IIT Kharagpur & NDLI HQ</div>
+                  <div className="text-[11px] text-slate-600">Issued by IIT Kharagpur & NDLI HQ</div>
                 </div>
               </div>
 
@@ -182,7 +182,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                 <XCircle className="h-7 w-7" />
               </div>
               <h3 className="text-lg font-bold text-slate-900">Certificate Not Found</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-slate-600 max-w-sm mx-auto">
                 No certificate with ID <strong className="font-mono text-slate-800 font-bold">{trimmedId}</strong> was found in the central NDLI database.
               </p>
             </div>

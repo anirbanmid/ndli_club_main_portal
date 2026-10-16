@@ -24,6 +24,7 @@ import {
   Sparkles,
   Search,
   Check,
+  X,
   Send,
   Lock,
   Globe2
@@ -329,7 +330,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
               Active Institutional Chapter
             </span>
-            <span className="text-xs text-[#5F7B6E] font-mono">
+            <span className="text-xs text-[#5A7366] font-mono">
               AISHE: {activeClub.aisheCode} • Zone: {activeClub.zone}
             </span>
           </div>
@@ -338,7 +339,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             {activeClub.name}
           </h1>
 
-          <p className="text-xs text-[#5F7B6E]">
+          <p className="text-xs text-[#5A7366]">
             Club ID: <strong className="font-mono text-[#103125]">{activeClub.id}</strong> • Enrolled Students: <strong>{clubStudents.length.toLocaleString()}</strong>
           </p>
         </div>
@@ -364,7 +365,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
       </div>
 
       {/* Internal Navigation Tabs (Requirements 3c.i to 3c.vii) */}
-      <div className="flex items-center space-x-1 overflow-x-auto p-1.5 bg-white rounded-2xl border border-[#E2ECE7] shadow-2xs scrollbar-none">
+      <div className="flex flex-wrap items-center gap-1 overflow-x-auto p-1.5 bg-white rounded-2xl border border-[#E2ECE7] shadow-2xs scrollbar-none">
         <button
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
@@ -411,7 +412,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
         >
           <ShieldCheck className="h-4 w-4 text-emerald-400" />
           <span>Inter-Club Shield</span>
-          <span className="bg-[#D97706] text-white text-[9px] px-1.5 py-0.2 rounded font-black">CROSS-CAMPUS</span>
+          <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">CROSS-CAMPUS</span>
         </button>
 
         <button
@@ -442,8 +443,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
           onClick={() => setActiveTab('student_dash')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'student_dash'
-              ? 'bg-[#D97706] text-white shadow-xs'
-              : 'text-[#D97706] hover:bg-amber-50'
+              ? 'bg-[#B45309] text-white shadow-xs'
+              : 'text-[#B45309] hover:bg-amber-50'
           }`}
         >
           <Award className="h-4 w-4" />
@@ -456,7 +457,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Enrolled Members</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">Enrolled Members</span>
               <div className="text-3xl font-extrabold text-[#103125]">{clubStudents.length.toLocaleString()}</div>
               <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1">
                 <span>Passkey: {activeClub.passkey}</span>
@@ -464,25 +465,25 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Annual Activities</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">Annual Activities</span>
               <div className="text-3xl font-extrabold text-[#103125]">{clubActivities.length}</div>
               <div className="text-[11px] text-[#0D7751] font-semibold">Sample NAAC 3.3 records prepared</div>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Certificates Awarded</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">Certificates Awarded</span>
               <div className="text-3xl font-extrabold text-[#103125]">
                 {clubStudents.reduce((acc, s) => acc + s.approvedCertificateCount, 0)}
               </div>
-              <div className="text-[11px] text-[#D97706] font-semibold">Authorized by Club President</div>
+              <div className="text-[11px] text-[#B45309] font-semibold">Authorized by Club President</div>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Open Tickets</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">Open Tickets</span>
               <div className="text-3xl font-extrabold text-[#103125]">
                 {clubTickets.filter(t => t.status !== 'Resolved').length}
               </div>
-              <div className="text-[11px] text-[#5F7B6E]">Routed to IIT KGP {activeClub.zone} Zone</div>
+              <div className="text-[11px] text-[#5A7366]">Routed to IIT KGP {activeClub.zone} Zone</div>
             </div>
           </div>
 
@@ -504,10 +505,10 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
               {activeClub.authorities.map(auth => (
                 <div key={auth.role} className="p-4 rounded-xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-1">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0D7751]">{auth.role}</span>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0D7751]">{auth.role}</span>
                   <div className="font-bold text-sm text-[#103125]">{auth.name}</div>
-                  <div className="text-[#5F7B6E] text-[11px]">{auth.designation}</div>
-                  <div className="text-[#2E4A3E] font-mono text-[10px] pt-1">{auth.email}</div>
+                  <div className="text-[#5A7366] text-[11px]">{auth.designation}</div>
+                  <div className="text-[#2E4A3E] text-[11px] pt-1">{auth.email}</div>
                 </div>
               ))}
             </div>
@@ -524,7 +525,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <Users className="h-5 w-5 text-[#0D7751]" />
                 <span>Student Member Enrollment & Roster Management</span>
               </h3>
-              <p className="text-xs text-[#5F7B6E] mt-0.5">
+              <p className="text-xs text-[#5A7366] mt-0.5">
                 Onboard students via Passkey or upload bulk CSV spreadsheets. Details remain fully editable.
               </p>
             </div>
@@ -551,7 +552,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
           {/* Search bar & count */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#5F7B6E]" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#5A7366]" />
               <input
                 type="text"
                 placeholder="Search by name, roll no, department..."
@@ -561,7 +562,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               />
             </div>
 
-            <div className="text-xs font-semibold text-[#5F7B6E]">
+            <div className="text-xs font-semibold text-[#5A7366]">
               Showing <span className="font-bold text-[#103125]">{filteredStudents.length}</span> of {clubStudents.length} enrolled members
             </div>
           </div>
@@ -569,7 +570,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
           {/* Student Table */}
           <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
             <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-              <thead className="bg-[#F4F8F6] text-[#5F7B6E] font-bold uppercase tracking-wider text-[10px]">
+              <thead className="bg-[#F4F8F6] text-[#5A7366] font-bold uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4">Roll / Enrolment No</th>
@@ -586,7 +587,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   <tr key={student.id} className="hover:bg-[#F4F8F6]/60 transition-colors">
                     <td className="py-3 px-4 font-bold text-[#103125]">
                       {student.name}
-                      <span className="block font-normal font-mono text-[10px] text-[#5F7B6E]">{student.email}</span>
+                      <span className="block font-normal text-[11px] text-[#5A7366]">{student.email}</span>
                     </td>
                     <td className="py-3 px-4 font-mono font-semibold text-[#2E4A3E]">{student.rollNo}</td>
                     <td className="py-3 px-4 font-mono text-[11px]">
@@ -595,19 +596,19 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                           <span>APAAR: {student.apaarId}</span>
                         </span>
                       ) : (
-                        <span className="text-slate-400 italic text-[10px]">Unanchored (Roll No)</span>
+                        <span className="text-slate-600 italic text-[11px]">Unanchored (Roll No)</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-[#5F7B6E]">{student.department} • {student.year}</td>
+                    <td className="py-3 px-4 text-[#5A7366]">{student.department} • {student.year}</td>
                     <td className="py-3 px-4">
-                      <span className="font-bold text-[#D97706]">{student.readingPoints} pts</span>
-                      <span className="block text-[10px] text-[#5F7B6E]">{student.tier}</span>
+                      <span className="font-bold text-[#B45309]">{student.readingPoints} pts</span>
+                      <span className="block text-[11px] text-[#5A7366]">{student.tier}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                         student.nadStatus === 'Deposited to NAD-ABC' ? 'bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20' :
                         student.nadStatus === 'Pending Sync' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        'bg-slate-100 text-slate-500'
+                        'bg-slate-100 text-slate-600'
                       }`}>
                         {student.nadStatus || 'Not Linked'}
                       </span>
@@ -655,7 +656,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <Calendar className="h-5 w-5 text-[#0D7751]" />
                 <span>Annual Co-Curricular Activities & Workshops</span>
               </h3>
-              <p className="text-xs text-[#5F7B6E] mt-0.5">
+              <p className="text-xs text-[#5A7366] mt-0.5">
                 Organize online/offline activities, send notifications, and approve attendee certificates.
               </p>
             </div>
@@ -674,17 +675,17 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               <div key={act.id} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-3 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
                       {act.category} • {act.mode}
                     </span>
-                    <span className="text-xs font-semibold text-[#5F7B6E]">{act.date}</span>
+                    <span className="text-xs font-semibold text-[#5A7366]">{act.date}</span>
                   </div>
 
                   <h4 className="font-bold text-sm text-[#103125]">{act.title}</h4>
-                  <p className="text-xs text-[#5F7B6E] line-clamp-2">{act.description}</p>
+                  <p className="text-xs text-[#5A7366] line-clamp-2">{act.description}</p>
 
                   {act.isInterInstitutional && (
-                    <div className="inline-flex items-center space-x-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <div className="inline-flex items-center space-x-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       <ShieldCheck className="h-3 w-3 text-blue-600" />
                       <span>Co-Hosted Inter-Institutional Event</span>
                     </div>
@@ -692,7 +693,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 </div>
 
                 <div className="pt-3 border-t border-[#E2ECE7] flex justify-between items-center text-xs">
-                  <span className="text-[#5F7B6E]">👥 {act.participantsCount.toLocaleString()} Registered</span>
+                  <span className="text-[#5A7366]">👥 {act.participantsCount.toLocaleString()} Registered</span>
                   
                   <button
                     onClick={() => alert(`Attendance sign-off verified for ${act.title}. Approved student certificates unlocked!`)}
@@ -720,7 +721,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               <h3 className="text-xl font-bold text-[#103125]">
                 Cross-Campus Collaboration & Resource Network
               </h3>
-              <p className="text-xs text-[#5F7B6E] mt-0.5 max-w-2xl">
+              <p className="text-xs text-[#5A7366] mt-0.5 max-w-2xl">
                 Removing physical barriers across India: Co-host activities with partner universities and share curated research notes behind strict content moderation and cybersecurity gates.
               </p>
             </div>
@@ -761,15 +762,15 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <div key={act.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                      <span className="text-[11px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
                         Co-Hosted by: {act.clubName}
                       </span>
-                      <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         ✓ Shield Verified
                       </span>
                     </div>
                     <div className="font-bold text-sm text-[#103125]">{act.title}</div>
-                    <div className="text-xs text-[#5F7B6E]">{act.date} • {act.mode} • {act.participantsCount.toLocaleString()} Participants</div>
+                    <div className="text-xs text-[#5A7366]">{act.date} • {act.mode} • {act.participantsCount.toLocaleString()} Participants</div>
                   </div>
 
                   <button
@@ -794,7 +795,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <LifeBuoy className="h-5 w-5 text-[#0D7751]" />
                 <span>Central Grievance & Issue Redressal Desk</span>
               </h3>
-              <p className="text-xs text-[#5F7B6E] mt-0.5">
+              <p className="text-xs text-[#5A7366] mt-0.5">
                 Raise tickets directly to IIT Kharagpur zonal administrators for swift technical and administrative resolution.
               </p>
             </div>
@@ -817,13 +818,13 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                       <span className="font-mono text-xs font-bold text-[#103125] bg-white px-2 py-0.5 rounded border border-[#E2ECE7]">
                         {tkt.id}
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
                         tkt.priority === 'Critical' ? 'bg-rose-100 text-rose-800' :
                         tkt.priority === 'High' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                       }`}>
                         {tkt.priority} Priority
                       </span>
-                      <span className="text-xs text-[#5F7B6E] font-medium">{tkt.category}</span>
+                      <span className="text-xs text-[#5A7366] font-medium">{tkt.category}</span>
                     </div>
 
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -835,9 +836,9 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   </div>
 
                   <h4 className="font-bold text-sm text-[#103125]">{tkt.title}</h4>
-                  <p className="text-xs text-[#5F7B6E]">{tkt.description}</p>
+                  <p className="text-xs text-[#5A7366]">{tkt.description}</p>
 
-                  <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-[11px] text-[#5F7B6E]">
+                  <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-[11px] text-[#5A7366]">
                     <span>Created: {tkt.createdAt} • Assigned: {tkt.assignedTo}</span>
                     {tkt.resolutionNotes && (
                       <span className="text-emerald-700 font-medium">Notes: {tkt.resolutionNotes}</span>
@@ -846,7 +847,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-xs text-[#5F7B6E]">
+              <div className="text-center py-8 text-xs text-[#5A7366]">
                 No support tickets raised currently. All systems operational.
               </div>
             )}
@@ -863,7 +864,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <Lock className="h-5 w-5 text-[#0D7751]" />
                 <span>Institutional Authority Succession & Transition</span>
               </h3>
-              <p className="text-xs text-[#5F7B6E] mt-0.5">
+              <p className="text-xs text-[#5A7366] mt-0.5">
                 Secure dual-verification process to transfer Patron, President, or Secretary leadership with appointment-letter review and a full audit trail.
               </p>
             </div>
@@ -878,13 +879,17 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#5F7B6E]">Pending & Historical Succession Requests</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">Pending & Historical Succession Requests</h4>
             {clubAuthRequests.length > 0 ? (
               clubAuthRequests.map(req => (
                 <div key={req.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="font-mono font-bold text-[#103125]">{req.id} • Role: {req.role}</span>
-                    <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                      req.status === 'Approved & Updated' ? 'bg-emerald-100 text-emerald-800' :
+                      req.status === 'Rejected' ? 'bg-rose-100 text-rose-800' :
+                      'bg-amber-100 text-amber-800'
+                    }`}>
                       {req.status}
                     </span>
                   </div>
@@ -892,13 +897,13 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                     <div><strong>Outgoing Officer:</strong> {req.currentName}</div>
                     <div><strong>Incoming Officer:</strong> {req.proposedName} ({req.proposedEmail})</div>
                   </div>
-                  <div className="text-[11px] text-[#5F7B6E]">
+                  <div className="text-[11px] text-[#5A7366]">
                     Order Doc: <span className="font-mono">{req.officialDocName}</span> • Submitted: {req.submittedAt}
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-6 text-xs text-[#5F7B6E] bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7]">
+              <div className="text-center py-6 text-xs text-[#5A7366] bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7]">
                 No pending authority transition requests. Quorum is active and stable.
               </div>
             )}
@@ -918,13 +923,13 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               <h3 className="text-xl font-bold text-[#103125]">
                 Welcome, Aarav Mukherjee (Roll: 22CS30045)
               </h3>
-              <p className="text-xs text-[#5F7B6E]">
+              <p className="text-xs text-[#5A7366]">
                 Active Scholar at {activeClub.name} • Reading Streak: 18 Days
               </p>
             </div>
 
             <div className="text-right">
-              <div className="text-2xl font-black text-[#D97706]">850 Pts</div>
+              <div className="text-2xl font-black text-[#B45309]">850 Pts</div>
               <div className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
                 Diamond Scholar Tier
               </div>
@@ -940,11 +945,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
             <div className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
-                  ✓ Attendance Approved by Club Coordinator
+                <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
+                  <Check className="h-3 w-3 inline -mt-0.5" /> Attendance Approved by Club Coordinator
                 </span>
                 <h5 className="font-bold text-sm text-[#103125]">National Reading Month: Digital Research & Open Ethics Assessment</h5>
-                <p className="text-xs text-[#5F7B6E]">Performance Grade: A+ (sample record) • CID: NDLI-A7KQ-2M4X</p>
+                <p className="text-xs text-[#5A7366]">Performance Grade: A+ (sample record) • CID: NDLI-A7KQ-2M4X</p>
               </div>
 
               <button
@@ -1049,7 +1054,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 Auto-fill Sample CSV Data
               </button>
             </div>
-            <p className="text-xs text-[#5F7B6E]">
+            <p className="text-xs text-[#5A7366]">
               Format: <code>Name, RollNo, Department, Email, Year</code> (one student per line)
             </p>
             <textarea
@@ -1148,7 +1153,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   onChange={(e) => setNotifyMembers(e.target.checked)}
                   className="rounded text-[#0D7751]"
                 />
-                <label htmlFor="notifyToggle" className="text-[11px] text-[#5F7B6E] font-medium">
+                <label htmlFor="notifyToggle" className="text-[11px] text-[#5A7366] font-medium">
                   Trigger automated notification alert to all {clubStudents.length} student members
                 </label>
               </div>
@@ -1251,7 +1256,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
         <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Initiate Official Authority Succession" tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
+              <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
                 Dual-Verification Security Gate
               </span>
               <h3 className="text-base font-bold text-[#103125]">Initiate Official Authority Succession</h3>
@@ -1308,7 +1313,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
                 <span className="font-bold text-amber-900 block text-[11px]">Two-Factor Authorization Check:</span>
-                <p className="text-[10px] text-amber-800">
+                <p className="text-[11px] text-amber-800">
                   Enter 6-digit confirmation PIN (Demo code: <strong>948201</strong>) to simulate sign-off by incumbent officer.
                 </p>
                 <input
@@ -1346,27 +1351,27 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="NAAC compliance record preview" tabIndex={-1} className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl border border-[#E2ECE7] space-y-6 animate-in fade-in my-8">
             <div className="flex justify-between items-start border-b border-[#E2ECE7] pb-4">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0D7751]">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#0D7751]">
                   NAAC Criteria 3.3.3 & 3.3.4 Compliance Record
                 </span>
                 <h3 className="text-xl font-bold text-[#103125] mt-0.5">
                   Annual Co-Curricular & Extension Activity Audit
                 </h3>
-                <div className="text-xs text-[#5F7B6E]">
+                <div className="text-xs text-[#5A7366]">
                   Institution: <strong>{activeClub.name}</strong> • AISHE: {activeClub.aisheCode}
                 </div>
               </div>
               <button
                 onClick={() => setShowNaacPreview(false)}
-                className="text-xs font-bold text-slate-500 hover:text-slate-900"
+                className="text-xs font-bold text-slate-600 hover:text-slate-900"
               >
-                ✕ Close
+                <X className="h-3.5 w-3.5 inline -mt-0.5" /> Close
               </button>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs divide-y divide-slate-200">
-                <thead className="bg-[#F4F8F6] text-slate-500 font-bold uppercase text-[10px]">
+                <thead className="bg-[#F4F8F6] text-slate-600 font-bold uppercase text-[11px]">
                   <tr>
                     <th className="p-2.5">Activity Title</th>
                     <th className="p-2.5">Date</th>
@@ -1382,7 +1387,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                       <td className="p-2.5">{act.date}</td>
                       <td className="p-2.5">{act.category}</td>
                       <td className="p-2.5 font-semibold">{act.participantsCount.toLocaleString()}</td>
-                      <td className="p-2.5 text-emerald-700 font-bold">✓ NDLI Verified</td>
+                      <td className="p-2.5 text-emerald-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> NDLI Verified</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1390,7 +1395,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-              <div className="text-[11px] text-slate-500">
+              <div className="text-[11px] text-slate-600">
                 Certified by NDLI Nodal Center, IIT Kharagpur
               </div>
               <button

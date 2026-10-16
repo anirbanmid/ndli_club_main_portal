@@ -77,7 +77,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             onClick={handleCopyLink}
             className="px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
           >
-            {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+            {copied ? <Check className="h-4 w-4 text-emerald-700" /> : <Copy className="h-4 w-4" />}
             <span>{copied ? 'Copied Link' : 'Copy Verification URL'}</span>
           </button>
 
@@ -102,14 +102,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
       {/* The Printable Certificate Element */}
       <div 
         id="printable-certificate"
-        className="relative bg-[#FFFDF9] border-[12px] border-double border-[#8C6D3F] rounded-2xl p-8 sm:p-14 shadow-2xl text-center space-y-6 overflow-hidden"
+        className="relative bg-[#FFFDF9] border-[12px] border-double border-[#7E6238] rounded-2xl p-8 sm:p-14 shadow-2xl text-center space-y-6 overflow-hidden"
       >
         {/* Subtle Guilloche / Security pattern simulation */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#8C6D3F_2px,transparent_2px)] [background-size:24px_24px]"></div>
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#7E6238_2px,transparent_2px)] [background-size:24px_24px]"></div>
         
         {/* Top Header & Emblem */}
-        <div className="relative space-y-2 border-b-2 border-[#8C6D3F]/30 pb-6">
-          <div className="text-[11px] font-extrabold uppercase tracking-widest text-[#8C6D3F]">
+        <div className="relative space-y-2 border-b-2 border-[#7E6238]/30 pb-6">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-[#7E6238]">
             Ministry of Education, Government of India
           </div>
           
@@ -124,14 +124,14 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             </div>
           </div>
 
-          <div className="text-xs font-semibold text-slate-500 tracking-wider">
+          <div className="text-xs font-semibold text-slate-600 tracking-wider">
             NDLI CLUB INITIATIVE FOR DIGITAL LITERACY & SCHOLARSHIP
           </div>
         </div>
 
         {/* Certificate Title */}
         <div className="py-2 space-y-1">
-          <div className="text-xs font-bold uppercase tracking-[0.25em] text-[#8C6D3F]">
+          <div className="text-xs font-bold uppercase tracking-[0.25em] text-[#7E6238]">
             Certificate of {certificate.category}
           </div>
           <div className="text-2xl sm:text-4xl font-serif font-bold text-slate-900 italic" style={{ fontFamily: 'Playfair Display, serif' }}>
@@ -141,11 +141,11 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
 
         {/* Recipient Name */}
         <div className="py-2">
-          <div className="text-2xl sm:text-4xl font-extrabold text-blue-950 underline decoration-[#8C6D3F]/40 underline-offset-8">
+          <div className="text-2xl sm:text-4xl font-extrabold text-blue-950 underline decoration-[#7E6238]/40 underline-offset-8">
             {certificate.recipientName}
           </div>
           {certificate.recipientRoll && (
-            <div className="text-xs text-slate-500 font-mono mt-2">
+            <div className="text-xs text-slate-600 font-mono mt-2">
               Roll / ID: {certificate.recipientRoll}
             </div>
           )}
@@ -164,19 +164,19 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
               Performance Grade: {certificate.score}
             </p>
           )}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-600">
             Conducted under the National Mission on Education through Information & Communication Technology (NMEICT).
           </p>
         </div>
 
         {/* Footer with Signatures and Dynamic QR Code */}
-        <div className="pt-8 border-t-2 border-[#8C6D3F]/30 grid grid-cols-3 items-end gap-4 text-xs">
+        <div className="pt-8 border-t-2 border-[#7E6238]/30 grid grid-cols-3 items-end gap-4 text-xs">
           {/* Signatory 1 */}
           <div className="text-center space-y-1">
             <div className="font-serif italic text-base text-slate-800 font-bold">Prof. A. R. Deshmukh</div>
             <div className="h-0.5 w-28 bg-slate-400 mx-auto"></div>
-            <div className="text-[10px] uppercase font-bold text-slate-600">Patron, NDLI Project</div>
-            <div className="text-[9px] text-slate-400">Director, IIT Kharagpur</div>
+            <div className="text-[11px] uppercase font-bold text-slate-600">Patron, NDLI Project</div>
+            <div className="text-[11px] text-slate-600">Director, IIT Kharagpur</div>
           </div>
 
           {/* Center QR Verification */}
@@ -185,13 +185,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
               <img 
                 src={qrCodeUrl} 
                 alt="Verification QR Code" 
-                className="h-20 w-20 p-1 bg-white border border-[#8C6D3F]/40 shadow-xs rounded"
+                className="h-20 w-20 p-1 bg-white border border-[#7E6238]/40 shadow-xs rounded"
               />
             )}
-            <div className="text-[10px] font-mono font-bold text-slate-700">
+            <div className="text-[11px] font-mono font-bold text-slate-700">
               ID: {certificate.certId}
             </div>
-            <div className="text-[9px] text-emerald-700 font-semibold flex items-center space-x-1">
+            <div className="text-[11px] text-emerald-700 font-semibold flex items-center space-x-1">
               <ShieldCheck className="h-3 w-3" />
               <span>Scan to Verify Authenticity</span>
             </div>
@@ -201,13 +201,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
           <div className="text-center space-y-1">
             <div className="font-serif italic text-base text-slate-800 font-bold">Prof. Partha P. Das</div>
             <div className="h-0.5 w-28 bg-slate-400 mx-auto"></div>
-            <div className="text-[10px] uppercase font-bold text-slate-600">Principal Investigator</div>
-            <div className="text-[9px] text-slate-400">National Digital Library of India</div>
+            <div className="text-[11px] uppercase font-bold text-slate-600">Principal Investigator</div>
+            <div className="text-[11px] text-slate-600">National Digital Library of India</div>
           </div>
         </div>
 
         {/* Issue Date & Seal Notice */}
-        <div className="text-[10px] text-slate-400 pt-2 flex justify-between items-center border-t border-slate-100">
+        <div className="text-[11px] text-slate-600 pt-2 flex justify-between items-center border-t border-slate-100">
           <span>Date of Issue: {certificate.eventDate}</span>
           <span>DigiLocker & National Academic Depository (NAD) Compliant</span>
         </div>

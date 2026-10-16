@@ -152,13 +152,13 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
           Register an Official NDLI Club Chapter
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-xl mx-auto">
+        <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
           Establish an authorized learning chapter under the National Digital Library of India framework (IIT Kharagpur & Ministry of Education).
         </p>
 
         {/* Stepper tracker */}
         <div className="flex items-center justify-center space-x-3 pt-4">
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 1 ? 'text-blue-700' : 'text-slate-400'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 1 ? 'text-blue-700' : 'text-slate-600'}`}>
             <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               1
             </span>
@@ -167,7 +167,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
           <div className="h-0.5 w-10 bg-slate-200"></div>
 
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 2 ? 'text-blue-700' : 'text-slate-400'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 2 ? 'text-blue-700' : 'text-slate-600'}`}>
             <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               2
             </span>
@@ -176,7 +176,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
           <div className="h-0.5 w-10 bg-slate-200"></div>
 
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step === 3 ? 'text-emerald-700' : 'text-slate-400'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step === 3 ? 'text-emerald-700' : 'text-slate-600'}`}>
             <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step === 3 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               3
             </span>
@@ -221,7 +221,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 required
                 className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
-              <span className="text-[10px] text-slate-500">Ministry of Education All India Survey on Higher Education Code</span>
+              <span className="text-[11px] text-slate-600">Ministry of Education All India Survey on Higher Education Code</span>
             </div>
 
             <div className="space-y-1">
@@ -312,7 +312,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold uppercase text-blue-900">1. Patron (Principal / VC / Director)</span>
-                <span className="text-[10px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-bold">Authority 1</span>
+                <span className="text-[11px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-bold">Authority 1</span>
               </div>
               <input
                 type="text"
@@ -343,7 +343,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold uppercase text-slate-800">2. President (Librarian / Faculty)</span>
-                <span className="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 2</span>
+                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 2</span>
               </div>
               <input
                 type="text"
@@ -374,7 +374,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold uppercase text-slate-800">3. Secretary (Faculty / NSS)</span>
-                <span className="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 3</span>
+                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 3</span>
               </div>
               <input
                 type="text"
@@ -405,7 +405,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-extrabold uppercase text-slate-800">4. Executive Member (Student Rep)</span>
-                <span className="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 4</span>
+                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">Authority 4</span>
               </div>
               <input
                 type="text"
@@ -467,7 +467,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
       {step === 3 && generatedClub && (
         <div className="bg-white p-8 rounded-2xl border border-emerald-200 shadow-xl space-y-8 animate-in fade-in">
           <div className="text-center space-y-3">
-            <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <div className="h-16 w-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="h-10 w-10" />
             </div>
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
@@ -476,7 +476,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
               Welcome to the NDLI Club Network!
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
               {generatedClub.name} is now officially chartered under IIT Kharagpur and Ministry of Education, Government of India.
             </p>
           </div>
@@ -500,11 +500,11 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
           {/* Club Details Summary Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div className="text-slate-400 font-semibold uppercase">Club ID</div>
+              <div className="text-slate-600 font-semibold uppercase">Club ID</div>
               <div className="font-mono font-bold text-slate-800">{generatedClub.id}</div>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div className="text-slate-400 font-semibold uppercase">AISHE Code</div>
+              <div className="text-slate-600 font-semibold uppercase">AISHE Code</div>
               <div className="font-mono font-bold text-slate-800">{generatedClub.aisheCode}</div>
             </div>
           </div>
@@ -512,7 +512,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
           {downloadSuccessMessage && (
             <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 text-center space-y-1">
               <div className="font-bold flex items-center justify-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 text-emerald-700" />
                 <span>Official Charter Downloaded Successfully to your computer!</span>
               </div>
               <p className="text-[11px] text-emerald-700">

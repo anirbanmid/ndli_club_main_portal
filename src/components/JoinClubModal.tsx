@@ -72,7 +72,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
         {/* Close Button */}
         <button
           onClick={resetForm}
-          aria-label="Close dialog" className="absolute right-5 top-5 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close dialog" className="absolute right-5 top-5 p-1 rounded-full text-slate-600 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
@@ -87,14 +87,14 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
                 Join Your Campus NDLI Club
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Enter the unique passkey provided by your institution's central library or club coordinator.
               </p>
             </div>
 
             {/* Quick Demo Test Keys */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
-              <span className="text-slate-500 font-semibold block mb-1.5">Quick Demo Passkeys:</span>
+              <span className="text-slate-600 font-semibold block mb-1.5">Quick Demo Passkeys:</span>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
@@ -133,7 +133,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
                   Full Name (As on Certificate) *
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
                   <input
                     type="text"
                     placeholder="e.g. Ananya Sen"
@@ -151,7 +151,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
                     Student Email *
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
                     <input
                       type="email"
                       placeholder="e.g. student@college.edu"
@@ -194,7 +194,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
           </form>
         ) : (
           <div className="text-center space-y-4 py-3">
-            <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <div className="h-16 w-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="h-10 w-10" />
             </div>
 
@@ -203,12 +203,12 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
             </h3>
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2">
-              <div className="flex items-center space-x-2 text-xs text-slate-400 font-semibold uppercase">
+              <div className="flex items-center space-x-2 text-xs text-slate-600 font-semibold uppercase">
                 <Building2 className="h-4 w-4 text-blue-600" />
                 <span>Affiliated NDLI Chapter</span>
               </div>
               <div className="font-bold text-sm text-slate-900">{joinedClub.name}</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-600">
                 District: {joinedClub.district}, {joinedClub.state} (AISHE: {joinedClub.aisheCode})
               </div>
             </div>

@@ -90,24 +90,24 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center space-x-3">
           {/* Text Resizer */}
           <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
-            <span className="text-[10px] text-emerald-200 mr-1">Text:</span>
+            <span className="text-[11px] text-emerald-200 mr-1">Text:</span>
             <button 
               onClick={() => setFontSize('normal')}
-              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'normal' ? 'bg-[#D97706] text-white font-bold' : 'hover:text-white'}`}
+              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'normal' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
               title="Standard Font Size"
             >
               A
             </button>
             <button 
               onClick={() => setFontSize('large')}
-              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'large' ? 'bg-[#D97706] text-white font-bold' : 'hover:text-white'}`}
+              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'large' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
               title="Large Font Size"
             >
               A+
             </button>
             <button 
               onClick={() => setFontSize('larger')}
-              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'larger' ? 'bg-[#D97706] text-white font-bold' : 'hover:text-white'}`}
+              className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'larger' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
               title="Extra Large Font Size"
             >
               A++
@@ -167,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
                   National Portal
                 </span>
               </div>
-              <p className="text-xs text-[#5F7B6E] font-medium">
+              <p className="text-xs text-[#5A7366] font-medium">
                 National Digital Library of India • IIT Kharagpur
               </p>
             </div>
@@ -206,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <GraduationCap className="h-4 w-4" />
             <span>2. Institutional Club Module</span>
-            <span className="bg-[#D97706] text-white text-[9px] px-1.5 py-0.2 rounded font-black">CAMPUS</span>
+            <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">CAMPUS</span>
           </button>
 
           {/* Branch 3: IIT KGP Admin Module */}
@@ -223,7 +223,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Landmark className="h-4 w-4" />
             <span>3. IIT KGP Admin Module</span>
-            <span className="bg-[#0D7751] text-white text-[9px] px-1.5 py-0.2 rounded font-black">6 ZONES</span>
+            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">6 ZONES</span>
           </button>
         </div>
 

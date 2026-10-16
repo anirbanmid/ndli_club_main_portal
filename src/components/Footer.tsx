@@ -5,7 +5,7 @@ export const Footer: React.FC = () => {
   return (
     <footer className="bg-slate-900 text-slate-300 pt-12 pb-8 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
           {/* Col 1: Initiative info */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2.5">
@@ -26,7 +26,7 @@ export const Footer: React.FC = () => {
           {/* Col 2: Quick Links */}
           <div>
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Quick Navigation</h4>
-            <ul className="space-y-2 text-xs text-slate-400">
+            <ul className="space-y-2.5 text-xs text-slate-400 leading-relaxed">
               <li><a href="#explore" className="hover:text-blue-400 transition-colors">Directory of Registered Clubs</a></li>
               <li><a href="#guidelines" className="hover:text-blue-400 transition-colors">Club Constitution & Guidelines</a></li>
               <li><a href="#naac" className="hover:text-blue-400 transition-colors">NAAC Extension Credit Guidelines</a></li>
@@ -38,7 +38,7 @@ export const Footer: React.FC = () => {
           {/* Col 3: Institutional Roles */}
           <div>
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Club Governance Hierarchy</h4>
-            <div className="space-y-2 text-xs text-slate-400">
+            <div className="space-y-2.5 text-xs text-slate-400 leading-relaxed">
               <div className="p-2 rounded bg-slate-800/60 border border-slate-700/60">
                 <span className="font-semibold text-slate-200">1. Patron:</span> Head of Institution (VC / Principal)
               </div>
@@ -57,7 +57,7 @@ export const Footer: React.FC = () => {
           {/* Col 4: Contact & Nodal Office */}
           <div>
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4">Central Nodal Office</h4>
-            <ul className="space-y-2.5 text-xs text-slate-400">
+            <ul className="space-y-3 text-xs text-slate-400 leading-relaxed">
               <li className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
                 <span>Central Library, Indian Institute of Technology Kharagpur, Kharagpur, WB 721302</span>
@@ -75,7 +75,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 gap-4">
+        <div className="pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-xs text-slate-400 gap-4">
           <p>
             © 2026 National Digital Library of India (NDLI), IIT Kharagpur. Under National Mission on Education through ICT (NMEICT).
           </p>

@@ -131,15 +131,15 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8 pt-6 border-t border-white/10 max-w-xl text-center">
           <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl">
             <div className="text-2xl font-black text-amber-300">{club.memberCount.toLocaleString()}</div>
-            <div className="text-[10px] text-emerald-200 uppercase font-bold">Enrolled Students</div>
+            <div className="text-[11px] text-emerald-200 uppercase font-bold">Enrolled Students</div>
           </div>
           <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl">
             <div className="text-2xl font-black text-white">{club.eventsConducted}</div>
-            <div className="text-[10px] text-emerald-200 uppercase font-bold">Activities Logged</div>
+            <div className="text-[11px] text-emerald-200 uppercase font-bold">Activities Logged</div>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-white/10 backdrop-blur-xs p-3 rounded-xl">
             <div className="text-2xl font-black text-emerald-300">100%</div>
-            <div className="text-[10px] text-emerald-200 uppercase font-bold">Verified Quorum</div>
+            <div className="text-[11px] text-emerald-200 uppercase font-bold">Verified Quorum</div>
           </div>
         </div>
       </div>
@@ -156,13 +156,13 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
             <h3 className="text-xl font-bold text-[#103125]">
               Join {club.name} Chapter
             </h3>
-            <p className="text-xs text-[#5F7B6E] leading-relaxed">
+            <p className="text-xs text-[#5A7366] leading-relaxed">
               If you are an enrolled student or faculty member of this institution, use the official institutional passkey to connect your NDLI account.
             </p>
 
             {/* Passkey Banner */}
             <div className="bg-[#F4F8F6] border-2 border-dashed border-[#0D7751]/50 p-4 rounded-2xl text-center space-y-2">
-              <div className="text-[10px] font-bold text-[#5F7B6E] uppercase tracking-wider">
+              <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">
                 Official Institutional Passkey
               </div>
               <div className="font-mono text-2xl font-black text-[#103125] tracking-widest">
@@ -178,7 +178,7 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
                 </button>
                 <button
                   onClick={() => onJoinWithPasskey(club.passkey)}
-                  className="px-3.5 py-1 rounded-lg bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-bold shadow-2xs"
+                  className="px-3.5 py-1 rounded-lg bg-[#B45309] hover:bg-[#92400E] text-white text-xs font-bold shadow-2xs"
                 >
                   Join Now
                 </button>
@@ -190,7 +190,7 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
           {qrDataUrl && (
             <div className="pt-4 border-t border-[#E2ECE7] flex items-center space-x-4">
               <img src={qrDataUrl} alt="Club QR Code" className="h-20 w-20 border border-[#E2ECE7] p-1 rounded-xl bg-white shadow-2xs" />
-              <div className="text-xs text-[#5F7B6E]">
+              <div className="text-xs text-[#5A7366]">
                 <strong className="text-[#103125] block font-bold">Dynamic Campus QR</strong>
                 Scan to join chapter directly from your mobile smartphone.
               </div>
@@ -218,19 +218,19 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
             {club.authorities.map(auth => (
               <div key={auth.role} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0D7751] bg-white px-2 py-0.5 rounded border border-[#0D7751]/20">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0D7751] bg-white px-2 py-0.5 rounded border border-[#0D7751]/20">
                     {auth.role}
                   </span>
-                  <span className="text-[10px] text-emerald-700 font-bold">✓ Verified</span>
+                  <span className="text-[11px] text-emerald-700 font-bold">✓ Verified</span>
                 </div>
                 <div className="font-bold text-sm text-[#103125] pt-0.5">{auth.name}</div>
-                <div className="text-xs text-[#5F7B6E]">{auth.designation}</div>
+                <div className="text-xs text-[#5A7366]">{auth.designation}</div>
                 <div className="text-[11px] font-mono text-[#2E4A3E] pt-1">{auth.email}</div>
               </div>
             ))}
           </div>
 
-          <p className="text-[11px] text-[#5F7B6E] italic pt-1">
+          <p className="text-[11px] text-[#5A7366] italic pt-1">
             * Designated under the Ministry of Education & IIT Kharagpur NDLI Club Charter. Leadership succession requires formal dual-verification.
           </p>
         </div>
@@ -244,7 +244,7 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
               <Calendar className="h-5 w-5 text-[#0D7751]" />
               <span>Campus Co-Curricular & Reading Activities</span>
             </h3>
-            <p className="text-xs text-[#5F7B6E] mt-0.5">
+            <p className="text-xs text-[#5A7366] mt-0.5">
               Verified record of workshops, reading marathons, and research webinars conducted by this club.
             </p>
           </div>
@@ -260,16 +260,16 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
               <div key={act.id} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-3 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
                       {act.category} • {act.mode}
                     </span>
-                    <span className="text-xs font-semibold text-[#5F7B6E]">{act.date}</span>
+                    <span className="text-xs font-semibold text-[#5A7366]">{act.date}</span>
                   </div>
                   <h4 className="font-bold text-[#103125] text-sm leading-snug">{act.title}</h4>
-                  <p className="text-xs text-[#5F7B6E] line-clamp-2">{act.description}</p>
+                  <p className="text-xs text-[#5A7366] line-clamp-2">{act.description}</p>
                 </div>
 
-                <div className="pt-3 border-t border-[#E2ECE7] flex justify-between items-center text-xs text-[#5F7B6E]">
+                <div className="pt-3 border-t border-[#E2ECE7] flex justify-between items-center text-xs text-[#5A7366]">
                   <span>👥 {act.participantsCount.toLocaleString()} Participants</span>
                   <span className="text-[#0D7751] font-semibold flex items-center gap-1">
                     <Award className="h-3.5 w-3.5" />
@@ -280,8 +280,8 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7] text-xs text-[#5F7B6E]">
-            <BookOpen className="h-8 w-8 text-[#5F7B6E] mx-auto mb-2 opacity-50" />
+          <div className="text-center py-10 bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7] text-xs text-[#5A7366]">
+            <BookOpen className="h-8 w-8 text-[#5A7366] mx-auto mb-2 opacity-50" />
             <div>No public activities listed yet for this academic quarter.</div>
           </div>
         )}

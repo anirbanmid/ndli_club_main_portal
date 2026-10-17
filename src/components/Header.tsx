@@ -17,31 +17,34 @@ import {
 import { BranchType } from '../types';
 import { t } from "../i18n";
 
-export const NDLI_24_LANGUAGES = [
+/**
+ * Language picker (S4). Every listed language has a REAL catalogue:
+ * en (natural keys) + hi (curated) + 18 machine-drafted catalogues under
+ * src/i18n/. Bodo, Kashmiri, Manipuri and the 'scf' placeholder were REMOVED
+ * at user decision (no implementable translation source) — they return when
+ * reviewed catalogues exist. Sindhi ships in Perso-Arabic script (RTL).
+ */
+export const NDLI_LANGUAGES = [
   { code: 'en', name: 'English', native: 'English', status: 'Active' },
   { code: 'hi', name: 'Hindi', native: 'हिन्दी', status: 'Active' },
-  { code: 'as', name: 'Assamese', native: 'অসমীয়া', status: 'Scaffolded' },
-  { code: 'bn', name: 'Bengali', native: 'বাংলা', status: 'Scaffolded' },
-  { code: 'brx', name: 'Bodo', native: 'बड़ो', status: 'Scaffolded' },
-  { code: 'doi', name: 'Dogri', native: 'डोगरी', status: 'Scaffolded' },
-  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', status: 'Scaffolded' },
-  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', status: 'Scaffolded' },
-  { code: 'ks', name: 'Kashmiri', native: 'कॉशुर', status: 'Scaffolded' },
-  { code: 'kok', name: 'Konkani', native: 'कोंकणी', status: 'Scaffolded' },
-  { code: 'mai', name: 'Maithili', native: 'मैथिली', status: 'Scaffolded' },
-  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', status: 'Scaffolded' },
-  { code: 'mni', name: 'Manipuri', native: 'মৈতৈলোন্', status: 'Scaffolded' },
-  { code: 'mr', name: 'Marathi', native: 'मराठी', status: 'Scaffolded' },
-  { code: 'ne', name: 'Nepali', native: 'नेपाली', status: 'Scaffolded' },
-  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', status: 'Scaffolded' },
-  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', status: 'Scaffolded' },
-  { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', status: 'Scaffolded' },
-  { code: 'sat', name: 'Santali', native: 'संताली', status: 'Scaffolded' },
-  { code: 'sd', name: 'Sindhi', native: 'सिन्धी', status: 'Scaffolded' },
-  { code: 'ta', name: 'Tamil', native: 'தமிழ்', status: 'Scaffolded' },
-  { code: 'te', name: 'Telugu', native: 'తెలుగు', status: 'Scaffolded' },
-  { code: 'ur', name: 'Urdu', native: 'اردو', status: 'Scaffolded' },
-  { code: 'scf', name: '24th Language (Scaffolded)', native: 'भारतीय भाषा', status: 'Scaffolded' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', status: 'Active' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', status: 'Active' },
+  { code: 'doi', name: 'Dogri', native: 'डोगरी', status: 'Active' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', status: 'Active' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', status: 'Active' },
+  { code: 'kok', name: 'Konkani', native: 'कोंकणी', status: 'Active' },
+  { code: 'mai', name: 'Maithili', native: 'मैथिली', status: 'Active' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', status: 'Active' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी', status: 'Active' },
+  { code: 'ne', name: 'Nepali', native: 'नेपाली', status: 'Active' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', status: 'Active' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', status: 'Active' },
+  { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', status: 'Active' },
+  { code: 'sat', name: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ', status: 'Active' },
+  { code: 'sd', name: 'Sindhi', native: 'سنڌي', status: 'Active' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', status: 'Active' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', status: 'Active' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', status: 'Active' },
 ];
 
 interface HeaderProps {
@@ -129,16 +132,16 @@ export const Header: React.FC<HeaderProps> = ({
             {highContrast ? t("Standard Mode") : t("High Contrast")}
           </button>
 
-          {/* 24 Indian Languages Selector */}
+          {/* Indian Languages Selector (20 live languages) */}
           <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
             <Globe className="h-3 w-3 text-amber-300 shrink-0" />
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="bg-transparent text-emerald-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
-              title={t("Select Language (24 Languages Scaffolded)")}
+              title={t("Select Language")}
             >
-              {NDLI_24_LANGUAGES.map(lang => (
+              {NDLI_LANGUAGES.map(lang => (
                 <option key={lang.code} value={lang.code} className="bg-[#103125] text-white">
                   {lang.native} ({lang.name}) {lang.status === 'Active' ? '✓' : '•'}
                 </option>

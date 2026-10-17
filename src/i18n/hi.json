@@ -457,7 +457,6 @@
  "Secretary": "सचिव",
  "Secure dual-verification process to transfer Patron, President, or Secretary leadership with appointment-letter review and a full audit trail.": "नियुक्ति-पत्र की समीक्षा और संपूर्ण ऑडिट ट्रेल के साथ संरक्षक, अध्यक्ष अथवा सचिव के नेतृत्व को हस्तांतरित करने की सुरक्षित दोहरी-सत्यापन प्रक्रिया।",
  "Select Institution:": "संस्थान चुनें:",
- "Select Language (24 Languages Scaffolded)": "भाषा चुनें (24 भाषाओं के लिए प्रारंभिक ढाँचा तैयार)",
  "Select any registered institution to compile its verified annual NDLI Club activity report formatted according to National Assessment and Accreditation Council (NAAC) inspection guidelines.": "राष्ट्रीय मूल्यांकन एवं प्रत्यायन परिषद (NAAC) निरीक्षण दिशानिर्देशों के अनुरूप प्रारूपित सत्यापित वार्षिक NDLI Club गतिविधि रिपोर्ट तैयार करने हेतु कोई भी पंजीकृत संस्थान चुनें।",
  "Seminar": "संगोष्ठी",
  "Senior Faculty": "वरिष्ठ संकाय",
@@ -600,5 +599,6 @@
  "Electrical": "विद्युत अभियांत्रिकी",
  "Electronics": "इलेक्ट्रॉनिकी",
  "Mechanical": "यांत्रिक अभियांत्रिकी",
- "Physics": "भौतिकी"
+ "Physics": "भौतिकी",
+ "Select Language": "भाषा चुनें"
 }

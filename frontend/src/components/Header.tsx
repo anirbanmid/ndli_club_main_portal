@@ -140,6 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
               onChange={(e) => setLanguage(e.target.value)}
               className="bg-transparent text-brand-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
               title={t("Select Language")}
+              aria-label={t("Select Language")}
             >
               {NDLI_LANGUAGES.map(lang => (
                 <option key={lang.code} value={lang.code} className="bg-[#103125] text-white">

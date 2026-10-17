@@ -198,6 +198,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <select
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
+              aria-label={t("Filter by State / UT")}
               className="w-full py-2.5 px-3 text-xs rounded-xl border border-[#E2ECE7] bg-white text-[#103125] font-semibold focus:ring-2 focus:ring-[#0D7751]"
             >
               {states.map(state => (
@@ -212,6 +213,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
+              aria-label={t("Filter by Category")}
               className="w-full py-2.5 px-3 text-xs rounded-xl border border-[#E2ECE7] bg-white text-[#103125] font-semibold focus:ring-2 focus:ring-[#0D7751]"
             >
               {categories.map(cat => (

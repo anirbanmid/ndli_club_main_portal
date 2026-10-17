@@ -133,13 +133,20 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
+      - name: Install synced Chrome + ChromeDriver (pinned)
+        run: |
+          npx --yes browser-driver-manager install chrome@155.0.8059.84
+          echo "CHROME_PATH=$HOME/.browser-driver-manager/chrome/linux-155.0.8059.84/chrome-linux64/chrome" >> "$GITHUB_ENV"
+          echo "AXE_CHROMEDRIVER=$HOME/.browser-driver-manager/chromedriver/linux-155.0.8059.84/chromedriver-linux64/chromedriver" >> "$GITHUB_ENV"
       - name: Serve build and run axe accessibility check
         working-directory: frontend
         run: |
-          nohup npm run preview -- --port 4173 --strictPort &
+          nohup npm run preview -- --host 127.0.0.1 --port 4173 --strictPort &
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:4173/ >/dev/null 2>&1 && break
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null 2>&1; then break; fi
+            if [ "$i" = 30 ]; then echo "preview server never came up"; exit 1; fi
             sleep 1
           done
           npx --yes @axe-core/cli@4.10.2 http://127.0.0.1:4173/ \
-            --exit --chrome-options="--no-sandbox"
+            --exit --chrome-options="--no-sandbox" \
+            --chromedriver-path="$AXE_CHROMEDRIVER"

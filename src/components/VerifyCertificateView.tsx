@@ -11,6 +11,7 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import { CertificateData } from '../types';
+import { t } from "../i18n";
 
 interface VerifyCertificateViewProps {
   certificates: CertificateData[];
@@ -45,28 +46,28 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
       <div className="text-center space-y-3">
         <div className="inline-flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-1 rounded-full text-xs font-bold">
           <ShieldCheck className="h-4 w-4 text-emerald-700" />
-          <span>Public Credential Verification Portal</span>
+          <span>{t("Public Credential Verification Portal")}</span>
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Verify Official NDLI Club Certificate
-        </h1>
+          {t("Verify Official NDLI Club Certificate")}
+                          </h1>
         <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
-          Every certificate issued by NDLI Club contains an immutable cryptographic ID and digital signature verified against IIT Kharagpur records.
-        </p>
+          {t("Every certificate issued by NDLI Club contains an immutable cryptographic ID and digital signature verified against IIT Kharagpur records.")}
+                          </p>
       </div>
 
       {/* Search Input Box */}
       <form onSubmit={handleSearch} className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-md space-y-4">
         <label className="text-xs font-bold text-slate-700 block">
-          Enter Certificate Identification Number (CID)
-        </label>
+          {t("Enter Certificate Identification Number (CID)")}
+                          </label>
         
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative grow">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-600" />
             <input
               type="text"
-              placeholder="e.g. NDLI-A7KQ-2M4X"
+              placeholder={t("e.g. NDLI-A7KQ-2M4X")}
               value={searchId}
               onChange={(e) => setSearchId(e.target.value.toUpperCase())}
               required
@@ -79,13 +80,13 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
             className="px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md flex items-center justify-center space-x-2 transition-all shrink-0"
           >
             <ShieldCheck className="h-4 w-4" />
-            <span>Verify Authenticity</span>
+            <span>{t("Verify Authenticity")}</span>
           </button>
         </div>
 
         {/* Quick sample chips */}
         <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
-          <span className="text-slate-600 font-medium">Try Sample Verified IDs:</span>
+          <span className="text-slate-600 font-medium">{t("Try Sample Verified IDs:")}</span>
           {certificates.slice(0, 2).map(c => (
             <button
               key={c.certId}
@@ -111,17 +112,17 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                   </div>
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-                      Official Record Confirmed
-                    </span>
+                      {t("Official Record Confirmed")}
+                                                              </span>
                     <h3 className="text-xl font-extrabold text-slate-900">
-                      Valid & Authentic Certificate
-                    </h3>
+                      {t("Valid & Authentic Certificate")}
+                                                              </h3>
                   </div>
                 </div>
 
                 <div className="text-right sm:text-right">
                   <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    CID: {foundCert.certId}
+                    {t("CID:")} {foundCert.certId}
                   </span>
                 </div>
               </div>
@@ -131,18 +132,18 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <User className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Recipient Name</span>
+                    <span>{t("Recipient Name")}</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.recipientName}</div>
                   {foundCert.recipientRoll && (
-                    <div className="text-[11px] text-slate-600 font-mono">Roll: {foundCert.recipientRoll}</div>
+                    <div className="text-[11px] text-slate-600 font-mono">{t("Roll:")} {foundCert.recipientRoll}</div>
                   )}
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Associated Institution</span>
+                    <span>{t("Associated Institution")}</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.instituteName}</div>
                 </div>
@@ -150,19 +151,19 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Award className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Event & Classification</span>
+                    <span>{t("Event & Classification")}</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.eventName}</div>
-                  <div className="text-[11px] text-emerald-700 font-semibold">Award Category: {foundCert.category}</div>
+                  <div className="text-[11px] text-emerald-700 font-semibold">{t("Award Category:")} {t(foundCert.category)}</div>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="flex items-center space-x-1.5 text-slate-600 font-semibold uppercase">
                     <Calendar className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Issuance & Authority</span>
+                    <span>{t("Issuance & Authority")}</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900">{foundCert.eventDate}</div>
-                  <div className="text-[11px] text-slate-600">Issued by IIT Kharagpur & NDLI HQ</div>
+                  <div className="text-[11px] text-slate-600">{t("Issued by IIT Kharagpur & NDLI HQ")}</div>
                 </div>
               </div>
 
@@ -171,7 +172,7 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
                   onClick={() => onViewFullCertificate(foundCert)}
                   className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md flex items-center space-x-2 transition-all"
                 >
-                  <span>View Printable Master Certificate</span>
+                  <span>{t("View Printable Master Certificate")}</span>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -181,10 +182,10 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
               <div className="h-12 w-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <XCircle className="h-7 w-7" />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Certificate Not Found</h3>
+              <h3 className="text-lg font-bold text-slate-900">{t("Certificate Not Found")}</h3>
               <p className="text-xs text-slate-600 max-w-sm mx-auto">
-                No certificate with ID <strong className="font-mono text-slate-800 font-bold">{trimmedId}</strong> was found in the central NDLI database.
-              </p>
+                {t("No certificate with ID")} <strong className="font-mono text-slate-800 font-bold">{trimmedId}</strong> {t("was found in the central NDLI database.")}
+                                                </p>
             </div>
           )}
         </div>

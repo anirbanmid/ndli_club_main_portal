@@ -27,6 +27,7 @@ import {
   ForensicQuarantineRecord,
   RegionalZone
 } from '../types';
+import { t } from "../i18n";
 
 interface AdminModuleViewProps {
   clubs: InstituteClub[];
@@ -69,31 +70,31 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <span className="bg-[#0D7751] text-emerald-100 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-emerald-400/30">
-              IIT KHARAGPUR NODAL COMMAND
-            </span>
+              {t("IIT KHARAGPUR NODAL COMMAND")}
+                                      </span>
             <span className="text-xs text-amber-300 font-semibold">
-              6-Zone National Governance Core
-            </span>
+              {t("6-Zone National Governance Core")}
+                                      </span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Central Administration & Regional Management Desk
-          </h1>
+            {t("Central Administration & Regional Management Desk")}
+                                </h1>
 
           <p className="text-xs text-emerald-200/90 max-w-2xl">
-            Coordinating club charter approvals, regional support desk dispatches (EMP01–EMP07), institutional authority transitions, and legacy data healing.
-          </p>
+            {t("Coordinating club charter approvals, regional support desk dispatches (EMP01–EMP07), institutional authority transitions, and legacy data healing.")}
+                                </p>
         </div>
 
         {/* Telemetry Pills */}
         <div className="grid grid-cols-2 gap-3 text-center shrink-0">
           <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
             <div className="text-2xl font-black text-amber-300">{pendingClubs.length}</div>
-            <div className="text-[11px] text-emerald-200 uppercase font-bold">Pending Approvals</div>
+            <div className="text-[11px] text-emerald-200 uppercase font-bold">{t("Pending Approvals")}</div>
           </div>
           <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
             <div className="text-2xl font-black text-white">{tickets.filter(t => t.status !== 'Resolved').length}</div>
-            <div className="text-[11px] text-emerald-200 uppercase font-bold">Active Tickets</div>
+            <div className="text-[11px] text-emerald-200 uppercase font-bold">{t("Active Tickets")}</div>
           </div>
         </div>
       </div>
@@ -109,7 +110,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Building2 className="h-4 w-4" />
-            <span>Club Approvals ({pendingClubs.length})</span>
+            <span>{t("Club Approvals (")}{pendingClubs.length})</span>
           </button>
 
           <button
@@ -119,7 +120,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <LifeBuoy className="h-4 w-4" />
-            <span>Grievance Desk ({tickets.filter(t => t.status !== 'Resolved').length})</span>
+            <span>{t("Grievance Desk (")}{tickets.filter(t => t.status !== 'Resolved').length})</span>
           </button>
 
           <button
@@ -129,7 +130,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Lock className="h-4 w-4" />
-            <span>Authority Succession ({authorityRequests.length})</span>
+            <span>{t("Authority Succession (")}{authorityRequests.length})</span>
           </button>
 
           <button
@@ -139,8 +140,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Database className="h-4 w-4" />
-            <span>Forensic Migration Desk</span>
-            <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">Legacy Data Healing</span>
+            <span>{t("Forensic Migration Desk")}</span>
+            <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">{t("Legacy Data Healing")}</span>
           </button>
 
           <button
@@ -150,26 +151,26 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Landmark className="h-4 w-4" />
-            <span>7 Regional Officers</span>
+            <span>{t("7 Regional Officers")}</span>
           </button>
         </div>
 
         {/* Regional Zone Filter */}
         <div className="flex items-center space-x-2 text-xs self-end sm:self-auto">
           <Filter className="h-3.5 w-3.5 text-[#5A7366]" />
-          <span className="font-semibold text-[#5A7366]">Zone:</span>
+          <span className="font-semibold text-[#5A7366]">{t("Zone:")}</span>
           <select
             value={selectedZone}
             onChange={(e) => setSelectedZone(e.target.value)}
             className="text-xs font-bold text-[#103125] bg-[#F4F8F6] border border-[#E2ECE7] rounded-lg px-2.5 py-1.5 shadow-xs hover:border-[#0D7751]/40 focus:outline-hidden focus:ring-2 focus:ring-[#0D7751]/25 transition-colors"
           >
-            <option value="All">All 6 Zones</option>
-            <option value="North">North Zone (EMP01)</option>
-            <option value="Central">Central Zone (EMP02)</option>
-            <option value="West">West Zone (EMP03)</option>
-            <option value="East">East Zone (EMP04)</option>
-            <option value="North East">North East Zone (EMP05)</option>
-            <option value="South">South Zone (EMP06 • EMP07)</option>
+            <option value="All">{t("All 6 Zones")}</option>
+            <option value="North">{t("North Zone (EMP01)")}</option>
+            <option value="Central">{t("Central Zone (EMP02)")}</option>
+            <option value="West">{t("West Zone (EMP03)")}</option>
+            <option value="East">{t("East Zone (EMP04)")}</option>
+            <option value="North East">{t("North East Zone (EMP05)")}</option>
+            <option value="South">{t("South Zone (EMP06 • EMP07)")}</option>
           </select>
         </div>
       </div>
@@ -180,15 +181,15 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           <div className="border-b border-[#E2ECE7] pb-4 flex justify-between items-center">
             <div>
               <h3 className="text-lg font-bold text-[#103125]">
-                Pending Institutional Onboarding Requests
-              </h3>
+                {t("Pending Institutional Onboarding Requests")}
+                                            </h3>
               <p className="text-xs text-[#5A7366]">
-                Review 4-tier institutional quorum, verify AISHE registration, and grant official charter with unique passkey.
-              </p>
+                {t("Review 4-tier institutional quorum, verify AISHE registration, and grant official charter with unique passkey.")}
+                                            </p>
             </div>
             <span className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-3 py-1 rounded-full">
-              {filteredPending.length} Awaiting Verification
-            </span>
+              {filteredPending.length} {t("Awaiting Verification")}
+                                      </span>
           </div>
 
           {filteredPending.length > 0 ? (
@@ -199,10 +200,10 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-mono font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
-                          AISHE: {club.aisheCode}
+                          {t("AISHE:")} {club.aisheCode}
                         </span>
                         <span className="text-xs font-semibold text-[#5A7366]">
-                          Zone: <strong>{club.zone}</strong> • {club.district}, {club.state}
+                          {t("Zone:")} <strong>{t(club.zone)}</strong> • {club.district}, {club.state}
                         </span>
                       </div>
                       <h4 className="text-base font-bold text-[#103125] mt-1">{club.name}</h4>
@@ -213,14 +214,14 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                         onClick={() => onRejectClub(club.id)}
                         className="px-3.5 py-1.5 rounded-lg border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all"
                       >
-                        Request Revision
-                      </button>
+                        {t("Request Revision")}
+                                                        </button>
                       <button
                         onClick={() => onApproveClub(club.id)}
                         className="px-4 py-1.5 rounded-lg bg-[#0D7751] hover:bg-[#0a5c3e] text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1"
                       >
                         <CheckCircle2 className="h-4 w-4" />
-                        <span>Approve Charter & Issue Passkey</span>
+                        <span>{t("Approve Charter & Issue Passkey")}</span>
                       </button>
                     </div>
                   </div>
@@ -228,14 +229,14 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                   {/* 4 Authorities Quorum Check */}
                   <div className="pt-2 border-t border-[#E2ECE7]">
                     <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#5A7366] block mb-2">
-                      Submitted 4-Tier Authority Quorum
-                    </span>
+                      {t("Submitted 4-Tier Authority Quorum")}
+                                                  </span>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       {club.authorities.map(a => (
                         <div key={a.role} className="p-2.5 rounded-lg bg-white border border-[#E2ECE7]">
-                          <span className="text-[11px] font-bold text-[#0D7751] uppercase">{a.role}</span>
+                          <span className="text-[11px] font-bold text-[#0D7751] uppercase">{t(a.role)}</span>
                           <div className="font-bold text-[#103125]">{a.name}</div>
-                          <div className="text-[11px] text-[#5A7366]">{a.designation}</div>
+                          <div className="text-[11px] text-[#5A7366]">{t(a.designation)}</div>
                         </div>
                       ))}
                     </div>
@@ -246,8 +247,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           ) : (
             <div className="text-center py-12 text-xs text-[#5A7366]">
               <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
-              <h4 className="font-bold text-[#103125]">All Institutional Requests Cleared</h4>
-              <p>No clubs pending verification in the selected zone.</p>
+              <h4 className="font-bold text-[#103125]">{t("All Institutional Requests Cleared")}</h4>
+              <p>{t("No clubs pending verification in the selected zone.")}</p>
             </div>
           )}
         </div>
@@ -259,15 +260,15 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           <div className="border-b border-[#E2ECE7] pb-4 flex justify-between items-center">
             <div>
               <h3 className="text-lg font-bold text-[#103125]">
-                National Grievance & SLA Dispatch Desk
-              </h3>
+                {t("National Grievance & SLA Dispatch Desk")}
+                                            </h3>
               <p className="text-xs text-[#5A7366]">
-                Issues raised by college coordinators dispatched to regional employee nodes (EMP01–EMP07).
-              </p>
+                {t("Issues raised by college coordinators dispatched to regional employee nodes (EMP01–EMP07).")}
+                                            </p>
             </div>
             <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">
-              {filteredTickets.filter(t => t.status !== 'Resolved').length} Unresolved Issues
-            </span>
+              {filteredTickets.filter(t => t.status !== 'Resolved').length} {t("Unresolved Issues")}
+                                      </span>
           </div>
 
           <div className="space-y-3">
@@ -279,12 +280,12 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                       {tkt.id}
                     </span>
                     <span className="font-bold text-[#103125]">{tkt.clubName}</span>
-                    <span className="text-[#5A7366]">({tkt.zone} Zone)</span>
+                    <span className="text-[#5A7366]">({t(tkt.zone)} {t("Zone)")}</span>
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
                       tkt.priority === 'Critical' ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
                     }`}>
-                      {tkt.priority} Priority
-                    </span>
+                      {t(tkt.priority)} {t("Priority")}
+                                                    </span>
                   </div>
 
                   {tkt.status !== 'Resolved' ? (
@@ -295,12 +296,12 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                       }}
                       className="px-3 py-1 rounded-lg bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs"
                     >
-                      Mark Resolved
-                    </button>
+                      {t("Mark Resolved")}
+                                                    </button>
                   ) : (
                     <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      ✓ Resolved
-                    </span>
+                      {t("✓ Resolved")}
+                                                        </span>
                   )}
                 </div>
 
@@ -308,9 +309,9 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                 <p className="text-[#5A7366]">{tkt.description}</p>
 
                 <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-[11px] text-[#5A7366]">
-                  <span>Category: {tkt.category} • Assigned Node: {tkt.assignedTo}</span>
+                  <span>{t("Category:")} {t(tkt.category)} {t("• Assigned Node:")} {tkt.assignedTo}</span>
                   {tkt.resolutionNotes && (
-                    <span className="text-emerald-700 font-medium">Resolution: {tkt.resolutionNotes}</span>
+                    <span className="text-emerald-700 font-medium">{t("Resolution:")} {tkt.resolutionNotes}</span>
                   )}
                 </div>
               </div>
@@ -324,11 +325,11 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4">
             <h3 className="text-lg font-bold text-[#103125]">
-              Institutional Authority Succession & Charter Re-Signing Gate
-            </h3>
+              {t("Institutional Authority Succession & Charter Re-Signing Gate")}
+                                      </h3>
             <p className="text-xs text-[#5A7366]">
-              Validate appointment orders and cryptographically sanction leadership changes for colleges.
-            </p>
+              {t("Validate appointment orders and cryptographically sanction leadership changes for colleges.")}
+                                      </p>
           </div>
 
           <div className="space-y-4">
@@ -339,32 +340,32 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
                     req.status === 'Approved & Updated' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                   }`}>
-                    {req.status}
+                    {t(req.status)}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-[#E2ECE7]">
                   <div>
-                    <span className="text-[11px] font-bold uppercase text-[#5A7366]">Current Officer</span>
-                    <div className="font-bold text-[#103125]">{req.currentName}</div>
-                    <div className="text-[11px] text-[#5A7366]">Role: {req.role}</div>
+                    <span className="text-[11px] font-bold uppercase text-[#5A7366]">{t("Current Officer")}</span>
+                    <div className="font-bold text-[#103125]">{t(req.currentName)}</div>
+                    <div className="text-[11px] text-[#5A7366]">{t("Role:")} {t(req.role)}</div>
                   </div>
                   <div>
-                    <span className="text-[11px] font-bold uppercase text-[#0D7751]">Incoming Nominee</span>
+                    <span className="text-[11px] font-bold uppercase text-[#0D7751]">{t("Incoming Nominee")}</span>
                     <div className="font-bold text-[#103125]">{req.proposedName}</div>
                     <div className="text-[11px] text-[#5A7366]">{req.proposedEmail} ({req.proposedPhone})</div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center text-[11px] text-[#5A7366]">
-                  <span>Uploaded Order: <strong className="font-mono">{req.officialDocName}</strong></span>
+                  <span>{t("Uploaded Order:")} <strong className="font-mono">{req.officialDocName}</strong></span>
                   {req.status === 'Pending Admin Review' && (
                     <button
                       onClick={() => onApproveAuthorityChange(req.id)}
                       className="px-4 py-1.5 rounded-lg bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs"
                     >
-                      Authorize & Re-Sign Charter
-                    </button>
+                      {t("Authorize & Re-Sign Charter")}
+                                                    </button>
                   )}
                 </div>
               </div>
@@ -380,19 +381,19 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <div>
               <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full mb-1">
                 <Database className="h-3.5 w-3.5 text-amber-700" />
-                <span>Legacy Database Recovery & Reconciliation Pipeline</span>
+                <span>{t("Legacy Database Recovery & Reconciliation Pipeline")}</span>
               </div>
               <h3 className="text-xl font-bold text-[#103125]">
-                Forensic Migration & Recovery of Legacy Data
-              </h3>
+                {t("Forensic Migration & Recovery of Legacy Data")}
+                                            </h3>
               <p className="text-xs text-[#5A7366] mt-0.5">
-                Automated schema reverse-engineering, entity inference against AISHE master, and reconciliation-accounted healing.
-              </p>
+                {t("Automated schema reverse-engineering, entity inference against AISHE master, and reconciliation-accounted healing.")}
+                                            </p>
             </div>
 
             <div className="text-right">
               <span className="text-2xl font-black text-[#0D7751]">{forensicRecords.length ? Math.round(forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length / forensicRecords.length * 100) : 0}%</span>
-              <span className="block text-[11px] font-bold uppercase text-[#5A7366]">Auto-Healing Rate (Sample)</span>
+              <span className="block text-[11px] font-bold uppercase text-[#5A7366]">{t("Auto-Healing Rate (Sample)")}</span>
             </div>
           </div>
 
@@ -400,35 +401,35 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-center">
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
               <div className="font-mono text-xl font-black text-[#103125]">{forensicRecords.length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">Legacy Records Scanned</div>
+              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Legacy Records Scanned")}</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
               <div className="font-mono text-xl font-black text-emerald-700">{forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">Reconstructed & Healed</div>
+              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Reconstructed & Healed")}</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
               <div className="font-mono text-xl font-black text-[#B45309]">{forensicRecords.filter(r => r.recoveryStatus === 'Needs Review').length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">Quarantined for Review</div>
+              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Quarantined for Review")}</div>
             </div>
             <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
               <div className="font-mono text-xl font-black text-[#0D7751]">—</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">Past Certs Re-Anchored (live count at M8)</div>
+              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Past Certs Re-Anchored (live count at M8)")}</div>
             </div>
           </div>
 
           {/* Quarantined Records Inspection Table */}
           <div className="space-y-3 pt-2">
-            <h4 className="font-bold text-sm text-[#103125]">Isolated Anomaly Quarantine Table:</h4>
+            <h4 className="font-bold text-sm text-[#103125]">{t("Isolated Anomaly Quarantine Table:")}</h4>
             <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
               <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
                 <thead className="bg-[#F4F8F6] text-[#5A7366] font-bold uppercase text-[11px]">
                   <tr>
-                    <th className="p-3">Legacy ID</th>
-                    <th className="p-3">Raw Ingested Name</th>
-                    <th className="p-3">Detected Anomaly</th>
-                    <th className="p-3">Inferred AISHE</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Action</th>
+                    <th className="p-3">{t("Legacy ID")}</th>
+                    <th className="p-3">{t("Raw Ingested Name")}</th>
+                    <th className="p-3">{t("Detected Anomaly")}</th>
+                    <th className="p-3">{t("Inferred AISHE")}</th>
+                    <th className="p-3">{t("Status")}</th>
+                    <th className="p-3 text-right">{t("Action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
@@ -442,7 +443,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                           rec.recoveryStatus === 'Auto-Healed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {rec.recoveryStatus}
+                          {t(rec.recoveryStatus)}
                         </span>
                       </td>
                       <td className="p-3 text-right">
@@ -451,10 +452,10 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                             onClick={() => onHealForensicRecord(rec.id)}
                             className="px-3 py-1 rounded bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs"
                           >
-                            Heal & Commit
-                          </button>
+                            {t("Heal & Commit")}
+                                                                </button>
                         ) : (
-                          <span className="text-emerald-700 font-bold">✓ Committed</span>
+                          <span className="text-emerald-700 font-bold">{t("✓ Committed")}</span>
                         )}
                       </td>
                     </tr>
@@ -471,11 +472,11 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4">
             <h3 className="text-lg font-bold text-[#103125]">
-              National 6-Zone Operational Network (7 Regional Officers)
-            </h3>
+              {t("National 6-Zone Operational Network (7 Regional Officers)")}
+                                      </h3>
             <p className="text-xs text-[#5A7366]">
-              Regional deployment nodes coordinating institutional outreach, support ticket queues, and local university workshops.
-            </p>
+              {t("Regional deployment nodes coordinating institutional outreach, support ticket queues, and local university workshops.")}
+                                      </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -486,8 +487,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                     {emp.empId}
                   </span>
                   <span className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
-                    {emp.zone} Zone
-                  </span>
+                    {t(emp.zone)} {t("Zone")}
+                                              </span>
                 </div>
 
                 <div>
@@ -496,11 +497,11 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
                 </div>
 
                 <div className="text-[11px] text-[#5A7366]">
-                  <strong>States:</strong> {emp.assignedStates.join(', ')}
+                  <strong>{t("States:")}</strong> {emp.assignedStates.join(', ')}
                 </div>
 
                 <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-xs">
-                  <span className="text-[#5A7366]">Active Support Tickets:</span>
+                  <span className="text-[#5A7366]">{t("Active Support Tickets:")}</span>
                   <span className="font-bold text-[#B45309]">{emp.activeTicketsCount}</span>
                 </div>
               </div>

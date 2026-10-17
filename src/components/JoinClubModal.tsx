@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { KeyRound, X, CheckCircle2, Building2, User, Mail, ArrowRight } from 'lucide-react';
 import { InstituteClub } from '../types';
 import { useModalBehavior } from '../utils/useModalBehavior';
+import { t } from "../i18n";
 
 interface JoinClubModalProps {
   isOpen: boolean;
@@ -68,11 +69,11 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
   return (
     <div onClick={resetForm} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Join club with passkey" tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Join club with passkey")} tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in">
         {/* Close Button */}
         <button
           onClick={resetForm}
-          aria-label="Close dialog" className="absolute right-5 top-5 p-1 rounded-full text-slate-600 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label={t("Close dialog")} className="absolute right-5 top-5 p-1 rounded-full text-slate-600 hover:text-slate-700 hover:bg-slate-100 transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
@@ -82,45 +83,45 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
             <div className="space-y-1.5">
               <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full">
                 <KeyRound className="h-3.5 w-3.5" />
-                <span>Student / Scholar Passkey Access</span>
+                <span>{t("Student / Scholar Passkey Access")}</span>
               </div>
               <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                Join Your Campus NDLI Club
-              </h3>
+                {t("Join Your Campus NDLI Club")}
+                                            </h3>
               <p className="text-xs text-slate-600">
-                Enter the unique passkey provided by your institution's central library or club coordinator.
-              </p>
+                {t("Enter the unique passkey provided by your institution's central library or club coordinator.")}
+                                            </p>
             </div>
 
             {/* Quick Demo Test Keys */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
-              <span className="text-slate-600 font-semibold block mb-1.5">Quick Demo Passkeys:</span>
+              <span className="text-slate-600 font-semibold block mb-1.5">{t("Quick Demo Passkeys:")}</span>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleQuickKey('IITKGP-NDL-9021')}
                   className="px-2 py-1 rounded bg-white border border-slate-300 font-mono text-[11px] font-bold text-blue-700 hover:bg-blue-50"
                 >
-                  IIT Kharagpur (IITKGP-NDL-9021)
-                </button>
+                  {t("IIT Kharagpur (IITKGP-NDL-9021)")}
+                                                  </button>
                 <button
                   type="button"
                   onClick={() => handleQuickKey('IITB-NDL-4412')}
                   className="px-2 py-1 rounded bg-white border border-slate-300 font-mono text-[11px] font-bold text-blue-700 hover:bg-blue-50"
                 >
-                  IIT Bombay (IITB-NDL-4412)
-                </button>
+                  {t("IIT Bombay (IITB-NDL-4412)")}
+                                                  </button>
               </div>
             </div>
 
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Institutional Passkey *
-                </label>
+                  {t("Institutional Passkey *")}
+                                                  </label>
                 <input
                   type="text"
-                  placeholder="e.g. IITKGP-NDL-9021"
+                  placeholder={t("e.g. IITKGP-NDL-9021")}
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value.toUpperCase())}
                   required
@@ -130,13 +131,13 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Full Name (As on Certificate) *
-                </label>
+                  {t("Full Name (As on Certificate) *")}
+                                                  </label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
                   <input
                     type="text"
-                    placeholder="e.g. Ananya Sen"
+                    placeholder={t("e.g. Ananya Sen")}
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
                     required
@@ -148,13 +149,13 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Student Email *
-                  </label>
+                    {t("Student Email *")}
+                                                        </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
                     <input
                       type="email"
-                      placeholder="e.g. student@college.edu"
+                      placeholder={t("e.g. student@college.edu")}
                       value={studentEmail}
                       onChange={(e) => setStudentEmail(e.target.value)}
                       required
@@ -165,11 +166,11 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Roll / Reg. No.
-                  </label>
+                    {t("Roll / Reg. No.")}
+                                                        </label>
                   <input
                     type="text"
-                    placeholder="e.g. 23CS1004"
+                    placeholder={t("e.g. 23CS1004")}
                     value={rollNumber}
                     onChange={(e) => setRollNumber(e.target.value)}
                     className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500"
@@ -188,7 +189,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               type="submit"
               className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md flex items-center justify-center space-x-2 transition-all"
             >
-              <span>Verify Passkey & Join Club</span>
+              <span>{t("Verify Passkey & Join Club")}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </form>
@@ -199,30 +200,30 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
             </div>
 
             <h3 className="text-xl font-extrabold text-slate-900">
-              Welcome to the Club, {studentName}!
+              {t("Welcome to the Club,")} {studentName}!
             </h3>
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2">
               <div className="flex items-center space-x-2 text-xs text-slate-600 font-semibold uppercase">
                 <Building2 className="h-4 w-4 text-blue-600" />
-                <span>Affiliated NDLI Chapter</span>
+                <span>{t("Affiliated NDLI Chapter")}</span>
               </div>
               <div className="font-bold text-sm text-slate-900">{joinedClub.name}</div>
               <div className="text-xs text-slate-600">
-                District: {joinedClub.district}, {joinedClub.state} (AISHE: {joinedClub.aisheCode})
+                {t("District:")} {joinedClub.district}, {joinedClub.state} {t("(AISHE:")} {joinedClub.aisheCode})
               </div>
             </div>
 
             <p className="text-xs text-slate-600">
-              Your member status is active. You can now register for club competitions, access digital reading tracks, and earn verifiable e-certificates.
-            </p>
+              {t("Your member status is active. You can now register for club competitions, access digital reading tracks, and earn verifiable e-certificates.")}
+                                          </p>
 
             <button
               onClick={resetForm}
               className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm shadow-sm hover:bg-blue-700 transition-colors"
             >
-              Done & Explore Activities
-            </button>
+              {t("Done & Explore Activities")}
+                                          </button>
           </div>
         )}
       </div>

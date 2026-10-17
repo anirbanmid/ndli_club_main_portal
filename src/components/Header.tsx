@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Building2, 
   KeyRound, 
@@ -15,6 +15,7 @@ import {
   Globe
 } from 'lucide-react';
 import { BranchType } from '../types';
+import { t } from "../i18n";
 
 export const NDLI_24_LANGUAGES = [
   { code: 'en', name: 'English', native: 'English', status: 'Active' },
@@ -53,6 +54,8 @@ interface HeaderProps {
   setFontSize: (size: 'normal' | 'large' | 'larger') => void;
   highContrast: boolean;
   setHighContrast: (val: boolean) => void;
+  language: string;
+  setLanguage: (code: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -65,8 +68,9 @@ export const Header: React.FC<HeaderProps> = ({
   setFontSize,
   highContrast,
   setHighContrast,
+  language,
+  setLanguage,
 }) => {
-  const [selectedLang, setSelectedLang] = useState('en');
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E2ECE7] shadow-xs">
@@ -80,35 +84,35 @@ export const Header: React.FC<HeaderProps> = ({
       {/* GIGW 3.0 / Accessibility & Multilingual Bar */}
       <div className="bg-[#103125] text-white px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs border-b border-[#1A503E]">
         <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] text-emerald-100">
-          <span className="font-semibold tracking-wide">Government of India</span>
+          <span className="font-semibold tracking-wide">{t("Government of India")}</span>
           <span className="text-emerald-700 hidden sm:inline">|</span>
-          <span className="hidden sm:inline">Ministry of Education</span>
+          <span className="hidden sm:inline">{t("Ministry of Education")}</span>
           <span className="text-emerald-700 hidden sm:inline">|</span>
-          <span className="hidden md:inline text-amber-300 font-medium">National Digital Library of India • IIT Kharagpur</span>
+          <span className="hidden md:inline text-amber-300 font-medium">{t("National Digital Library of India • IIT Kharagpur")}</span>
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Text Resizer */}
           <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
-            <span className="text-[11px] text-emerald-200 mr-1">Text:</span>
+            <span className="text-[11px] text-emerald-200 mr-1">{t("Text:")}</span>
             <button 
               onClick={() => setFontSize('normal')}
               className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'normal' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
-              title="Standard Font Size"
+              title={t("Standard Font Size")}
             >
               A
             </button>
             <button 
               onClick={() => setFontSize('large')}
               className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'large' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
-              title="Large Font Size"
+              title={t("Large Font Size")}
             >
               A+
             </button>
             <button 
               onClick={() => setFontSize('larger')}
               className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'larger' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
-              title="Extra Large Font Size"
+              title={t("Extra Large Font Size")}
             >
               A++
             </button>
@@ -122,17 +126,17 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'bg-[#1A503E] text-emerald-100 border-[#0D7751]/60 hover:text-white'
             }`}
           >
-            {highContrast ? 'Standard Mode' : 'High Contrast'}
+            {highContrast ? t("Standard Mode") : t("High Contrast")}
           </button>
 
           {/* 24 Indian Languages Selector */}
           <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
             <Globe className="h-3 w-3 text-amber-300 shrink-0" />
             <select
-              value={selectedLang}
-              onChange={(e) => setSelectedLang(e.target.value)}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
               className="bg-transparent text-emerald-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
-              title="Select Language (24 Languages Scaffolded)"
+              title={t("Select Language (24 Languages Scaffolded)")}
             >
               {NDLI_24_LANGUAGES.map(lang => (
                 <option key={lang.code} value={lang.code} className="bg-[#103125] text-white">
@@ -161,15 +165,15 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-xl font-extrabold tracking-tight text-[#103125] group-hover:text-[#1A503E] transition-colors">
-                  NDLI Club
-                </span>
+                  {t("NDLI Club")}
+                                                  </span>
                 <span className="bg-[#E9F5EF] text-[#0D7751] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-[#0D7751]/30">
-                  National Portal
-                </span>
+                  {t("National Portal")}
+                                                  </span>
               </div>
               <p className="text-xs text-[#5A7366] font-medium">
-                National Digital Library of India • IIT Kharagpur
-              </p>
+                {t("National Digital Library of India • IIT Kharagpur")}
+                                            </p>
             </div>
           </div>
         </div>
@@ -189,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Compass className="h-4 w-4" />
-            <span>1. Public Portal</span>
+            <span>{t("1. Public Portal")}</span>
           </button>
 
           {/* Branch 2: Club Module */}
@@ -205,8 +209,8 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <GraduationCap className="h-4 w-4" />
-            <span>2. Institutional Club Module</span>
-            <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">CAMPUS</span>
+            <span>{t("2. Institutional Club Module")}</span>
+            <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("CAMPUS")}</span>
           </button>
 
           {/* Branch 3: IIT KGP Admin Module */}
@@ -222,8 +226,8 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Landmark className="h-4 w-4" />
-            <span>3. IIT KGP Admin Module</span>
-            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">6 ZONES</span>
+            <span>{t("3. IIT KGP Admin Module")}</span>
+            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("6 ZONES")}</span>
           </button>
         </div>
 
@@ -234,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#0D7751] bg-[#1A503E] text-white shadow-xs hover:bg-[#103125] transition-all"
           >
             <KeyRound className="h-3.5 w-3.5 text-amber-300" />
-            <span>Student Passkey Join</span>
+            <span>{t("Student Passkey Join")}</span>
           </button>
         </div>
       </div>

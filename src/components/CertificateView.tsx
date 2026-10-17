@@ -13,6 +13,7 @@ import {
   Check
 } from 'lucide-react';
 import { CertificateData } from '../types';
+import { t } from "../i18n";
 
 interface CertificateViewProps {
   certificate: CertificateData;
@@ -62,13 +63,13 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
           className="flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to Portal</span>
+          <span>{t("Back to Portal")}</span>
         </button>
 
         <div className="flex items-center space-x-2">
           <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full font-bold flex items-center space-x-1">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Cryptographically Verified</span>
+            <span>{t("Cryptographically Verified")}</span>
           </span>
         </div>
 
@@ -78,7 +79,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             className="px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
           >
             {copied ? <Check className="h-4 w-4 text-emerald-700" /> : <Copy className="h-4 w-4" />}
-            <span>{copied ? 'Copied Link' : 'Copy Verification URL'}</span>
+            <span>{copied ? t("Copied Link") : t("Copy Verification URL")}</span>
           </button>
 
           <button
@@ -86,7 +87,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             className="px-3.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center space-x-1.5 transition-colors border border-blue-200"
           >
             <ShieldCheck className="h-4 w-4" />
-            <span>Audit On Public Verifier</span>
+            <span>{t("Audit On Public Verifier")}</span>
           </button>
 
           <button
@@ -94,7 +95,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md flex items-center space-x-1.5 transition-all"
           >
             <Printer className="h-4 w-4" />
-            <span>Print / Save PDF</span>
+            <span>{t("Print / Save PDF")}</span>
           </button>
         </div>
       </div>
@@ -110,33 +111,33 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
         {/* Top Header & Emblem */}
         <div className="relative space-y-2 border-b-2 border-[#7E6238]/30 pb-6">
           <div className="text-[11px] font-extrabold uppercase tracking-widest text-[#7E6238]">
-            Ministry of Education, Government of India
-          </div>
+            {t("Ministry of Education, Government of India")}
+                                </div>
           
           <div className="flex justify-center items-center space-x-4">
             <div className="text-center">
               <div className="text-2xl sm:text-3xl font-serif font-black tracking-wider text-slate-900" style={{ fontFamily: 'Cinzel, serif' }}>
-                NATIONAL DIGITAL LIBRARY OF INDIA
-              </div>
+                {t("NATIONAL DIGITAL LIBRARY OF INDIA")}
+                                            </div>
               <div className="text-xs sm:text-sm font-semibold tracking-widest uppercase text-blue-900">
-                Coordinated by Indian Institute of Technology Kharagpur
-              </div>
+                {t("Coordinated by Indian Institute of Technology Kharagpur")}
+                                            </div>
             </div>
           </div>
 
           <div className="text-xs font-semibold text-slate-600 tracking-wider">
-            NDLI CLUB INITIATIVE FOR DIGITAL LITERACY & SCHOLARSHIP
-          </div>
+            {t("NDLI CLUB INITIATIVE FOR DIGITAL LITERACY & SCHOLARSHIP")}
+                                </div>
         </div>
 
         {/* Certificate Title */}
         <div className="py-2 space-y-1">
           <div className="text-xs font-bold uppercase tracking-[0.25em] text-[#7E6238]">
-            Certificate of {certificate.category}
+            {t("Certificate of")} {t(certificate.category)}
           </div>
           <div className="text-2xl sm:text-4xl font-serif font-bold text-slate-900 italic" style={{ fontFamily: 'Playfair Display, serif' }}>
-            This is proudly presented to
-          </div>
+            {t("This is proudly presented to")}
+                                </div>
         </div>
 
         {/* Recipient Name */}
@@ -146,7 +147,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
           </div>
           {certificate.recipientRoll && (
             <div className="text-xs text-slate-600 font-mono mt-2">
-              Roll / ID: {certificate.recipientRoll}
+              {t("Roll / ID:")} {certificate.recipientRoll}
             </div>
           )}
         </div>
@@ -154,29 +155,29 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
         {/* Institution & Accomplishment */}
         <div className="max-w-2xl mx-auto space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
           <p>
-            representing <strong className="text-slate-900 font-bold">{certificate.instituteName}</strong>, for successfully participating and demonstrating distinction in the national event:
-          </p>
+            {t("representing")} <strong className="text-slate-900 font-bold">{certificate.instituteName}</strong>{t(", for successfully participating and demonstrating distinction in the national event:")}
+                                </p>
           <div className="text-base sm:text-lg font-bold text-slate-900 bg-amber-500/10 py-2.5 px-4 rounded-xl border border-amber-500/20 inline-block font-serif">
             {certificate.eventName}
           </div>
           {certificate.score && (
             <p className="text-xs text-emerald-800 font-bold">
-              Performance Grade: {certificate.score}
+              {t("Performance Grade:")} {certificate.score}
             </p>
           )}
           <p className="text-xs text-slate-600">
-            Conducted under the National Mission on Education through Information & Communication Technology (NMEICT).
-          </p>
+            {t("Conducted under the National Mission on Education through Information & Communication Technology (NMEICT).")}
+                                </p>
         </div>
 
         {/* Footer with Signatures and Dynamic QR Code */}
         <div className="pt-8 border-t-2 border-[#7E6238]/30 grid grid-cols-3 items-end gap-4 text-xs">
           {/* Signatory 1 */}
           <div className="text-center space-y-1">
-            <div className="font-serif italic text-base text-slate-800 font-bold">Prof. A. R. Deshmukh</div>
+            <div className="font-serif italic text-base text-slate-800 font-bold">{t("Prof. A. R. Deshmukh")}</div>
             <div className="h-0.5 w-28 bg-slate-400 mx-auto"></div>
-            <div className="text-[11px] uppercase font-bold text-slate-600">Patron, NDLI Project</div>
-            <div className="text-[11px] text-slate-600">Director, IIT Kharagpur</div>
+            <div className="text-[11px] uppercase font-bold text-slate-600">{t("Patron, NDLI Project")}</div>
+            <div className="text-[11px] text-slate-600">{t("Director, IIT Kharagpur")}</div>
           </div>
 
           {/* Center QR Verification */}
@@ -184,32 +185,32 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
             {qrCodeUrl && (
               <img 
                 src={qrCodeUrl} 
-                alt="Verification QR Code" 
+                alt={t("Verification QR Code")} 
                 className="h-20 w-20 p-1 bg-white border border-[#7E6238]/40 shadow-xs rounded"
               />
             )}
             <div className="text-[11px] font-mono font-bold text-slate-700">
-              ID: {certificate.certId}
+              {t("ID:")} {certificate.certId}
             </div>
             <div className="text-[11px] text-emerald-700 font-semibold flex items-center space-x-1">
               <ShieldCheck className="h-3 w-3" />
-              <span>Scan to Verify Authenticity</span>
+              <span>{t("Scan to Verify Authenticity")}</span>
             </div>
           </div>
 
           {/* Signatory 2 */}
           <div className="text-center space-y-1">
-            <div className="font-serif italic text-base text-slate-800 font-bold">Prof. Partha P. Das</div>
+            <div className="font-serif italic text-base text-slate-800 font-bold">{t("Prof. Partha P. Das")}</div>
             <div className="h-0.5 w-28 bg-slate-400 mx-auto"></div>
-            <div className="text-[11px] uppercase font-bold text-slate-600">Principal Investigator</div>
-            <div className="text-[11px] text-slate-600">National Digital Library of India</div>
+            <div className="text-[11px] uppercase font-bold text-slate-600">{t("Principal Investigator")}</div>
+            <div className="text-[11px] text-slate-600">{t("National Digital Library of India")}</div>
           </div>
         </div>
 
         {/* Issue Date & Seal Notice */}
         <div className="text-[11px] text-slate-600 pt-2 flex justify-between items-center border-t border-slate-100">
-          <span>Date of Issue: {certificate.eventDate}</span>
-          <span>DigiLocker & National Academic Depository (NAD) Compliant</span>
+          <span>{t("Date of Issue:")} {certificate.eventDate}</span>
+          <span>{t("DigiLocker & National Academic Depository (NAD) Compliant")}</span>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { InstituteClub } from '../types';
+import { t } from "../i18n";
 
 interface AnalyticsViewProps {
   clubs: InstituteClub[];
@@ -42,20 +43,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
         <div>
           <div className="inline-flex items-center space-x-2 bg-purple-50 border border-purple-200 text-purple-700 px-3.5 py-1 rounded-full text-xs font-bold mb-2">
             <BarChart3 className="h-4 w-4" />
-            <span>Central Ministry of Education & Institutional Telemetry</span>
+            <span>{t("Central Ministry of Education & Institutional Telemetry")}</span>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            National Impact Analytics & NAAC Accreditation Engine
-          </h1>
+            {t("National Impact Analytics & NAAC Accreditation Engine")}
+                                </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Real-time platform performance metrics, nationwide state penetration, and automated NAAC Criterion 3.3 audit compliance.
-          </p>
+            {t("Real-time platform performance metrics, nationwide state penetration, and automated NAAC Criterion 3.3 audit compliance.")}
+                                </p>
         </div>
 
         {/* Live System Health Badge */}
         <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-800">
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-          <span>Async Certificate Worker Cluster: Healthy (92ms Latency)</span>
+          <span>{t("Async Certificate Worker Cluster: Healthy (92ms Latency)")}</span>
         </div>
       </div>
 
@@ -63,49 +64,49 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
-            <span>Certificate Throughput</span>
+            <span>{t("Certificate Throughput")}</span>
             <Zap className="h-4 w-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">50,000 / min</div>
+          <div className="text-2xl font-black text-slate-900">{t("50,000 / min")}</div>
           <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-            <span>↑ 1,200% faster</span>
-            <span className="text-slate-600 font-normal">(Prev: 40/min timeout lock)</span>
+            <span>{t("↑ 1,200% faster")}</span>
+            <span className="text-slate-600 font-normal">{t("(Prev: 40/min timeout lock)")}</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
-            <span>Passkey Sync Latency</span>
+            <span>{t("Passkey Sync Latency")}</span>
             <TrendingUp className="h-4 w-4 text-blue-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">&lt; 0.4 seconds</div>
+          <div className="text-2xl font-black text-slate-900">{t("< 0.4 seconds")}</div>
           <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-            <span>Instant Validation</span>
-            <span className="text-slate-600 font-normal">(Prev: manual 4-day queue)</span>
+            <span>{t("Instant Validation")}</span>
+            <span className="text-slate-600 font-normal">{t("(Prev: manual 4-day queue)")}</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
-            <span>Mobile Core Web Vitals</span>
+            <span>{t("Mobile Core Web Vitals")}</span>
             <ShieldCheck className="h-4 w-4 text-purple-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">99 / 100 Score</div>
+          <div className="text-2xl font-black text-slate-900">{t("99 / 100 Score")}</div>
           <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-            <span>Modern PWA</span>
-            <span className="text-slate-600 font-normal">(Prev: Polymer 1.0 crash)</span>
+            <span>{t("Modern PWA")}</span>
+            <span className="text-slate-600 font-normal">{t("(Prev: Polymer 1.0 crash)")}</span>
           </div>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-slate-600 text-xs font-semibold uppercase">
-            <span>NAAC Audit Readiness</span>
+            <span>{t("NAAC Audit Readiness")}</span>
             <Award className="h-4 w-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900">100% Automated</div>
+          <div className="text-2xl font-black text-slate-900">{t("100% Automated")}</div>
           <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
-            <span>Single-click export</span>
-            <span className="text-slate-600 font-normal">Formats NAAC Criteria 3.3</span>
+            <span>{t("Single-click export")}</span>
+            <span className="text-slate-600 font-normal">{t("Formats NAAC Criteria 3.3")}</span>
           </div>
         </div>
       </div>
@@ -117,9 +118,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
             <h3 className="font-bold text-slate-900 flex items-center space-x-2">
               <MapPin className="h-5 w-5 text-blue-600" />
-              <span>Pan-India State Distribution</span>
+              <span>{t("Pan-India State Distribution")}</span>
             </h3>
-            <span className="text-xs text-slate-600 font-semibold">{clubs.length} Sample Clubs</span>
+            <span className="text-xs text-slate-600 font-semibold">{clubs.length} {t("Sample Clubs")}</span>
           </div>
 
           <div className="space-y-4">
@@ -127,7 +128,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <div key={item.state} className="space-y-1.5">
                 <div className="flex justify-between text-xs font-medium">
                   <span className="text-slate-800">{item.state}</span>
-                  <span className="text-slate-600">{item.count} clubs ({item.percentage})</span>
+                  <span className="text-slate-600">{item.count} {t("clubs (")}{item.percentage})</span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div 
@@ -140,8 +141,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
           </div>
 
           <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-blue-900 leading-relaxed">
-            💡 <strong>National Reach:</strong> Real-time synchronization allows state education directorates to monitor reading benchmarks across affiliated colleges.
-          </div>
+            💡 <strong>{t("National Reach:")}</strong> {t("Real-time synchronization allows state education directorates to monitor reading benchmarks across affiliated colleges.")}
+                                </div>
         </div>
 
         {/* Right Col: NAAC Criterion 3.3 Institutional Report Engine */}
@@ -149,21 +150,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
           <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
             <div>
               <span className="text-xs font-extrabold uppercase text-purple-700 bg-purple-50 px-2.5 py-1 rounded">
-                College Principal / IQAC Coordinator Feature
-              </span>
+                {t("College Principal / IQAC Coordinator Feature")}
+                                            </span>
               <h3 className="text-xl font-bold text-slate-900 mt-1">
-                Automated NAAC Extension Activity Report (Criterion 3.3)
-              </h3>
+                {t("Automated NAAC Extension Activity Report (Criterion 3.3)")}
+                                            </h3>
             </div>
           </div>
 
           <p className="text-xs text-slate-600">
-            Select any registered institution to compile its verified annual NDLI Club activity report formatted according to National Assessment and Accreditation Council (NAAC) inspection guidelines.
-          </p>
+            {t("Select any registered institution to compile its verified annual NDLI Club activity report formatted according to National Assessment and Accreditation Council (NAAC) inspection guidelines.")}
+                                </p>
 
           {/* Club selector */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700 block">Select Institution:</label>
+            <label className="text-xs font-bold text-slate-700 block">{t("Select Institution:")}</label>
             <select
               value={selectedClubId}
               onChange={(e) => {
@@ -174,7 +175,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
             >
               {clubs.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.name} (AISHE: {c.aisheCode})
+                  {c.name} {t("(AISHE:")} {c.aisheCode})
                 </option>
               ))}
             </select>
@@ -187,7 +188,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md flex items-center space-x-2 transition-all"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Compile NAAC Audit Document</span>
+              <span>{t("Compile NAAC Audit Document")}</span>
             </button>
           </div>
 
@@ -197,10 +198,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <div className="flex justify-between items-start border-b border-purple-100 pb-3">
                 <div>
                   <div className="text-[11px] font-extrabold uppercase tracking-wider text-purple-800">
-                    IQAC NAAC Criterion 3.3.3 / 3.3.4 Compliance Record
-                  </div>
+                    {t("IQAC NAAC Criterion 3.3.3 / 3.3.4 Compliance Record")}
+                                                        </div>
                   <div className="font-bold text-sm text-slate-900 mt-0.5">{selectedClub.name}</div>
-                  <div className="text-slate-600">AISHE: {selectedClub.aisheCode} • Academic Year 2025-2026</div>
+                  <div className="text-slate-600">{t("AISHE:")} {selectedClub.aisheCode} {t("• Academic Year 2025-2026")}</div>
                 </div>
 
                 <button
@@ -208,7 +209,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
                   className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-semibold hover:bg-slate-100 flex items-center space-x-1"
                 >
                   <Printer className="h-3.5 w-3.5" />
-                  <span>Print Document</span>
+                  <span>{t("Print Document")}</span>
                 </button>
               </div>
 
@@ -217,34 +218,34 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-600 text-[11px] uppercase">
-                      <th className="py-2">Activity Name</th>
-                      <th className="py-2">Date</th>
-                      <th className="py-2">Organizing Body</th>
-                      <th className="py-2">Participants</th>
-                      <th className="py-2">Status</th>
+                      <th className="py-2">{t("Activity Name")}</th>
+                      <th className="py-2">{t("Date")}</th>
+                      <th className="py-2">{t("Organizing Body")}</th>
+                      <th className="py-2">{t("Participants")}</th>
+                      <th className="py-2">{t("Status")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-slate-700">
                     <tr>
-                      <td className="py-2 font-medium">National Reading Month Digital Ethics Quiz</td>
-                      <td className="py-2">15 Oct 2026</td>
-                      <td className="py-2">NDLI Central + Campus Club</td>
-                      <td className="py-2 font-bold text-slate-900">420 Students</td>
-                      <td className="py-2 text-emerald-700 font-semibold">Verified</td>
+                      <td className="py-2 font-medium">{t("National Reading Month Digital Ethics Quiz")}</td>
+                      <td className="py-2">{t("15 Oct 2026")}</td>
+                      <td className="py-2">{t("NDLI Central + Campus Club")}</td>
+                      <td className="py-2 font-bold text-slate-900">{t("420 Students")}</td>
+                      <td className="py-2 text-emerald-700 font-semibold">{t("Verified")}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 font-medium">Open Access Patent & Literature Workshop</td>
-                      <td className="py-2">12 Oct 2026</td>
-                      <td className="py-2">Campus NDLI Chapter</td>
-                      <td className="py-2 font-bold text-slate-900">185 Students</td>
-                      <td className="py-2 text-emerald-700 font-semibold">Verified</td>
+                      <td className="py-2 font-medium">{t("Open Access Patent & Literature Workshop")}</td>
+                      <td className="py-2">{t("12 Oct 2026")}</td>
+                      <td className="py-2">{t("Campus NDLI Chapter")}</td>
+                      <td className="py-2 font-bold text-slate-900">{t("185 Students")}</td>
+                      <td className="py-2 text-emerald-700 font-semibold">{t("Verified")}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 font-medium">NDLI Awareness & Digital Library Induction</td>
-                      <td className="py-2">02 Aug 2026</td>
-                      <td className="py-2">Central Library</td>
-                      <td className="py-2 font-bold text-slate-900">850 Students</td>
-                      <td className="py-2 text-emerald-700 font-semibold">Verified</td>
+                      <td className="py-2 font-medium">{t("NDLI Awareness & Digital Library Induction")}</td>
+                      <td className="py-2">{t("02 Aug 2026")}</td>
+                      <td className="py-2">{t("Central Library")}</td>
+                      <td className="py-2 font-bold text-slate-900">{t("850 Students")}</td>
+                      <td className="py-2 text-emerald-700 font-semibold">{t("Verified")}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -253,9 +254,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ clubs }) => {
               <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-600">
                 <span className="flex items-center space-x-1 text-emerald-700 font-semibold">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Digitally certified by NDLI Nodal Center, IIT Kharagpur</span>
+                  <span>{t("Digitally certified by NDLI Nodal Center, IIT Kharagpur")}</span>
                 </span>
-                <span className="font-mono">Hash: 8f9b2c4e...</span>
+                <span className="font-mono">{t("Hash: 8f9b2c4e...")}</span>
               </div>
             </div>
           )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { changeLanguage } from './i18n';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomeView } from './components/HomeView';
@@ -55,6 +56,14 @@ export function App() {
   // Accessibility States
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'larger'>('normal');
   const [highContrast, setHighContrast] = useState(false);
+
+  // Language State (S3 i18n): the picker drives i18next + <html lang>, and
+  // setState forces the whole tree to re-render with the new catalogue.
+  const [language, setLanguageState] = useState('en');
+  const handleSetLanguage = (code: string) => {
+    changeLanguage(code);
+    setLanguageState(code);
+  };
 
   // Check URL parameters on mount
   useEffect(() => {
@@ -189,6 +198,8 @@ export function App() {
         setFontSize={setFontSize}
         highContrast={highContrast}
         setHighContrast={setHighContrast}
+        language={language}
+        setLanguage={handleSetLanguage}
       />
 
       {/* Main Content Area */}

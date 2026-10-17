@@ -86,18 +86,18 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* GIGW 3.0 / Accessibility & Multilingual Bar */}
       <div className="bg-[#103125] text-white px-4 sm:px-6 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs border-b border-[#1A503E]">
-        <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] text-emerald-100">
+        <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] text-brand-100">
           <span className="font-semibold tracking-wide">{t("Government of India")}</span>
-          <span className="text-emerald-700 hidden sm:inline">|</span>
+          <span className="text-brand-700 hidden sm:inline">|</span>
           <span className="hidden sm:inline">{t("Ministry of Education")}</span>
-          <span className="text-emerald-700 hidden sm:inline">|</span>
+          <span className="text-brand-700 hidden sm:inline">|</span>
           <span className="hidden md:inline text-amber-300 font-medium">{t("National Digital Library of India • IIT Kharagpur")}</span>
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Text Resizer */}
           <div className="flex items-center space-x-1 bg-[#1A503E] px-2 py-0.5 rounded border border-[#0D7751]/60">
-            <span className="text-[11px] text-emerald-200 mr-1">{t("Text:")}</span>
+            <span className="text-[11px] text-brand-200 mr-1">{t("Text:")}</span>
             <button 
               onClick={() => setFontSize('normal')}
               className={`px-1.5 rounded text-xs transition-colors ${fontSize === 'normal' ? 'bg-[#B45309] text-white font-bold' : 'hover:text-white'}`}
@@ -125,8 +125,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setHighContrast(!highContrast)}
             className={`px-2.5 py-0.5 rounded text-xs border transition-colors ${
               highContrast 
-                ? 'bg-amber-400 text-slate-950 font-bold border-amber-300' 
-                : 'bg-[#1A503E] text-emerald-100 border-[#0D7751]/60 hover:text-white'
+                ? 'bg-amber-400 text-ink-950 font-bold border-amber-300' 
+                : 'bg-[#1A503E] text-brand-100 border-[#0D7751]/60 hover:text-white'
             }`}
           >
             {highContrast ? t("Standard Mode") : t("High Contrast")}
@@ -138,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-transparent text-emerald-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
+              className="bg-transparent text-brand-100 text-[11px] font-semibold focus:outline-hidden cursor-pointer"
               title={t("Select Language")}
             >
               {NDLI_LANGUAGES.map(lang => (

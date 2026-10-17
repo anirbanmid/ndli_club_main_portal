@@ -91,13 +91,13 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
 
         <div className="relative max-w-3xl space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold px-3 py-1 rounded-lg bg-white/10 backdrop-blur-xs text-emerald-200 border border-white/20">
+            <span className="text-xs font-bold px-3 py-1 rounded-lg bg-white/10 backdrop-blur-xs text-brand-200 border border-white/20">
               {t("AISHE Code:")} {club.aisheCode}
             </span>
             <span className="text-xs font-bold px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30">
               {t(club.category)}
             </span>
-            <span className="text-xs font-semibold px-2.5 py-1 text-emerald-300">
+            <span className="text-xs font-semibold px-2.5 py-1 text-brand-300">
               {t("Established:")} {club.establishedDate}
             </span>
           </div>
@@ -106,12 +106,12 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
             {club.name}
           </h1>
 
-          <div className="flex items-center space-x-2 text-sm text-emerald-100">
+          <div className="flex items-center space-x-2 text-sm text-brand-100">
             <MapPin className="h-4 w-4 text-amber-400 shrink-0" />
             <span>{club.district}, {club.state} {t("(Region:")} {t(club.zone)} {t("Zone)")}</span>
           </div>
 
-          <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-brand-100/90 leading-relaxed max-w-2xl">
             {club.description || t("Dedicated campus chapter actively fostering research literacy, open access learning resources, and academic reading initiatives.")}
           </p>
 
@@ -132,15 +132,15 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8 pt-6 border-t border-white/10 max-w-xl text-center">
           <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl">
             <div className="text-2xl font-black text-amber-300">{club.memberCount.toLocaleString()}</div>
-            <div className="text-[11px] text-emerald-200 uppercase font-bold">{t("Enrolled Students")}</div>
+            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Enrolled Students")}</div>
           </div>
           <div className="bg-white/10 backdrop-blur-xs p-3 rounded-xl">
             <div className="text-2xl font-black text-white">{club.eventsConducted}</div>
-            <div className="text-[11px] text-emerald-200 uppercase font-bold">{t("Activities Logged")}</div>
+            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Activities Logged")}</div>
           </div>
           <div className="col-span-2 sm:col-span-1 bg-white/10 backdrop-blur-xs p-3 rounded-xl">
-            <div className="text-2xl font-black text-emerald-300">100%</div>
-            <div className="text-[11px] text-emerald-200 uppercase font-bold">{t("Verified Quorum")}</div>
+            <div className="text-2xl font-black text-brand-300">100%</div>
+            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Verified Quorum")}</div>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0D7751] bg-white px-2 py-0.5 rounded border border-[#0D7751]/20">
                     {t(auth.role)}
                   </span>
-                  <span className="text-[11px] text-emerald-700 font-bold">{t("✓ Verified")}</span>
+                  <span className="text-[11px] text-brand-700 font-bold">{t("✓ Verified")}</span>
                 </div>
                 <div className="font-bold text-sm text-[#103125] pt-0.5">{auth.name}</div>
                 <div className="text-xs text-[#5A7366]">{t(auth.designation)}</div>

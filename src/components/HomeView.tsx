@@ -66,7 +66,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#0D7751_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
         <div className="relative max-w-5xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-bold text-emerald-200 backdrop-blur-xs">
+          <div className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 px-3.5 py-1.5 rounded-full text-xs font-bold text-brand-200 backdrop-blur-xs">
             <Sparkles className="h-4 w-4 text-amber-400" />
             <span>{t("National Digital Reading & Research Movement • NEP 2020")}</span>
           </div>
@@ -78,7 +78,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                                       </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-emerald-100/90 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-brand-100/90 max-w-3xl mx-auto leading-relaxed">
             {t("The next-generation NDLI Club portal empowers thousands of schools, colleges, and universities across India to conduct verified reading marathons, co-curricular workshops, and inter-institutional research collaborations.")}
                                 </p>
 
@@ -111,42 +111,42 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Demonstration Telemetry Counters (SAMPLE ONLY — live counters ship with the data platform) */}
-        <div className="relative mt-12 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 bg-[#103125]/80 backdrop-blur-md p-6 rounded-2xl border border-emerald-800/40 shadow-xl">
+        <div className="relative mt-12 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 bg-[#103125]/80 backdrop-blur-md p-6 rounded-2xl border border-brand-800/40 shadow-xl">
           <div className="absolute -top-3 right-4 bg-amber-400 text-[#103125] text-[11px] font-black px-2.5 py-1 rounded-full shadow">{t("SAMPLE ONLY — DEMO FIGURES")}</div>
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-1.5 text-emerald-300 mb-1">
+            <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Building2 className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Active Clubs")}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-amber-300">324</div>
-            <div className="text-[11px] text-emerald-200">{t("Across 6 Zonal Regions")}</div>
+            <div className="text-[11px] text-brand-200">{t("Across 6 Zonal Regions")}</div>
           </div>
 
-          <div className="text-center border-l border-emerald-900/60">
-            <div className="flex items-center justify-center space-x-1.5 text-emerald-300 mb-1">
+          <div className="text-center border-l border-brand-900/60">
+            <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Users className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Enrolled Scholars")}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white">12,800</div>
-            <div className="text-[11px] text-emerald-200">{t("Students & Researchers")}</div>
+            <div className="text-[11px] text-brand-200">{t("Students & Researchers")}</div>
           </div>
 
-          <div className="text-center border-l border-emerald-900/60">
-            <div className="flex items-center justify-center space-x-1.5 text-emerald-300 mb-1">
+          <div className="text-center border-l border-brand-900/60">
+            <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Calendar className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Co-Curriculars")}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white">486</div>
-            <div className="text-[11px] text-emerald-200">{t("Sample NAAC 3.3 Logs")}</div>
+            <div className="text-[11px] text-brand-200">{t("Sample NAAC 3.3 Logs")}</div>
           </div>
 
-          <div className="text-center border-l border-emerald-900/60">
-            <div className="flex items-center justify-center space-x-1.5 text-emerald-300 mb-1">
+          <div className="text-center border-l border-brand-900/60">
+            <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Award className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Certificates")}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-amber-300">3,910</div>
-            <div className="text-[11px] text-emerald-200">{t("QR-Verified Micro-Credentials")}</div>
+            <div className="text-[11px] text-brand-200">{t("QR-Verified Micro-Credentials")}</div>
           </div>
         </div>
       </section>
@@ -235,8 +235,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
                     {t("AISHE:")} {club.aisheCode}
                   </span>
-                  <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-700" />
+                  <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
+                    <CheckCircle2 className="h-3 w-3 text-brand-700" />
                     <span>{t(club.zone)} {t("Zone")}</span>
                   </span>
                 </div>
@@ -291,7 +291,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {t("Three Seamless Modules Powering NDLI Club 2.0")}
                                       </h2>
-            <p className="text-xs sm:text-sm text-emerald-200/90 leading-relaxed">
+            <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed">
               {t("Replacing the legacy portal with an enterprise-grade triple-branch platform.")}
                                       </p>
           </div>
@@ -302,14 +302,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 1
               </div>
               <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
-              <p className="text-xs text-emerald-200/80 leading-relaxed">
+              <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
                                             </p>
             </div>
 
             <div 
               onClick={onGoToClubModule}
-              className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3 cursor-pointer hover:bg-white/10 hover:border-amber-400/40 transition-all group"
+              className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3 cursor-pointer hover-lift hover:bg-white/10 hover:border-amber-400/40 transition-all group"
             >
               <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                 2
@@ -318,14 +318,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span>{t("Club & Campus Module")}</span>
                 <ArrowRight className="h-4 w-4 text-amber-300" />
               </h3>
-              <p className="text-xs text-emerald-200/80 leading-relaxed">
+              <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
                                             </p>
             </div>
 
             <div 
               onClick={onGoToAdminModule}
-              className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3 cursor-pointer hover:bg-white/10 hover:border-amber-400/40 transition-all group"
+              className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3 cursor-pointer hover-lift hover:bg-white/10 hover:border-amber-400/40 transition-all group"
             >
               <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
                 3
@@ -334,7 +334,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span>{t("IIT Kharagpur Admin")}</span>
                 <ArrowRight className="h-4 w-4 text-amber-300" />
               </h3>
-              <p className="text-xs text-emerald-200/80 leading-relaxed">
+              <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
                                             </p>
             </div>

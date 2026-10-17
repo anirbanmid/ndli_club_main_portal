@@ -411,7 +411,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
           }`}
         >
-          <ShieldCheck className="h-4 w-4 text-emerald-400" />
+          <ShieldCheck className="h-4 w-4 text-brand-400" />
           <span>{t("Inter-Club Shield")}</span>
           <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("CROSS-CAMPUS")}</span>
         </button>
@@ -593,11 +593,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                     <td className="py-3 px-4 font-mono font-semibold text-[#2E4A3E]">{student.rollNo}</td>
                     <td className="py-3 px-4 font-mono text-[11px]">
                       {student.apaarId ? (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-brand-50 text-brand-800 border border-brand-200 font-semibold">
                           <span>{t("APAAR:")} {student.apaarId}</span>
                         </span>
                       ) : (
-                        <span className="text-slate-600 italic text-[11px]">{t("Unanchored (Roll No)")}</span>
+                        <span className="text-ink-600 italic text-[11px]">{t("Unanchored (Roll No)")}</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-[#5A7366]">{t(student.department)} • {t(student.year)}</td>
@@ -609,7 +609,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                         student.nadStatus === 'Deposited to NAD-ABC' ? 'bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20' :
                         student.nadStatus === 'Pending Sync' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        'bg-slate-100 text-slate-600'
+                        'bg-ink-100 text-ink-600'
                       }`}>
                         {t(student.nadStatus || 'Not Linked')}
                       </span>
@@ -686,8 +686,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   <p className="text-xs text-[#5A7366] line-clamp-2">{act.description}</p>
 
                   {act.isInterInstitutional && (
-                    <div className="inline-flex items-center space-x-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                      <ShieldCheck className="h-3 w-3 text-blue-600" />
+                    <div className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                      <ShieldCheck className="h-3 w-3 text-brand-600" />
                       <span>{t("Co-Hosted Inter-Institutional Event")}</span>
                     </div>
                   )}
@@ -715,8 +715,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-blue-800 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 mb-2">
-                <ShieldCheck className="h-4 w-4 text-blue-600" />
+              <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-brand-800 bg-brand-50 px-3 py-1 rounded-full border border-brand-200 mb-2">
+                <ShieldCheck className="h-4 w-4 text-brand-600" />
                 <span>{t("Inter-Institutional Cyber Security Protocol Shield")}</span>
               </div>
               <h3 className="text-xl font-bold text-[#103125]">
@@ -732,7 +732,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 setActIsInter(true);
                 setShowNewActivityModal(true);
               }}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
             >
               <Share2 className="h-4 w-4" />
               <span>{t("Co-Host Cross-Campus Event")}</span>
@@ -741,17 +741,17 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
           {/* Security Architecture Notice */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-1.5">
-              <span className="font-bold text-blue-900 block">{t("1. Sandboxed Content Gate")}</span>
-              <p className="text-slate-600 text-[11px]">{t("All shared documents & external webinar links pass through automated security scanners before public broadcast.")}</p>
+            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
+              <span className="font-bold text-brand-900 block">{t("1. Sandboxed Content Gate")}</span>
+              <p className="text-ink-600 text-[11px]">{t("All shared documents & external webinar links pass through automated security scanners before public broadcast.")}</p>
             </div>
-            <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-1.5">
-              <span className="font-bold text-blue-900 block">{t("2. Federated Student Access")}</span>
-              <p className="text-slate-600 text-[11px]">{t("Enrolled students from co-hosting colleges join without separate account creation or data disclosure.")}</p>
+            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
+              <span className="font-bold text-brand-900 block">{t("2. Federated Student Access")}</span>
+              <p className="text-ink-600 text-[11px]">{t("Enrolled students from co-hosting colleges join without separate account creation or data disclosure.")}</p>
             </div>
-            <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 space-y-1.5">
-              <span className="font-bold text-blue-900 block">{t("3. Academic Compliance")}</span>
-              <p className="text-slate-600 text-[11px]">{t("Monitored by IIT Kharagpur zonal coordinators with content moderation and review on every shared item.")}</p>
+            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
+              <span className="font-bold text-brand-900 block">{t("3. Academic Compliance")}</span>
+              <p className="text-ink-600 text-[11px]">{t("Monitored by IIT Kharagpur zonal coordinators with content moderation and review on every shared item.")}</p>
             </div>
           </div>
 
@@ -763,10 +763,10 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <div key={act.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                      <span className="text-[11px] font-bold text-brand-800 bg-brand-100 px-2 py-0.5 rounded">
                         {t("Co-Hosted by:")} {act.clubName}
                       </span>
-                      <span className="text-[11px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <span className="text-[11px] text-brand-700 font-bold bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
                         {t("✓ Shield Verified")}
                                                         </span>
                     </div>
@@ -776,7 +776,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
                   <button
                     onClick={() => alert(`Your club (${activeClub.name}) has sent a co-hosting handshake request for ${act.title}.`)}
-                    className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E2ECE7] hover:bg-slate-50 text-xs font-bold text-[#103125] transition-all shadow-2xs"
+                    className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E2ECE7] hover:bg-ink-50 text-xs font-bold text-[#103125] transition-all shadow-2xs"
                   >
                     {t("Request Co-Host Partnership")}
                                             </button>
@@ -821,7 +821,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                       </span>
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
                         tkt.priority === 'Critical' ? 'bg-rose-100 text-rose-800' :
-                        tkt.priority === 'High' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                        tkt.priority === 'High' ? 'bg-amber-100 text-amber-800' : 'bg-brand-100 text-brand-800'
                       }`}>
                         {t(tkt.priority)} {t("Priority")}
                                                         </span>
@@ -829,8 +829,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                     </div>
 
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      tkt.status === 'Resolved' ? 'bg-emerald-100 text-emerald-800' :
-                      tkt.status === 'In Progress' ? 'bg-blue-100 text-blue-800 animate-pulse' : 'bg-amber-100 text-amber-800'
+                      tkt.status === 'Resolved' ? 'bg-brand-100 text-brand-800' :
+                      tkt.status === 'In Progress' ? 'bg-brand-100 text-brand-800 animate-pulse' : 'bg-amber-100 text-amber-800'
                     }`}>
                       ● {t(tkt.status)}
                     </span>
@@ -842,7 +842,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-[11px] text-[#5A7366]">
                     <span>{t("Created:")} {tkt.createdAt} {t("• Assigned:")} {tkt.assignedTo}</span>
                     {tkt.resolutionNotes && (
-                      <span className="text-emerald-700 font-medium">{t("Notes:")} {tkt.resolutionNotes}</span>
+                      <span className="text-brand-700 font-medium">{t("Notes:")} {tkt.resolutionNotes}</span>
                     )}
                   </div>
                 </div>
@@ -887,14 +887,14 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   <div className="flex justify-between items-center">
                     <span className="font-mono font-bold text-[#103125]">{req.id} {t("• Role:")} {t(req.role)}</span>
                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                      req.status === 'Approved & Updated' ? 'bg-emerald-100 text-emerald-800' :
+                      req.status === 'Approved & Updated' ? 'bg-brand-100 text-brand-800' :
                       req.status === 'Rejected' ? 'bg-rose-100 text-rose-800' :
                       'bg-amber-100 text-amber-800'
                     }`}>
                       {t(req.status)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  <div className="grid grid-cols-2 gap-2 text-ink-700">
                     <div><strong>{t("Outgoing Officer:")}</strong> {t(req.currentName)}</div>
                     <div><strong>{t("Incoming Officer:")}</strong> {req.proposedName} ({req.proposedEmail})</div>
                   </div>
@@ -984,48 +984,48 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 1: Add Single Student */}
       {showAddStudentModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Add Enrolled Student to Roster")} tabIndex={-1} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">{t("Add Enrolled Student to Roster")}</h3>
             <form onSubmit={handleAddStudentSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Full Student Name *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Full Student Name *")}</label>
                 <input
                   type="text"
                   placeholder={t("e.g. Sweta Bhattacharya")}
                   value={newStudentName}
                   onChange={(e) => setNewStudentName(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Roll / ID No. *")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Roll / ID No. *")}</label>
                   <input
                     type="text"
                     placeholder={t("e.g. 24CS401")}
                     value={newStudentRoll}
                     onChange={(e) => setNewStudentRoll(e.target.value)}
                     required
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Department")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Department")}</label>
                   <input
                     type="text"
                     value={newStudentDept}
                     onChange={(e) => setNewStudentDept(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
                 <button
                   type="button"
                   onClick={() => setShowAddStudentModal(false)}
-                  className="px-4 py-2 rounded-lg text-slate-600 font-bold"
+                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
                 >
                   {t("Cancel")}
                                                   </button>
@@ -1043,7 +1043,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 2: Bulk CSV Upload */}
       {showBulkCsvModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Bulk Student Enrollment via CSV")} tabIndex={-1} className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <div className="flex justify-between items-center">
               <h3 className="text-base font-bold text-[#103125]">{t("Bulk Student Enrollment via CSV")}</h3>
@@ -1063,10 +1063,10 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               value={csvRawText}
               onChange={(e) => setCsvRawText(e.target.value)}
               placeholder={t("Name, RollNo, Department, Email, Year&#10;Aarav Mukherjee, 22CS30045, Computer Science, aarav.m@demo.example.edu, 4th Year")}
-              className="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-[#0D7751]"
+              className="w-full p-3 rounded-xl border border-ink-300 font-mono text-xs focus:ring-2 focus:ring-[#0D7751]"
             />
             {csvSuccessMsg && (
-              <div className="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-lg font-bold">
+              <div className="text-xs text-brand-700 bg-brand-50 p-2.5 rounded-lg font-bold">
                 ✓ {csvSuccessMsg}
               </div>
             )}
@@ -1074,7 +1074,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               <button
                 type="button"
                 onClick={() => setShowBulkCsvModal(false)}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600"
+                className="px-4 py-2 rounded-lg text-xs font-bold text-ink-600"
               >
                 {t("Cancel")}
                                             </button>
@@ -1092,28 +1092,28 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 3: Create New Activity */}
       {showNewActivityModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Schedule & Publish Club Activity")} tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">{t("Schedule & Publish Club Activity")}</h3>
             <form onSubmit={handleCreateActivitySubmit} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Activity Title *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Activity Title *")}</label>
                 <input
                   type="text"
                   placeholder={t("e.g. Workshop on Open Access Journal Publishing")}
                   value={actTitle}
                   onChange={(e) => setActTitle(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Category")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Category")}</label>
                   <select
                     value={actCategory}
                     onChange={(e) => setActCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
                   >
                     <option value="Workshop">{t("Workshop")}</option>
                     <option value="Webinar">{t("Webinar")}</option>
@@ -1123,11 +1123,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Mode")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Mode")}</label>
                   <select
                     value={actMode}
                     onChange={(e) => setActMode(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
                   >
                     <option value="Offline In-Campus">{t("Offline In-Campus")}</option>
                     <option value="Online">{t("Online Webinar")}</option>
@@ -1136,14 +1136,14 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 </div>
               </div>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Description & Syllabus")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Description & Syllabus")}</label>
                 <textarea
                   rows={3}
                   placeholder={t("Detailed description, keynote speaker, and NDLI repository links...")}
                   value={actDesc}
                   onChange={(e) => setActDesc(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
               <div className="flex items-center space-x-2 pt-1">
@@ -1158,11 +1158,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   {t("Trigger automated notification alert to all")} {clubStudents.length} {t("student members")}
                                                   </label>
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
                 <button
                   type="button"
                   onClick={() => setShowNewActivityModal(false)}
-                  className="px-4 py-2 rounded-lg text-slate-600 font-bold"
+                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
                 >
                   {t("Cancel")}
                                                   </button>
@@ -1180,16 +1180,16 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 4: Raise Support Ticket */}
       {showNewTicketModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Raise Support Ticket to IIT Kharagpur")} tabIndex={-1} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <h3 className="text-base font-bold text-[#103125]">{t("Raise Support Ticket to IIT Kharagpur")}</h3>
             <form onSubmit={handleCreateTicketSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Issue Category *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Issue Category *")}</label>
                 <select
                   value={ticketCategory}
                   onChange={(e) => setTicketCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
                 >
                   <option value="Registration & Passkey">{t("Registration & Passkey")}</option>
                   <option value="Certificate Approval">{t("Certificate Approval")}</option>
@@ -1199,11 +1199,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 </select>
               </div>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Priority Level")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Priority Level")}</label>
                 <select
                   value={ticketPriority}
                   onChange={(e) => setTicketPriority(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
                 >
                   <option value="Low">{t("Low")}</option>
                   <option value="Medium">{t("Medium")}</option>
@@ -1212,31 +1212,31 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 </select>
               </div>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Subject / Summary *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Subject / Summary *")}</label>
                 <input
                   type="text"
                   placeholder={t("e.g. Student passkey sync error for fresh batch")}
                   value={ticketTitle}
                   onChange={(e) => setTicketTitle(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Detailed Description *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Detailed Description *")}</label>
                 <textarea
                   rows={3}
                   value={ticketDesc}
                   onChange={(e) => setTicketDesc(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
                 <button
                   type="button"
                   onClick={() => setShowNewTicketModal(false)}
-                  className="px-4 py-2 rounded-lg text-slate-600 font-bold"
+                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
                 >
                   {t("Cancel")}
                                                   </button>
@@ -1254,7 +1254,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 5: Authority Succession Dual Verification */}
       {showSuccessionModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Initiate Official Authority Succession")} tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
             <div className="space-y-1">
               <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
@@ -1265,11 +1265,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
             <form onSubmit={handleAuthorityChangeSubmit} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Authority Role")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Authority Role")}</label>
                   <select
                     value={succRole}
                     onChange={(e) => setSuccRole(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
                   >
                     <option value="President">{t("President")}</option>
                     <option value="Patron">{t("Patron (VC / Principal)")}</option>
@@ -1278,37 +1278,37 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                   </select>
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">{t("Proposed Full Name *")}</label>
+                  <label className="font-bold text-ink-700 block mb-1">{t("Proposed Full Name *")}</label>
                   <input
                     type="text"
                     placeholder={t("e.g. Dr. Subrata Roy")}
                     value={succProposedName}
                     onChange={(e) => setSuccProposedName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                    className="w-full px-3 py-2 rounded-lg border border-ink-300"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Official Institutional Email *")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Official Institutional Email *")}</label>
                 <input
                   type="email"
                   placeholder={t("e.g. new.president@college.example.edu")}
                   value={succProposedEmail}
                   onChange={(e) => setSuccProposedEmail(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">{t("Official Transfer/Appointment Order File")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Official Transfer/Appointment Order File")}</label>
                 <input
                   type="text"
                   value={succDocName}
                   onChange={(e) => setSuccDocName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-[11px]"
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300 font-mono text-[11px]"
                 />
               </div>
 
@@ -1326,11 +1326,11 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
                 <button
                   type="button"
                   onClick={() => setShowSuccessionModal(false)}
-                  className="px-4 py-2 rounded-lg text-slate-600 font-bold"
+                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
                 >
                   {t("Cancel")}
                                                   </button>
@@ -1348,7 +1348,7 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
 
       {/* MODAL 6: NAAC Report Preview */}
       {showNaacPreview && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">
+        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4 overflow-y-auto">
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("NAAC compliance record preview")} tabIndex={-1} className="bg-white rounded-3xl max-w-3xl w-full p-8 shadow-2xl border border-[#E2ECE7] space-y-6 animate-in fade-in my-8">
             <div className="flex justify-between items-start border-b border-[#E2ECE7] pb-4">
               <div>
@@ -1364,15 +1364,15 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
               </div>
               <button
                 onClick={() => setShowNaacPreview(false)}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900"
+                className="text-xs font-bold text-ink-600 hover:text-ink-900"
               >
                 <X className="h-3.5 w-3.5 inline -mt-0.5" /> {t("Close")}
                                             </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs divide-y divide-slate-200">
-                <thead className="bg-[#F4F8F6] text-slate-600 font-bold uppercase text-[11px]">
+              <table className="w-full text-left text-xs divide-y divide-ink-200">
+                <thead className="bg-[#F4F8F6] text-ink-600 font-bold uppercase text-[11px]">
                   <tr>
                     <th className="p-2.5">{t("Activity Title")}</th>
                     <th className="p-2.5">{t("Date")}</th>
@@ -1381,22 +1381,22 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                     <th className="p-2.5">{t("Verification")}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-800">
+                <tbody className="divide-y divide-ink-100 text-ink-800">
                   {clubActivities.map(act => (
                     <tr key={act.id}>
                       <td className="p-2.5 font-bold">{act.title}</td>
                       <td className="p-2.5">{act.date}</td>
                       <td className="p-2.5">{t(act.category)}</td>
                       <td className="p-2.5 font-semibold">{act.participantsCount.toLocaleString()}</td>
-                      <td className="p-2.5 text-emerald-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> {t("NDLI Verified")}</td>
+                      <td className="p-2.5 text-brand-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> {t("NDLI Verified")}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-              <div className="text-[11px] text-slate-600">
+            <div className="flex justify-between items-center pt-4 border-t border-ink-100">
+              <div className="text-[11px] text-ink-600">
                 {t("Certified by NDLI Nodal Center, IIT Kharagpur")}
                                             </div>
               <button

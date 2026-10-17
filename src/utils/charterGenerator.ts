@@ -10,7 +10,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       width: 180,
       margin: 1,
       color: {
-        dark: '#0f172a',
+        dark: '#1C3329',
         light: '#ffffff',
       },
     });
@@ -39,13 +39,13 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       margin: 0;
       padding: 20px;
       background: #f8fafc;
-      color: #0f172a;
+      color: #1C3329;
     }
     .charter-card {
       max-width: 1050px;
       margin: 0 auto;
       background: #fffdf9;
-      border: 10px double #8C6D3F;
+      border: 10px double #7E6238;
       border-radius: 12px;
       padding: 35px 45px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -58,7 +58,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       margin-bottom: 20px;
     }
     .orange { background: #FF9933; width: 33.33%; }
-    .white { background: #ffffff; width: 33.33%; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+    .white { background: #ffffff; width: 33.33%; border-top: 1px solid #DFE9E4; border-bottom: 1px solid #DFE9E4; }
     .green { background: #138808; width: 33.33%; }
     .header-text {
       text-align: center;
@@ -68,26 +68,26 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       font-size: 13px;
       font-weight: 800;
       letter-spacing: 2px;
-      color: #8C6D3F;
+      color: #7E6238;
       text-transform: uppercase;
     }
     .ndli-title {
       font-size: 26px;
       font-weight: 900;
-      color: #0f172a;
+      color: #1C3329;
       letter-spacing: 1.5px;
       margin: 5px 0;
     }
     .iit-kgp {
       font-size: 14px;
       font-weight: 700;
-      color: #1e3a8a;
+      color: #0A5C3E;
       letter-spacing: 1px;
       text-transform: uppercase;
     }
     .divider {
       height: 2px;
-      background: linear-gradient(to right, transparent, #8C6D3F, transparent);
+      background: linear-gradient(to right, transparent, #7E6238, transparent);
       margin: 15px 0;
     }
     .charter-headline {
@@ -104,7 +104,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
     .conferred-to {
       font-size: 16px;
       font-style: italic;
-      color: #475569;
+      color: #5A7366;
       margin-top: 5px;
     }
     .institute-name {
@@ -123,7 +123,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       gap: 30px;
       font-size: 12px;
       margin-bottom: 15px;
-      color: #475569;
+      color: #5A7366;
     }
     .passkey-box {
       background: #eff6ff;
@@ -144,7 +144,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       font-size: 24px;
       font-family: monospace;
       font-weight: 900;
-      color: #1e3a8a;
+      color: #0A5C3E;
       letter-spacing: 3px;
       margin-top: 4px;
     }
@@ -158,13 +158,13 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       background: #f1f5f9;
       padding: 8px;
       text-align: left;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #C6D6CE;
       font-weight: 700;
       color: #334155;
     }
     .authorities-table td {
       padding: 8px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #DFE9E4;
       color: #1e293b;
     }
     .footer-signatures {
@@ -173,7 +173,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       align-items: flex-end;
       margin-top: 25px;
       padding-top: 15px;
-      border-top: 1px solid #cbd5e1;
+      border-top: 1px solid #C6D6CE;
     }
     .sig-box {
       text-align: center;
@@ -183,17 +183,17 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       font-size: 13px;
       font-weight: 700;
       font-style: italic;
-      color: #0f172a;
+      color: #1C3329;
     }
     .sig-line {
       height: 1px;
-      background: #64748b;
+      background: #0A5C3E;
       margin: 4px auto;
       width: 140px;
     }
     .sig-title {
       font-size: 10px;
-      color: #475569;
+      color: #5A7366;
       text-transform: uppercase;
     }
     .qr-box {
@@ -202,7 +202,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
     .qr-box img {
       width: 75px;
       height: 75px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid #C6D6CE;
       padding: 2px;
       background: #ffffff;
     }
@@ -228,7 +228,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-right: 8px;">
         🖨️ Print / Save as PDF
       </button>
-      <button onclick="window.close()" style="background: #64748b; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+      <button onclick="window.close()" style="background: #0A5C3E; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">
         Close
       </button>
     </div>

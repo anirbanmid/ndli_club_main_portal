@@ -1,6 +1,55 @@
 @import "tailwindcss";
 @import "./assets/fonts/fonts.css";
 
+/* --- S5 brand system: tints, tones & complementary ------------------------
+   Brand = institutional deep green (NDLI). Ink = green-tinted neutrals.
+   Accent = gold/amber, the complementary of the brand hue (warm gold on
+   deep green — the portal's signature pairing). All utility classes
+   (bg-brand-*, text-ink-*, border-accent-* …) resolve from these tokens. */
+@theme {
+  --color-brand-50: #E9F5EF;
+  --color-brand-100: #D3EAE0;
+  --color-brand-200: #A9D6C3;
+  --color-brand-300: #78BCA0;
+  --color-brand-400: #43A07D;
+  --color-brand-500: #1A8760;
+  --color-brand-600: #0D7751;
+  --color-brand-700: #0A5C3E;
+  --color-brand-800: #1A503E;
+  --color-brand-900: #103125;
+  --color-brand-950: #0A241A;
+
+  --color-ink-50: #F7FAF8;
+  --color-ink-100: #EEF4F1;
+  --color-ink-200: #DFE9E4;
+  --color-ink-300: #C6D6CE;
+  --color-ink-400: #A2B8AC;
+  --color-ink-500: #7E9689;
+  --color-ink-600: #5A7366;
+  --color-ink-700: #43584D;
+  --color-ink-800: #2E4A3E;
+  --color-ink-900: #1C3329;
+  --color-ink-950: #12261E;
+
+  --color-accent-50: #FFF9EC;
+  --color-accent-100: #FEF3C7;
+  --color-accent-200: #FCE3A0;
+  --color-accent-300: #F8CE6C;
+  --color-accent-400: #F59E0B;
+  --color-accent-500: #D97706;
+  --color-accent-600: #B45309;
+  --color-accent-700: #92400E;
+  --color-accent-800: #783F0B;
+  --color-accent-900: #5C3008;
+
+  /* brand-tinted elevation (soft green shadows, not grey) */
+  --shadow-xs: 0 1px 2px 0 rgb(16 49 37 / 0.06);
+  --shadow-sm: 0 1px 3px 0 rgb(16 49 37 / 0.08), 0 1px 2px -1px rgb(16 49 37 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(16 49 37 / 0.08), 0 2px 4px -2px rgb(16 49 37 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(16 49 37 / 0.10), 0 4px 6px -4px rgb(16 49 37 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(16 49 37 / 0.12), 0 8px 10px -6px rgb(16 49 37 / 0.06);
+}
+
 @layer base {
   :root {
     --primary-dark: #103125;
@@ -64,6 +113,39 @@ html {
 }
 a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]) {
   scroll-margin-top: 7rem;
+}
+
+/* --- S5 interaction & typography polish -------------------------------- */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a, button, [role="button"], input, select, textarea, summary {
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease,
+              box-shadow 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 2px solid #B45309; /* accent-600: >=3:1 on both light and dark fields */
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: #FCE3A0;
+  color: #103125;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* gentle lift on interactive cards (top-class hover affordance) */
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgb(16 49 37 / 0.10), 0 4px 6px -4px rgb(16 49 37 / 0.06);
 }
 
 /* --- S2: real thin scrollbar for the horizontal tab strips (the old

@@ -146,39 +146,39 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Title & Process Indicator */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center space-x-2 bg-blue-50 border border-blue-200 text-blue-700 px-3.5 py-1 rounded-full text-xs font-bold">
+        <div className="inline-flex items-center space-x-2 bg-brand-50 border border-brand-200 text-brand-700 px-3.5 py-1 rounded-full text-xs font-bold">
           <Building2 className="h-4 w-4" />
           <span>{t("Official Institutional Onboarding")}</span>
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-3xl font-extrabold text-ink-900 tracking-tight">
           {t("Register an Official NDLI Club Chapter")}
                           </h1>
-        <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto">
+        <p className="text-xs sm:text-sm text-ink-600 max-w-xl mx-auto">
           {t("Establish an authorized learning chapter under the National Digital Library of India framework (IIT Kharagpur & Ministry of Education).")}
                           </p>
 
         {/* Stepper tracker */}
         <div className="flex items-center justify-center space-x-3 pt-4">
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 1 ? 'text-blue-700' : 'text-slate-600'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 1 ? 'text-brand-700' : 'text-ink-600'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-brand-600 text-white' : 'bg-ink-200 text-ink-600'}`}>
               1
             </span>
             <span>{t("Institute Details")}</span>
           </div>
 
-          <div className="h-0.5 w-10 bg-slate-200"></div>
+          <div className="h-0.5 w-10 bg-ink-200"></div>
 
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 2 ? 'text-blue-700' : 'text-slate-600'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step >= 2 ? 'text-brand-700' : 'text-ink-600'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-brand-600 text-white' : 'bg-ink-200 text-ink-600'}`}>
               2
             </span>
             <span>{t("4 Key Authorities")}</span>
           </div>
 
-          <div className="h-0.5 w-10 bg-slate-200"></div>
+          <div className="h-0.5 w-10 bg-ink-200"></div>
 
-          <div className={`flex items-center space-x-2 text-xs font-bold ${step === 3 ? 'text-emerald-700' : 'text-slate-600'}`}>
-            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step === 3 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
+          <div className={`flex items-center space-x-2 text-xs font-bold ${step === 3 ? 'text-brand-700' : 'text-ink-600'}`}>
+            <span className={`h-6 w-6 rounded-full flex items-center justify-center ${step === 3 ? 'bg-brand-600 text-white' : 'bg-ink-200 text-ink-600'}`}>
               3
             </span>
             <span>{t("Charter & Passkey")}</span>
@@ -205,32 +205,32 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
       {/* Step 1: Institutional Details */}
       {step === 1 && (
-        <form onSubmit={handleNextStep1} className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-          <h2 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center space-x-2">
-            <Building2 className="h-5 w-5 text-blue-600" />
+        <form onSubmit={handleNextStep1} className="bg-white p-6 sm:p-8 rounded-2xl border border-ink-200 shadow-sm space-y-6">
+          <h2 className="text-lg font-bold text-ink-900 border-b border-ink-100 pb-3 flex items-center space-x-2">
+            <Building2 className="h-5 w-5 text-brand-600" />
             <span>{t("Step 1: Institutional Information & AISHE Verification")}</span>
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">{t("AISHE / College Code *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("AISHE / College Code *")}</label>
               <input
                 type="text"
                 placeholder={t("e.g. U-0570 or C-41295")}
                 value={aisheCode}
                 onChange={(e) => setAisheCode(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
               />
-              <span className="text-[11px] text-slate-600">{t("Ministry of Education All India Survey on Higher Education Code")}</span>
+              <span className="text-[11px] text-ink-600">{t("Ministry of Education All India Survey on Higher Education Code")}</span>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">{t("Institution Category *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("Institution Category *")}</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
+                className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden bg-white"
               >
                 <option value="University">{t("University")}</option>
                 <option value="College">{t("Affiliated College")}</option>
@@ -240,23 +240,23 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             </div>
 
             <div className="sm:col-span-2 space-y-1">
-              <label className="text-xs font-bold text-slate-700">{t("Official Full Name of the Institution *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("Official Full Name of the Institution *")}</label>
               <input
                 type="text"
                 placeholder={t("e.g. Presidency University, Kolkata")}
                 value={instituteName}
                 onChange={(e) => setInstituteName(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">{t("State *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("State *")}</label>
               <select
                 value={state}
                 onChange={(e) => setState(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden bg-white"
+                className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden bg-white"
               >
                 {['West Bengal', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Karnataka', 'Telangana', 'Uttar Pradesh', 'Gujarat', 'Kerala', 'Rajasthan'].map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -265,14 +265,14 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">{t("District / City *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("District / City *")}</label>
               <input
                 type="text"
                 placeholder={t("e.g. Kolkata")}
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
                 required
-                className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -283,10 +283,10 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             </div>
           )}
 
-          <div className="flex justify-end pt-4 border-t border-slate-100">
+          <div className="flex justify-end pt-4 border-t border-ink-100">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-md flex items-center space-x-2 transition-all"
+              className="px-6 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-md flex items-center space-x-2 transition-all"
             >
               <span>{t("Continue to 4 Key Authorities")}</span>
               <ArrowRight className="h-4 w-4" />
@@ -297,23 +297,23 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
       {/* Step 2: 4 Key Authorities */}
       {step === 2 && (
-        <form onSubmit={handleFinalSubmit} className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-              <UserCheck className="h-5 w-5 text-blue-600" />
+        <form onSubmit={handleFinalSubmit} className="bg-white p-6 sm:p-8 rounded-2xl border border-ink-200 shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+            <h2 className="text-lg font-bold text-ink-900 flex items-center space-x-2">
+              <UserCheck className="h-5 w-5 text-brand-600" />
               <span>{t("Step 2: Mandatory 4-Tier Institutional Governance Quorum")}</span>
             </h2>
-            <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2.5 py-1 rounded-md">
+            <span className="text-xs text-brand-600 font-semibold bg-brand-50 px-2.5 py-1 rounded-md">
               {t("As mandated by NDLI IIT Kharagpur")}
                                       </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* 1. Patron */}
-            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 space-y-3">
+            <div className="p-4 rounded-xl border border-brand-200 bg-brand-50/40 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase text-blue-900">{t("1. Patron (Principal / VC / Director)")}</span>
-                <span className="text-[11px] bg-blue-200 text-blue-900 px-2 py-0.5 rounded font-bold">{t("Authority 1")}</span>
+                <span className="text-xs font-extrabold uppercase text-brand-900">{t("1. Patron (Principal / VC / Director)")}</span>
+                <span className="text-[11px] bg-brand-200 text-brand-900 px-2 py-0.5 rounded font-bold">{t("Authority 1")}</span>
               </div>
               <input
                 type="text"
@@ -321,7 +321,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={patronName}
                 onChange={(e) => setPatronName(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="email"
@@ -329,22 +329,22 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={patronEmail}
                 onChange={(e) => setPatronEmail(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="tel"
                 placeholder={t("Mobile / Office Contact")}
                 value={patronPhone}
                 onChange={(e) => setPatronPhone(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
             </div>
 
             {/* 2. President */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-4 rounded-xl border border-ink-200 bg-ink-50 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase text-slate-800">{t("2. President (Librarian / Faculty)")}</span>
-                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{t("Authority 2")}</span>
+                <span className="text-xs font-extrabold uppercase text-ink-800">{t("2. President (Librarian / Faculty)")}</span>
+                <span className="text-[11px] bg-ink-200 text-ink-800 px-2 py-0.5 rounded font-bold">{t("Authority 2")}</span>
               </div>
               <input
                 type="text"
@@ -352,7 +352,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={presidentName}
                 onChange={(e) => setPresidentName(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="email"
@@ -360,22 +360,22 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={presidentEmail}
                 onChange={(e) => setPresidentEmail(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="tel"
                 placeholder={t("Mobile Contact")}
                 value={presidentPhone}
                 onChange={(e) => setPresidentPhone(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
             </div>
 
             {/* 3. Secretary */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-4 rounded-xl border border-ink-200 bg-ink-50 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase text-slate-800">{t("3. Secretary (Faculty / NSS)")}</span>
-                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{t("Authority 3")}</span>
+                <span className="text-xs font-extrabold uppercase text-ink-800">{t("3. Secretary (Faculty / NSS)")}</span>
+                <span className="text-[11px] bg-ink-200 text-ink-800 px-2 py-0.5 rounded font-bold">{t("Authority 3")}</span>
               </div>
               <input
                 type="text"
@@ -383,7 +383,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={secretaryName}
                 onChange={(e) => setSecretaryName(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="email"
@@ -391,22 +391,22 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={secretaryEmail}
                 onChange={(e) => setSecretaryEmail(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="tel"
                 placeholder={t("Mobile Contact")}
                 value={secretaryPhone}
                 onChange={(e) => setSecretaryPhone(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
             </div>
 
             {/* 4. Executive Member */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-4 rounded-xl border border-ink-200 bg-ink-50 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase text-slate-800">{t("4. Executive Member (Student Rep)")}</span>
-                <span className="text-[11px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-bold">{t("Authority 4")}</span>
+                <span className="text-xs font-extrabold uppercase text-ink-800">{t("4. Executive Member (Student Rep)")}</span>
+                <span className="text-[11px] bg-ink-200 text-ink-800 px-2 py-0.5 rounded font-bold">{t("Authority 4")}</span>
               </div>
               <input
                 type="text"
@@ -414,7 +414,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={executiveName}
                 onChange={(e) => setExecutiveName(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="email"
@@ -422,14 +422,14 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                 value={executiveEmail}
                 onChange={(e) => setExecutiveEmail(e.target.value)}
                 required
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
               <input
                 type="tel"
                 placeholder={t("Mobile Contact")}
                 value={executivePhone}
                 onChange={(e) => setExecutivePhone(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 bg-white"
+                className="w-full px-3 py-1.5 text-xs rounded border border-ink-300 bg-white"
               />
             </div>
           </div>
@@ -440,14 +440,14 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             </div>
           )}
 
-          <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+          <div className="flex justify-between items-center pt-4 border-t border-ink-100">
             <button
               type="button"
               onClick={() => {
                 setFormError('');
                 setStep(1);
               }}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center space-x-1"
+              className="px-4 py-2 text-xs font-semibold text-ink-600 hover:text-ink-900 flex items-center space-x-1"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>{t("Back to Step 1")}</span>
@@ -455,7 +455,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md flex items-center space-x-2 transition-all"
+              className="px-6 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md flex items-center space-x-2 transition-all"
             >
               <ShieldCheck className="h-4 w-4" />
               <span>{t("Submit & Generate Club Passkey")}</span>
@@ -466,25 +466,25 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
       {/* Step 3: Charter & Passkey Success Screen */}
       {step === 3 && generatedClub && (
-        <div className="bg-white p-8 rounded-2xl border border-emerald-200 shadow-xl space-y-8 animate-in fade-in">
+        <div className="bg-white p-8 rounded-2xl border border-brand-200 shadow-xl space-y-8 animate-in fade-in">
           <div className="text-center space-y-3">
-            <div className="h-16 w-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <div className="h-16 w-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="h-10 w-10" />
             </div>
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span className="text-xs font-bold uppercase tracking-widest text-brand-700 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">
               {t("NDLI Club Registration Successful")}
                                       </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-ink-900">
               {t("Welcome to the NDLI Club Network!")}
                                       </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">
+            <p className="text-xs sm:text-sm text-ink-600 max-w-lg mx-auto">
               {generatedClub.name} {t("is now officially chartered under IIT Kharagpur and Ministry of Education, Government of India.")}
                                       </p>
           </div>
 
           {/* Passkey Display Box */}
-          <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-lg border border-blue-800">
-            <div className="flex items-center justify-center space-x-2 text-blue-300 text-xs font-semibold">
+          <div className="bg-gradient-to-r from-brand-900 to-brand-900 text-white rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-lg border border-brand-800">
+            <div className="flex items-center justify-center space-x-2 text-brand-300 text-xs font-semibold">
               <KeyRound className="h-4 w-4 text-amber-400" />
               <span>{t("OFFICIAL INSTITUTIONAL PASSKEY")}</span>
             </div>
@@ -493,42 +493,42 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
               {generatedClub.passkey}
             </div>
 
-            <p className="text-xs text-blue-200 max-w-md mx-auto">
+            <p className="text-xs text-brand-200 max-w-md mx-auto">
               {t("Share this passkey with your students, faculty, and scholars. They will enter this key to instantly link their NDLI account to your campus chapter.")}
                                       </p>
           </div>
 
           {/* Club Details Summary Card */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div className="text-slate-600 font-semibold uppercase">{t("Club ID")}</div>
-              <div className="font-mono font-bold text-slate-800">{generatedClub.id}</div>
+            <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1.5">
+              <div className="text-ink-600 font-semibold uppercase">{t("Club ID")}</div>
+              <div className="font-mono font-bold text-ink-800">{generatedClub.id}</div>
             </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div className="text-slate-600 font-semibold uppercase">{t("AISHE Code")}</div>
-              <div className="font-mono font-bold text-slate-800">{generatedClub.aisheCode}</div>
+            <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1.5">
+              <div className="text-ink-600 font-semibold uppercase">{t("AISHE Code")}</div>
+              <div className="font-mono font-bold text-ink-800">{generatedClub.aisheCode}</div>
             </div>
           </div>
 
           {downloadSuccessMessage && (
-            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 text-xs text-emerald-900 text-center space-y-1">
+            <div className="bg-brand-50 border border-brand-300 rounded-xl p-3.5 text-xs text-brand-900 text-center space-y-1">
               <div className="font-bold flex items-center justify-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                <CheckCircle2 className="h-4 w-4 text-brand-700" />
                 <span>{t("Official Charter Downloaded Successfully to your computer!")}</span>
               </div>
-              <p className="text-[11px] text-emerald-700">
+              <p className="text-[11px] text-brand-700">
                 {t("A copy was saved to your Downloads folder and the Print/Save-as-PDF window was launched.")} 
-                                              <span className="block font-semibold mt-0.5 text-slate-600">
+                                              <span className="block font-semibold mt-0.5 text-ink-600">
                   {t("(Safe Prototype Mode: Stored purely in browser memory — no network emails are ever transmitted)")}
                                                   </span>
               </p>
             </div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap justify-center gap-4 pt-4 border-t border-ink-100">
             <button
               onClick={onExploreClubs}
-              className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition-all"
+              className="px-6 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-sm transition-all"
             >
               {t("View in National Directory")}
                                       </button>
@@ -546,9 +546,9 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
                   setIsDownloadingCharter(false);
                 }
               }}
-              className="px-6 py-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm flex items-center space-x-2 transition-all shadow-xs"
+              className="px-6 py-2.5 rounded-lg border border-ink-300 bg-white hover:bg-ink-50 text-ink-800 font-semibold text-sm flex items-center space-x-2 transition-all shadow-xs"
             >
-              <Download className="h-4 w-4 text-blue-600" />
+              <Download className="h-4 w-4 text-brand-600" />
               <span>{isDownloadingCharter ? t("Generating Charter...") : t("Download Official Charter Document (PDF/HTML)")}</span>
             </button>
           </div>

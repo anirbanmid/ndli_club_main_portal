@@ -2,6 +2,7 @@ services:
   - type: web
     name: ndli-club-portal
     env: static
+    rootDir: frontend
     buildCommand: npm run build
     staticPublishPath: ./dist
     routes:

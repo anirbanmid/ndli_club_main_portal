@@ -1,0 +1,45 @@
+"""Root URL configuration.
+
+The API lives under /api/ on the same origin as the frontend (spec section 1:
+single origin). OpenAPI schema and interactive docs are exposed under /api/;
+health endpoints are at /health/ and /health/ready/ for probes and the
+readiness gate (infra/nginx.conf, docker-compose healthchecks, CI smoke tests).
+"""
+from django.contrib import admin
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from apps.core import views as core_views
+
+API_URLPATTERNS = [
+    path("accounts/", include("apps.accounts.urls")),
+    path("institutions/", include("apps.institutions.urls")),
+    path("clubs/", include("apps.clubs.urls")),
+    path("members/", include("apps.members.urls")),
+    path("activities/", include("apps.activities.urls")),
+    path("certificates/", include("apps.certificates.urls")),
+    path("analytics-reports/", include("apps.analytics_reports.urls")),
+    path("sharing/", include("apps.sharing.urls")),
+    path("succession/", include("apps.succession.urls")),
+    path("governance/", include("apps.governance.urls")),
+    path("grievances/", include("apps.grievances.urls")),
+    path("notifications/", include("apps.notifications.urls")),
+    path("audit/", include("apps.audit.urls")),
+    path("public/", include("apps.public_api.urls")),
+]
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    # Health probes: liveness and readiness.
+    path("health/", core_views.liveness, name="health-liveness"),
+    path("health/ready/", core_views.readiness, name="health-readiness"),
+    # OpenAPI schema (JSON/YAML) and interactive documentation.
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="schema-swagger-ui",
+    ),
+    # Versioned API surface; each bounded context mounts its own routes.
+    path("api/v1/", include((API_URLPATTERNS, "api"))),
+]

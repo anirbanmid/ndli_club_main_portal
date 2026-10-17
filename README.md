@@ -1,126 +1,113 @@
-# Next-Generation NDLI Club Main Portal (`ndli_club_main_portal`)
+# NDLI Club Main Portal
 
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Architecture](https://img.shields.io/badge/Architecture-3--Branch%20Modular-103125)]()
+Modular monorepo for the NDLI Club Main Portal — the National Digital Library
+of India club platform (NDLI, IIT Kharagpur, Ministry of Education), replacing
+the legacy portal at club.ndl.iitkgp.ac.in.
 
-> **Official Modernization Platform for the National Digital Library of India (NDLI) Club**  
-> Developed for Indian Institute of Technology Kharagpur & Ministry of Education, Government of India.  
-> Directly supersedes the obsolete 2018 Polymer/Vaadin portal at `https://club.ndl.iitkgp.ac.in/`.
+**Status: milestone M0 (repository, tooling, skeleton).** Feature work arrives
+in later milestones; see `ndli_main_portal/BUILD_PROMPT_v2.md` for the plan.
 
----
-
-## 🏛️ Executive Architectural Overview
-
-The portal is architected around a unified **Three-Branch Modular Model** that decouples public discovery, decentralized college club operations, and central regional governance:
+## Layout
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│             NEXT-GENERATION NDLI CLUB ARCHITECTURE (3 BRANCHES)        │
-└────────────────────────────────────────────────────────────────────────┘
-
-  BRANCH 1: PUBLIC COMMON LANDING
-  ├── Live National Telemetry (live counts in production; prototype shows SAMPLE ONLY demo figures)
-  ├── Searchable Institutional Directory (By State, District, AISHE, Name)
-  ├── Public Certificate Verifier (Cryptographic Lookup & Dynamic QR Scan)
-  └── GIGW 3.0 Accessibility (A+/A- font resizing, High Contrast, Bilingual)
-
-  BRANCH 2: INSTITUTIONAL CLUB MODULE (360° CAMPUS MANAGEMENT)
-  ├── 4-Authority Onboarding Wizard (Patron, President, Secretary, Executive)
-  ├── Public Club Showcase Page (Custom URL, Campus Passkey, Dynamic QR Code)
-  ├── 360° Club Analytics & Direct NAAC Criterion 3.3.3/3.3.4 Report Exporter
-  ├── Dynamic Student Roster (Inline Editing, Single Add, Bulk CSV Import)
-  ├── Cocurricular Activity Logger (Online, Offline, Hybrid with Notification Triggers)
-  ├── Dual-Factor Authority Succession Desk (Dual-Verified Leadership Handoff)
-  ├── Student Scholar Workspace (Reading Points, Tier Badging, Certificate Vault)
-  └── Inter-Institutional Sharing Shield (Secure Cross-Campus Resource & Activity Hub)
-
-  BRANCH 3: IIT KHARAGPUR CENTRAL ADMINISTRATION MODULE
-  ├── 6-Zone Regional Governance Model (7 officers: EMP01 North to EMP07 South Zone 2)
-  ├── Institutional Charter Verification & Sanction Gate
-  ├── Central Grievance & Technical SLA Dispatcher
-  ├── Authority Transition Seal & Approvals
-  └── Forensic Data Migration & Quarantine Healing Desk
+backend/       Django 5 project (package `config`) + modular apps (DRF, drf-spectacular)
+frontend/      React + Vite + TypeScript + Tailwind SPA (i18n: en, hi + scaffolded NDLI languages)
+infra/         docker-compose stack (postgres, redis, minio, backend, celery, frontend, nginx)
+docs/          ARCHITECTURE, RBAC (M1), SECURITY (M1), DATA_DICTIONARY (M2), ASSUMPTIONS
+scripts/       dev bootstrap helpers
+data/samples/  SAMPLE-ONLY seed data convention (real seeds arrive in M2)
+Makefile       install, dev, test, lint, makemigrations, migrate, seed, build
 ```
 
----
+## Prerequisites
 
-## 🛡️ Key Innovations & Ground-Reality Solutions
+- Python 3.12+
+- Node.js 22+ and npm
+- Docker + docker compose (only for the containerised path)
+- make (optional but recommended)
 
-1. **Inter-Institutional Resource & Activity Sharing Shield:**
-   - Breaks geographical barriers between premier institutes (IITs, NITs) and rural colleges.
-   - Protected by SHA-256 cryptographic integrity verification, MIME-type heuristics, and airgapped CDN isolation.
-2. **Solving the Missing AISHE Code Reality:**
-   - Preserves legacy internal database primary keys (`club_id`) so historical links never break.
-   - Automated fuzzy string-matching (Levenshtein / Jaro-Winkler) against the Ministry of Education's master AISHE list.
-   - Soft-claim onboarding prompts on first login tied to NAAC Criterion 3.3.3 audit downloads.
-3. **Solving Personal Student Emails (`@gmail.com`):**
-   - Retains relational join tables (`club_members`) and passkey transaction logs directly from the database rather than relying on email domain matching.
-   - Uses historical event attendance tables and certificate logs as permanent academic audit trails.
-   - Provides a 1-click college link fallback on the student's first OTP login for any severed orphan records.
-4. **Migration Without Undocumented Legacy Dependencies:**
-   - The legacy backend is consistent with Django REST Framework (DRF) [TO CONFIRM in Phase 1].
-   - Relies on the self-documenting `django_migrations` table to automatically reverse-engineer the complete schema history without needing undocumented external knowledge.
-5. **Authentic NDLI Brand Palette:**
-   - Primary: Deep Forest Green (`#103125`), NDLI Green (`#1A503E`), Emerald Accent (`#0D7751`).
-   - Complementary: Warm Amber (`#D97706`, `#F59E0B`) and clean canvas backgrounds (`#F4F8F6`).
+## Quickstart — local venv (SQLite, zero setup)
 
----
-
-## 📅 Turnkey 120-Day Implementation Roadmap
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        120-DAY PHASED TURNKEY ROLLOUT TIMELINE                         │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-
-  [Phase 1: Days 1–25]   Forensic Discovery, Airgapped Salvage & Schema Reconstruction
-  [Phase 2: Days 26–55]  Enterprise Backend & 3-Branch Feature Deepening
-  [Phase 3: Days 56–80]  Data Cleansing, Dry-Run Ingestion & Quarantine Review
-  [Phase 4: Days 81–100] 100-Club Regional Pilot (UAT), CERT-In Audit & 50k Load Tests
-  [Phase 5: Days 101–115] Edge-Case Polish, Regional Training & Disaster Failover Drills
-  [Phase 6: Days 116–120] Final Delta Sync, Controlled DNS Cutover & National Launch
-  
-  ★ FAST-TRACK TARGET: Technical Readiness & UAT Complete by Day 85 (35-Day Buffer)
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm or yarn
-
-### Installation & Local Run
 ```bash
-# Navigate to repository
-cd D:\GitHub\ndli_club_main_portal
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
+cp .env.example .env               # every variable is documented there
+./scripts/dev-bootstrap.sh         # venv + deps + .env + migrations
+make dev                           # Django on :8000, Vite on :5173
 ```
 
-The application will be accessible locally at `http://localhost:5173/`.
+Or manually:
 
----
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements-dev.txt
+cp .env.example .env
+.venv/bin/python backend/manage.py migrate
+.venv/bin/python backend/manage.py runserver 0.0.0.0:8000   # terminal 1
+cd frontend && npm ci && npm run dev                        # terminal 2
+```
 
-## 📚 Repository Documentation Index
+Development settings (`config.settings.dev`) fall back to SQLite
+(`backend/db.sqlite3`) when `DATABASE_URL` is unset, so tests run with no
+external services. Set `DATABASE_URL` to use PostgreSQL locally.
 
-Comprehensive strategic, architectural, and operational documentation is available in the `docs/` folder:
+## Quickstart — docker compose (full stack)
 
-- **[docs/PITCH_PROPOSAL.md](docs/PITCH_PROPOSAL.md):** Executive technical and commercial pitch proposal submitted to IIT Kharagpur and the Ministry of Education.
-- **[docs/ARCHITECTURE_PLAN.md](docs/ARCHITECTURE_PLAN.md):** Detailed architectural blueprint, component mapping, and technical audit.
-- **[docs/WALKTHROUGH.md](docs/WALKTHROUGH.md):** Interactive demo walkthrough script and test verification guide.
+```bash
+cp .env.example .env
+make dev-docker
+# equivalent: docker compose --env-file .env -f infra/docker-compose.yml up --build
+```
 
----
+Services: postgres:5432, redis:6379, minio:9000/:9001 (console), backend
+(gunicorn):8000, celery worker, frontend (nginx):5173, edge nginx:8080.
+The stack is the single-origin contract: app at `/`, API at `/api/`, probes at
+`/health/` and `/health/ready/` (see `infra/nginx.conf`).
 
-*Repository maintained for future operations, development, and deployment of the NDLI Club Portal.*
+> Note: the compose stack requires Docker and is not executable in every
+> environment; the files are the contract for the containerised path.
+
+## Production settings
+
+`config.settings.prod` **requires** a PostgreSQL `DATABASE_URL`
+(`postgres://` or `postgresql://`), `DJANGO_SECRET_KEY` and
+`DJANGO_ALLOWED_HOSTS`, and refuses to start otherwise. It forces DEBUG off,
+uses Redis for the cache, and enables HTTPS cookie flags/HSTS behind the nginx
+reverse proxy. There is no SQLite fallback in production — this is deliberate.
+
+## Tests and checks
+
+```bash
+make test        # pytest (backend smoke tests: /health/, /health/ready/, OpenAPI schema)
+make lint        # ruff (backend) + npm run lint (frontend)
+make check       # Django system check
+make seed        # sample seed loader (wired stub until M2)
+make build       # frontend production build
+```
+
+OpenAPI: schema at `http://localhost:8000/api/schema/` (JSON: `?format=json`),
+interactive docs at `http://localhost:8000/api/docs/`.
+
+## CI (.github/workflows/ci.yml)
+
+Lint (ruff) · type-check (mypy) · tests (pytest against a Postgres service) ·
+dependency audit (pip-audit + npm audit) · SAST (bandit) · frontend build +
+axe accessibility check (WCAG 2.1 AA target, GIGW 3.0).
+
+## Configuration
+
+Every environment variable is documented in `.env.example`. Secrets never go
+into the repository; `.env` is gitignored.
+
+## Documentation
+
+- `docs/ARCHITECTURE.md` — system overview
+- `docs/ASSUMPTIONS.md` — explicit assumptions made where the spec is silent
+- `docs/RBAC.md` — roles and permissions (matrix enforced in M1)
+- `docs/SECURITY.md` — security baseline and M1 threat-model plan
+- `docs/DATA_DICTIONARY.md` — model reference (M2)
+- `data/samples/README.md` — SAMPLE-ONLY data convention
+
+## Evidence discipline
+
+Claims about the legacy system are labelled `[MEASURED]` (verified from served
+files) or `[TO CONFIRM]` (reported, unverified). Do not repeat unverified
+claims as fact; do not print national-scale figures in product UI copy.

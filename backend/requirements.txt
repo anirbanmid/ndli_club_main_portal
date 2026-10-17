@@ -1,0 +1,14 @@
+# NDLI Club Main Portal — backend runtime dependencies (Python 3.12).
+# Exact pins resolved on 2026-10-17 against Python 3.12 (see requirements-dev.txt
+# for the development/test/CI toolchain).
+
+Django==5.2.18
+djangorestframework==3.16.1
+drf-spectacular==0.28.0
+django-cors-headers==4.9.0
+celery==5.6.3
+redis==6.4.0
+minio==7.2.20
+psycopg[binary]==3.3.6
+gunicorn==23.0.0
+dj-database-url==2.3.0

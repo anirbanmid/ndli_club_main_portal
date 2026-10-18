@@ -7,7 +7,8 @@ pythonpath = ["."]
 # Django convention names per-app test modules tests.py; pytest's default
 # pattern is test_*.py, so widen it to collect them.
 python_files = ["test_*.py", "*_test.py", "tests.py"]
-testpaths = ["apps"]
+# apps = per-app smoke tests; tests = the M1 named adversarial pins (T1-T7).
+testpaths = ["apps", "tests"]
 addopts = "-q"
 
 [tool.ruff]
@@ -28,7 +29,15 @@ python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_configs = true
 check_untyped_defs = true
+# django-stubs makes mypy understand Django's field descriptors, managers and
+# TextChoices, so model declarations type-check without 60+ false positives.
+# NOTE: django-stubs >= 6 renamed the plugin entry point to
+# mypy_django_plugin.main (it was mypy_django.main before).
+plugins = ["mypy_django_plugin.main"]
 exclude = ["migrations/"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"
 
 [tool.coverage.run]
 source = ["apps", "config"]

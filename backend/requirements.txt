@@ -6,6 +6,9 @@ Django==5.2.18
 djangorestframework==3.17.2
 drf-spectacular==0.28.0
 django-cors-headers==4.9.0
+# M1 identity: Argon2id password hashing (BRIEF_M1.md §6) + RFC 6238 TOTP (§2c).
+argon2-cffi==25.1.0
+pyotp==2.10.0
 celery==5.6.3
 redis==6.4.0
 minio==7.2.20

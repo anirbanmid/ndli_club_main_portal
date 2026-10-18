@@ -29,12 +29,13 @@ prints a clear message; real SAMPLE-ONLY seed files and loaders arrive in M2.
 `/health/` (liveness) and `/health/ready/` (readiness, checks DB + cache) are
 plain Django views mounted at the URL root, outside the versioned API.
 
-## A6 — DRF default permission is AllowAny in M0
-No endpoints exist yet. The central deny-by-default policy layer replaces this
-in M1 (explicitly listed as an M1 deliverable).
+## A6 — DRF default permission is AllowAny in M0 (REPLACED IN M1)
+No endpoints existed yet in M0. The central deny-by-default policy layer
+(`DenyAll` default) replaced this in M1 — see docs/RBAC.md.
 
 ## A7 — Django 5.2 (LTS line) and DRF 3.16
 "Django 5" in the spec is interpreted as the current 5.x LTS series.
+(M1 ships DRF 3.17.2 — the security-fixed pin from m0fix.)
 
 ## A8 — Accessibility check in CI
 The axe check runs against the built frontend (vite preview + @axe-core/cli)
@@ -44,3 +45,41 @@ rather than a live deployed environment.
 `infra/docker-compose.yml` and the Dockerfiles are written to be correct and
 YAML-parseable but were not executed here (no Docker daemon). Validation of
 the compose stack is an action item for an environment with Docker.
+
+---
+
+## M1 assumptions (BRIEF_M1.md §9 — override any, any time)
+
+- **M1-A1** Scoping keys (`institution_code`, `zone_code`, `club_code`) are plain
+  audited fields on the profile in M1; M2 upgrades them to real FKs
+  (Zone / State / Institution / Club).
+- **M1-A2** Email driver = console in dev/CI; the SendGrid implementation is
+  built now but configured later (M10 handover) — `SENDGRID_API_KEY` empty ⇒
+  console driver. Checklist: docs/SECURITY.md.
+- **M1-A3** M1 ships **API-level identity only** — no login/registration screens
+  (wizard + login UI = M3–M4, UI-defer rule). The F1 registration fields
+  (mobile + alt phone) exist in the schema now.
+- **M1-A4** TOTP via `pyotp` (pinned `2.10.0`).
+- **M1-A5** Welcome link validity **72 h**, forgot-password link **30 min**
+  (both single-use, purpose-bound).
+- **M1-A6** Official Institutional Passkey = **one per club**, generated at club
+  onboarding (M2/M4), delivered via an official channel, hashed at rest,
+  rotatable; NOT the student campus passkey.
+- **M1-A7** Break-glass new password = shown once on screen to the admin, handed
+  over MANUALLY (phone / in person — no SMS service exists in the product),
+  flagged `must_change_password`.
+- **M1-A8** Login id = a **chosen unique username**; the email address is a
+  contact/recovery field (welcome + reset links go there) — it is NOT the login id.
+- **M1-A9** Student accounts authenticate with password (or campus-passkey at
+  join, M4/M5) — **no OTP login for students**; email OTP is reserved for
+  verification flows (M4 authority email validation).
+- **M1-A10** `AUTH_USER_MODEL` is NOT customized — Django's stock `auth.User`
+  plus a `Profile` OneToOne carrying `category` / `sub_role` / the scope keys.
+  Functionally equivalent to the brief's "custom User model"; flagged for the
+  owner as the one structural deviation from the brief.
+- **Note (not an assumption, a guard):** `SMS_BACKEND` remains in settings as a
+  future *notifications* adapter slot only. It is NEVER a verification/identity
+  channel; T2 asserts no identity path touches it (per the user decision
+  2026-10-17 23:13: no SMS/voice delivery anywhere in the product).
+- **Note:** M1 ships **no migrations** (tables come from `run_syncdb` in dev);
+  migration files are generated in M2 with the domain models.

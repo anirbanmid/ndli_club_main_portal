@@ -77,6 +77,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Outermost first: stamps the security-header policy + audit request id on
+    # EVERY response, including 4xx/5xx (BRIEF_M1.md §6 / T6).
+    "apps.core.middleware.SecurityHeadersMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -163,9 +166,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
-    # Milestone M1 replaces this with the central deny-by-default policy layer.
+    # Milestone M1: the central deny-by-default policy layer. Every view must
+    # opt in with an explicit ``CategoryGate`` / ``ObjectScope`` (BRIEF_M1.md §4).
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "apps.accounts.policies.DenyAll",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
@@ -185,10 +189,23 @@ SPECTACULAR_SETTINGS = {
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", False)
 CSRF_COOKIE_SAMESITE = "Lax"
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "no-referrer"
+
+# Argon2id (RFC 9106 third variant) — BRIEF_M1.md §6. The custom hasher pins
+# the type explicitly so the requirement holds regardless of Django defaults.
+PASSWORD_HASHERS = [
+    "apps.accounts.hashers.Argon2idPasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+]
+
+# Absolute origin used to build the F2/F4 single-use email links. The token
+# rides in the URL FRAGMENT, never the query string (docs/SECURITY.md).
+SITE_URL = env("SITE_URL", "http://localhost:8000")
 
 # --- Email / SMS (provider-agnostic; console drivers in development) ------
 
@@ -196,6 +213,11 @@ EMAIL_BACKEND = env(
     "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
 )
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@club.ndl.iitkgp.ac.in")
+# The ONE email provider interface (apps.accounts.email_providers).
+# A2: SENDGRID_API_KEY empty => the console driver (nothing leaves the
+# machine). SendGrid is configured before client delivery (M10 handover).
+EMAIL_PROVIDER = env("EMAIL_PROVIDER", "")
+SENDGRID_API_KEY = env("SENDGRID_API_KEY", "")
 # SMS_BACKEND is consumed by the notifications adapter (delivered in a later
 # milestone). Valid planned values: console | mock | <provider>.
 SMS_BACKEND = env("SMS_BACKEND", "console")

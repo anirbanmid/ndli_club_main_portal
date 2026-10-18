@@ -8,5 +8,8 @@ pytest-cov==7.1.0
 factory-boy==3.3.3
 ruff==0.17.1
 mypy==2.4.0
+# django-stubs >= 6 renamed its mypy plugin entry point to
+# mypy_django_plugin.main (mypy_django.main is a hard config error).
+django-stubs==6.1.2
 bandit==1.9.4
 pip-audit==2.10.1

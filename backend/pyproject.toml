@@ -15,7 +15,7 @@ addopts = "-q"
 target-version = "py312"
 line-length = 88
 src = ["."]
-extend-exclude = [".venv"]
+extend-exclude = [".venv", "**/migrations/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "DJ"]

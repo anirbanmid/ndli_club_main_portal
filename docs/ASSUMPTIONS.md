@@ -81,5 +81,10 @@ the compose stack is an action item for an environment with Docker.
   future *notifications* adapter slot only. It is NEVER a verification/identity
   channel; T2 asserts no identity path touches it (per the user decision
   2026-10-17 23:13: no SMS/voice delivery anywhere in the product).
-- **Note:** M1 ships **no migrations** (tables come from `run_syncdb` in dev);
-  migration files are generated in M2 with the domain models.
+- **Note:** M1 ships **initial migrations** for the apps with models
+  (`accounts`, `audit`) — the earlier `run_syncdb` approach broke the CI Tests
+  job: CI runs **Postgres**, which validates FK targets at DDL time, so
+  `auth_user` did not exist yet when the unmigrated app tables were synced
+  (SQLite defers FK targets, which is why it passed locally). The remaining M0
+  scaffold apps have no models yet; M2 adds their migrations with the domain
+  models.

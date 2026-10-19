@@ -9,12 +9,13 @@ The scope rules are mechanical, not remembered:
 * ``scope_governance`` — staff/officer data (Central Admin sees all, a
   Regional Officer only their own zone; nobody else).
 
-In M1 the scoped rows are ``accounts.Profile`` rows (the scoping keys live
-on the profile — A1); from M2 on the same helpers filter the real domain
-querysets carrying ``institution_code`` / ``club_code`` / ``zone_code``.
-
-Out-of-scope IDs must resolve to 404, never data (see
-``accounts.policies.ObjectScope``).
+Since M2 the scoped rows are real domain rows: each model declares where its
+scope keys live in the ORM via ``SCOPE_LOOKUPS`` (a join path on domain
+models, the raw code column on ``accounts.Profile``), so the SAME helpers
+filter Profile rows and domain querysets with one mechanical rule set. The
+404 semantics of ``accounts.policies.ObjectScope`` are unchanged; EMP03
+never reaches EMP05 data even across the institution/club joins
+(tests/test_m2_d3_scope_fk.py).
 """
 from __future__ import annotations
 
@@ -32,6 +33,30 @@ def _profile(user: Any) -> Any:
     return getattr(user, "profile", None)
 
 
+def _lookups(queryset: QuerySet) -> dict[str, str]:
+    """Scope lookup paths for the queryset's model (fail-closed registry)."""
+    lookups = getattr(queryset.model, "SCOPE_LOOKUPS", None)
+    if not isinstance(lookups, dict):
+        return {}
+    return lookups
+
+
+def _filter(queryset: QuerySet, **keys: Any) -> QuerySet:
+    """Filter ``queryset`` on the caller's scope keys via ``SCOPE_LOOKUPS``.
+
+    A model that does not declare a needed scope key (or is not scoped at
+    all) resolves to EMPTY — deny by default, exactly like the policy layer.
+    """
+    lookups = _lookups(queryset)
+    conditions: dict[str, Any] = {}
+    for key, value in keys.items():
+        path = lookups.get(key)
+        if path is None:
+            return queryset.none()
+        conditions[path] = value
+    return queryset.filter(**conditions)
+
+
 def scope_clubs(queryset: QuerySet, user: Any) -> QuerySet:
     """Scope club-facing rows to the caller's club (admins: zone / all)."""
     profile = _profile(user)
@@ -41,11 +66,12 @@ def scope_clubs(queryset: QuerySet, user: Any) -> QuerySet:
         if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
             return queryset.none()
         if profile.sub_role == SubRole.REGIONAL_OFFICER:
-            return queryset.filter(zone_code=profile.zone_code)
+            return _filter(queryset, zone=profile.zone_code)
         return queryset.all()
-    return queryset.filter(
-        institution_code=profile.institution_code,
-        club_code=profile.club_code,
+    return _filter(
+        queryset,
+        institution=profile.institution_code,
+        club=profile.club_code,
     )
 
 
@@ -55,17 +81,18 @@ def scope_members(queryset: QuerySet, user: Any) -> QuerySet:
     if profile is None:
         return queryset.none()
     if profile.category == Category.STUDENT_MEMBER:
-        return queryset.filter(user_id=user.pk)
+        return _filter(queryset, user=user.pk)
     if profile.category == Category.CLUB_ADMIN:
-        return queryset.filter(
-            institution_code=profile.institution_code,
-            club_code=profile.club_code,
+        return _filter(
+            queryset,
+            institution=profile.institution_code,
+            club=profile.club_code,
         )
     if profile.category == Category.IIT_KGP_ADMIN:
         if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
             return queryset.none()
         if profile.sub_role == SubRole.REGIONAL_OFFICER:
-            return queryset.filter(zone_code=profile.zone_code)
+            return _filter(queryset, zone=profile.zone_code)
         return queryset.all()
     return queryset.none()
 
@@ -80,5 +107,5 @@ def scope_governance(queryset: QuerySet, user: Any) -> QuerySet:
     if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
         return queryset.none()
     if profile.sub_role == SubRole.REGIONAL_OFFICER:
-        return queryset.filter(zone_code=profile.zone_code)
+        return _filter(queryset, zone=profile.zone_code)
     return queryset.all()

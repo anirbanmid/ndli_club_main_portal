@@ -36,6 +36,16 @@ check_untyped_defs = true
 plugins = ["mypy_django_plugin.main"]
 exclude = ["migrations/"]
 
+[[tool.mypy.overrides]]
+# tests.support is an M1 PIN file (byte-identical to the M1 kit) and must stay
+# untouched: its Profile.objects.create(...) passes the M2 FK-swap compat
+# *property* kwargs (institution_code/club_code/state_code/zone_code), which
+# django-stubs cannot type-check (it only knows model fields). Suppress the
+# false-positive code HERE instead of annotating the pin file. Runtime
+# semantics are pinned by the M1/M2 suites.
+module = "tests.support"
+disable_error_code = ["misc"]
+
 [tool.django-stubs]
 django_settings_module = "config.settings.dev"
 

@@ -22,6 +22,11 @@ if not ALLOWED_HOSTS:
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=0,
+        # M2 capacity hygiene (P2 / BRIEF_M2 §3): persistent connections with
+        # health checks, sized for the 110K floor. Behind a transaction-mode
+        # pooler (pgBouncer) set DJANGO_CONN_MAX_AGE=0 and pool at the
+        # pooler (see M2_DEPLOY_GUIDE.md).
+        conn_max_age=int(env("DJANGO_CONN_MAX_AGE", "0")),
+        conn_health_checks=True,
     )
 }

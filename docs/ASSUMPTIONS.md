@@ -88,3 +88,29 @@ the compose stack is an action item for an environment with Docker.
   (SQLite defers FK targets, which is why it passed locally). The remaining M0
   scaffold apps have no models yet; M2 adds their migrations with the domain
   models.
+
+## Milestone 2 (core domain, scoping FKs, seed data)
+
+- **M2-A1** The zone of an institution/club is ALWAYS derived from its state
+  (`institution.state.zone`) — never stored on child rows in parallel (P4).
+- **M2-A2** Multiple clubs per institution are first-class (spec: "one
+  institution can have multiple clubs").
+- **M2-A3** Authority tiers are the 4 spec tiers (patron / president /
+  secretary / executive). Succession workflows (Dual-Factor Succession Desk,
+  Transition Seal) are LATER milestones — M2 models the assignment data only.
+- **M2-A4** `data/samples/` is SAMPLE-ONLY; the loader is idempotent, `--reset`
+  is bounded to seed rows, `--dry-run` writes nothing, and prod seeding is an
+  explicit, flagged, audited action (no destructive automation is scheduled).
+- **M2-A5** The Profile scope-key swap to FKs is STATE-ONLY
+  (`SeparateDatabaseAndState` with empty `database_operations`): the database
+  keeps the exact M1 columns (`*_code varchar(64)`) and their contents, so
+  every M1-era row keeps working. The relations carry `db_constraint=False`;
+  unresolved soft codes are reported by `manage.py verify_domain` (the P5 heal
+  list) and the domain graph wins when both are present. Reversible both ways
+  without data loss (actually executed in the D1 pin).
+- **Note (schema contract):** every domain code column is
+  `CODE_MAX_LENGTH = 64` (apps/domain/models.py — the single source), sized for
+  the widest real State/UT code (40 chars). The M2 width pin asserts every
+  sample value fits its column: SQLite silently truncates varchar overflows,
+  Postgres rejects them (`StringDataRightTruncation`) — the pin exists because
+  that divergence bit the seed loader once.

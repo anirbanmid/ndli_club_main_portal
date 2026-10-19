@@ -1,0 +1,8 @@
+[
+  {"code": "NORTH", "name": "North", "is_active": true},
+  {"code": "CENTRAL", "name": "Central", "is_active": true},
+  {"code": "WEST", "name": "West", "is_active": true},
+  {"code": "EAST", "name": "East", "is_active": true},
+  {"code": "NORTH_EAST", "name": "North East", "is_active": true},
+  {"code": "SOUTH", "name": "South", "is_active": true}
+]

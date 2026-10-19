@@ -41,7 +41,16 @@ if not _database_url.startswith(("postgres://", "postgresql://")):
     )
 
 DATABASES = {
-    "default": dj_database_url.parse(_database_url, conn_max_age=60)
+    "default": dj_database_url.parse(
+        _database_url,
+        # M2 capacity hygiene (P2 / BRIEF_M2 §3): persistent connections with
+        # health checks. Default 60s suits direct Postgres; behind a
+        # transaction-mode pooler (pgBouncer, the documented 110K setup) set
+        # DJANGO_CONN_MAX_AGE=0 and let the pooler hold the connections
+        # (see M2_DEPLOY_GUIDE.md).
+        conn_max_age=int(env("DJANGO_CONN_MAX_AGE", "60")),
+        conn_health_checks=True,
+    )
 }
 
 # Production always uses Redis for cache and Celery.

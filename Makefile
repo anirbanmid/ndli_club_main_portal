@@ -23,10 +23,14 @@ help:
 	@echo "  fmt             auto-format backend code with ruff"
 	@echo "  makemigrations  create Django migrations"
 	@echo "  migrate         apply Django migrations"
-	@echo "  seed            load sample dev seed data (full seeds arrive in M2)"
+	@echo "  seed            load SAMPLE-ONLY seed data (idempotent; M2)"
+	@echo "  seed-reset      bounded reset of seed rows + reload (guarded; M2)"
+	@echo "  verify-domain   report domain integrity findings (read-only; M2)"
 	@echo "  build           build the frontend for production"
 	@echo "  check           Django system check"
 	@echo "  clean           remove build artefacts and caches"
+
+.PHONY: seed-reset verify-domain
 
 install:
 	python3 -m venv $(VENV)
@@ -61,6 +65,12 @@ migrate:
 
 seed:
 	$(PY) $(BACKEND)/manage.py seed_samples
+
+seed-reset:
+	$(PY) $(BACKEND)/manage.py seed_samples --reset
+
+verify-domain:
+	$(PY) $(BACKEND)/manage.py verify_domain
 
 build:
 	cd $(FRONTEND) && npm run build

@@ -1,15 +1,19 @@
-"""Identity models for the Accounts app (milestone M1).
+"""Identity models for the Accounts app (milestone M1 + M2 FK swap).
 
-M1 ships the identity + access-control spine only. Domain models (Zone /
-State / Institution / Club / Authority / Membership) arrive in M2; the
-scoping keys below are plain audited fields on the profile until then
-(docs/ASSUMPTIONS.md, M1-A1).
+M1 shipped the identity + access-control spine with the scope keys as plain
+audited profile fields; M2 replaced them with real relations to the domain
+tables (BRIEF_M2.md §2b, M1-A1 closed). The four relations deliberately keep
+the legacy column names and code-string values (``to_field="code"``), so
+every M1-era row keeps working unchanged (M2-A5) and the code-string
+semantics stay intact through the compat properties below.
 
 There is deliberately NO phone/SMS delivery model anywhere in this app:
 mobile numbers are human contact records for the F5 break-glass handover
 only (BRIEF_M1.md §2b), never a code delivery channel.
 """
 from __future__ import annotations
+
+from typing import ClassVar
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser
@@ -102,8 +106,15 @@ ACCOUNT_STATE_CHOICES = [
 class Profile(models.Model):
     """Per-user identity record: category, sub-role, scope keys and MFA state.
 
-    Every field that carries scope (institution/zone/club) is a plain,
-    audited field here in M1 and becomes a real foreign key in M2.
+    The scope keys (institution/zone/club/state) are M2 relations to the
+    domain tables: explicit FKs over implicit code-string contracts (P3),
+    keeping the legacy column names (``db_column``) and code-string values
+    (``to_field="code"``) so the M1 rows survive the swap (M2-A5). There is
+    intentionally NO DB-level constraint on them (``db_constraint=False``):
+    M1-era rows carry plain codes and must never break at DDL time;
+    ``manage.py verify_domain`` reports the codes no domain row answers for
+    (the P5 heal list), and the domain graph wins over the soft key whenever
+    both are present (``domain.assignments``, P4).
     """
 
     user = models.OneToOneField(
@@ -114,11 +125,47 @@ class Profile(models.Model):
     category = models.CharField(max_length=32, choices=CATEGORY_CHOICES)
     sub_role = models.CharField(max_length=32, choices=SUB_ROLE_CHOICES)
 
-    # --- Scope keys (plain fields in M1; real FKs in M2; A1) --------------
-    institution_code = models.CharField(max_length=64, blank=True, default="")
-    club_code = models.CharField(max_length=64, blank=True, default="")
-    zone_code = models.CharField(max_length=64, blank=True, default="")
-    state_code = models.CharField(max_length=64, blank=True, default="")
+    # --- Scope keys (M2: real relations; legacy column names kept) --------
+    institution = models.ForeignKey(
+        "domain.Institution",
+        to_field="code",
+        on_delete=models.PROTECT,
+        db_column="institution_code",
+        db_constraint=False,
+        blank=True,
+        default="",
+        related_name="profiles",
+    )
+    club = models.ForeignKey(
+        "domain.Club",
+        to_field="code",
+        on_delete=models.PROTECT,
+        db_column="club_code",
+        db_constraint=False,
+        blank=True,
+        default="",
+        related_name="profiles",
+    )
+    zone = models.ForeignKey(
+        "domain.Zone",
+        to_field="code",
+        on_delete=models.PROTECT,
+        db_column="zone_code",
+        db_constraint=False,
+        blank=True,
+        default="",
+        related_name="profiles",
+    )
+    state = models.ForeignKey(
+        "domain.State",
+        to_field="code",
+        on_delete=models.PROTECT,
+        db_column="state_code",
+        db_constraint=False,
+        blank=True,
+        default="",
+        related_name="profiles",
+    )
 
     # --- Human contact records (F1). NEVER a delivery channel -------------
     phone = models.CharField(max_length=32, blank=True, default="")
@@ -144,16 +191,64 @@ class Profile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    #: Scoping registry (``core.scoping``): the profile is scoped by the raw
+    #: code-string columns (attname lookups — M1 semantics byte-for-byte,
+    #: including unbacked codes).
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+        "zone": "zone_id",
+        "institution": "institution_id",
+        "club": "club_id",
+        "user": "user_id",
+    }
+
     class Meta:
         indexes = [
             models.Index(fields=["category", "sub_role"]),
-            models.Index(fields=["institution_code"]),
-            models.Index(fields=["club_code"]),
-            models.Index(fields=["zone_code"]),
+            models.Index(fields=["institution"]),
+            models.Index(fields=["club"]),
+            models.Index(fields=["zone"]),
+            models.Index(fields=["state"]),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
         return f"{self.user.username} ({self.sub_role})"
+
+    # --- M1 code-string compat (same names, same semantics) ---------------
+    @property
+    def institution_code(self) -> str:
+        """Code string of the scoped institution (M1-compatible read)."""
+        return self.institution_id or ""
+
+    @institution_code.setter
+    def institution_code(self, value: str | None) -> None:
+        self.institution_id = value or ""
+
+    @property
+    def club_code(self) -> str:
+        """Code string of the scoped club (M1-compatible read)."""
+        return self.club_id or ""
+
+    @club_code.setter
+    def club_code(self, value: str | None) -> None:
+        self.club_id = value or ""
+
+    @property
+    def zone_code(self) -> str:
+        """Code string of the scoped zone (M1-compatible read)."""
+        return self.zone_id or ""
+
+    @zone_code.setter
+    def zone_code(self, value: str | None) -> None:
+        self.zone_id = value or ""
+
+    @property
+    def state_code(self) -> str:
+        """Code string of the scoped state (M1-compatible read)."""
+        return self.state_id or ""
+
+    @state_code.setter
+    def state_code(self, value: str | None) -> None:
+        self.state_id = value or ""
 
 
 class EmailOTP(models.Model):

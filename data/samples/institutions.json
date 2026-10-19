@@ -1,0 +1,14 @@
+[
+  {"code": "INST-DU-001", "legacy_id": "LEG-INST-DU-001", "name": "Sample Institute of Technology Delhi (SAMPLE)", "state": "DELHI", "district": "DELHI-SOUTH", "aishe_code": "AISHE-C-100001", "status": "active"},
+  {"code": "INST-UP-001", "legacy_id": "LEG-INST-UP-001", "name": "Sample Degree College Lucknow (SAMPLE)", "state": "UTTAR_PRADESH", "district": "LUCKNOW", "aishe_code": "AISHE-C-100002", "status": "active"},
+  {"code": "INST-MP-001", "legacy_id": "LEG-INST-MP-001", "name": "Sample University Bhopal (SAMPLE)", "state": "MADHYA_PRADESH", "district": "BHOPAL", "aishe_code": "AISHE-C-100003", "status": "active"},
+  {"code": "INST-MH-001", "legacy_id": "LEG-INST-MH-001", "name": "Sample Engineering College Pune (SAMPLE)", "state": "MAHARASHTRA", "district": "PUNE", "aishe_code": "AISHE-C-100004", "status": "active"},
+  {"code": "INST-GJ-001", "legacy_id": "LEG-INST-GJ-001", "name": "Legacy Arts College Ahmedabad (SAMPLE, AISHE-less)", "state": "GUJARAT", "district": "AHMEDABAD", "status": "active"},
+  {"code": "INST-WB-001", "legacy_id": "LEG-INST-WB-001", "name": "Sample Institute of Science Kolkata (SAMPLE)", "state": "WEST_BENGAL", "district": "KOLKATA", "aishe_code": "AISHE-C-100005", "status": "active"},
+  {"code": "INST-BR-001", "legacy_id": "LEG-INST-BR-001", "name": "Legacy College Patna (SAMPLE, AISHE-less)", "state": "BIHAR", "district": "PATNA", "status": "active"},
+  {"code": "INST-AS-001", "legacy_id": "LEG-INST-AS-001", "name": "Sample College Guwahati (SAMPLE)", "state": "ASSAM", "district": "KAMRUP", "aishe_code": "AISHE-C-100006", "status": "active"},
+  {"code": "INST-KA-001", "legacy_id": "LEG-INST-KA-001", "name": "Sample Technical University Bengaluru (SAMPLE)", "state": "KARNATAKA", "district": "BENGALURU-URBAN", "aishe_code": "AISHE-C-100007", "status": "active"},
+  {"code": "INST-TN-001", "legacy_id": "LEG-INST-TN-001", "name": "Sample Institute Chennai (SAMPLE)", "state": "TAMIL_NADU", "district": "CHENNAI", "aishe_code": "AISHE-C-100008", "status": "active"},
+  {"code": "INST-KL-001", "legacy_id": "LEG-INST-KL-001", "name": "Legacy College Kochi (SAMPLE, AISHE-less)", "state": "KERALA", "district": "ERNAKULAM", "status": "active"},
+  {"code": "INST-TG-001", "legacy_id": "LEG-INST-TG-001", "name": "Sample University Hyderabad (SAMPLE)", "state": "TELANGANA", "district": "HYDERABAD", "aishe_code": "AISHE-C-100009", "status": "active"}
+]

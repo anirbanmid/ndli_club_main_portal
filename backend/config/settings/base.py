@@ -6,12 +6,21 @@ production and falls back to an insecure value only in the dev settings.
 """
 import os
 from pathlib import Path
+from typing import overload
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
 
 
+@overload
+def env(key: str, default: str) -> str: ...
+
+
+@overload
+def env(key: str, default: None = None) -> str | None: ...
+
+
 def env(key: str, default: str | None = None) -> str | None:
-    """Read a single environment variable."""
+    """Read a single environment variable (a default makes it non-optional)."""
     return os.environ.get(key, default)
 
 
@@ -59,6 +68,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Project apps (spec section 2: cross-cutting modules)
     "apps.core",
+    "apps.domain",
     "apps.accounts",
     "apps.institutions",
     "apps.clubs",

@@ -1,0 +1,13 @@
+[
+  {"username": "CULT-PATRON", "club": "CLB-DU-CULT", "tier": "patron", "from_date": "2026-08-01", "status": "active"},
+  {"username": "CULT-PRES", "club": "CLB-DU-CULT", "tier": "president", "from_date": "2026-08-01", "status": "active"},
+  {"username": "CULT-SEC", "club": "CLB-DU-CULT", "tier": "secretary", "from_date": "2026-08-01", "status": "active"},
+  {"username": "CULT-EXEC", "club": "CLB-DU-CULT", "tier": "executive", "from_date": "2026-08-01", "status": "active"},
+  {"username": "TECH-PRES-01", "club": "CLB-DU-TECH", "tier": "president", "from_date": "2026-08-01", "status": "active"},
+  {"username": "TECH-SEC-01", "club": "CLB-DU-TECH", "tier": "secretary", "from_date": "2026-08-01", "status": "active"},
+  {"username": "MHPRES", "club": "CLB-MH-TECH", "tier": "president", "from_date": "2026-08-01", "status": "active"},
+  {"username": "MHSEC", "club": "CLB-MH-TECH", "tier": "secretary", "from_date": "2026-08-01", "status": "active"},
+  {"username": "WBPRES", "club": "CLB-WB-LIT", "tier": "president", "from_date": "2026-08-01", "status": "active"},
+  {"username": "KAPRES", "club": "CLB-KA-TECH", "tier": "president", "from_date": "2026-08-01", "status": "active"},
+  {"username": "KASEC", "club": "CLB-KA-TECH", "tier": "secretary", "from_date": "2026-08-01", "status": "active"}
+]

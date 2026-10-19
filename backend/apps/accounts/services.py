@@ -43,6 +43,7 @@ from .models import (
     profile_of,
 )
 from .passwords import validate_password_strength
+from .routing import responsible_officer
 from .throttles import sliding_window_allow
 from .totp import consume_recovery_code, verify_totp_code
 
@@ -106,7 +107,11 @@ def create_provisional_account(
     user = user_model.objects.create_user(
         username=username, email=email, password=password
     )
-    Profile.objects.create(
+    # django-stubs cannot type-check the M2 FK-swap compat *property* kwargs
+    # (institution_code/club_code/state_code/zone_code) in create(); the
+    # runtime accepts them (Model.__init__ property kwargs) and the M2 tests
+    # pin that behaviour.
+    Profile.objects.create(  # type: ignore[misc]
         user=user,
         category=Category.CLUB_ADMIN,
         sub_role=sub_role,
@@ -127,6 +132,9 @@ def create_provisional_account(
         category=Category.CLUB_ADMIN,
         sub_role=sub_role,
         account_state=AccountState.PENDING_APPROVAL,
+        # F2 approval routing: the request lands on the officer responsible
+        # for the State/UT (OfficerAssignment-backed, P4).
+        routed_to=responsible_officer(state_code),
     )
     return user
 
@@ -437,10 +445,14 @@ def approve_club_account(
 ) -> list[str]:
     """Approve a provisional club account; returns the notified emails.
 
-    Scope rule (M1 stand-in for the M2 assignment table): the acting
+    Scope rule (M2, over the domain graph — BRIEF_M2.md §2b): the acting
     Regional Officer must belong to the same zone as the club account;
-    Central Admin may approve any.
+    Central Admin may approve any. The zone resolves through the club's
+    institution/state/zone FK chain first and falls back to the profile's
+    scope key for M1-era rows (``domain.assignments`` is the one resolver).
     """
+    from apps.domain import assignments
+
     profile = profile_of(target)
     actor_profile = profile_of(actor)
     if profile.category != Category.CLUB_ADMIN:
@@ -448,7 +460,9 @@ def approve_club_account(
     if profile.account_state != AccountState.PENDING_APPROVAL:
         raise ValidationError("Account is not pending approval.")
     if actor_profile.sub_role == SubRole.REGIONAL_OFFICER:
-        if profile.zone_code != actor_profile.zone_code:
+        target_zone = assignments.zone_code_of_profile(profile)
+        actor_zone = assignments.zone_code_of_profile(actor_profile)
+        if target_zone is None or target_zone != actor_zone:
             raise PermissionDenied("This club is outside your zone.")
     with transaction.atomic():
         profile.account_state = AccountState.ACTIVE
@@ -464,6 +478,7 @@ def approve_club_account(
         object_id=target.get_username(),
         notified=len(recipients),
         zone_code=profile.zone_code,
+        routed_to=responsible_officer(profile.state_code),
     )
     return recipients
 
@@ -474,8 +489,8 @@ def _send_welcome_links(profile: Profile) -> list[str]:
     recipients: list[str] = []
     authorities = Profile.objects.filter(
         category=Category.CLUB_ADMIN,
-        institution_code=profile.institution_code,
-        club_code=profile.club_code,
+        institution_id=profile.institution_id or "",
+        club_id=profile.club_id or "",
     ).select_related("user")
     for authority in authorities:
         email = authority.user.email

@@ -1,0 +1,12 @@
+[
+  {"code": "CLB-DU-CULT", "institution": "INST-DU-001", "name": "Sample Cultural Club Delhi (SAMPLE)", "status": "active"},
+  {"code": "CLB-DU-TECH", "institution": "INST-DU-001", "name": "Sample Technology Club Delhi (SAMPLE)", "status": "active"},
+  {"code": "CLB-UP-LIT", "institution": "INST-UP-001", "name": "Sample Literary Club Lucknow (SAMPLE)", "status": "active"},
+  {"code": "CLB-MP-TECH", "institution": "INST-MP-001", "name": "Sample Technology Club Bhopal (SAMPLE)", "status": "active"},
+  {"code": "CLB-MH-TECH", "institution": "INST-MH-001", "name": "Sample Technology Club Pune (SAMPLE)", "status": "active"},
+  {"code": "CLB-WB-LIT", "institution": "INST-WB-001", "name": "Sample Literary Club Kolkata (SAMPLE)", "status": "active"},
+  {"code": "CLB-AS-CULT", "institution": "INST-AS-001", "name": "Sample Cultural Club Guwahati (SAMPLE)", "status": "active"},
+  {"code": "CLB-KA-TECH", "institution": "INST-KA-001", "name": "Sample Technology Club Bengaluru (SAMPLE)", "status": "active"},
+  {"code": "CLB-TN-TECH", "institution": "INST-TN-001", "name": "Sample Technology Club Chennai (SAMPLE)", "status": "active"},
+  {"code": "CLB-TG-CULT", "institution": "INST-TG-001", "name": "Sample Cultural Club Hyderabad (SAMPLE)", "status": "active"}
+]

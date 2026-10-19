@@ -160,14 +160,21 @@ class MigrationRoundTripTests(TransactionTestCase):
         "zone_code",
     )
 
+    #: The only two tables this comparison ever reads. Anything else is a bug.
+    _ALLOWED_TABLES = frozenset({"auth_user", "accounts_profile"})
+
     def _merged_row(self, table: str, user_id: int) -> tuple:
+        # SECURITY: identifiers are drawn from an allowlist, never from
+        # caller-supplied free text; `key` is derived from an allowlisted
+        # `table`, so it can only be "id" or "user_id". The row key is the ONE
+        # value in the query and it is bound as a parameter, not interpolated.
+        if table not in self._ALLOWED_TABLES:
+            raise ValueError(f"unexpected table {table!r}")
         key = "id" if table == "auth_user" else "user_id"
         columns = ", ".join(self.MERGED_COLUMNS)
+        sql = " ".join(("SELECT", columns, "FROM", table, "WHERE", key, "= %s"))
         with connection.cursor() as cursor:
-            cursor.execute(
-                f"SELECT {columns} FROM {table} WHERE {key} = %s",  # noqa: S608
-                [user_id],
-            )
+            cursor.execute(sql, [user_id])
             row = cursor.fetchone()
         assert row is not None
         return tuple(row)

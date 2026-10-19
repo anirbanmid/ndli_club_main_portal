@@ -11,7 +11,7 @@ from typing import Any, cast
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
-from django.contrib.auth.models import AbstractBaseUser, User
+from django.contrib.auth.models import AbstractBaseUser
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import (
@@ -38,9 +38,8 @@ from .models import (
     ClubPasskey,
     EmailLinkToken,
     EmailOTP,
-    Profile,
     SubRole,
-    profile_of,
+    User,
 )
 from .passwords import validate_password_strength
 from .routing import responsible_officer
@@ -95,7 +94,7 @@ def create_provisional_account(
     phone: str = "",
     alt_phone: str = "",
     request: Any = None,
-) -> AbstractBaseUser:
+) -> User:
     """Create the provisional (``pending_approval``) club authority account."""
     from django.contrib.auth import get_user_model
 
@@ -104,15 +103,17 @@ def create_provisional_account(
     # F1: the club authority creates the ID *and* the password first, so the
     # credentials can resume the registration wizard. The password is set here
     # (never discarded) and stays provisional until the account is approved.
+    #
+    # M2U: identity + profile are ONE record now, so this is a single create.
+    # The scope keys ride in as the M2-A5 compat *properties*
+    # (institution_code/club_code/state_code/zone_code) — ``create_user``
+    # forwards them to ``Model.__init__`` as ``**extra_fields`` and the
+    # runtime assigns them through the property setters (pinned by the M2
+    # tests, unchanged by the merge).
     user = user_model.objects.create_user(
-        username=username, email=email, password=password
-    )
-    # django-stubs cannot type-check the M2 FK-swap compat *property* kwargs
-    # (institution_code/club_code/state_code/zone_code) in create(); the
-    # runtime accepts them (Model.__init__ property kwargs) and the M2 tests
-    # pin that behaviour.
-    Profile.objects.create(  # type: ignore[misc]
-        user=user,
+        username=username,
+        email=email,
+        password=password,
         category=Category.CLUB_ADMIN,
         sub_role=sub_role,
         institution_code=institution_code,
@@ -136,7 +137,7 @@ def create_provisional_account(
         # for the State/UT (OfficerAssignment-backed, P4).
         routed_to=responsible_officer(state_code),
     )
-    return user
+    return cast(User, user)
 
 
 def club_login(
@@ -153,7 +154,7 @@ def club_login(
     user = authenticate(request, username=username, password=password)
     if user is None:
         raise AuthenticationFailed("Invalid username or password.")
-    profile = getattr(user, "profile", None)
+    profile = user if isinstance(user, User) else None
     if profile is None or profile.category not in (
         Category.CLUB_ADMIN,
         Category.STUDENT_MEMBER,
@@ -189,7 +190,7 @@ def admin_login(
     user = authenticate(request, username=username, password=password)
     if user is None:
         raise AuthenticationFailed("Invalid username or password.")
-    profile = getattr(user, "profile", None)
+    profile = user if isinstance(user, User) else None
     if profile is None or profile.category != Category.IIT_KGP_ADMIN:
         raise PermissionDenied("This account cannot use the admin module.")
     if profile.account_state != AccountState.ACTIVE:
@@ -225,9 +226,9 @@ def record_login_failure(
     *,
     request: Any,
     username: str,
-) -> tuple[bool, Profile | None]:
-    """Apply the per-account lockout; returns (locked_now, profile)."""
-    profile = Profile.objects.filter(user__username=username).first()
+) -> tuple[bool, User | None]:
+    """Apply the per-account lockout; returns (locked_now, the user record)."""
+    profile = User.objects.filter(username=username).first()
     if profile is None:
         return False, None
     profile.failed_login_count += 1
@@ -250,7 +251,7 @@ def record_login_failure(
     return locked_now, profile
 
 
-def clear_login_failures(profile: Profile) -> None:
+def clear_login_failures(profile: User) -> None:
     if profile.failed_login_count:
         profile.failed_login_count = 0
         profile.save(update_fields=["failed_login_count", "updated_at"])
@@ -419,7 +420,7 @@ def change_password(
     validate_password_strength(new_password)
     user.set_password(new_password)
     user.save(update_fields=["password"])
-    profile = getattr(user, "profile", None)
+    profile = user if isinstance(user, User) else None
     if profile is not None and profile.must_change_password:
         profile.must_change_password = False
         if profile.account_state == AccountState.PENDING_APPROVAL:
@@ -440,8 +441,8 @@ def change_password(
 
 def approve_club_account(
     *,
-    target: AbstractBaseUser,
-    actor: AbstractBaseUser,
+    target: User,
+    actor: User,
 ) -> list[str]:
     """Approve a provisional club account; returns the notified emails.
 
@@ -453,8 +454,8 @@ def approve_club_account(
     """
     from apps.domain import assignments
 
-    profile = profile_of(target)
-    actor_profile = profile_of(actor)
+    profile = target
+    actor_profile = actor
     if profile.category != Category.CLUB_ADMIN:
         raise ValidationError("Only club authority accounts can be approved.")
     if profile.account_state != AccountState.PENDING_APPROVAL:
@@ -483,17 +484,17 @@ def approve_club_account(
     return recipients
 
 
-def _send_welcome_links(profile: Profile) -> list[str]:
+def _send_welcome_links(profile: User) -> list[str]:
     """Welcome email + single-use 72h change-password link per authority."""
     provider = get_email_provider()
     recipients: list[str] = []
-    authorities = Profile.objects.filter(
+    authorities = User.objects.filter(
         category=Category.CLUB_ADMIN,
         institution_id=profile.institution_id or "",
         club_id=profile.club_id or "",
-    ).select_related("user")
+    )
     for authority in authorities:
-        email = authority.user.email
+        email = authority.email
         if not email:
             continue
         token = _issue_link_token(
@@ -526,7 +527,7 @@ def _reset_password_link(token: str) -> str:
     return f"{settings.SITE_URL}/account/reset-password#token={token}"
 
 
-def _issue_link_token(profile: Profile, purpose: str) -> str:
+def _issue_link_token(profile: User, purpose: str) -> str:
     token = generate_link_token()
     ttl = (
         conf.WELCOME_TOKEN_TTL_SECONDS
@@ -534,7 +535,7 @@ def _issue_link_token(profile: Profile, purpose: str) -> str:
         else conf.RESET_TOKEN_TTL_SECONDS
     )
     EmailLinkToken.objects.create(
-        user=profile.user,
+        user=profile,
         purpose=purpose,
         token_hash=hash_secret(token),
         expires_at=timezone.now() + timedelta(seconds=ttl),
@@ -561,7 +562,7 @@ def use_link_token(*, token: str, purpose: str, new_password: str) -> AbstractBa
     user.save(update_fields=["password"])
     entry.used_at = timezone.now()
     entry.save(update_fields=["used_at"])
-    profile = user.profile
+    profile = user
     if purpose == EmailLinkToken.Purpose.WELCOME_CHANGE_PASSWORD:
         profile.account_state = AccountState.ACTIVE
         profile.must_change_password = False
@@ -611,7 +612,7 @@ def request_password_reset(
     )
     if user is None:
         return  # generic response; never confirm/deny the address
-    profile = getattr(user, "profile", None)
+    profile = user if isinstance(user, User) else None
     if profile is None or profile.category not in (
         Category.CLUB_ADMIN,
         Category.STUDENT_MEMBER,
@@ -666,7 +667,7 @@ def rotate_passkey(*, club_code: str) -> str:
 
 def break_glass_reset(
     *,
-    target: AbstractBaseUser,
+    target: User,
     passkey: str,
     reason: str,
     request: Any,
@@ -678,7 +679,7 @@ def break_glass_reset(
     Wrong passkey → 403 + audited + counted toward the passkey lockout.
     The email channel is never touched.
     """
-    profile = profile_of(target)
+    profile = target
     if profile.category != Category.CLUB_ADMIN:
         raise PermissionDenied("Only club accounts support break-glass reset.")
     entry = ClubPasskey.objects.filter(

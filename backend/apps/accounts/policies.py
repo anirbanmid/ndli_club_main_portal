@@ -27,6 +27,7 @@ from .models import (
     AccountState,
     Category,
     SubRole,
+    User,
 )
 
 #: Which categories may enter which module namespace (PLAN §5.1).
@@ -94,9 +95,12 @@ class CategoryGate(BasePermission):
         user = getattr(request, "user", None)
         if user is None or not user.is_authenticated:
             return False
-        profile = getattr(user, "profile", None)
-        if profile is None:
+        # M2U: the user IS the identity record — anything that is not an
+        # accounts.User (e.g. AnonymousUser) is denied, exactly like the old
+        # "authenticated but profile-less" case.
+        if not isinstance(user, User):
             return False
+        profile = user
         if profile.category not in MODULE_CATEGORIES[self.module]:
             return False
         if self.sub_roles is not None and profile.sub_role not in self.sub_roles:

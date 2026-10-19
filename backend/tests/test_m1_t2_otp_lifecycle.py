@@ -179,10 +179,10 @@ class OtpChannelIsEmailOnlyTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_no_phone_number_is_used_for_delivery(self) -> None:
-        from apps.accounts.models import Profile
+        from apps.accounts.models import User
 
-        self.assertIn("phone", [f.name for f in Profile._meta.fields])
-        self.assertIn("alt_phone", [f.name for f in Profile._meta.fields])
+        self.assertIn("phone", [f.name for f in User._meta.fields])
+        self.assertIn("alt_phone", [f.name for f in User._meta.fields])
         # The phones are contact records: no service reads them to deliver.
         root = pathlib.Path(__file__).resolve().parent.parent / "apps/accounts"
         for path in root.glob("*.py"):

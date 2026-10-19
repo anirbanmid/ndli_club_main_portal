@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.db.models import Model
 
-from apps.accounts.models import Profile
+from apps.accounts.models import User
 from apps.domain import verify
 from apps.domain.models import (
     AuthorityAssignment,
@@ -33,7 +33,7 @@ from apps.domain.models import (
 )
 from apps.domain.seed import SAMPLES_DIR, load_samples
 
-from .support import Category, SubRole, make_profile
+from .support import Category, SubRole, make_user
 from .support import M1PinTestCase as TestCase
 
 #: The roster-less States/UTs of BRIEF_M2.md §6 (awaiting officer assignment).
@@ -80,9 +80,9 @@ class SampleWidthPins(TestCase):
         ("authority_assignments.json", "status", AuthorityAssignment, "status"),
         ("users.json", "username", get_user_model(), "username"),
         ("users.json", "email", get_user_model(), "email"),
-        ("users.json", "category", Profile, "category"),
-        ("users.json", "sub_role", Profile, "sub_role"),
-        ("users.json", "account_state", Profile, "account_state"),
+        ("users.json", "category", User, "category"),
+        ("users.json", "sub_role", User, "sub_role"),
+        ("users.json", "account_state", User, "account_state"),
         ("users.json", "institution", Institution, "code"),
         ("users.json", "club", Club, "code"),
         ("users.json", "state", State, "code"),
@@ -163,7 +163,7 @@ class SeedLoadTests(TestCase):
         club = Club.objects.create(
             code="CLB-GJ-NEW", institution=legacy, name="GJ club"
         )
-        user, _profile = make_profile(
+        user = make_user(
             username="d2legacy",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -179,7 +179,7 @@ class SeedLoadTests(TestCase):
         keep_state = State.objects.create(
             code="KEEPSTATE", name="Not in any seed file", zone=keep_zone
         )
-        keep_user, keep_profile = make_profile(
+        keep_profile = make_user(
             username="keepme",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -190,7 +190,7 @@ class SeedLoadTests(TestCase):
         self.assertTrue(
             get_user_model().objects.filter(username="keepme").exists()
         )
-        self.assertTrue(Profile.objects.filter(pk=keep_profile.pk).exists())
+        self.assertTrue(User.objects.filter(pk=keep_profile.pk).exists())
         # Reset removed ONLY seed rows and re-created them: exactly the 6 seed
         # zones again (the out-of-seed keeper survives → total 7).
         self.assertEqual(Zone.objects.count(), 7)
@@ -219,7 +219,7 @@ class VerifyDomainCommandTests(TestCase):
     def test_strict_mode_is_opt_in_for_ci(self) -> None:
         out = StringIO()
         # No seed: a profile with unbacked codes is an orphan scope code.
-        make_profile(
+        make_user(
             username="d2orphan",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,

@@ -9,56 +9,51 @@ Named pins (each one is a separate test so a regression names itself):
 * the ops-only Super Admin is 403 on every business surface;
 * anonymous is 401/403 on every non-public route.
 
-M1 scoping operates on ``accounts.Profile`` rows (the scope keys live on the
+M1 scoping operates on ``accounts.User`` rows (the scope keys live on the
 profile until M2 introduces the real FKs — ``docs/ASSUMPTIONS.md`` M1-A1).
 """
 from __future__ import annotations
 
-from apps.accounts.models import Category, Profile, SubRole
+from apps.accounts.models import Category, SubRole, User
 from apps.accounts.policies import CategoryGate
 from apps.core import scoping
 
-from .support import (
-    MODULE_CATEGORIES,
-    iter_routes,
-    make_profile,
-    request_for,
-)
+from .support import MODULE_CATEGORIES, iter_routes, make_user, request_for
 from .support import M1PinTestCase as TestCase
 from .test_m1_t3_matrix import module_for
 
 
 class CrossOfficerPins(TestCase):
     def test_EMP03_never_reads_EMP05_data(self) -> None:
-        emp03, _ = make_profile(
+        emp03 = make_user(
             username="EMP03",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        _emp05, emp05_profile = make_profile(
+        emp05_profile = make_user(
             username="EMP05",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="WEST",
         )
-        visible = scoping.scope_clubs(Profile.objects.all(), emp03)
+        visible = scoping.scope_clubs(User.objects.all(), emp03)
         self.assertFalse(visible.filter(pk=emp05_profile.pk).exists())
         self.assertTrue(
-            scoping.scope_clubs(Profile.objects.all(), emp03)
+            scoping.scope_clubs(User.objects.all(), emp03)
             .filter(pk=emp05_profile.pk)
             .count()
             == 0
         )
 
     def test_EMP03_reads_its_own_zone(self) -> None:
-        emp03, _ = make_profile(
+        emp03 = make_user(
             username="EMP03b",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        _peer, peer = make_profile(
+        peer = make_user(
             username="eastpeer",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -67,19 +62,19 @@ class CrossOfficerPins(TestCase):
             club_code="CLB1",
         )
         self.assertTrue(
-            scoping.scope_clubs(Profile.objects.all(), emp03)
+            scoping.scope_clubs(User.objects.all(), emp03)
             .filter(pk=peer.pk)
             .exists()
         )
 
     def test_central_admin_sees_every_zone(self) -> None:
-        boss, _ = make_profile(
+        boss = make_user(
             username="CENTRAL1",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
         for zone in ("EAST", "WEST", "NORTH", "SOUTH"):
-            _u, target = make_profile(
+            target = make_user(
                 username=f"z{zone}",
                 category=Category.CLUB_ADMIN,
                 sub_role=SubRole.CLUB_SECRETARY,
@@ -88,90 +83,90 @@ class CrossOfficerPins(TestCase):
                 club_code=f"CLB{zone}",
             )
             self.assertTrue(
-                scoping.scope_clubs(Profile.objects.all(), boss)
+                scoping.scope_clubs(User.objects.all(), boss)
                 .filter(pk=target.pk)
                 .exists()
             )
 
     def test_regional_officer_never_sees_governance_beyond_its_zone(self) -> None:
-        officer, _ = make_profile(
+        officer = make_user(
             username="EMP07",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        _other, other = make_profile(
+        other = make_user(
             username="westofficer",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="WEST",
         )
-        visible = scoping.scope_governance(Profile.objects.all(), officer)
+        visible = scoping.scope_governance(User.objects.all(), officer)
         self.assertFalse(visible.filter(pk=other.pk).exists())
 
 
 class StudentPins(TestCase):
     def test_student_never_reads_another_institutions_roster(self) -> None:
-        student, _ = make_profile(
+        student = make_user(
             username="stu1",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
             institution_code="IIT",
             club_code="CLB1",
         )
-        _other, other = make_profile(
+        other = make_user(
             username="stu2",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
             institution_code="JU",
             club_code="CLB9",
         )
-        visible = scoping.scope_members(Profile.objects.all(), student)
+        visible = scoping.scope_members(User.objects.all(), student)
         self.assertFalse(visible.filter(pk=other.pk).exists())
 
     def test_student_sees_only_itself(self) -> None:
-        student, profile = make_profile(
+        profile = student = make_user(
             username="stu3",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
             institution_code="IIT",
             club_code="CLB1",
         )
-        visible = scoping.scope_members(Profile.objects.all(), student)
+        visible = scoping.scope_members(User.objects.all(), student)
         self.assertEqual(list(visible.values_list("pk", flat=True)), [profile.pk])
 
     def test_student_never_reaches_the_governance_scope(self) -> None:
-        student, _ = make_profile(
+        student = make_user(
             username="stu4",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
         )
         self.assertFalse(
-            scoping.scope_governance(Profile.objects.all(), student).exists()
+            scoping.scope_governance(User.objects.all(), student).exists()
         )
 
 
 class ClubAdminPins(TestCase):
     def test_club_admin_never_reads_another_clubs_data(self) -> None:
-        admin_a, _ = make_profile(
+        admin_a = make_user(
             username="clba",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
             institution_code="IIT",
             club_code="CLBA",
         )
-        _admin_b, admin_b = make_profile(
+        admin_b = make_user(
             username="clbb",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
             institution_code="IIT",
             club_code="CLBB",
         )
-        visible = scoping.scope_clubs(Profile.objects.all(), admin_a)
+        visible = scoping.scope_clubs(User.objects.all(), admin_a)
         self.assertFalse(visible.filter(pk=admin_b.pk).exists())
 
     def test_club_admin_never_reaches_the_admin_module(self) -> None:
-        admin_a, _ = make_profile(
+        admin_a = make_user(
             username="clbc",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -183,7 +178,7 @@ class ClubAdminPins(TestCase):
         )
 
     def test_club_admin_never_reaches_governance(self) -> None:
-        admin_a, _ = make_profile(
+        admin_a = make_user(
             username="clbd",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -191,7 +186,7 @@ class ClubAdminPins(TestCase):
             club_code="CLBD",
         )
         self.assertFalse(
-            scoping.scope_governance(Profile.objects.all(), admin_a).exists()
+            scoping.scope_governance(User.objects.all(), admin_a).exists()
         )
 
 
@@ -204,7 +199,7 @@ class ModuleIsolationPins(TestCase):
             (Category.STUDENT_MEMBER, {SubRole.STUDENT_MEMBER}),
         ):
             for sub_role in sub_roles:
-                user, _ = make_profile(
+                user = make_user(
                     username=f"t4_{category}_{sub_role}"[:140],
                     category=category,
                     sub_role=sub_role,
@@ -216,7 +211,7 @@ class ModuleIsolationPins(TestCase):
 
     def test_ops_only_super_admin_is_403_on_every_business_surface(self) -> None:
         """Super Admin (ops) = strictly ops, ZERO business powers (§3b)."""
-        ops, _ = make_profile(
+        ops = make_user(
             username="OPSROOT",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.SUPER_ADMIN_OPS,
@@ -228,7 +223,7 @@ class ModuleIsolationPins(TestCase):
                 "governance": scoping.scope_governance,
             }[scope]
             self.assertFalse(
-                helper(Profile.objects.all(), ops).exists(),
+                helper(User.objects.all(), ops).exists(),
                 f"ops-only Super Admin saw {scope} data",
             )
         # And the category gate refuses it on both business modules.
@@ -266,9 +261,9 @@ class AnonymousPins(TestCase):
 
     def test_anonymous_scoping_returns_nothing(self) -> None:
         anon = request_for()
-        self.assertFalse(scoping.scope_clubs(Profile.objects.all(), anon).exists())
-        self.assertFalse(scoping.scope_members(Profile.objects.all(), anon).exists())
-        self.assertFalse(scoping.scope_governance(Profile.objects.all(), anon).exists())
+        self.assertFalse(scoping.scope_clubs(User.objects.all(), anon).exists())
+        self.assertFalse(scoping.scope_members(User.objects.all(), anon).exists())
+        self.assertFalse(scoping.scope_governance(User.objects.all(), anon).exists())
 
 
 class RouteDiscoveryPins(TestCase):

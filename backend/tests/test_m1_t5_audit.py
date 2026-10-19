@@ -15,7 +15,7 @@ from apps.audit.decorators import audit_action, set_audit_detail, set_audit_obje
 from apps.audit.models import AuditLog, compute_entry_hash
 
 from .support import M1PinTestCase as TestCase
-from .support import make_profile, request_for
+from .support import make_user, request_for
 
 
 class OneRowPerActionTests(TestCase):
@@ -61,7 +61,7 @@ class OneRowPerActionTests(TestCase):
         self.assertEqual(AuditLog.objects.get().outcome, "error")
 
     def test_the_row_records_the_actor_and_object(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t5actor",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -82,12 +82,12 @@ class OneRowPerActionTests(TestCase):
 
     def test_identity_lifecycle_actions_are_audited(self) -> None:
         """Every F1-F5 transition leaves a trail (BRIEF_M1.md §5)."""
-        admin, _ = make_profile(
+        admin = make_user(
             username="t5admin",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        club, _ = make_profile(
+        club = make_user(
             username="t5club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -112,12 +112,12 @@ class OneRowPerActionTests(TestCase):
     def test_failed_break_glass_is_audited_too(self) -> None:
         from rest_framework.exceptions import PermissionDenied
 
-        admin, _ = make_profile(
+        admin = make_user(
             username="t5admin2",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        club, _profile = make_profile(
+        club = make_user(
             username="t5club2",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,

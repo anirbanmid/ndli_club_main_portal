@@ -11,8 +11,8 @@ The scope rules are mechanical, not remembered:
 
 Since M2 the scoped rows are real domain rows: each model declares where its
 scope keys live in the ORM via ``SCOPE_LOOKUPS`` (a join path on domain
-models, the raw code column on ``accounts.Profile``), so the SAME helpers
-filter Profile rows and domain querysets with one mechanical rule set. The
+models, the raw code column on ``accounts.User``), so the SAME helpers
+filter user rows and domain querysets with one mechanical rule set. The
 404 semantics of ``accounts.policies.ObjectScope`` are unchanged; EMP03
 never reaches EMP05 data even across the institution/club joins
 (tests/test_m2_d3_scope_fk.py).
@@ -26,11 +26,18 @@ from django.db.models import QuerySet
 from apps.accounts.models import (
     Category,
     SubRole,
+    User,
 )
 
 
 def _profile(user: Any) -> Any:
-    return getattr(user, "profile", None)
+    """The identity record of ``user`` (M2U: the user IS the record).
+
+    Returns ``None`` for anything that is not an ``accounts.User``
+    (``AnonymousUser`` and friends) — deny by default, exactly like the
+    M1-era "authenticated but profile-less" case.
+    """
+    return user if isinstance(user, User) else None
 
 
 def _lookups(queryset: QuerySet) -> dict[str, str]:

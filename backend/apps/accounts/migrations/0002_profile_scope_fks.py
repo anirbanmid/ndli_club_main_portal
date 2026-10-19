@@ -22,7 +22,10 @@ class Migration(migrations.Migration):
     dependencies = [
         ("accounts", "0001_initial"),
         ("domain", "0001_initial"),
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        # M2U amendment: pinned to the model this migration was written
+        # against (was swappable_dependency(settings.AUTH_USER_MODEL), which
+        # resolved to ('auth', '__first__') at M1 time — see 0001's header).
+        ("auth", "0001_initial"),
     ]
 
     operations = [

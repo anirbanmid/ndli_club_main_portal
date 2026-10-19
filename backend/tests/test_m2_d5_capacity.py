@@ -14,13 +14,14 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 
+from apps.accounts.models import Category, SubRole, User
 from apps.core import scoping
 from apps.domain import assignments, queries
 from apps.domain.models import Club, Institution, Membership
 
 from .m2_support import add_membership, assign_officer, build_zone_graph
-from .support import Category, Profile, SubRole, make_profile
 from .support import M1PinTestCase as TestCase
+from .support import make_user
 
 
 def _bulk_students(prefix: str, count: int) -> list:
@@ -81,7 +82,7 @@ class RosterQueryPins(TestCase):
 
     def test_club_roster_is_one_query_at_any_roster_size(self) -> None:
         for index in range(5):
-            user, _ = make_profile(
+            user = make_user(
                 username=f"d5stu{index}",
                 category=Category.STUDENT_MEMBER,
                 sub_role=SubRole.STUDENT_MEMBER,
@@ -104,7 +105,7 @@ class RosterQueryPins(TestCase):
         self.assertEqual(len(roster), 50)
 
     def test_memberships_of_user_is_one_query(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="d5member",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -131,7 +132,7 @@ class ScopingQueryPins(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.graph = build_zone_graph()
-        self.emp03, _ = make_profile(
+        self.emp03 = make_user(
             username="EMP03",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
@@ -172,4 +173,4 @@ class OfficerCachePins(TestCase):
         columns = {field.column for field in Membership._meta.concrete_fields}
         self.assertNotIn("zone_code", columns)
         self.assertNotIn("zone_id", columns)
-        self.assertTrue(Profile._meta.get_field("zone"))
+        self.assertTrue(User._meta.get_field("zone"))

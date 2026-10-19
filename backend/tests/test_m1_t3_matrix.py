@@ -19,11 +19,7 @@ import pathlib
 from django.test import RequestFactory
 from rest_framework.exceptions import NotFound
 
-from apps.accounts.models import (
-    AccountState,
-    Category,
-    SubRole,
-)
+from apps.accounts.models import AccountState, Category, SubRole
 from apps.accounts.policies import CategoryGate, DenyAll, ObjectScope
 
 from .support import (
@@ -31,7 +27,7 @@ from .support import (
     GOOD_PASSWORD,
     MODULE_CATEGORIES,
     iter_routes,
-    make_profile,
+    make_user,
 )
 from .support import M1PinTestCase as TestCase
 
@@ -88,7 +84,7 @@ def module_for(path: str) -> str | None:
 
 class DenyAllIsFailClosedTests(TestCase):
     def test_deny_all_rejects_authenticated_and_anonymous(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t3any",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -104,7 +100,7 @@ class CategoryGateMatrixTests(TestCase):
         for module, allowed in MODULE_CATEGORIES.items():
             for category in Category.values:
                 for sub_role in CATEGORY_SUB_ROLES[category]:
-                    user, profile = make_profile(
+                    user = make_user(
                         username=f"t3_{module}_{category}_{sub_role}".replace(
                             "-", "_"
                         )[:140],
@@ -124,7 +120,7 @@ class CategoryGateMatrixTests(TestCase):
 
     def test_sub_role_narrowing_restricts_inside_the_module(self) -> None:
         """A gate naming sub-roles admits only those roles."""
-        user, _ = make_profile(
+        user = make_user(
             username="t3exec",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_EXECUTIVE,
@@ -142,7 +138,7 @@ class CategoryGateMatrixTests(TestCase):
         )
 
     def test_general_public_never_enters_club_or_admin(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t3public",
             category=Category.GENERAL_PUBLIC,
             sub_role=SubRole.ANONYMOUS,
@@ -178,7 +174,7 @@ class CategoryGateMatrixTests(TestCase):
         )
 
     def test_pending_approval_account_is_denied(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t3pending",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -187,7 +183,7 @@ class CategoryGateMatrixTests(TestCase):
         self.assertFalse(CategoryGate("club").has_permission(_request(user), None))
 
     def test_must_change_password_blocks_everything_but_the_change_route(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t3fresh",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -201,7 +197,7 @@ class CategoryGateMatrixTests(TestCase):
         )
 
     def test_admin_module_requires_the_second_factor(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t3mfa",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -238,13 +234,13 @@ class ObjectScopeMatrixTests(TestCase):
 
     def test_out_of_scope_object_raises_not_found(self) -> None:
 
-        emp03, _ = make_profile(
+        emp03 = make_user(
             username="t3emp03",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        _emp05, target = make_profile(
+        target = make_user(
             username="t3emp05",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
@@ -255,13 +251,13 @@ class ObjectScopeMatrixTests(TestCase):
             ObjectScope("clubs").has_object_permission(request, None, target)
 
     def test_in_scope_object_passes(self) -> None:
-        emp03, _ = make_profile(
+        emp03 = make_user(
             username="t3emp03b",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        _peer, target = make_profile(
+        target = make_user(
             username="t3peer",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,

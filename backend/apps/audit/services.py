@@ -43,11 +43,12 @@ def record(
         ):
             actor_id = int(user.pk)
             actor_label = user.get_username()
-            profile = getattr(user, "profile", None)
-            if profile is not None:
-                category = category or str(profile.category)
-                institution_code = institution_code or str(profile.institution_code)
-                zone_code = zone_code or str(profile.zone_code)
+            # M2U: the user IS the identity record. Duck-typed on purpose so
+            # the audit sink never has to import the accounts models.
+            if getattr(user, "category", None) is not None:
+                category = category or str(user.category)
+                institution_code = institution_code or str(user.institution_code)
+                zone_code = zone_code or str(user.zone_code)
         elif actor_id is None:
             actor_label = actor_label or "anonymous"
 

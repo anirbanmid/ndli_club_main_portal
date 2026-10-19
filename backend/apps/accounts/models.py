@@ -1,4 +1,4 @@
-"""Identity models for the Accounts app (milestone M1 + M2 FK swap).
+"""Identity models for the Accounts app (M1 + M2 FK swap + M2U merge).
 
 M1 shipped the identity + access-control spine with the scope keys as plain
 audited profile fields; M2 replaced them with real relations to the domain
@@ -6,6 +6,11 @@ tables (BRIEF_M2.md §2b, M1-A1 closed). The four relations deliberately keep
 the legacy column names and code-string values (``to_field="code"``), so
 every M1-era row keeps working unchanged (M2-A5) and the code-string
 semantics stay intact through the compat properties below.
+
+M2U merged the side ``Profile`` table INTO this model (A10 Option B, owner
+2026-10-19): one person = one record — ``User`` carries authentication AND
+identity AND scope. ``Profile`` is gone as a model and as a table; there is
+no shim and no alias (M2U-A4).
 
 There is deliberately NO phone/SMS delivery model anywhere in this app:
 mobile numbers are human contact records for the F5 break-glass handover
@@ -16,7 +21,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
@@ -103,8 +108,14 @@ ACCOUNT_STATE_CHOICES = [
 ]
 
 
-class Profile(models.Model):
-    """Per-user identity record: category, sub-role, scope keys and MFA state.
+class User(AbstractUser):
+    """One person = ONE record (M2U): authentication + identity + scope unified.
+
+    Replaces the M1 shape (stock ``auth.User`` + side ``Profile`` table) per
+    A10 Option B (owner, 2026-10-19). The model keeps the legacy physical
+    table (``db_table = "auth_user"``, M2U-A2) so every user FK in the system
+    keeps targeting the same rows with zero constraint surgery; the cosmetic
+    table rename is a tracked priority-list item (MEMORY.md).
 
     The scope keys (institution/zone/club/state) are M2 relations to the
     domain tables: explicit FKs over implicit code-string contracts (P3),
@@ -117,11 +128,6 @@ class Profile(models.Model):
     both are present (``domain.assignments``, P4).
     """
 
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="profile",
-    )
     category = models.CharField(max_length=32, choices=CATEGORY_CHOICES)
     sub_role = models.CharField(max_length=32, choices=SUB_ROLE_CHOICES)
 
@@ -191,17 +197,27 @@ class Profile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    #: Scoping registry (``core.scoping``): the profile is scoped by the raw
-    #: code-string columns (attname lookups — M1 semantics byte-for-byte,
-    #: including unbacked codes).
+    #: Scoping registry (``core.scoping``): the user record is scoped by the
+    #: raw code-string columns (attname lookups — M1 semantics byte-for-byte,
+    #: including unbacked codes). The "user" key names THIS table's own row
+    #: identity (was ``user_id`` on the dropped ``accounts_profile``).
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
         "zone": "zone_id",
         "institution": "institution_id",
         "club": "club_id",
-        "user": "user_id",
+        "user": "id",
     }
 
-    class Meta:
+    class Meta(AbstractUser.Meta):
+        # M2U-A2: the legacy table name is kept ON PURPOSE — every user FK
+        # (memberships, assignments, passkeys, OTPs) already targets
+        # auth_user.id; renaming the table is a tracked cosmetic item
+        # (MEMORY.md priority list), not a merge-day risk.
+        db_table = "auth_user"
+        # The four scope FKs keep the reverse accessor name "profiles" for
+        # the same reason as the table name above: it is a M1-era artifact,
+        # unused in code, and renaming it would churn the schema of the
+        # auth table for a cosmetic gain. Tracked with M2U-A2.
         indexes = [
             models.Index(fields=["category", "sub_role"]),
             models.Index(fields=["institution"]),
@@ -211,7 +227,7 @@ class Profile(models.Model):
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
-        return f"{self.user.username} ({self.sub_role})"
+        return f"{self.username} ({self.sub_role})"
 
     # --- M1 code-string compat (same names, same semantics) ---------------
     @property
@@ -356,13 +372,3 @@ class TOTPRecoveryCode(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
         return f"TOTPRecoveryCode({self.user_id})"
-
-
-def profile_of(user: AbstractBaseUser) -> Profile:
-    """Typed accessor for the one-to-one ``Profile`` relation (M1-A10).
-
-    ``user.profile`` is a related descriptor django-stubs cannot see; this
-    helper keeps the single ``type: ignore`` in one place instead of
-    sprinkling it over every caller.
-    """
-    return user.profile  # type: ignore[attr-defined]

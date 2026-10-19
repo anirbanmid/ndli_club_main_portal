@@ -33,7 +33,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 #: Single source (P4) for every domain code column width. Sized for the real
-#: masters (the widest State/UT code is 40 chars) and matching the M1 Profile
+#: masters (the widest State/UT code is 40 chars) and matching the M1 identity
 #: code columns (varchar(64)) so a soft code can never overflow a domain code.
 CODE_MAX_LENGTH = 64
 

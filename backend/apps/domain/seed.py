@@ -33,7 +33,6 @@ from apps.accounts.models import (
     ACCOUNT_STATE_CHOICES,
     CATEGORY_CHOICES,
     SUB_ROLE_CHOICES,
-    Profile,
 )
 
 from .models import (
@@ -362,7 +361,8 @@ def _reset(result: SeedResult, rows: dict[str, list[dict[str, Any]]]) -> None:
             _pair_filter(officer_pairs, ("officer__username", "state__code"))
         ),
     )
-    drop(Profile, "profiles", Profile.objects.filter(user__username__in=usernames))
+    # M2U: there is no separate profile table to drop — the identity rows
+    # ARE the user rows (bounded to the seed usernames, as before).
     drop(user_model, "users", user_model.objects.filter(username__in=usernames))
     drop(Club, "clubs", Club.objects.filter(code__in=club_codes))
     drop(
@@ -499,32 +499,37 @@ def load_samples(
             result.bump("clubs", "created" if created else "updated")
 
         for row in rows["users.json"]:
+            # M2U: identity + profile are ONE record, so the profile columns
+            # are created/updated on the user row itself (P4 — no parallel
+            # copy to drift).
+            profile_defaults = {
+                "category": row["category"],
+                "sub_role": row["sub_role"],
+                "account_state": row.get("account_state", "active"),
+                "institution_id": row.get("institution") or "",
+                "club_id": row.get("club") or "",
+                "state_id": row.get("state") or "",
+                "zone_id": row.get("zone") or "",
+            }
             user, created = user_model.objects.get_or_create(
                 username=row["username"],
                 defaults={
                     "email": row["email"],
                     "is_staff": row.get("is_staff", False),
+                    **profile_defaults,
                 },
             )
             if created:
                 # SAMPLE accounts never carry usable credentials (P0).
                 user.set_unusable_password()
                 user.save(update_fields=["password"])
-            profile, profile_created = Profile.objects.update_or_create(
-                user=user,
-                defaults={
-                    "category": row["category"],
-                    "sub_role": row["sub_role"],
-                    "account_state": row.get("account_state", "active"),
-                    "institution_id": row.get("institution") or "",
-                    "club_id": row.get("club") or "",
-                    "state_id": row.get("state") or "",
-                    "zone_id": row.get("zone") or "",
-                },
-            )
-            result.bump(
-                "users", "created" if (created or profile_created) else "updated"
-            )
+            else:
+                for field, value in profile_defaults.items():
+                    setattr(user, field, value)
+                user.save(
+                    update_fields=[*profile_defaults, "updated_at"]
+                )
+            result.bump("users", "created" if created else "updated")
 
         for row in rows["memberships.json"]:
             member_user = user_model.objects.filter(username=row["username"]).first()

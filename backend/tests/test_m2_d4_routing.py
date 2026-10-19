@@ -25,7 +25,7 @@ from apps.audit.models import AuditLog
 from apps.domain import assignments
 
 from .m2_support import assign_officer, build_zone_graph
-from .support import GOOD_PASSWORD, make_profile
+from .support import GOOD_PASSWORD, make_user
 from .support import M1PinTestCase as TestCase
 
 LOC = {"EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
@@ -96,12 +96,12 @@ class F2ApprovalRoutingTests(TestCase):
 
     def test_approve_records_the_routing_target_too(self) -> None:
         with override_settings(**LOC):
-            boss, _ = make_profile(
+            boss = make_user(
                 username="d4boss",
                 category=Category.IIT_KGP_ADMIN,
                 sub_role=SubRole.CENTRAL_ADMIN,
             )
-            target, _profile = make_profile(
+            target = make_user(
                 username="d4target",
                 category=Category.CLUB_ADMIN,
                 sub_role=SubRole.CLUB_SECRETARY,
@@ -120,20 +120,20 @@ class ZoneRuleOverTheGraphTests(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.graph = build_zone_graph()
-        self.ro_west, _ = make_profile(
+        self.ro_west = make_user(
             username="d4emp03",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="WEST",
         )
-        self.boss, _ = make_profile(
+        self.boss = make_user(
             username="d4central",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
 
     def _pending(self, username: str, club_code: str, zone_code: str):
-        return make_profile(
+        return make_user(
             username=username,
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -143,20 +143,20 @@ class ZoneRuleOverTheGraphTests(TestCase):
         )
 
     def test_regional_officer_cannot_approve_a_club_outside_its_zone(self) -> None:
-        target, _ = self._pending("d4ne", "CLB-AS-CULT", "NORTH_EAST")
+        target = self._pending("d4ne", "CLB-AS-CULT", "NORTH_EAST")
         with self.assertRaises(PermissionDenied):
             services.approve_club_account(target=target, actor=self.ro_west)
 
     def test_regional_officer_approves_inside_its_zone(self) -> None:
         with override_settings(**LOC):
-            target, profile = self._pending("d4west", "CLB-MH-TECH", "WEST")
+            profile = target = self._pending("d4west", "CLB-MH-TECH", "WEST")
             services.approve_club_account(target=target, actor=self.ro_west)
         profile.refresh_from_db()
         self.assertEqual(profile.account_state, AccountState.ACTIVE)
 
     def test_central_admin_approves_any_zone(self) -> None:
         with override_settings(**LOC):
-            target, profile = self._pending("d4any", "CLB-AS-CULT", "NORTH_EAST")
+            profile = target = self._pending("d4any", "CLB-AS-CULT", "NORTH_EAST")
             services.approve_club_account(target=target, actor=self.boss)
         profile.refresh_from_db()
         self.assertEqual(profile.account_state, AccountState.ACTIVE)
@@ -164,7 +164,7 @@ class ZoneRuleOverTheGraphTests(TestCase):
     def test_the_domain_graph_wins_over_a_stale_profile_key(self) -> None:
         # Profile says NORTH but the club lives in WEST -> the graph decides
         # (P4 single source); the stale key is a verify_domain finding.
-        target, profile = self._pending("d4drift", "CLB-MH-TECH", "NORTH")
+        profile = target = self._pending("d4drift", "CLB-MH-TECH", "NORTH")
         self.assertEqual(profile.zone_code, "NORTH")
         self.assertEqual(
             assignments.zone_code_of_profile(profile), "WEST", "graph wins"
@@ -173,13 +173,13 @@ class ZoneRuleOverTheGraphTests(TestCase):
         with override_settings(**LOC):
             services.approve_club_account(target=target, actor=self.ro_west)
         # ...and a NORTH officer could not have.
-        ro_north, _ = make_profile(
+        ro_north = make_user(
             username="d4emp01",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="NORTH",
         )
-        target2, _ = self._pending("d4drift2", "CLB-MH-TECH", "NORTH")
+        target2 = self._pending("d4drift2", "CLB-MH-TECH", "NORTH")
         with self.assertRaises(PermissionDenied):
             services.approve_club_account(target=target2, actor=ro_north)
         # The stale key is exactly what verify_domain reports (P4 drift).
@@ -189,7 +189,7 @@ class ZoneRuleOverTheGraphTests(TestCase):
 
     def test_welcome_mail_is_the_only_notification_channel(self) -> None:
         with override_settings(**LOC):
-            target, _profile = self._pending("d4mail", "CLB-MH-TECH", "WEST")
+            target = self._pending("d4mail", "CLB-MH-TECH", "WEST")
             services.approve_club_account(target=target, actor=self.ro_west)
         self.assertTrue(mail.outbox, "welcome link must be emailed")
         self.assertIsNotNone(target.pk)

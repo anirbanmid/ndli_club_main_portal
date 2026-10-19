@@ -11,12 +11,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 
-from apps.accounts.models import (
-    AccountState,
-    Category,
-    Profile,
-    SubRole,
-)
+from apps.accounts.models import AccountState, Category, SubRole
 
 
 class M1PinTestCase(TestCase):
@@ -79,7 +74,7 @@ CATEGORY_SUB_ROLES: dict[str, frozenset[str]] = {
 }
 
 
-def make_profile(
+def make_user(
     *,
     username: str,
     category: str,
@@ -92,16 +87,15 @@ def make_profile(
     state_code: str = "",
     account_state: str = AccountState.ACTIVE,
     must_change_password: bool = False,
-) -> tuple[Any, Profile]:
-    """Create a user + profile in one call; returns (user, profile)."""
+    phone: str = "",
+    alt_phone: str = "",
+) -> Any:
+    """Create ONE identity record (M2U: the user IS the profile) and return it."""
     user_model = get_user_model()
-    user = user_model.objects.create_user(
+    return user_model.objects.create_user(
         username=username,
         email=email or f"{username}@example.test",
         password=password,
-    )
-    profile = Profile.objects.create(
-        user=user,
         category=category,
         sub_role=sub_role,
         institution_code=institution_code,
@@ -110,8 +104,9 @@ def make_profile(
         state_code=state_code,
         account_state=account_state,
         must_change_password=must_change_password,
+        phone=phone,
+        alt_phone=alt_phone,
     )
-    return user, profile
 
 
 def request_for(user: Any = None, *, ip: str = "203.0.113.10") -> Any:

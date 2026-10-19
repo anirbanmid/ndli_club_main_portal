@@ -86,6 +86,11 @@ INSTALLED_APPS = [
     "apps.public_api",
 ]
 
+# M2U (A10 Option B, owner 2026-10-19): one person = one record. The custom
+# user model carries identity + profile in the legacy auth_user table
+# (db_table override, M2U-A2) so every existing user FK keeps its target.
+AUTH_USER_MODEL = "accounts.User"
+
 MIDDLEWARE = [
     # Outermost first: stamps the security-header policy + audit request id on
     # EVERY response, including 4xx/5xx (BRIEF_M1.md §6 / T6).

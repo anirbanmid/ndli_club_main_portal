@@ -5,8 +5,9 @@ Named pins:
   values (``to_field="code"`` + ``db_constraint=False`` — M2-A5);
 * every designed FK/unique/index exists in the REAL database schema on both
   engines (introspected, not asserted from model metadata alone);
-* every migration is reversible and the backwards direction preserves the
-  profile rows (actually executed, both directions);
+* every migration is reversible and the backwards direction restores the
+  side profile table with the merged data intact (actually executed, both
+  directions);
 * the migration state matches the models exactly (no drift).
 """
 from __future__ import annotations
@@ -17,7 +18,7 @@ from django.core.management import call_command
 from django.db import connection
 from django.test import TransactionTestCase
 
-from apps.accounts.models import Category, Profile, SubRole
+from apps.accounts.models import Category, SubRole, User
 from apps.domain.models import (
     AuthorityAssignment,
     Club,
@@ -30,7 +31,7 @@ from apps.domain.models import (
 )
 
 from .support import M1PinTestCase as TestCase
-from .support import make_profile
+from .support import make_user
 
 
 class ScopeSwapSchemaTests(TestCase):
@@ -43,7 +44,7 @@ class ScopeSwapSchemaTests(TestCase):
         }
         for name, (column, target) in field_specs.items():
             with self.subTest(field=name):
-                field = cast(Any, Profile._meta.get_field(name))
+                field = cast(Any, User._meta.get_field(name))
                 self.assertTrue(field.is_relation, name)
                 self.assertEqual(field.db_column, column)
                 self.assertEqual(field.target_field.name, "code")
@@ -51,7 +52,7 @@ class ScopeSwapSchemaTests(TestCase):
                 self.assertEqual(f"{field.remote_field.model._meta.label}", target)
 
     def test_code_string_compat_properties_keep_m1_semantics(self) -> None:
-        _user, profile = make_profile(
+        profile = make_user(
             username="d1compat",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -107,7 +108,7 @@ class ScopeSwapSchemaTests(TestCase):
                 ("club_id", "tier", "from_date"),
                 ("user_id",),
             ),
-            Profile._meta.db_table: (
+            User._meta.db_table: (
                 ("institution_code",),
                 ("club_code",),
                 ("zone_code",),
@@ -136,10 +137,43 @@ class ScopeSwapSchemaTests(TestCase):
 
 
 class MigrationRoundTripTests(TransactionTestCase):
-    """M2-A5: the swap preserves rows; EVERY migration reverses (D1)."""
+    """M2U: the merge preserves rows; EVERY migration reverses (D1/U2)."""
 
-    def test_scope_swap_round_trip_preserves_profile_rows(self) -> None:
-        _user, profile = make_profile(
+    #: The merged columns, in the order they are compared on both tables.
+    MERGED_COLUMNS = (
+        "category",
+        "sub_role",
+        "phone",
+        "alt_phone",
+        "account_state",
+        "must_change_password",
+        "totp_secret_encrypted",
+        "totp_enabled",
+        "totp_last_counter",
+        "failed_login_count",
+        "locked_until",
+        "created_at",
+        "updated_at",
+        "club_code",
+        "institution_code",
+        "state_code",
+        "zone_code",
+    )
+
+    def _merged_row(self, table: str, user_id: int) -> tuple:
+        key = "id" if table == "auth_user" else "user_id"
+        columns = ", ".join(self.MERGED_COLUMNS)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"SELECT {columns} FROM {table} WHERE {key} = %s",  # noqa: S608
+                [user_id],
+            )
+            row = cursor.fetchone()
+        assert row is not None
+        return tuple(row)
+
+    def test_unified_user_round_trip_preserves_the_merged_row(self) -> None:
+        user = make_user(
             username="d1roundtrip",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -147,21 +181,39 @@ class MigrationRoundTripTests(TransactionTestCase):
             club_code="CLB-DU-CULT",
             zone_code="NORTH",
             state_code="DELHI",
+            phone="+91-9000000001",
+            alt_phone="+91-9000000002",
+            must_change_password=True,
         )
-        pk = profile.pk
+        pk = user.pk
+        before = self._merged_row("auth_user", pk)
 
-        # Backwards: accounts back to the M1 plain-char state.
-        call_command("migrate", "accounts", "0001_initial", verbosity=0)
-        row = Profile.objects.get(pk=pk)
-        self.assertEqual(row.zone_code, "NORTH")
-        self.assertEqual(row.institution_code, "INST-DU-001")
-
-        # Forward again: FK swap re-applied, values still intact.
+        # Backwards: the side profile table comes back, the merged columns go.
         call_command("migrate", "accounts", "0002_profile_scope_fks", verbosity=0)
-        row = Profile.objects.get(pk=pk)
-        self.assertEqual(row.zone_code, "NORTH")
-        self.assertEqual(row.club_code, "CLB-DU-CULT")
-        self.assertEqual(row.state_code, "DELHI")
+        tables = connection.introspection.table_names()
+        self.assertIn("accounts_profile", tables)
+        with connection.cursor() as cursor:
+            columns = {
+                info.name
+                for info in connection.introspection.get_table_description(
+                    cursor, "auth_user"
+                )
+            }
+        self.assertNotIn("category", columns)
+        # U2: field-by-field equality of the restored profile row.
+        self.assertEqual(self._merged_row("accounts_profile", pk), before)
+        # M2U-A1: the user row itself never moved.
+        self.assertTrue(User.objects.filter(pk=pk).exists())
+
+        # Forward again: merged back onto the SAME user row.
+        call_command("migrate", "accounts", "0003_unified_user", verbosity=0)
+        tables = connection.introspection.table_names()
+        self.assertNotIn("accounts_profile", tables)
+        self.assertEqual(self._merged_row("auth_user", pk), before)
+        merged = User.objects.get(pk=pk)
+        self.assertEqual(merged.username, "d1roundtrip")
+        self.assertEqual(merged.club_code, "CLB-DU-CULT")
+        self.assertEqual(merged.zone_code, "NORTH")
 
     def test_domain_migrations_reverse_and_reapply(self) -> None:
         call_command("migrate", "accounts", "0001_initial", verbosity=0)

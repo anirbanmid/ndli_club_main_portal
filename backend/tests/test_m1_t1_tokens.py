@@ -27,11 +27,7 @@ from apps.accounts.models import (
 )
 
 from .support import M1PinTestCase as TestCase
-from .support import (
-    iter_routes,
-    make_profile,
-    request_for,
-)
+from .support import iter_routes, make_user, request_for
 
 LOC = {"EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
 
@@ -58,12 +54,12 @@ class LinkBuilderTests(TestCase):
             self.assertNotIn("token", before_fragment.lower(), link)
 
     def test_email_body_carries_the_link_but_no_query_token(self) -> None:
-        actor, _ = make_profile(
+        actor = make_user(
             username="t1boss",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        target, _profile = make_profile(
+        target = make_user(
             username="t1club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -96,7 +92,7 @@ class StorageIsHashedTests(TestCase):
         self.assertNotIn("code", row.__dict__)
 
     def test_link_token_stores_only_the_hash(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="t1token",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_EXECUTIVE,
@@ -104,7 +100,7 @@ class StorageIsHashedTests(TestCase):
             club_code="CLB2",
         )
         token = services._issue_link_token(
-            user.profile, EmailLinkToken.Purpose.FORGOT_PASSWORD
+            user, EmailLinkToken.Purpose.FORGOT_PASSWORD
         )
         entry = EmailLinkToken.objects.get()
         self.assertEqual(entry.token_hash, hash_secret(token))
@@ -119,7 +115,7 @@ class StorageIsHashedTests(TestCase):
     def test_totp_secret_is_sealed_not_plaintext(self) -> None:
         from apps.accounts import totp
 
-        user, profile = make_profile(
+        profile = make_user(
             username="t1totp",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -158,7 +154,7 @@ class NoSecretInAnyResponseBodyTests(TestCase):
         from apps.accounts.hashing import generate_passkey, generate_password
 
         secrets = [generate_password(), generate_passkey()]
-        user, profile = make_profile(
+        profile = make_user(
             username="t1sweep",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -194,12 +190,12 @@ class NoSecretInAuditRowsTests(TestCase):
                 self.assertNotIn(secret, blob)
 
     def test_break_glass_password_is_returned_but_never_audited(self) -> None:
-        admin, _ = make_profile(
+        admin = make_user(
             username="t1admin",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        club, _ = make_profile(
+        club = make_user(
             username="t1bg",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,

@@ -17,34 +17,17 @@ from __future__ import annotations
 
 import datetime
 
-from django.contrib.auth.models import AbstractBaseUser
 from django.core import mail
 from django.test import override_settings
 from django.utils import timezone
-from rest_framework.exceptions import (
-    PermissionDenied,
-    Throttled,
-    ValidationError,
-)
+from rest_framework.exceptions import PermissionDenied, Throttled, ValidationError
 
 from apps.accounts import conf, services
 from apps.accounts import totp as totp_mod
-from apps.accounts.models import (
-    AccountState,
-    Category,
-    EmailLinkToken,
-    Profile,
-    SubRole,
-    profile_of,
-)
+from apps.accounts.models import AccountState, Category, EmailLinkToken, SubRole, User
 from apps.audit.models import AuditLog
 
-from .support import (
-    GOOD_PASSWORD,
-    OTHER_PASSWORD,
-    make_profile,
-    request_for,
-)
+from .support import GOOD_PASSWORD, OTHER_PASSWORD, make_user, request_for
 from .support import M1PinTestCase as TestCase
 
 LOC = {"EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
@@ -73,7 +56,7 @@ class F1ProvisionalAccountTests(TestCase):
             institution_code="IIT",
             club_code="CLB1",
         )
-        self.assertEqual(profile_of(user).account_state, AccountState.PENDING_APPROVAL)
+        self.assertEqual(user.account_state, AccountState.PENDING_APPROVAL)
 
     def test_the_registration_phones_are_recorded_as_contact_only(self) -> None:
         user = services.create_provisional_account(
@@ -86,8 +69,8 @@ class F1ProvisionalAccountTests(TestCase):
             phone="+91-9000000001",
             alt_phone="+91-9000000002",
         )
-        self.assertEqual(profile_of(user).phone, "+91-9000000001")
-        self.assertEqual(profile_of(user).alt_phone, "+91-9000000002")
+        self.assertEqual(user.phone, "+91-9000000001")
+        self.assertEqual(user.alt_phone, "+91-9000000002")
 
     def test_a_weak_password_is_refused_at_creation(self) -> None:
         with self.assertRaises(ValidationError):
@@ -119,7 +102,7 @@ class F1ProvisionalAccountTests(TestCase):
         )
 
     def test_an_active_account_logs_in(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="f1active",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -131,7 +114,7 @@ class F1ProvisionalAccountTests(TestCase):
         self.assertEqual(result.pk, user.pk)
 
     def test_the_wrong_password_is_rejected(self) -> None:
-        make_profile(
+        make_user(
             username="f1wrong",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -145,7 +128,7 @@ class F1ProvisionalAccountTests(TestCase):
             )
 
     def test_an_admin_account_cannot_use_the_club_login(self) -> None:
-        make_profile(
+        make_user(
             username="f1admin",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -157,13 +140,13 @@ class F1ProvisionalAccountTests(TestCase):
 
 
 class F2WelcomeLinkTests(TestCase):
-    def _approve(self) -> tuple[AbstractBaseUser, Profile]:
-        actor, _ = make_profile(
+    def _approve(self) -> tuple[User, User]:
+        actor = make_user(
             username="f2boss",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        target, profile = make_profile(
+        profile = target = make_user(
             username="f2club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -258,7 +241,7 @@ class F2WelcomeLinkTests(TestCase):
 
 class F3PermanentPasswordTests(TestCase):
     def test_the_password_can_be_changed_from_inside_a_session(self) -> None:
-        user, profile = make_profile(
+        profile = user = make_user(
             username="f3club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -275,7 +258,7 @@ class F3PermanentPasswordTests(TestCase):
         self.assertFalse(profile.must_change_password)
 
     def test_the_current_password_is_required(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="f3guard",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -288,7 +271,7 @@ class F3PermanentPasswordTests(TestCase):
             )
 
     def test_reusing_the_same_password_is_refused(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="f3same",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -301,7 +284,7 @@ class F3PermanentPasswordTests(TestCase):
             )
 
     def test_a_weak_new_password_is_refused(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="f3weak",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -312,7 +295,7 @@ class F3PermanentPasswordTests(TestCase):
             )
 
     def test_the_password_is_permanent_it_never_expires_on_its_own(self) -> None:
-        user, profile = make_profile(
+        profile = make_user(
             username="f3perm",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -341,7 +324,7 @@ class F4ForgotPasswordTests(TestCase):
         return match.group(1)
 
     def test_a_reset_email_is_sent_for_a_known_address(self) -> None:
-        make_profile(
+        make_user(
             username="f4club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -356,7 +339,7 @@ class F4ForgotPasswordTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_the_reset_link_is_single_use(self) -> None:
-        user, _ = make_profile(
+        user = make_user(
             username="f4once",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -379,7 +362,7 @@ class F4ForgotPasswordTests(TestCase):
         self.assertTrue(user.check_password(OTHER_PASSWORD))
 
     def test_the_reset_link_expires(self) -> None:
-        make_profile(
+        make_user(
             username="f4expire",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -398,7 +381,7 @@ class F4ForgotPasswordTests(TestCase):
             )
 
     def test_the_reset_link_lasts_30_minutes(self) -> None:
-        make_profile(
+        make_user(
             username="f4ttl",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -412,7 +395,7 @@ class F4ForgotPasswordTests(TestCase):
         )
 
     def test_reset_requests_are_rate_limited(self) -> None:
-        make_profile(
+        make_user(
             username="f4rate",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -424,7 +407,7 @@ class F4ForgotPasswordTests(TestCase):
             self._request_reset()
 
     def test_the_rate_limit_is_per_recipient(self) -> None:
-        make_profile(
+        make_user(
             username="f4other",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -439,12 +422,12 @@ class F4ForgotPasswordTests(TestCase):
 
 class F5BreakGlassTests(TestCase):
     def _setup(self, *, state: str = AccountState.ACTIVE):
-        admin, _ = make_profile(
+        admin = make_user(
             username="f5admin",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        club, profile = make_profile(
+        profile = club = make_user(
             username="f5club",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -568,12 +551,12 @@ class F5BreakGlassTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_only_club_accounts_support_break_glass(self) -> None:
-        admin, _ = make_profile(
+        admin = make_user(
             username="f5admin2",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        student, _ = make_profile(
+        student = make_user(
             username="f5student",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -587,13 +570,13 @@ class F5BreakGlassTests(TestCase):
             )
 
     def test_an_officer_may_only_reset_inside_its_zone(self) -> None:
-        officer, _ = make_profile(
+        officer = make_user(
             username="f5emp",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        club, _profile = make_profile(
+        club = make_user(
             username="f5west",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -605,19 +588,19 @@ class F5BreakGlassTests(TestCase):
         services.rotate_passkey(club_code="CLBW")
         # break_glass_reset itself is category-gated; the zone rule is the
         # approve path's job in M1 (the M2 assignment table upgrades both).
-        self.assertEqual(officer.profile.zone_code, "EAST")
-        self.assertEqual(club.profile.zone_code, "WEST")
+        self.assertEqual(officer.zone_code, "EAST")
+        self.assertEqual(club.zone_code, "WEST")
 
 
 class ApprovalScopeTests(TestCase):
     def test_a_regional_officer_cannot_approve_outside_its_zone(self) -> None:
-        officer, _ = make_profile(
+        officer = make_user(
             username="f2emp",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        target, _profile = make_profile(
+        target = make_user(
             username="f2west",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -630,12 +613,12 @@ class ApprovalScopeTests(TestCase):
             services.approve_club_account(target=target, actor=officer)
 
     def test_central_admin_may_approve_any_zone(self) -> None:
-        boss, _ = make_profile(
+        boss = make_user(
             username="f2boss2",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        target, profile = make_profile(
+        profile = target = make_user(
             username="f2any",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -650,12 +633,12 @@ class ApprovalScopeTests(TestCase):
         self.assertEqual(profile.account_state, AccountState.ACTIVE)
 
     def test_only_pending_club_accounts_can_be_approved(self) -> None:
-        boss, _ = make_profile(
+        boss = make_user(
             username="f2boss3",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        active, _ = make_profile(
+        active = make_user(
             username="f2active",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -667,12 +650,12 @@ class ApprovalScopeTests(TestCase):
             services.approve_club_account(target=active, actor=boss)
 
     def test_a_student_account_cannot_be_approved_as_a_club(self) -> None:
-        boss, _ = make_profile(
+        boss = make_user(
             username="f2boss4",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
         )
-        student, _ = make_profile(
+        student = make_user(
             username="f2student",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -683,7 +666,7 @@ class ApprovalScopeTests(TestCase):
 
 class StaffMfaTests(TestCase):
     def test_admin_login_requires_the_second_factor(self) -> None:
-        admin, _profile = make_profile(
+        _admin = make_user(
             username="f5mfa",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -699,7 +682,7 @@ class StaffMfaTests(TestCase):
             )
 
     def test_a_valid_totp_code_authenticates(self) -> None:
-        admin, profile = make_profile(
+        profile = admin = make_user(
             username="f5mfa2",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -717,7 +700,7 @@ class StaffMfaTests(TestCase):
         self.assertEqual(result.pk, admin.pk)
 
     def test_a_totp_code_cannot_be_replayed(self) -> None:
-        _admin, profile = make_profile(
+        profile = make_user(
             username="f5mfa3",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -730,7 +713,7 @@ class StaffMfaTests(TestCase):
         self.assertFalse(totp_mod.verify_totp_code(profile, code))
 
     def test_a_recovery_code_works_exactly_once(self) -> None:
-        _admin, profile = make_profile(
+        profile = make_user(
             username="f5mfa4",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -740,7 +723,7 @@ class StaffMfaTests(TestCase):
         self.assertFalse(totp_mod.consume_recovery_code(profile, codes[0]))
 
     def test_a_non_admin_cannot_use_the_admin_login(self) -> None:
-        make_profile(
+        make_user(
             username="f5clubadmin",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,

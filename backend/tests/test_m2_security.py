@@ -35,7 +35,7 @@ from apps.domain.models import Club, Institution, Membership, Zone
 from apps.domain.services import link_aishe_code
 
 from .m2_support import add_membership, build_zone_graph
-from .support import Category, SubRole, make_profile
+from .support import Category, SubRole, make_user
 from .support import M1PinTestCase as TestCase
 
 
@@ -108,7 +108,7 @@ class ImmutabilityAndReadOnlyPins(TestCase):
 
     def test_verify_domain_is_read_only(self) -> None:
         build_zone_graph()
-        user, _profile = make_profile(
+        user = make_user(
             username="secstu",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -135,7 +135,7 @@ class ImmutabilityAndReadOnlyPins(TestCase):
 
     def test_membership_is_strictly_relational(self) -> None:
         build_zone_graph()
-        user, _profile = make_profile(
+        user = make_user(
             username="secdup",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,

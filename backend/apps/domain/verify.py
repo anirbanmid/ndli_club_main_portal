@@ -91,20 +91,22 @@ def run_checks(today: date | None = None) -> Report:
     today = today or timezone.localdate()
     report = Report()
 
-    # 1. Orphan memberships: an account without an identity profile cannot be
-    #    scoped or categorised (the FK keeps the row, the identity is gone).
-    for membership_row in Membership.objects.filter(
-        user__profile__isnull=True
-    ).select_related("club"):
+    # 1. Uncategorised members: a membership whose account carries no
+    #    category cannot be scoped or categorised. (M2U: the identity IS the
+    #    user row, so the M1-era "user without a profile" state is no longer
+    #    representable — an empty category is its merged-world equivalent.)
+    for membership_row in Membership.objects.filter(user__category="").select_related(
+        "club"
+    ):
         report.orphan_memberships.append(
             f"membership#{membership_row.pk} user#{membership_row.user_id} "
-            f"has no profile (club {membership_row.club_id})"
+            f"has no category (club {membership_row.club_id})"
         )
 
-    # 2. Orphan scope codes: the Profile soft-FK columns (M1-era plain codes)
-    #    that no domain row answers for. This is the heal list for the
-    #    future auto-repair (re-point or create the missing rows).
-    from apps.accounts.models import Profile
+    # 2. Orphan scope codes: the soft-FK columns (M1-era plain codes) that
+    #    no domain row answers for. This is the heal list for the future
+    #    auto-repair (re-point or create the missing rows).
+    from apps.accounts.models import User
 
     for attr, model, label in (
         ("zone_id", Zone, "zone"),
@@ -113,7 +115,7 @@ def run_checks(today: date | None = None) -> Report:
         ("club_id", Club, "club"),
     ):
         used = (
-            Profile.objects.exclude(**{attr: ""})
+            User.objects.exclude(**{attr: ""})
             .exclude(**{attr: None})
             .values_list(attr, flat=True)
             .distinct()
@@ -121,7 +123,7 @@ def run_checks(today: date | None = None) -> Report:
         known = set(model.objects.values_list("code", flat=True))
         for code in sorted(set(used) - known):
             report.orphan_scope_codes.append(
-                f"profile {label} code {code!r} has no domain row"
+                f"user {label} code {code!r} has no domain row"
             )
 
     # 3. Orphan passkeys: Official Institutional Passkeys keyed by a club
@@ -167,9 +169,9 @@ def run_checks(today: date | None = None) -> Report:
         for hit in _overlaps(windows):
             report.assignment_overlaps.append(f"user#{user_id}@club#{club_id}: {hit}")
 
-    # 5. Scope drift: a profile whose soft zone key disagrees with the zone
+    # 5. Scope drift: a user whose soft zone key disagrees with the zone
     #    derived from its club (the P4 drift class, reported — never guessed).
-    for profile in Profile.objects.exclude(club_id="").exclude(
+    for profile in User.objects.exclude(club_id="").exclude(
         club_id__isnull=True
     ):
         club = Club.objects.select_related("institution__state__zone").filter(
@@ -180,7 +182,7 @@ def run_checks(today: date | None = None) -> Report:
         derived = club.institution.state.zone.code
         if profile.zone_id and profile.zone_id != derived:
             report.scope_drift.append(
-                f"profile#{profile.pk} zone {profile.zone_id!r} != club "
+                f"user#{profile.pk} zone {profile.zone_id!r} != club "
                 f"{club.code!r} derived zone {derived!r}"
             )
 

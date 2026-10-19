@@ -1,7 +1,7 @@
 """D3 — scope FK pins (BRIEF_M2.md §4): join-based scoping, M1 semantics kept.
 
 Named pins (the M1 T3/T4 suite running UNCHANGED is the other half of this
-gate — it proves the FK swap kept the Profile semantics byte-for-byte):
+gate — it proves the FK swap kept the User semantics byte-for-byte):
 
 * ``EMP03`` never reads ``EMP05`` data — now over the real joins
   (club -> institution -> state -> zone);
@@ -15,7 +15,7 @@ from __future__ import annotations
 from django.test import RequestFactory
 from rest_framework.exceptions import NotFound
 
-from apps.accounts.models import Category, Profile, SubRole
+from apps.accounts.models import Category, SubRole, User
 from apps.accounts.policies import ObjectScope
 from apps.audit.models import AuditLog
 from apps.core import scoping
@@ -23,7 +23,7 @@ from apps.domain.models import Club, Membership
 
 from .m2_support import add_membership, build_zone_graph
 from .support import M1PinTestCase as TestCase
-from .support import make_profile
+from .support import make_user
 
 
 class JoinScopingPins(TestCase):
@@ -33,13 +33,13 @@ class JoinScopingPins(TestCase):
         self.west_club = self.graph["WEST"]["club"]
         self.ne_club = self.graph["NORTH_EAST"]["club"]
         self.north_club = self.graph["NORTH"]["club"]
-        self.emp03, _ = make_profile(
+        self.emp03 = make_user(
             username="EMP03",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="WEST",
         )
-        self.emp05, _ = make_profile(
+        self.emp05 = make_user(
             username="EMP05",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
@@ -53,12 +53,12 @@ class JoinScopingPins(TestCase):
         self.assertNotIn("CLB-AS-CULT", codes)
 
     def test_EMP03_never_reads_EMP05_memberships_over_the_joins(self) -> None:
-        west_user, _ = make_profile(
+        west_user = make_user(
             username="weststu",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
         )
-        ne_user, _ = make_profile(
+        ne_user = make_user(
             username="nestu",
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
@@ -72,7 +72,7 @@ class JoinScopingPins(TestCase):
         self.assertFalse(visible.filter(user=ne_user).exists())
 
     def test_club_admin_scoping_stays_inside_its_club_over_the_joins(self) -> None:
-        admin_a, _ = make_profile(
+        admin_a = make_user(
             username="d3admina",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -81,7 +81,7 @@ class JoinScopingPins(TestCase):
             state_code="DELHI",
             zone_code="NORTH",
         )
-        _admin_b, admin_b = make_profile(
+        admin_b = make_user(
             username="d3adminb",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
@@ -99,11 +99,11 @@ class JoinScopingPins(TestCase):
         visible = scoping.scope_clubs(Club.objects.all(), admin_a)
         self.assertIn(club_a.pk, set(visible.values_list("pk", flat=True)))
         self.assertNotIn(club_b.pk, set(visible.values_list("pk", flat=True)))
-        self.assertFalse(scoping.scope_members(Profile.objects.all(), admin_a)
+        self.assertFalse(scoping.scope_members(User.objects.all(), admin_a)
                          .filter(pk=admin_b.pk).exists())
 
     def test_central_admin_sees_all_zones_over_the_joins(self) -> None:
-        boss, _ = make_profile(
+        boss = make_user(
             username="d3boss",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
@@ -112,7 +112,7 @@ class JoinScopingPins(TestCase):
         self.assertEqual(visible.count(), 3)
 
     def test_ops_only_super_admin_sees_no_domain_rows(self) -> None:
-        ops, _ = make_profile(
+        ops = make_user(
             username="d3ops",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.SUPER_ADMIN_OPS,
@@ -141,7 +141,7 @@ class JoinScopingPins(TestCase):
     def test_the_profile_code_string_surface_is_m1_compatible(self) -> None:
         # Same construction M1 tests use; the property kwargs must survive
         # the FK swap (regression pin for the compat layer).
-        user, profile = make_profile(
+        profile = user = make_user(
             username="d3compat",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
@@ -156,14 +156,14 @@ class JoinScopingPins(TestCase):
         profile.refresh_from_db()
         self.assertEqual(profile.club_code, "CLB1")
         self.assertEqual(profile.zone_id, "EAST")
-        other_user, _other = make_profile(
+        other_user = make_user(
             username="d3compat2",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
         )
-        visible = scoping.scope_governance(Profile.objects.all(), user)
+        visible = scoping.scope_governance(User.objects.all(), user)
         self.assertFalse(visible.exists(), "club admins never reach governance")
-        officer_view = scoping.scope_clubs(Profile.objects.all(), other_user)
+        officer_view = scoping.scope_clubs(User.objects.all(), other_user)
         self.assertTrue(officer_view.filter(pk=profile.pk).exists())
         self.assertIsNotNone(user.pk)

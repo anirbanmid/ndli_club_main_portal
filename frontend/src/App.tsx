@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { changeLanguage } from './i18n';
+import { resolveRoute } from './lib/route';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomeView } from './components/HomeView';
@@ -9,6 +10,7 @@ import { AdminModuleView } from './components/AdminModuleView';
 import { RegisterClubView } from './components/RegisterClubView';
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
+import { DirectoryView } from './components/DirectoryView';
 import { JoinClubModal } from './components/JoinClubModal';
 import { 
   INITIAL_CLUBS, 
@@ -17,8 +19,7 @@ import {
   INITIAL_TICKETS, 
   INITIAL_AUTHORITY_REQUESTS, 
   INITIAL_FORENSIC_RECORDS, 
-  INITIAL_EMPLOYEES, 
-  INITIAL_CERTIFICATES 
+  INITIAL_EMPLOYEES
 } from './mockData';
 import { 
   BranchType, 
@@ -28,13 +29,24 @@ import {
   IssueTicket, 
   AuthorityChangeRequest, 
   ForensicQuarantineRecord, 
-  EmployeeNode, 
-  CertificateData 
+  EmployeeNode,
+  CertificateData
 } from './types';
 
-export function App() {
+export interface AppProps {
+  /** Override for the build-time prerender (M3-7); defaults to window.location. */
+  ssrLocation?: { pathname: string; search: string };
+}
+
+export function App({ ssrLocation }: AppProps = {}) {
+  // One source of truth for URL -> view (src/lib/route.ts). Resolved during
+  // the first render so the prerendered HTML matches the client's first paint.
+  const initialRoute = resolveRoute(
+    ssrLocation ?? (typeof window !== 'undefined' ? window.location : { pathname: '/', search: '' }),
+  );
+
   const [currentBranch, setCurrentBranch] = useState<BranchType>('landing');
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
 
   // Application Data States
   const [clubs, setClubs] = useState<InstituteClub[]>(INITIAL_CLUBS);
@@ -44,14 +56,13 @@ export function App() {
   const [authorityRequests, setAuthorityRequests] = useState<AuthorityChangeRequest[]>(INITIAL_AUTHORITY_REQUESTS);
   const [forensicRecords, setForensicRecords] = useState<ForensicQuarantineRecord[]>(INITIAL_FORENSIC_RECORDS);
   const [employees, setEmployees] = useState<EmployeeNode[]>(INITIAL_EMPLOYEES);
-  const [certificates, setCertificates] = useState<CertificateData[]>(INITIAL_CERTIFICATES);
 
   // Active selections
   const [activeClub, setActiveClub] = useState<InstituteClub>(INITIAL_CLUBS[0]);
   const [selectedClubForPublicProfile, setSelectedClubForPublicProfile] = useState<InstituteClub | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
-  const [verifyInitialCertId, setVerifyInitialCertId] = useState('');
+  const [verifyInitialCertId, setVerifyInitialCertId] = useState(initialRoute.certId);
 
   // Accessibility States
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'larger'>('normal');
@@ -61,24 +72,15 @@ export function App() {
   // setState forces the whole tree to re-render with the new catalogue.
   const [language, setLanguageState] = useState('en');
   const handleSetLanguage = (code: string) => {
-    changeLanguage(code);
-    setLanguageState(code);
+    // Re-render AFTER the catalogue chunk loads (M3 §4c lazy i18n).
+    void changeLanguage(code).then(() => setLanguageState(code));
   };
 
-  // Check URL parameters on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    const certIdParam = params.get('certId');
-
-    if (tabParam === 'verify') {
-      setCurrentBranch('landing');
-      setCurrentTab('verify');
-      if (certIdParam) {
-        setVerifyInitialCertId(certIdParam);
-      }
-    }
-  }, []);
+  // Deep-link routing is resolved above via resolveRoute (M3):
+  // - canonical QR target: /verify/?id=NDLI-XXXX-XXXX
+  // - legacy compat:      ?tab=verify&certId=…
+  // - directory:          /directory/
+  // (kept as a no-op effect slot removed; see git history for the mount effect)
 
   // --- Handlers for Club Module ---
   const handleClubRegistered = (newClub: InstituteClub) => {
@@ -225,6 +227,7 @@ export function App() {
                   setCurrentTab('admin_overview');
                 }}
                 onVerifyCertificates={() => setCurrentTab('verify')}
+                onOpenDirectory={() => setCurrentTab('directory')}
               />
             )}
 
@@ -252,14 +255,11 @@ export function App() {
             )}
 
             {currentTab === 'verify' && (
-              <VerifyCertificateView
-                certificates={certificates}
-                initialCertId={verifyInitialCertId}
-                onViewFullCertificate={(cert) => {
-                  setActiveCertificate(cert);
-                  setCurrentTab('view_certificate');
-                }}
-              />
+              <VerifyCertificateView initialCertId={verifyInitialCertId} />
+            )}
+
+            {currentTab === 'directory' && (
+              <DirectoryView onBack={() => setCurrentTab('home')} />
             )}
 
             {currentTab === 'view_certificate' && activeCertificate && (

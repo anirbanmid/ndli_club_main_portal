@@ -66,6 +66,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "drf_spectacular",
+    # PostgreSQL integration: pg_trgm lookups for the public directory
+    # search (M3-2). No models; on non-Postgres it simply sits idle.
+    "django.contrib.postgres",
     # Project apps (spec section 2: cross-cutting modules)
     "apps.core",
     "apps.domain",
@@ -99,6 +102,9 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # M3-8: conditional GETs (ETag/If-None-Match -> 304) for the SPA/static
+    # responses served by apps.core.frontend and cached API payloads.
+    "django.middleware.http.ConditionalGetMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -172,6 +178,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# M3-A6 single-origin: the built frontend (Vite dist + M3-7 pre-rendered
+# shells) served by Django. Sibling of backend/ in the repository layout.
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Django REST Framework / OpenAPI --------------------------------------
@@ -240,6 +250,14 @@ SMS_BACKEND = env("SMS_BACKEND", "console")
 # --- Logging (no PII, no tokens — spec section 9) -------------------------
 
 LOG_LEVEL = env("LOG_LEVEL", "INFO")
+
+# --- M3 certificate HMAC keyring (BRIEF_M3 §4a, pin V3) ---------------------
+# Key MATERIAL lives only in the environment/secret store — never the
+# database, never a log line, never an API response. Parsing/validation is
+# single-sourced in apps/certificates/signing.py (P4); settings only carries
+# the raw environment strings through.
+CERT_HMAC_KEYRING = env("CERT_HMAC_KEYRING", "")
+CERT_HMAC_ACTIVE_KEY_ID = env("CERT_HMAC_ACTIVE_KEY_ID", "")
 
 LOGGING = {
     "version": 1,

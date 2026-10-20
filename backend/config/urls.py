@@ -6,9 +6,10 @@ health endpoints are at /health/ and /health/ready/ for probes and the
 readiness gate (infra/nginx.conf, docker-compose healthchecks, CI smoke tests).
 """
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from apps.core import frontend as core_frontend
 from apps.core import views as core_views
 
 API_URLPATTERNS = [
@@ -42,4 +43,9 @@ urlpatterns = [
     ),
     # Versioned API surface; each bounded context mounts its own routes.
     path("api/v1/", include((API_URLPATTERNS, "api"))),
+    # Collected admin static files (P0: path-contained serving).
+    path("static/<path:path>", core_frontend.serve_static, name="static-root"),
+    # M3-A6 single-origin: everything else is the built frontend. The catch-all
+    # is parameterised (and last) so it never shadows /api/, /admin/, /health/.
+    re_path(r"^(?P<path>.*)$", core_frontend.serve_frontend, name="spa"),
 ]

@@ -1,44 +1,163 @@
-import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Search, 
-  CheckCircle2, 
-  XCircle, 
-  Building2, 
-  Calendar, 
-  Award, 
-  User, 
-  ExternalLink 
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ShieldCheck,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Building2,
+  Calendar,
+  Award,
+  User,
+  Hash,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
-import { CertificateData } from '../types';
-import { t } from "../i18n";
+import { t } from '../i18n';
+import { ApiError, verifyCertificate, VerifyVerdict } from '../lib/api';
+
+/**
+ * M3 public certificate verifier (DESIGN_M3_VERIFIER §3).
+ *
+ * Three result states: valid / revoked / unverified. The unverified card is
+ * ONE card for every failure mode (unknown id, bad signature, malformed id) —
+ * the API returns byte-identical bodies and the UI must not invent a
+ * distinction (§4, P0 anti-enumeration). Exactly six disclosure fields.
+ */
 
 interface VerifyCertificateViewProps {
-  certificates: CertificateData[];
+  /** Deep-link id (`/verify/?id=…` or legacy `?tab=verify&certId=…`). */
   initialCertId?: string;
-  onViewFullCertificate: (cert: CertificateData) => void;
+}
+
+/** Demo ids from `data/samples/certificates.json` (non-revoked fixtures). */
+const SAMPLE_CERTIFICATE_IDS = ['NDLI-DEAL-2345', 'NDLI-BGHJ-7K8M'];
+
+type Phase = 'idle' | 'loading' | 'result';
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '';
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
-  certificates,
   initialCertId = '',
-  onViewFullCertificate,
 }) => {
   const [searchId, setSearchId] = useState(initialCertId);
-  const [searched, setSearched] = useState(Boolean(initialCertId));
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [verdict, setVerdict] = useState<VerifyVerdict | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submittedId, setSubmittedId] = useState('');
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const pendingRef = useRef(false);
 
-  const trimmedId = searchId.trim().toUpperCase();
-  const foundCert = certificates.find(c => c.certId.toUpperCase() === trimmedId);
+  const runVerify = (rawId: string) => {
+    const id = rawId.trim().toUpperCase();
+    if (!id || pendingRef.current) return;
+    pendingRef.current = true;
+    setSubmittedId(id);
+    setPhase('loading');
+    setVerdict(null);
+    setError(null);
+    verifyCertificate(id)
+      .then((result) => {
+        setVerdict(result);
+        setPhase('result');
+      })
+      .catch((err: unknown) => {
+        setError(
+          err instanceof ApiError && err.kind === 'rate-limit'
+            ? t('Too many verification requests — please wait a moment and try again.')
+            : t('Could not reach the verification service. Please check your connection and try again.'),
+        );
+        setPhase('result');
+      })
+      .finally(() => {
+        pendingRef.current = false;
+      });
+  };
+
+  // Deep link: auto-verify on mount (QR target /verify/?id=…).
+  useEffect(() => {
+    if (initialCertId) runVerify(initialCertId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCertId]);
+
+  // Move focus to the result heading after each verdict (WCAG).
+  useEffect(() => {
+    if (phase === 'result') headingRef.current?.focus();
+  }, [phase, verdict, error]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearched(true);
+    const id = searchId.trim().toUpperCase();
+    if (!id) return;
+    // Canonical shareable URL (the QR payload shape).
+    window.history.replaceState(null, '', `/verify/?id=${encodeURIComponent(id)}`);
+    runVerify(id);
   };
 
   const handleQuickLookup = (id: string) => {
     setSearchId(id);
-    setSearched(true);
+    window.history.replaceState(null, '', `/verify/?id=${encodeURIComponent(id)}`);
+    runVerify(id);
   };
+
+  const statusText = (status: VerifyVerdict['status']): string =>
+    status === 'valid' ? t('Valid') : status === 'revoked' ? t('Revoked') : t('Unverified');
+
+  const renderFields = (v: VerifyVerdict) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <User className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Recipient Name')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.name}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Award className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Club')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.club}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Building2 className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Institution')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.institution}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Calendar className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Date')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{formatDate(v.date)}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Award className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Event')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.event_title}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Hash className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Status')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{statusText(v.status)}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -46,28 +165,29 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
       <div className="text-center space-y-3">
         <div className="inline-flex items-center space-x-2 bg-brand-50 border border-brand-200 text-brand-800 px-3.5 py-1 rounded-full text-xs font-bold">
           <ShieldCheck className="h-4 w-4 text-brand-700" />
-          <span>{t("Public Credential Verification Portal")}</span>
+          <span>{t('Public Credential Verification Portal')}</span>
         </div>
         <h1 className="text-3xl font-extrabold text-ink-900 tracking-tight">
-          {t("Verify Official NDLI Club Certificate")}
-                          </h1>
+          {t('Verify Official NDLI Club Certificate')}
+        </h1>
         <p className="text-xs sm:text-sm text-ink-600 max-w-lg mx-auto">
-          {t("Every certificate issued by NDLI Club contains an immutable cryptographic ID and digital signature verified against IIT Kharagpur records.")}
-                          </p>
+          {t('Every certificate issued by NDLI Club contains an immutable cryptographic ID and digital signature verified against IIT Kharagpur records.')}
+        </p>
       </div>
 
       {/* Search Input Box */}
       <form onSubmit={handleSearch} className="bg-white p-6 sm:p-8 rounded-2xl border border-ink-200 shadow-md space-y-4">
-        <label className="text-xs font-bold text-ink-700 block">
-          {t("Enter Certificate Identification Number (CID)")}
-                          </label>
-        
+        <label className="text-xs font-bold text-ink-700 block" htmlFor="verify-cid-input">
+          {t('Enter Certificate Identification Number (CID)')}
+        </label>
+
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative grow">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-ink-600" />
             <input
+              id="verify-cid-input"
               type="text"
-              placeholder={t("e.g. NDLI-A7KQ-2M4X")}
+              placeholder={t('e.g. NDLI-A7KQ-2M4X')}
               value={searchId}
               onChange={(e) => setSearchId(e.target.value.toUpperCase())}
               required
@@ -77,119 +197,131 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
 
           <button
             type="submit"
-            className="px-7 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md flex items-center justify-center space-x-2 transition-all shrink-0"
+            disabled={phase === 'loading'}
+            className="px-7 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-bold text-sm shadow-md flex items-center justify-center space-x-2 transition-all shrink-0"
           >
-            <ShieldCheck className="h-4 w-4" />
-            <span>{t("Verify Authenticity")}</span>
+            {phase === 'loading' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="h-4 w-4" />
+            )}
+            <span>{t('Verify Authenticity')}</span>
           </button>
         </div>
 
-        {/* Quick sample chips */}
+        {/* Quick sample chips (public demo fixtures) */}
         <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
-          <span className="text-ink-600 font-medium">{t("Try Sample Verified IDs:")}</span>
-          {certificates.slice(0, 2).map(c => (
+          <span className="text-ink-600 font-medium">{t('Try Sample Verified IDs:')}</span>
+          {SAMPLE_CERTIFICATE_IDS.map((id) => (
             <button
-              key={c.certId}
+              key={id}
               type="button"
-              onClick={() => handleQuickLookup(c.certId)}
+              onClick={() => handleQuickLookup(id)}
               className="font-mono text-[11px] font-bold text-brand-700 bg-brand-50 hover:bg-brand-100 px-2 py-0.5 rounded border border-brand-200"
             >
-              {c.certId}
+              {id}
             </button>
           ))}
         </div>
       </form>
 
-      {/* Search Results Display */}
-      {searched && (
-        <div className="animate-in fade-in">
-          {foundCert ? (
-            <div className="bg-white rounded-2xl border-2 border-brand-400/80 p-6 sm:p-8 shadow-xl space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-100 pb-5">
-                <div className="flex items-center space-x-3">
-                  <div className="h-12 w-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center">
-                    <CheckCircle2 className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-brand-700">
-                      {t("Official Record Confirmed")}
-                                                              </span>
-                    <h3 className="text-xl font-extrabold text-ink-900">
-                      {t("Valid & Authentic Certificate")}
-                                                              </h3>
-                  </div>
-                </div>
+      {/* Result region — announced politely to screen readers */}
+      <div aria-live="polite" className="animate-in fade-in">
+        {phase === 'loading' && (
+          <div className="bg-white rounded-2xl border border-ink-200 p-8 text-center space-y-3 shadow-md">
+            <Loader2 className="h-8 w-8 text-brand-600 animate-spin mx-auto" />
+            <p className="text-sm text-ink-600">{t('Verifying against IIT Kharagpur records…')}</p>
+          </div>
+        )}
 
-                <div className="text-right sm:text-right">
-                  <span className="font-mono text-xs font-bold text-ink-600 bg-ink-100 px-3 py-1.5 rounded-lg border border-ink-200">
-                    {t("CID:")} {foundCert.certId}
+        {phase === 'result' && error && (
+          <div className="bg-white rounded-2xl border-2 border-amber-300 p-8 text-center space-y-3 shadow-md">
+            <div className="h-12 w-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold text-ink-900 focus:outline-hidden">
+              {t('Verification Service Unavailable')}
+            </h3>
+            <p className="text-xs text-ink-600 max-w-sm mx-auto">{error}</p>
+          </div>
+        )}
+
+        {phase === 'result' && !error && verdict?.status === 'valid' && (
+          <div className="bg-white rounded-2xl border-2 border-brand-400/80 p-6 sm:p-8 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-100 pb-5">
+              <div className="flex items-center space-x-3">
+                <div className="h-12 w-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-700">
+                    {t('Official Record Confirmed')}
                   </span>
+                  <h3 ref={headingRef} tabIndex={-1} className="text-xl font-extrabold text-ink-900 focus:outline-hidden">
+                    {t('Valid & Authentic Certificate')}
+                  </h3>
                 </div>
               </div>
 
-              {/* Data Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-                    <User className="h-3.5 w-3.5 text-brand-600" />
-                    <span>{t("Recipient Name")}</span>
-                  </div>
-                  <div className="text-sm font-bold text-ink-900">{foundCert.recipientName}</div>
-                  {foundCert.recipientRoll && (
-                    <div className="text-[11px] text-ink-600 font-mono">{t("Roll:")} {foundCert.recipientRoll}</div>
-                  )}
-                </div>
-
-                <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-                    <Building2 className="h-3.5 w-3.5 text-brand-600" />
-                    <span>{t("Associated Institution")}</span>
-                  </div>
-                  <div className="text-sm font-bold text-ink-900">{foundCert.instituteName}</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-                    <Award className="h-3.5 w-3.5 text-brand-600" />
-                    <span>{t("Event & Classification")}</span>
-                  </div>
-                  <div className="text-sm font-bold text-ink-900">{foundCert.eventName}</div>
-                  <div className="text-[11px] text-brand-700 font-semibold">{t("Award Category:")} {t(foundCert.category)}</div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-                  <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-                    <Calendar className="h-3.5 w-3.5 text-brand-600" />
-                    <span>{t("Issuance & Authority")}</span>
-                  </div>
-                  <div className="text-sm font-bold text-ink-900">{foundCert.eventDate}</div>
-                  <div className="text-[11px] text-ink-600">{t("Issued by IIT Kharagpur & NDLI HQ")}</div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-ink-100 flex justify-end">
-                <button
-                  onClick={() => onViewFullCertificate(foundCert)}
-                  className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md flex items-center space-x-2 transition-all"
-                >
-                  <span>{t("View Printable Master Certificate")}</span>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
+              <div className="text-right">
+                <span className="font-mono text-xs font-bold text-ink-600 bg-ink-100 px-3 py-1.5 rounded-lg border border-ink-200">
+                  {t('CID:')} {submittedId}
+                </span>
               </div>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl border-2 border-rose-200 p-8 text-center space-y-3 shadow-md">
-              <div className="h-12 w-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-                <XCircle className="h-7 w-7" />
+
+            {renderFields(verdict)}
+          </div>
+        )}
+
+        {phase === 'result' && !error && verdict?.status === 'revoked' && (
+          <div className="bg-white rounded-2xl border-2 border-rose-300 p-6 sm:p-8 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-100 pb-5">
+              <div className="flex items-center space-x-3">
+                <div className="h-12 w-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                  <XCircle className="h-7 w-7" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
+                    {t('Revocation On Record')}
+                  </span>
+                  <h3 ref={headingRef} tabIndex={-1} className="text-xl font-extrabold text-ink-900 focus:outline-hidden">
+                    {t('Certificate Revoked')}
+                  </h3>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-ink-900">{t("Certificate Not Found")}</h3>
-              <p className="text-xs text-ink-600 max-w-sm mx-auto">
-                {t("No certificate with ID")} <strong className="font-mono text-ink-800 font-bold">{trimmedId}</strong> {t("was found in the central NDLI database.")}
-                                                </p>
+
+              <div className="text-right">
+                <span className="font-mono text-xs font-bold text-ink-600 bg-ink-100 px-3 py-1.5 rounded-lg border border-ink-200">
+                  {t('CID:')} {submittedId}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+
+            <p className="text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-3">
+              {t('This certificate has been revoked by the issuing authority.')}
+            </p>
+
+            {renderFields(verdict)}
+          </div>
+        )}
+
+        {phase === 'result' && !error && verdict?.status === 'invalid' && (
+          <div className="bg-white rounded-2xl border-2 border-rose-200 p-8 text-center space-y-3 shadow-md">
+            <div className="h-12 w-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <XCircle className="h-7 w-7" />
+            </div>
+            <h3 ref={headingRef} tabIndex={-1} className="text-lg font-bold text-ink-900 focus:outline-hidden">
+              {t('Certificate Could Not Be Verified')}
+            </h3>
+            <p className="text-xs text-ink-600 max-w-sm mx-auto">
+              {t('The ID you entered')}{' '}
+              <strong className="font-mono text-ink-800 font-bold">{submittedId}</strong>{' '}
+              {t('could not be verified. Please check the certificate ID printed on the certificate and try again.')}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

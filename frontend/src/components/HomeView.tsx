@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Building2, 
   Users, 
@@ -8,16 +8,14 @@ import {
   MapPin, 
   CheckCircle2, 
   ArrowRight, 
-  BookOpen, 
-  Zap, 
-  ShieldCheck, 
-  FileCheck2,
   Sparkles,
-  Landmark,
-  GraduationCap
+  GraduationCap,
+  ListTree
 } from 'lucide-react';
 import { InstituteClub } from '../types';
 import { t } from "../i18n";
+import { TelemetrySection } from './TelemetrySection';
+import { fetchTelemetry, TelemetryPayload } from '../lib/api';
 
 interface HomeViewProps {
   clubs: InstituteClub[];
@@ -27,6 +25,7 @@ interface HomeViewProps {
   onGoToClubModule: () => void;
   onGoToAdminModule: () => void;
   onVerifyCertificates: () => void;
+  onOpenDirectory: () => void;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -37,10 +36,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onGoToClubModule,
   onGoToAdminModule,
   onVerifyCertificates,
+  onOpenDirectory,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Live registry telemetry (M3-1): one fetch, two views (chart + table).
+  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
+  const [telemetryLoading, setTelemetryLoading] = useState(true);
+  const [telemetryFailed, setTelemetryFailed] = useState(false);
+
+  useEffect(() => {
+    fetchTelemetry()
+      .then((payload) => {
+        setTelemetry(payload);
+        setTelemetryFailed(false);
+      })
+      .catch(() => setTelemetryFailed(true))
+      .finally(() => setTelemetryLoading(false));
+  }, []);
 
   // Active verified clubs only for the public directory
   const activeClubs = clubs.filter(c => c.status === 'Active');
@@ -151,6 +166,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
+      {/* Live registry telemetry (chart + accessible table, one payload) */}
+      <TelemetrySection data={telemetry} loading={telemetryLoading} failed={telemetryFailed} />
+
       {/* Directory of Authorized NDLI Clubs */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#E2ECE7] pb-5">
@@ -168,6 +186,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenDirectory}
+              className="px-3.5 py-1.5 rounded-xl border border-[#E2ECE7] bg-white text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] flex items-center space-x-1.5 shadow-2xs"
+            >
+              <ListTree className="h-3.5 w-3.5 text-[#0D7751]" />
+              <span>{t("Full Institution Directory")}</span>
+            </button>
             <button
               onClick={onVerifyCertificates}
               className="px-3.5 py-1.5 rounded-xl border border-[#E2ECE7] bg-white text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] flex items-center space-x-1.5 shadow-2xs"

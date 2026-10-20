@@ -1,0 +1,64 @@
+[
+  {
+    "certificate_id": "NDLI-DEAL-2345",
+    "username": "STUDENT-01",
+    "club": "CLB-DU-CULT",
+    "category": "Participation",
+    "event_ref": "EVT-DU-CULT-001",
+    "event_title": "Annual Cultural Fest 2025 (SAMPLE)",
+    "event_date": "2025-11-14",
+    "issue_date": "2025-11-15"
+  },
+  {
+    "certificate_id": "NDLI-BGHJ-7K8M",
+    "username": "STUDENT-02",
+    "club": "CLB-DU-CULT",
+    "category": "Merit",
+    "event_ref": "EVT-DU-CULT-001",
+    "event_title": "Annual Cultural Fest 2025 (SAMPLE)",
+    "event_date": "2025-11-14",
+    "issue_date": "2025-11-15"
+  },
+  {
+    "certificate_id": "NDLI-NPQR-2345",
+    "username": "CULT-PRES",
+    "club": "CLB-DU-CULT",
+    "category": "Club Registration",
+    "event_ref": "EVT-CLB-REG-2025",
+    "event_title": "Club Registration 2025-26 (SAMPLE)",
+    "event_date": "2025-07-01",
+    "issue_date": "2025-07-01"
+  },
+  {
+    "certificate_id": "NDLI-WXYZ-6789",
+    "username": "STUDENT-03",
+    "club": "CLB-MH-TECH",
+    "category": "Participation",
+    "event_ref": "EVT-MH-TECH-001",
+    "event_title": "Robotics Workshop (SAMPLE)",
+    "event_date": "2025-09-20",
+    "issue_date": "2025-09-21"
+  },
+  {
+    "certificate_id": "NDLI-CDEF-2345",
+    "username": "STUDENT-04",
+    "club": "CLB-KA-TECH",
+    "category": "Merit",
+    "event_ref": "EVT-KA-TECH-001",
+    "event_title": "Hackathon 2025 (SAMPLE)",
+    "event_date": "2025-08-08",
+    "issue_date": "2025-08-09"
+  },
+  {
+    "certificate_id": "NDLI-JKLM-6789",
+    "username": "KAPRES",
+    "club": "CLB-KA-TECH",
+    "category": "Participation",
+    "event_ref": "EVT-KA-TECH-002",
+    "event_title": "Tech Talk Series (SAMPLE)",
+    "event_date": "2025-10-02",
+    "issue_date": "2025-10-03",
+    "revoked": true,
+    "revocation_reason": "Duplicate issuance (SAMPLE)"
+  }
+]

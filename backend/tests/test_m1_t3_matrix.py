@@ -64,6 +64,9 @@ ENDPOINT_MATRIX: dict[str, str] = {
     "/health/ready/": "public",
     "/api/schema/": "public",
     "/api/docs/": "public",
+    # M3 Module 1 (General Public): telemetry/directory/verify — anonymous
+    # read-only by design (PLAN_ACCESS_ARCHITECTURE §6, BRIEF_M3 M3-A1/A2).
+    "/api/v1/public/": "public",
     "/admin/": "admin",
 }
 

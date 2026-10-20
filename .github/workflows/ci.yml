@@ -150,3 +150,60 @@ jobs:
           npx --yes @axe-core/cli@4.10.2 http://127.0.0.1:4173/ \
             --exit --chrome-options="--no-sandbox" \
             --chromedriver-path="$AXE_CHROMEDRIVER"
+
+  e2e:
+    name: E2E + axe (Playwright, V8)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Playwright E2E + axe (verifier/directory/telemetry)
+        working-directory: frontend
+        run: npx playwright test
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  lighthouse:
+    name: Lighthouse (a11y hard gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Lighthouse CI (lighthouserc.json assertions)
+        working-directory: frontend
+        run: npx lhci autorun
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: frontend/.lighthouseci/
+          retention-days: 7

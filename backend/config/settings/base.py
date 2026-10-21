@@ -90,8 +90,9 @@ INSTALLED_APPS = [
 ]
 
 # M2U (A10 Option B, owner 2026-10-19): one person = one record. The custom
-# user model carries identity + profile in the legacy auth_user table
-# (db_table override, M2U-A2) so every existing user FK keeps its target.
+# user model carries identity + profile on one table (db_table override;
+# renamed auth_user -> accounts_user in the post-M3 hygiene batch, migration
+# 0004) so every existing user FK keeps its target.
 AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [

@@ -77,7 +77,7 @@ Index: `club_institution_idx` (institution). Derived: `club.zone`.
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
 | id | bigint | PK | |
-| user_id | bigint | FK → auth_user.id, NN, CASCADE | |
+| user_id | bigint | FK → accounts_user.id, NN, CASCADE | |
 | club_id | bigint | FK → domain_club.id, NN, PROTECT | |
 | role | varchar(16) | NN | member · volunteer · core_team |
 | joined_on | date | NN | |
@@ -90,7 +90,7 @@ U (`membership_user_club_uniq`): one row per (user, club). Index:
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
 | id | bigint | PK | |
-| user_id | bigint | FK → auth_user.id, NN, CASCADE | |
+| user_id | bigint | FK → accounts_user.id, NN, CASCADE | |
 | club_id | bigint | FK → domain_club.id, NN, PROTECT | |
 | tier | varchar(16) | NN | patron · president · secretary · executive |
 | from_date | date | NN | window start |
@@ -106,7 +106,7 @@ Indexes: `authority_club_tier_from_idx` (club, tier, from_date),
 | --- | --- | --- | --- |
 | id | bigint | PK | |
 | state_id | bigint | FK → domain_state.id, NN, PROTECT | |
-| officer_id | bigint | FK → auth_user.id, NN, CASCADE | |
+| officer_id | bigint | FK → accounts_user.id, NN, CASCADE | |
 | from_date | date | NN | window start |
 | to_date | date | nullable | empty = open-ended |
 

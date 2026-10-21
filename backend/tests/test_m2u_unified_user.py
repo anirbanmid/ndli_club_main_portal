@@ -32,15 +32,17 @@ from .support import M1PinTestCase as TestCase
 
 #: Tables that carry a user foreign key: table -> (fk column, target).
 USER_FK_TABLES: dict[str, tuple[str, tuple[str, str]]] = {
-    "accounts_emailotp": ("user_id", ("auth_user", "id")),
-    "accounts_emaillinktoken": ("user_id", ("auth_user", "id")),
-    "accounts_totprecoverycode": ("user_id", ("auth_user", "id")),
-    "domain_membership": ("user_id", ("auth_user", "id")),
-    "domain_officerassignment": ("officer_id", ("auth_user", "id")),
-    "domain_authorityassignment": ("user_id", ("auth_user", "id")),
+    "accounts_emailotp": ("user_id", ("accounts_user", "id")),
+    "accounts_emaillinktoken": ("user_id", ("accounts_user", "id")),
+    "accounts_totprecoverycode": ("user_id", ("accounts_user", "id")),
+    "domain_membership": ("user_id", ("accounts_user", "id")),
+    "domain_officerassignment": ("officer_id", ("accounts_user", "id")),
+    "domain_authorityassignment": ("user_id", ("accounts_user", "id")),
 }
 
 #: The P2 index plan on the merged user table (BRIEF_M2U.md §3 / U5).
+#: Legacy ``auth_user_*`` prefixes are stable identifiers: migration 0004
+#: renamed the TABLE only (indexes are never renamed — churn without value).
 USER_INDEXES = (
     "auth_user_categor_9de067_idx",
     "auth_user_institu_46392f_idx",
@@ -59,7 +61,7 @@ class U1SchemaTests(TestCase):
     """One model, one table, no shim (M2U-A4)."""
 
     def test_identity_and_profile_live_on_the_user_table(self) -> None:
-        self.assertEqual(User._meta.db_table, "auth_user")
+        self.assertEqual(User._meta.db_table, "accounts_user")
 
     def test_the_side_profile_table_is_gone(self) -> None:
         tables = connection.introspection.table_names()
@@ -90,7 +92,7 @@ class U2DataSafetyTests(TestCase):
     def test_seeding_creates_one_row_per_person(self) -> None:
         call_command("seed_samples", verbosity=0)
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM auth_user")
+            cursor.execute("SELECT COUNT(*) FROM accounts_user")
             users = cursor.fetchone()[0]
         self.assertEqual(User.objects.count(), users)
         self.assertEqual(User.objects.values("username").distinct().count(), users)
@@ -134,14 +136,14 @@ class U5CapacityTests(TestCase):
     """The P2 index plan is really on the table (introspected)."""
 
     def test_every_planned_user_index_exists(self) -> None:
-        constraints = _constraints("auth_user")
+        constraints = _constraints("accounts_user")
         present = {name for name, info in constraints.items() if info["index"]}
         for name in USER_INDEXES:
             with self.subTest(index=name):
                 self.assertIn(name, present)
 
     def test_the_username_stays_the_unique_login_key(self) -> None:
-        constraints = _constraints("auth_user")
+        constraints = _constraints("accounts_user")
         unique = {
             tuple(info["columns"])
             for info in constraints.values()

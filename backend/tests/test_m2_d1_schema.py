@@ -160,8 +160,10 @@ class MigrationRoundTripTests(TransactionTestCase):
         "zone_code",
     )
 
-    #: The only two tables this comparison ever reads. Anything else is a bug.
-    _ALLOWED_TABLES = frozenset({"auth_user", "accounts_profile"})
+    #: The tables this comparison ever reads. Anything else is a bug.
+    #: (``auth_user`` is the pre-0004 name, exercised by the backwards leg;
+    #: ``accounts_user`` is the post-hygiene name at HEAD.)
+    _ALLOWED_TABLES = frozenset({"auth_user", "accounts_user", "accounts_profile"})
 
     def _merged_row(self, table: str, user_id: int) -> tuple:
         # SECURITY: identifiers are drawn from an allowlist, never from
@@ -170,7 +172,7 @@ class MigrationRoundTripTests(TransactionTestCase):
         # value in the query and it is bound as a parameter, not interpolated.
         if table not in self._ALLOWED_TABLES:
             raise ValueError(f"unexpected table {table!r}")
-        key = "id" if table == "auth_user" else "user_id"
+        key = "id" if table in {"auth_user", "accounts_user"} else "user_id"
         columns = ", ".join(self.MERGED_COLUMNS)
         sql = " ".join(("SELECT", columns, "FROM", table, "WHERE", key, "= %s"))
         with connection.cursor() as cursor:
@@ -193,7 +195,7 @@ class MigrationRoundTripTests(TransactionTestCase):
             must_change_password=True,
         )
         pk = user.pk
-        before = self._merged_row("auth_user", pk)
+        before = self._merged_row("accounts_user", pk)
 
         # Backwards: the side profile table comes back, the merged columns go.
         call_command("migrate", "accounts", "0002_profile_scope_fks", verbosity=0)
@@ -209,14 +211,22 @@ class MigrationRoundTripTests(TransactionTestCase):
         self.assertNotIn("category", columns)
         # U2: field-by-field equality of the restored profile row.
         self.assertEqual(self._merged_row("accounts_profile", pk), before)
-        # M2U-A1: the user row itself never moved.
-        self.assertTrue(User.objects.filter(pk=pk).exists())
+        # M2U-A1: the user row itself never moved (raw check: at this
+        # historical state the table carries its pre-0004 name and the live
+        # ORM would look for the renamed table).
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM auth_user WHERE id = %s", [pk])
+            self.assertIsNotNone(cursor.fetchone())
 
         # Forward again: merged back onto the SAME user row.
         call_command("migrate", "accounts", "0003_unified_user", verbosity=0)
         tables = connection.introspection.table_names()
         self.assertNotIn("accounts_profile", tables)
         self.assertEqual(self._merged_row("auth_user", pk), before)
+        # Hygiene 0004 renames the physical table; the ORM asserts run at
+        # HEAD (and the renamed table keeps every merged byte).
+        call_command("migrate", verbosity=0)
+        self.assertEqual(self._merged_row("accounts_user", pk), before)
         merged = User.objects.get(pk=pk)
         self.assertEqual(merged.username, "d1roundtrip")
         self.assertEqual(merged.club_code, "CLB-DU-CULT")

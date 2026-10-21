@@ -112,10 +112,11 @@ class User(AbstractUser):
     """One person = ONE record (M2U): authentication + identity + scope unified.
 
     Replaces the M1 shape (stock ``auth.User`` + side ``Profile`` table) per
-    A10 Option B (owner, 2026-10-19). The model keeps the legacy physical
-    table (``db_table = "auth_user"``, M2U-A2) so every user FK in the system
-    keeps targeting the same rows with zero constraint surgery; the cosmetic
-    table rename is a tracked priority-list item (MEMORY.md).
+    A10 Option B (owner, 2026-10-19). The merged model first kept the legacy
+    physical table (``db_table = "auth_user"``, M2U-A2) so every user FK kept
+    targeting the same rows with zero constraint surgery; the cosmetic rename
+    to ``accounts_user`` landed in the first post-M3 hygiene batch (migration
+    0004, MEMORY.md priority item 2).
 
     The scope keys (institution/zone/club/state) are M2 relations to the
     domain tables: explicit FKs over implicit code-string contracts (P3),
@@ -209,21 +210,30 @@ class User(AbstractUser):
     }
 
     class Meta(AbstractUser.Meta):
-        # M2U-A2: the legacy table name is kept ON PURPOSE — every user FK
-        # (memberships, assignments, passkeys, OTPs) already targets
-        # auth_user.id; renaming the table is a tracked cosmetic item
-        # (MEMORY.md priority list), not a merge-day risk.
-        db_table = "auth_user"
+        # Post-M3 hygiene (MEMORY.md priority item 2, migration 0004): the
+        # cosmetic rename auth_user -> accounts_user. Postgres re-points the
+        # user FKs (memberships, assignments, passkeys, OTPs) automatically
+        # on RENAME; SQLite rewrites the references too. Legacy index names
+        # (auth_user_*) are intentionally left alone — renaming them is
+        # schema churn without value (tracked with M2U-A2).
+        db_table = "accounts_user"
         # The four scope FKs keep the reverse accessor name "profiles" for
         # the same reason as the table name above: it is a M1-era artifact,
         # unused in code, and renaming it would churn the schema of the
         # auth table for a cosmetic gain. Tracked with M2U-A2.
+        # Index names are PINNED explicitly to the frozen M2U-era names: the
+        # table rename (0004) must not cascade into index renames, and an
+        # explicit name is the single source of truth (P4) vs. Django's
+        # table-derived auto-names.
         indexes = [
-            models.Index(fields=["category", "sub_role"]),
-            models.Index(fields=["institution"]),
-            models.Index(fields=["club"]),
-            models.Index(fields=["zone"]),
-            models.Index(fields=["state"]),
+            models.Index(
+                fields=["category", "sub_role"],
+                name="auth_user_categor_9de067_idx",
+            ),
+            models.Index(fields=["institution"], name="auth_user_institu_46392f_idx"),
+            models.Index(fields=["club"], name="auth_user_club_co_6bb4a8_idx"),
+            models.Index(fields=["zone"], name="auth_user_zone_co_3252d4_idx"),
+            models.Index(fields=["state"], name="auth_user_state_c_4b197f_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper

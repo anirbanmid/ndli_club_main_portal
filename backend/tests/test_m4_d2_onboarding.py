@@ -10,6 +10,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
+import tempfile
 from typing import Any
 
 from django.core import mail
@@ -269,7 +271,10 @@ class OtpAdversarialTests(TestCase):
         self.assertIsNone(patron.otp_verified_at)
 
 
-@override_settings(ONBOARDING_UPLOAD_ROOT="/tmp/onboarding-test-uploads")
+_TEST_UPLOAD_ROOT = os.path.join(tempfile.gettempdir(), "onboarding-test-uploads")
+
+
+@override_settings(ONBOARDING_UPLOAD_ROOT=_TEST_UPLOAD_ROOT)
 class UploadHardeningTests(TestCase):
     """W3 — the combined document is validated, hashed, never inline."""
 

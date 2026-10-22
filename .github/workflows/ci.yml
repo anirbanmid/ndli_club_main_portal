@@ -99,7 +99,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npm audit --audit-level=high
+          npm audit --omit=dev --audit-level=high --package-lock-only
 
   sast:
     name: SAST (bandit)

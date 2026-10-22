@@ -8,7 +8,7 @@ sizes bounded (no unbounded query at 110K, BRIEF_M2.md §3 / P2).
 """
 from __future__ import annotations
 
-from django.db.models import QuerySet
+from django.db.models import Count, Q, QuerySet
 
 from .models import Institution, Membership, OfficerAssignment
 
@@ -72,6 +72,23 @@ def club_roster(club_code: str) -> list[Membership]:
         .filter(club__code=club_code, status=Membership.Status.ACTIVE)
         .order_by("joined_on", "pk")
     )
+
+
+def roster_aggregates(club_code: str) -> dict[str, int]:
+    """Public-safe membership COUNTS of one club (M4-A2 / P0: never rows).
+
+    ONE aggregate query (P1/P2) — the single source for every roster figure
+    shown anywhere (public showcase + club dashboard reuse THIS, P4).
+    """
+    rows = Membership.objects.filter(club__code=club_code).aggregate(
+        members_total=Count("id"),
+        members_active=Count("id", filter=Q(status=Membership.Status.ACTIVE)),
+        alumni=Count("id", filter=Q(status=Membership.Status.ALUMNI)),
+        members_suspended=Count(
+            "id", filter=Q(status=Membership.Status.SUSPENDED)
+        ),
+    )
+    return {key: int(value or 0) for key, value in rows.items()}
 
 
 def memberships_of_user(user_id: int) -> list[Membership]:

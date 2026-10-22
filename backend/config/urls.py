@@ -14,6 +14,7 @@ from apps.core import views as core_views
 
 API_URLPATTERNS = [
     path("accounts/", include("apps.accounts.urls")),
+    path("onboarding/", include("apps.onboarding.urls")),
     path("institutions/", include("apps.institutions.urls")),
     path("clubs/", include("apps.clubs.urls")),
     path("members/", include("apps.members.urls")),

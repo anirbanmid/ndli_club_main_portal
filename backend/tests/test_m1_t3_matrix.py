@@ -67,6 +67,30 @@ ENDPOINT_MATRIX: dict[str, str] = {
     # M3 Module 1 (General Public): telemetry/directory/verify — anonymous
     # read-only by design (PLAN_ACCESS_ARCHITECTURE §6, BRIEF_M3 M3-A1/A2).
     "/api/v1/public/": "public",
+    # M4 D1 auth surface: the club module's login door (BRIEF_M4 §3 D1).
+    # The credential endpoints (otp/request, otp/verify, login) are reachable
+    # anonymously BY NECESSITY — a login door cannot demand a session first
+    # (same reasoning as t4's AUTH_ENTRY for /admin/login/); the data endpoints
+    # (me, logout, password/change) are IsAuthenticated + CategoryGate where
+    # applicable. Mapped to the module that OWNS the door, not to "public" —
+    # this namespace carries private data (me/ returns the user record).
+    "/api/v1/accounts/": "club",
+    # M4 D2 onboarding wizard: pre-account capability-token door (the
+    # authorities have no accounts yet; steps are OTP-validated in place).
+    # Club-niche onboarding, mapped to its owner module like accounts.
+    "/api/v1/onboarding/": "club",
+    # M4 D3 (BRIEF_M4 §3 D3): the public club showcase directory + pages are
+    # anonymous read-only by design (OPTION B public listing; public-safe
+    # aggregates only, P0).
+    "/api/v1/clubs/showcase/": "public",
+    # M4 D3 club module: the campus self-join OTP door (anonymous BY
+    # NECESSITY — a join door cannot demand a session first; mapped to the
+    # module that OWNS it, exactly like the accounts login door) plus the
+    # dashboard surface (club authorities only, W9).
+    "/api/v1/clubs/": "club",
+    # M4 D3 roster-side join decisions (confirm/reject) — club authorities
+    # only, scope-keyed to the caller's club (W9).
+    "/api/v1/members/": "club",
     "/admin/": "admin",
 }
 

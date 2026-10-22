@@ -47,6 +47,22 @@ def generate_passkey() -> str:
     return secrets.token_urlsafe(24)
 
 
+#: Unambiguous alphabet for short campus codes (no I/O/0/1 to misread).
+CAMPUS_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def generate_campus_code(prefix: str) -> str:
+    """Short human-typable campus passkey code (M4 D3, e.g. ``KGP-7F2Q``).
+
+    A readable club-code prefix plus 4 random characters from
+    ``CAMPUS_CODE_ALPHABET``. Shown ONCE at issuance — only its keyed hash
+    is ever stored (same rule as every secret in this module).
+    """
+    clean_prefix = "".join(ch for ch in prefix.upper() if ch.isalnum())[:8]
+    body = "".join(secrets.choice(CAMPUS_CODE_ALPHABET) for _ in range(4))
+    return f"{clean_prefix}-{body}" if clean_prefix else body
+
+
 def generate_recovery_code() -> str:
     """One-time TOTP recovery code."""
     return secrets.token_hex(4).upper()

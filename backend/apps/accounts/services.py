@@ -12,7 +12,9 @@ from typing import Any, cast
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import AbstractBaseUser
-from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email as _validate_email
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.exceptions import (
     AuthenticationFailed,
@@ -45,6 +47,10 @@ from .passwords import validate_password_strength
 from .routing import responsible_officer
 from .throttles import sliding_window_allow
 from .totp import consume_recovery_code, verify_totp_code
+
+#: Purpose string for the M4 D1 login OTP. Kept here (not in the views) so the
+#: writer and the verifier cannot disagree (P4 single source).
+OTP_PURPOSE_LOGIN = "login"
 
 
 def _audit(
@@ -140,20 +146,103 @@ def create_provisional_account(
     return cast(User, user)
 
 
-def club_login(
-    *,
-    username: str,
-    password: str,
-    request: Any,
-) -> AbstractBaseUser:
-    """Username + password login for the club/student faces.
+# --- M4 D3: campus self-join identity (BRIEF_M4 §3 D3) --------------------
 
-    Provisional accounts cannot log in until approved (T7 pin); the account
-    side of the F1 wizard resume is exposed to the M4 wizard only.
+
+def normalize_email(email: str) -> str:
+    """Canonical email form for the campus self-join flow (P4: one form).
+
+    Only the join flow normalises; the M1 flows keep their exact-match
+    semantics unchanged.
     """
-    user = authenticate(request, username=username, password=password)
-    if user is None:
-        raise AuthenticationFailed("Invalid username or password.")
+    return str(email).strip().lower()
+
+
+def _student_username(email: str) -> str:
+    """Deterministic, collision-safe username from the email local part."""
+    local = email.split("@", 1)[0]
+    base = "".join(ch for ch in local if ch.isalnum() or ch in "._-")[:100]
+    base = base or "student"
+    username = base
+    counter = 2
+    while User.objects.filter(username=username).exists():
+        suffix = f"-{counter}"
+        username = f"{base[: 100 - len(suffix)]}{suffix}"
+        counter += 1
+    return username
+
+
+def student_account_for_join(
+    *,
+    email: str,
+    club: Any,
+    request: Any = None,
+) -> User:
+    """Find-or-create the OTP-proven student identity for a campus self-join.
+
+    M4 D3: the address has ALREADY passed an email OTP (purpose
+    ``club_join``) before this runs — email control IS the M1 authentication
+    for this flow (no new auth primitive, P0/U4). An existing
+    ``STUDENT_MEMBER`` account is reused (M2U: one person = one record); any
+    non-student account is REFUSED so self-join can never repurpose an
+    authority or ops identity. New student accounts are ACTIVE (OTP-proven)
+    with an UNUSABLE password (OTP login only) and the target club's scope
+    keys; the club admin's roster confirmation gates the membership itself
+    (the ``pending`` join request).
+    """
+    normalized = normalize_email(email)
+    try:
+        _validate_email(normalized)
+    except DjangoValidationError as exc:
+        raise ValidationError("A valid email address is required.") from exc
+    existing = (
+        User.objects.filter(email__iexact=normalized, is_active=True)
+        .order_by("pk")
+        .first()
+    )
+    if existing is not None:
+        if existing.category != Category.STUDENT_MEMBER:
+            raise PermissionDenied("That address belongs to a non-student account.")
+        return existing
+    institution = club.institution
+    username = _student_username(normalized)
+    try:
+        with transaction.atomic():
+            user = get_user_model().objects.create_user(
+                username=username,
+                email=normalized,
+                password=None,
+                category=Category.STUDENT_MEMBER,
+                sub_role=SubRole.STUDENT_MEMBER,
+                institution_code=institution.code,
+                club_code=club.code,
+                state_code=institution.state.code,
+                zone_code=institution.state.zone.code,
+                account_state=AccountState.ACTIVE,
+            )
+    except IntegrityError as exc:  # concurrent create: one person, one record
+        raise ValidationError(
+            "That address was just registered; retry in a moment."
+        ) from exc
+    _audit(
+        "account.create",
+        request,
+        actor=user,
+        object_type="account",
+        object_id=username,
+        category=Category.STUDENT_MEMBER,
+        method="campus_self_join",
+    )
+    return cast(User, user)
+
+
+def _require_club_login_eligible(user: AbstractBaseUser) -> User:
+    """Shared gate: may this account enter the club module right now?
+
+    Single source (P4) for the category + account-state rules, used by BOTH
+    ``club_login`` (password) and ``login_with_otp`` (email OTP) so the two
+    entry paths can never drift apart (I5: this is enforcement, not UI hiding).
+    """
     profile = user if isinstance(user, User) else None
     if profile is None or profile.category not in (
         Category.CLUB_ADMIN,
@@ -167,6 +256,24 @@ def club_login(
         )
     if profile.account_state != AccountState.ACTIVE:
         raise PermissionDenied("Account is not active.", code="account_inactive")
+    return profile
+
+
+def club_login(
+    *,
+    username: str,
+    password: str,
+    request: Any,
+) -> User:
+    """Username + password login for the club/student faces.
+
+    Provisional accounts cannot log in until approved (T7 pin); the account
+    side of the F1 wizard resume is exposed to the M4 wizard only.
+    """
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        raise AuthenticationFailed("Invalid username or password.")
+    profile = _require_club_login_eligible(user)
     _audit(
         "auth.login",
         request,
@@ -176,7 +283,40 @@ def club_login(
         module="club",
         method="password",
     )
-    return user
+    return profile
+
+
+def login_with_otp(
+    *,
+    email: str,
+    code: str,
+    request: Any = None,
+) -> User:
+    """Email-OTP login for the club/student faces (D1, M4 — first login UI).
+
+    Reuses the M1 OTP machinery (``verify_email_otp``): no new auth primitive
+    (P0), no new hashing (U4). The account gate is the SAME one ``club_login``
+    applies via ``_require_club_login_eligible`` (P4 single source).
+    """
+    row = verify_email_otp(
+        email=email, code=code, purpose=OTP_PURPOSE_LOGIN, request=request
+    )
+    if row.user_id is None:
+        raise AuthenticationFailed(
+            "That code is not attached to an account."
+        )
+    user = cast(AbstractBaseUser, row.user)
+    profile = _require_club_login_eligible(user)
+    _audit(
+        "auth.login",
+        request,
+        actor=user,
+        object_type="account",
+        object_id=user.get_username(),
+        module="club",
+        method="email_otp",
+    )
+    return profile
 
 
 def admin_login(

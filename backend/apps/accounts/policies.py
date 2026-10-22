@@ -143,3 +143,9 @@ ADMIN_OFFICER_GATE = CategoryGate(
     "admin", {SubRole.CENTRAL_ADMIN, SubRole.REGIONAL_OFFICER}
 )
 ADMIN_STAFF_GATE = CategoryGate("admin", IIT_KGP_ADMIN_SUB_ROLES)
+
+
+# M4 D4: the whole club module (authorities + students) for roster READS.
+# Per-user row visibility is decided mechanically by core.scoping (a student
+# gets their own rows only) — never by hand-rolled view logic (I5).
+CLUB_MODULE_GATE = CategoryGate("club")

@@ -1,4 +1,8 @@
-"""HMAC certificate signing service (BRIEF_M3 §4a, pins V1–V3).
+"""HMAC signing service (BRIEF_M3 §4a, pins V1–V3; THE signer since M4 D3).
+
+Since M4 D3 this is the ONE signer of the product (P4): the club join tokens
+(``apps.clubs.join_tokens``) reuse this keyring and the same length-prefixed
+canonical framing — no second HMAC/key path exists anywhere.
 
 Design law:
 
@@ -89,7 +93,12 @@ def _key_for(key_id: str) -> bytes:
         raise CertificateSigningError(f"unknown HMAC key id: {key_id}") from exc
 
 
-def _length_prefixed(value: bytes) -> bytes:
+def length_prefixed(value: bytes) -> bytes:
+    """4-byte big-endian length prefix + value (the M3 canonical framing).
+
+    Public since M4 D3: the club join-token payload (``apps.clubs.join_tokens``)
+    reuses THIS framing so one signer = one canonical encoding (P4).
+    """
     return len(value).to_bytes(4, "big") + value
 
 
@@ -109,7 +118,7 @@ def canonical_payload(
     """
     parts = [CANONICAL_PAYLOAD_VERSION]
     for field in (certificate_id, str(holder_id), str(club_id), event_ref, issue_date):
-        parts.append(_length_prefixed(field.encode("utf-8")))
+        parts.append(length_prefixed(field.encode("utf-8")))
     return b"".join(parts)
 
 

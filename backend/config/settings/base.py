@@ -55,6 +55,11 @@ CORS_ALLOW_CREDENTIALS = True
 
 # --- Applications ---------------------------------------------------------
 
+# --- Onboarding (M4 D2) ---
+# Private storage for onboarding documents (W3): hash-addressed,
+# never served inline; only the attachment download view reads it.
+ONBOARDING_UPLOAD_ROOT = BASE_DIR / "var" / "onboarding_uploads"
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -74,6 +79,7 @@ INSTALLED_APPS = [
     "apps.domain",
     "apps.accounts",
     "apps.institutions",
+    "apps.onboarding",
     "apps.clubs",
     "apps.members",
     "apps.activities",
@@ -280,3 +286,20 @@ LOGGING = {
         "level": LOG_LEVEL,
     },
 }
+
+
+# --- M4 D4 roster bulk import (BRIEF_M4 §3 D4 / §4b) -----------------------
+
+# Uploaded CSVs are hash-stored per club under this root (P0 hygiene).
+ROSTER_IMPORT_ROOT = BASE_DIR / "var" / "roster_imports"
+# Hard caps per upload (BRIEF §3 D4): 10k rows / 5 MB.
+ROSTER_IMPORT_MAX_ROWS = 10_000
+ROSTER_IMPORT_MAX_BYTES = 5 * 1024 * 1024
+# Chunked writes: one short transaction per chunk (P2 — no long transactions).
+ROSTER_IMPORT_CHUNK_SIZE = 500
+# Sync-chunked fallback runner ceiling (M4-A4 free-tier reality).
+ROSTER_IMPORT_SYNC_LIMIT = 10_000
+# The async seam (§4b): flip USE_CELERY + the dotted task path and the SAME
+# pipeline runs on a worker — zero code change (M4-A4).
+ROSTER_IMPORT_USE_CELERY = False
+ROSTER_IMPORT_CELERY_TASK = ""

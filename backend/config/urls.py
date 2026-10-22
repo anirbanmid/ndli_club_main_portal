@@ -39,7 +39,12 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
+        # M4H: CSP-clean template (vendored swagger-ui, external init script).
+        # The stock drf-spectacular page needs cdn.jsdelivr.net + inline JS,
+        # both blocked by the P0 script-src 'self' policy (blank page bug).
+        SpectacularSwaggerView.as_view(
+            url_name="schema", template_name="core/api_docs.html"
+        ),
         name="schema-swagger-ui",
     ),
     # Versioned API surface; each bounded context mounts its own routes.

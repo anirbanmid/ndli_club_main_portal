@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import QRCode from 'qrcode';
 import { 
   Building2, 
   Users, 
@@ -20,7 +21,12 @@ import {
   Globe2,
   ArrowLeft,
   LogIn,
-  LogOut
+  LogOut,
+  KeyRound,
+  Copy,
+  Download,
+  Printer,
+  ExternalLink
 } from 'lucide-react';
 import { 
   InstituteClub, 
@@ -112,15 +118,47 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   // NAAC Preview
   const [showNaacPreview, setShowNaacPreview] = useState(false);
 
+  // Campus Passkey & QR Enrollment Hub States
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [copiedPasskey, setCopiedPasskey] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [showPosterModal, setShowPosterModal] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const origin = window.location.origin;
+    const joinUrl = `${origin}/join#passkey=${encodeURIComponent(activeClub.passkey)}`;
+    QRCode.toDataURL(joinUrl, {
+      width: 240,
+      margin: 1,
+      color: { dark: '#103125', light: '#ffffff' }
+    }).then(setQrDataUrl).catch(() => {});
+  }, [activeClub.passkey]);
+
+  const handleCopyPasskey = () => {
+    navigator.clipboard.writeText(activeClub.passkey);
+    setCopiedPasskey(true);
+    setTimeout(() => setCopiedPasskey(false), 2000);
+  };
+
+  const handleCopyInviteMessage = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ndli-club-main-portal.onrender.com';
+    const invite = `📢 Official NDLI Club Chapter Invitation\n\nInstitution: ${activeClub.name}\nAISHE Code: ${activeClub.aisheCode}\n\nJoin our official campus reading & research club on the National Digital Library of India portal!\n\n🔑 Official Campus Passkey: ${activeClub.passkey}\n🌐 Direct Join Link: ${origin}/join\n\n(This passkey is for enrolled students and faculty of ${activeClub.name})`;
+    navigator.clipboard.writeText(invite);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2000);
+  };
+
   // S1: shared dialog behaviour for the remaining inline dialogs — backdrop
   // click and Escape close whichever dialog is open (only one at a time).
   const anyDialogOpen =
-    showNewActivityModal || showNewTicketModal || showSuccessionModal || showNaacPreview;
+    showNewActivityModal || showNewTicketModal || showSuccessionModal || showNaacPreview || showPosterModal;
   const closeAnyDialog = () => {
     setShowNewActivityModal(false);
     setShowNewTicketModal(false);
     setShowSuccessionModal(false);
     setShowNaacPreview(false);
+    setShowPosterModal(false);
   };
   useModalBehavior(anyDialogOpen, closeAnyDialog);
 
@@ -295,6 +333,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </button>
 
               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                {/* NOTE FOR CLIENT HANDOVER: Remove this quick demo sign-in block prior to client handover */}
                 {onAuthorityQuickSignIn && presidentAuth && (
                   <button
                     onClick={() => onAuthorityQuickSignIn({
@@ -303,11 +342,14 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                       email: presidentAuth.email,
                       clubId: activeClub.id
                     })}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-                    title={t("Test login as verified authority for evaluation")}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer relative"
+                    title={t("Development / Review Only — Remove at client handover")}
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span>{t("Demo Sign In:")} {presidentAuth.name} ({t(presidentAuth.role)})</span>
+                    <span className="text-[9px] uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-extrabold border border-amber-300 ml-1">
+                      {t("Review Only")}
+                    </span>
                   </button>
                 )}
 
@@ -388,8 +430,16 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         {/* Header CTA Buttons */}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
+            onClick={() => setShowPosterModal(true)}
+            className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold transition-colors flex items-center space-x-1.5 shadow-xs cursor-pointer"
+          >
+            <KeyRound className="h-4 w-4 text-amber-300" />
+            <span>{t("Campus Passkey & QR Hub")}</span>
+          </button>
+
+          <button
             onClick={() => onViewPublicProfile(activeClub)}
-            className="px-4 py-2 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] text-xs font-bold transition-colors flex items-center space-x-1.5"
+            className="px-4 py-2 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] text-xs font-bold transition-colors flex items-center space-x-1.5 cursor-pointer"
           >
             <Globe2 className="h-4 w-4 text-[#0D7751]" />
             <span>{t("Public Profile Page")}</span>
@@ -397,7 +447,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
           <button
             onClick={() => setShowNaacPreview(true)}
-            className="px-4 py-2 rounded-xl bg-[#E9F5EF] text-[#0D7751] hover:bg-[#d5eee0] text-xs font-bold transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30"
+            className="px-4 py-2 rounded-xl bg-[#E9F5EF] text-[#0D7751] hover:bg-[#d5eee0] text-xs font-bold transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>{t("NAAC 3.3 Audit Report")}</span>
@@ -525,6 +575,130 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 {clubTickets.filter(t => t.status !== 'Resolved').length}
               </div>
               <div className="text-[11px] text-[#5A7366]">{t("Routed to IIT KGP")} {t(activeClub.zone)} {t("Zone")}</div>
+            </div>
+          </div>
+
+          {/* Institutional Passkey & Campus QR Enrollment Hub */}
+          <div className="bg-white rounded-3xl border border-[#E2ECE7] p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2ECE7] pb-4">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-3 py-1 rounded-full mb-1">
+                  <KeyRound className="h-3.5 w-3.5" />
+                  <span>{t("Institutional Authority Desk • Confidential Distribution")}</span>
+                </div>
+                <h3 className="text-xl font-bold text-[#103125]">
+                  {t("Official Campus Passkey & QR Enrollment Hub")}
+                </h3>
+                <p className="text-xs text-[#5A7366] mt-0.5">
+                  {t("Only authorized club officers can view and distribute these credentials. Share with your enrolled students so they can link their NDLI accounts.")}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowPosterModal(true)}
+                  className="px-4 py-2 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-bold transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>{t("Print Campus Notice Poster")}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              {/* Passkey Panel */}
+              <div className="lg:col-span-7 bg-[#F4F8F6] p-6 rounded-2xl border-2 border-dashed border-[#0D7751]/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">
+                    {t("Official Institutional Passkey")}
+                  </span>
+                  <span className="text-[11px] font-bold text-[#0D7751] bg-white px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
+                    {t("Active & Verified")}
+                  </span>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl border border-[#E2ECE7] text-center shadow-xs">
+                  <div className="font-mono text-3xl sm:text-4xl font-black text-[#103125] tracking-widest">
+                    {activeClub.passkey}
+                  </div>
+                  <div className="text-[11px] text-[#5A7366] mt-1 font-medium">
+                    {t("Chapter Code:")} {activeClub.aisheCode} • {activeClub.name}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    onClick={handleCopyPasskey}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-[#E9F5EF] text-[#2E4A3E] text-xs font-bold border border-[#E2ECE7] shadow-xs flex items-center space-x-1.5 transition-all cursor-pointer"
+                  >
+                    {copiedPasskey ? <Check className="h-4 w-4 text-[#0D7751]" /> : <Copy className="h-4 w-4" />}
+                    <span>{copiedPasskey ? t("Passkey Copied!") : t("Copy Passkey")}</span>
+                  </button>
+
+                  <button
+                    onClick={handleCopyInviteMessage}
+                    className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-all cursor-pointer"
+                  >
+                    {copiedInvite ? <Check className="h-4 w-4 text-amber-300" /> : <Share2 className="h-4 w-4" />}
+                    <span>{copiedInvite ? t("Invite Copied to Clipboard!") : t("Copy Student Invite Message")}</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-[#5A7366] bg-white p-3 rounded-xl border border-[#E2ECE7] space-y-1">
+                  <strong className="text-[#103125] block font-semibold">{t("How to distribute safely to students:")}</strong>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px] text-[#5A7366]">
+                    <li>{t("Share via institutional student email circular or official campus LMS (Moodle, Google Classroom).")}</li>
+                    <li>{t("Post the printable QR poster on the central library notice board.")}</li>
+                    <li>{t("Do not publish on unverified public social media to prevent unauthorized membership.")}</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* QR Code Panel */}
+              <div className="lg:col-span-5 bg-[#F4F8F6] p-6 rounded-2xl border border-[#E2ECE7] flex flex-col items-center justify-center text-center space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">
+                  {t("Dynamic Campus Self-Join QR")}
+                </span>
+
+                {qrDataUrl ? (
+                  <div className="p-3 bg-white rounded-2xl border border-[#E2ECE7] shadow-sm">
+                    <img
+                      src={qrDataUrl}
+                      alt={t("Club QR Code")}
+                      className="h-44 w-44 rounded-xl"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-44 w-44 rounded-2xl bg-white border border-[#E2ECE7] flex items-center justify-center text-xs text-[#5A7366]">
+                    {t("Generating QR…")}
+                  </div>
+                )}
+
+                <div className="text-xs text-[#5A7366] max-w-xs leading-relaxed">
+                  {t("Students scan with mobile camera to land on the self-join portal with this chapter's token pre-linked.")}
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  {qrDataUrl && (
+                    <a
+                      href={qrDataUrl}
+                      download={`${activeClub.aisheCode}_NDLI_Club_QR.png`}
+                      className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#E9F5EF] flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>{t("Download QR Image")}</span>
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => setShowPosterModal(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#1A503E] text-white text-xs font-bold hover:bg-[#103125] flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>{t("Poster Preview")}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1209,6 +1383,126 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               >
                 {t("Print / Save Document (PDF)")}
                                             </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Printable Campus Enrollment Notice Poster */}
+      {showPosterModal && (
+        <div 
+          onClick={() => setShowPosterModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4 overflow-y-auto"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("Campus Enrollment Notice Poster")}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-10 shadow-2xl border border-ink-200 relative animate-in fade-in space-y-6 my-8"
+          >
+            {/* Top Close */}
+            <button
+              onClick={() => setShowPosterModal(false)}
+              className="absolute right-5 top-5 p-1 rounded-full text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Poster Header (Emblem & Branding) */}
+            <div className="text-center space-y-2 border-b-2 border-[#103125] pb-5">
+              <div className="flex items-center justify-center space-x-2 text-xs font-bold text-[#0D7751] uppercase tracking-wider">
+                <span>{t("Government of India")}</span>
+                <span>•</span>
+                <span>{t("Ministry of Education")}</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-[#103125] tracking-tight">
+                {t("National Digital Library of India Club")}
+              </h2>
+              <div className="text-xs font-bold text-[#B45309]">
+                {t("National Coordinating Institute: IIT Kharagpur")}
+              </div>
+              <div className="pt-2">
+                <span className="text-xs font-extrabold px-3 py-1 bg-[#E9F5EF] text-[#0D7751] rounded-full border border-[#0D7751]/30">
+                  {t("Chartered Campus Chapter")}
+                </span>
+              </div>
+            </div>
+
+            {/* Poster Body */}
+            <div className="text-center space-y-4">
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-[#103125] leading-tight">
+                  {activeClub.name}
+                </h3>
+                <div className="text-xs text-[#5A7366] font-mono mt-1">
+                  {t("AISHE Code:")} {activeClub.aisheCode} • {activeClub.district}, {activeClub.state}
+                </div>
+              </div>
+
+              <div className="bg-[#F4F8F6] p-6 rounded-2xl border-2 border-dashed border-[#0D7751] space-y-3">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-[#0D7751]">
+                  {t("Official Campus Enrollment Passkey")}
+                </span>
+                <div className="font-mono text-3xl sm:text-4xl font-black text-[#103125] tracking-widest">
+                  {activeClub.passkey}
+                </div>
+                <p className="text-[11px] text-[#5A7366] max-w-md mx-auto">
+                  {t("All enrolled undergraduate, postgraduate students, research scholars, and faculty members can join this official chapter.")}
+                </p>
+              </div>
+
+              {/* Centered QR code */}
+              {qrDataUrl && (
+                <div className="flex flex-col items-center justify-center space-y-2 pt-2">
+                  <div className="p-3 bg-white border-2 border-[#103125] rounded-2xl shadow-md">
+                    <img src={qrDataUrl} alt={t("Campus Join QR")} className="h-48 w-48 rounded-xl" />
+                  </div>
+                  <span className="text-xs font-bold text-[#103125] tracking-wider uppercase">
+                    {t("Scan with Smartphone Camera to Join")}
+                  </span>
+                </div>
+              )}
+
+              {/* 3 Step Joining Instructions */}
+              <div className="bg-white rounded-xl border border-[#E2ECE7] p-4 text-left grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="space-y-1">
+                  <div className="font-bold text-[#0D7751]">1. Scan or Visit</div>
+                  <div className="text-[11px] text-[#5A7366]">Scan the QR above or visit the portal at ndli.club.</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-[#0D7751]">2. Enter Passkey</div>
+                  <div className="text-[11px] text-[#5A7366]">Provide your name, campus email and passkey <strong className="font-mono">{activeClub.passkey}</strong>.</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="font-bold text-[#0D7751]">3. Access & Certificates</div>
+                  <div className="text-[11px] text-[#5A7366]">Participate in webinars, quizzes and earn verifiable certificates.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Poster Footer & Actions */}
+            <div className="pt-4 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-[11px] text-[#5A7366] text-center sm:text-left">
+                <span>{t("Authorized by:")} <strong>{activeClub.authorities.find(a => a.role === 'President')?.name || 'Club President'}</strong></span>
+                <span className="block text-[10px] text-[#5A7366]">{t("NDLI Institutional Club Committee")}</span>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowPosterModal(false)}
+                  className="px-4 py-2 rounded-xl border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors cursor-pointer"
+                >
+                  {t("Close")}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold shadow-md transition-colors flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>{t("Print Campus Poster")}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

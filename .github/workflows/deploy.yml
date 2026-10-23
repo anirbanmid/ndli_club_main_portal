@@ -12,6 +12,11 @@
 #
 # Placement: .github/workflows/deploy.yml (sibling of ci.yml).
 # ci.yml stays byte-identical — this is a separate workflow file.
+#
+# REQUIRED DASHBOARD SETTING: Render -> service -> Settings -> Build & Deploy
+# -> Auto Deploy must be OFF. With Auto-Deploy ON, Render also deploys on every
+# push WITHOUT waiting for CI, so each commit deploys twice and a red CI run
+# still reaches production — defeating the workflow_run gate below.
 
 name: Deploy (Render)
 

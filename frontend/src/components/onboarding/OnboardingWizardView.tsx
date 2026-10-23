@@ -414,7 +414,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onNa
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] font-mono focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
               />
               {startFieldErrors.token !== undefined && (
-                <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{startFieldErrors.token}</p>
+                <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(startFieldErrors.token)}</p>
               )}
               <button
                 type="submit"
@@ -587,7 +587,7 @@ export const OnboardingWizardView: React.FC<OnboardingWizardViewProps> = ({ onNa
                         <ul className="space-y-1">
                           {Object.entries(submitState.fieldErrors).map(([field, verdict]) => (
                             <li key={field} className="text-xs text-[#B45309]">
-                              <span className="font-bold">{field}:</span> {verdict}
+                                <span className="font-bold">{field}:</span> {t(verdict)}
                             </li>
                           ))}
                         </ul>

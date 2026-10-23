@@ -579,10 +579,10 @@ export const RosterManager: React.FC<RosterManagerProps> = () => {
           setError(
             err.status === 403 || err.status === 404
               ? t('Roster access is limited to this club.')
-              : err.message,
+              : t(err.message),
           );
         } else if (err instanceof ApiError) {
-          setError(err.message);
+          setError(t(err.message));
         } else {
           setError(t('That request failed.'));
         }
@@ -665,7 +665,7 @@ export const RosterManager: React.FC<RosterManagerProps> = () => {
         setEntries((prev) => prev.map((row) => (row.id === err.current!.id ? err.current! : row)));
       } else if (err instanceof RosterApiError && err.code === 'invalid_transition') {
         setAllowed(err.allowed);
-        setError(err.message);
+        setError(t(err.message));
       } else {
         setError(err instanceof RosterApiError ? t(err.message) : t('That request failed.'));
       }

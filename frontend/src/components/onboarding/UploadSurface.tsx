@@ -158,11 +158,12 @@ export const UploadSurface: React.FC<UploadSurfaceProps> = ({
         </p>
       )}
 
-      {/* Server-rule rejections render the API's verdict bytes verbatim (F4). */}
+      {/* Server-rule rejections route through t() (DEC2): byte-identical
+          passthrough in English, translated when a catalogue has them. */}
       {rejection !== null && (
         <p role="alert" className="mt-3 flex items-start space-x-1.5 text-xs font-bold text-[#B45309]">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-          <span>{rejection.source === 'server-rule' ? rejection.detail : t(rejection.key)}</span>
+          <span>{rejection.source === 'server-rule' ? t(rejection.detail) : t(rejection.key)}</span>
         </p>
       )}
       {notice !== null && (

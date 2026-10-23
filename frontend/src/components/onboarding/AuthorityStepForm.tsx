@@ -173,7 +173,7 @@ export const AuthorityStepForm: React.FC<AuthorityStepFormProps> = ({ role, draf
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
           />
           {fieldErrors.full_name !== undefined && (
-            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{fieldErrors.full_name}</p>
+            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(fieldErrors.full_name)}</p>
           )}
         </div>
         <div>
@@ -192,7 +192,7 @@ export const AuthorityStepForm: React.FC<AuthorityStepFormProps> = ({ role, draf
           />
           <p className="mt-1 text-xs text-[#5A7366]">{t('The server requires an email for every authority.')}</p>
           {fieldErrors.email !== undefined && (
-            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{fieldErrors.email}</p>
+            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(fieldErrors.email)}</p>
           )}
         </div>
         <div>
@@ -211,7 +211,7 @@ export const AuthorityStepForm: React.FC<AuthorityStepFormProps> = ({ role, draf
           />
           <p className="mt-1 text-xs text-[#5A7366]">{t('The server requires a 10-digit Indian mobile for every authority.')}</p>
           {fieldErrors.phone !== undefined && (
-            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{fieldErrors.phone}</p>
+            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(fieldErrors.phone)}</p>
           )}
         </div>
         <div>
@@ -228,7 +228,7 @@ export const AuthorityStepForm: React.FC<AuthorityStepFormProps> = ({ role, draf
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
           />
           {fieldErrors.designation !== undefined && (
-            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{fieldErrors.designation}</p>
+            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(fieldErrors.designation)}</p>
           )}
         </div>
 
@@ -280,7 +280,7 @@ export const AuthorityStepForm: React.FC<AuthorityStepFormProps> = ({ role, draf
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] tracking-widest focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
           />
           {fieldErrors.code !== undefined && (
-            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{fieldErrors.code}</p>
+            <p role="alert" className="mt-1 text-xs font-bold text-[#B45309]">{t(fieldErrors.code)}</p>
           )}
           <div className="mt-4 flex items-center justify-between">
             <button

@@ -73,10 +73,11 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
                 aria-describedby={error !== undefined ? `identity-${field.key}-error` : undefined}
                 className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
               />
-              {/* Server verdict bytes, rendered verbatim (F4). */}
+              {/* Server verdict bytes routed through t() (DEC2): byte-identical
+                  passthrough in English, translated when a catalogue has them. */}
               {error !== undefined && (
                 <p id={`identity-${field.key}-error`} role="alert" className="mt-1 text-xs font-bold text-[#B45309]">
-                  {error}
+                  {t(error)}
                 </p>
               )}
             </div>

@@ -7,10 +7,15 @@ import { HomeView } from './components/HomeView';
 import { PublicClubProfileView } from './components/PublicClubProfileView';
 import { ClubModuleView } from './components/ClubModuleView';
 import { AdminModuleView } from './components/AdminModuleView';
-import { RegisterClubView } from './components/RegisterClubView';
+
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
 import { DirectoryView } from './components/DirectoryView';
+import { LoginView } from './components/auth/LoginView';
+import { OnboardingWizardView } from './components/onboarding/OnboardingWizardView';
+import { ShowcaseIndexView } from './components/clubs/ShowcaseIndexView';
+import { ClubShowcaseDetailView } from './components/clubs/ClubShowcaseDetailView';
+import { JoinView } from './components/clubs/JoinView';
 import { JoinClubModal } from './components/JoinClubModal';
 import { 
   INITIAL_CLUBS, 
@@ -51,7 +56,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   // Application Data States
   const [clubs, setClubs] = useState<InstituteClub[]>(INITIAL_CLUBS);
   const [activities, setActivities] = useState<ClubActivity[]>(INITIAL_ACTIVITIES);
-  const [students, setStudents] = useState<StudentMember[]>(INITIAL_STUDENTS);
+  const [students] = useState<StudentMember[]>(INITIAL_STUDENTS);
   const [tickets, setTickets] = useState<IssueTicket[]>(INITIAL_TICKETS);
   const [authorityRequests, setAuthorityRequests] = useState<AuthorityChangeRequest[]>(INITIAL_AUTHORITY_REQUESTS);
   const [forensicRecords, setForensicRecords] = useState<ForensicQuarantineRecord[]>(INITIAL_FORENSIC_RECORDS);
@@ -63,6 +68,9 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
   const [verifyInitialCertId, setVerifyInitialCertId] = useState(initialRoute.certId);
+  // M5-D3: showcase slug for /clubs/<slug>/ (deep-linked via route.ts, or set
+  // when a card is opened from the showcase index).
+  const [showcaseSlug, setShowcaseSlug] = useState<string>(initialRoute.slug);
 
   // Accessibility States
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'larger'>('normal');
@@ -83,33 +91,8 @@ export function App({ ssrLocation }: AppProps = {}) {
   // (kept as a no-op effect slot removed; see git history for the mount effect)
 
   // --- Handlers for Club Module ---
-  const handleClubRegistered = (newClub: InstituteClub) => {
-    setClubs(prev => [newClub, ...prev]);
-    setActiveClub(newClub);
-    setCurrentBranch('club_module');
-    setCurrentTab('club_dashboard');
-  };
-
-  const handleAddStudent = (newStudent: StudentMember) => {
-    setStudents(prev => [newStudent, ...prev]);
-    setClubs(prev => prev.map(c => c.id === newStudent.clubId ? { ...c, memberCount: c.memberCount + 1 } : c));
-  };
-
-  const handleBulkAddStudents = (newStudents: StudentMember[]) => {
-    setStudents(prev => [...newStudents, ...prev]);
-    if (newStudents.length > 0) {
-      const targetClubId = newStudents[0].clubId;
-      setClubs(prev => prev.map(c => c.id === targetClubId ? { ...c, memberCount: c.memberCount + newStudents.length } : c));
-    }
-  };
-
-  const handleUpdateStudent = (updatedStudent: StudentMember) => {
-    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
-  };
-
-  const handleDeleteStudent = (id: string) => {
-    setStudents(prev => prev.filter(s => s.id !== id));
-  };
+  // (demo RegisterClubView retired per owner DEC3 — club application lives in
+  // the onboarding wizard, currentTab 'onboarding'; handleClubRegistered removed.)
 
   const handleCreateActivity = (newAct: ClubActivity) => {
     setActivities(prev => [newAct, ...prev]);
@@ -217,7 +200,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab('public_club_profile');
                 }}
                 onJoinWithPasskey={() => setIsPasskeyModalOpen(true)}
-                onRegisterInstitute={() => setCurrentTab('register_request')}
+                onRegisterInstitute={() => setCurrentTab('onboarding')}
                 onGoToClubModule={() => {
                   setCurrentBranch('club_module');
                   setCurrentTab('club_dashboard');
@@ -247,12 +230,6 @@ export function App({ ssrLocation }: AppProps = {}) {
               />
             )}
 
-            {currentTab === 'register_request' && (
-              <RegisterClubView
-                onClubRegistered={handleClubRegistered}
-                onExploreClubs={() => setCurrentTab('home')}
-              />
-            )}
 
             {currentTab === 'verify' && (
               <VerifyCertificateView initialCertId={verifyInitialCertId} />
@@ -260,6 +237,54 @@ export function App({ ssrLocation }: AppProps = {}) {
 
             {currentTab === 'directory' && (
               <DirectoryView onBack={() => setCurrentTab('home')} />
+            )}
+
+            {currentTab === 'login' && (
+              <LoginView
+                initialNext={initialRoute.next}
+                onNavigate={(route) => {
+                  setVerifyInitialCertId(route.certId);
+                  setCurrentTab(route.tab);
+                }}
+              />
+            )}
+
+            {/* M5-D2: the real 4-authority resumable wizard (token-gated API,
+                SPA-only — kept out of the prerender set, BRIEF_M5 §4c). */}
+            {currentTab === 'onboarding' && (
+              <OnboardingWizardView
+                onNavigate={(route) => {
+                  setVerifyInitialCertId(route.certId);
+                  setCurrentTab(route.tab);
+                }}
+              />
+            )}
+
+            {/* M5-D3: club showcase index (public, prerendered /clubs/). */}
+            {currentTab === 'clubs' && (
+              <ShowcaseIndexView
+                onBack={() => setCurrentTab('home')}
+                onOpenClub={(slug) => {
+                  setShowcaseSlug(slug);
+                  setCurrentTab('club_detail');
+                }}
+                onJoin={() => setCurrentTab('join')}
+              />
+            )}
+
+            {/* M5-D3: one public showcase page per slug (SPA-only, BRIEF §4c). */}
+            {currentTab === 'club_detail' && showcaseSlug && (
+              <ClubShowcaseDetailView
+                slug={showcaseSlug}
+                onBack={() => setCurrentTab('clubs')}
+                onJoin={() => setCurrentTab('join')}
+              />
+            )}
+
+            {/* M5-D3: passkey/QR self-join door (public, prerendered /join/);
+                the join token rides in the URL fragment and is read on mount. */}
+            {currentTab === 'join' && (
+              <JoinView onBack={() => setCurrentTab('clubs')} />
             )}
 
             {currentTab === 'view_certificate' && activeCertificate && (
@@ -283,10 +308,6 @@ export function App({ ssrLocation }: AppProps = {}) {
             activities={activities}
             tickets={tickets}
             authorityRequests={authorityRequests}
-            onAddStudent={handleAddStudent}
-            onBulkAddStudents={handleBulkAddStudents}
-            onUpdateStudent={handleUpdateStudent}
-            onDeleteStudent={handleDeleteStudent}
             onCreateActivity={handleCreateActivity}
             onRaiseTicket={handleRaiseTicket}
             onSubmitAuthorityChange={handleSubmitAuthorityChange}

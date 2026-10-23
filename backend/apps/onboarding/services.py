@@ -10,12 +10,15 @@ storage names (never user filenames), downloads only as attachments.
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, BinaryIO
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -63,6 +66,91 @@ def _upload_root() -> Path:
             settings, "ONBOARDING_UPLOAD_ROOT", Path(settings.BASE_DIR) / "var"
         )
     )
+
+
+# --- Authority contact rules (DEC4, owner-locked 2026-10-23) ---------------
+#: Every authority slot MUST carry a valid email, an Indian mobile (10 digits)
+#: and a designation. Enforced HERE (P4 single source) and re-checked at
+#: submit time, so a slot saved before this rule still cannot be submitted.
+INDIAN_MOBILE_DIGITS = 10
+
+
+def _normalize_indian_mobile(raw: object) -> str | None:
+    """DEC4 (owner 2026-10-23): official-contact mobile = 10-digit Indian number.
+
+    Accepts separators and the ``+91`` / ``0091`` / ``91`` / ``0`` prefixes and
+    returns the normalised 10-digit number, or ``None`` when empty or
+    malformed. ONE function decides accept/reject for BOTH ``upsert_authority``
+    and the submit backstop (P4), and every verdict it drives is a literal
+    string so it stays a key of the i18n catalogue.
+    """
+    digits = "" if raw is None else str(raw)
+    digits = re.sub(r"[\s\-().]", "", digits)
+    if digits.startswith("+91"):
+        digits = digits[3:]
+    elif digits.startswith("0091"):
+        digits = digits[4:]
+    if digits.startswith("91") and len(digits) == INDIAN_MOBILE_DIGITS + 2:
+        digits = digits[2:]
+    elif digits.startswith("0") and len(digits) == INDIAN_MOBILE_DIGITS + 1:
+        digits = digits[1:]
+    #: ASCII-only: a Unicode look-alike digit is not a dialable Indian number.
+    if len(digits) == INDIAN_MOBILE_DIGITS and digits.isascii() and digits.isdigit():
+        return digits
+    return None
+
+
+def _validate_authority_fields(
+    *, email: str, phone: str, designation: str
+) -> tuple[str, str, str]:
+    """DEC4 gate: valid email + 10-digit Indian mobile + non-empty designation.
+
+    Raises ``OnboardingError`` carrying the field's verdict bytes so the
+    wizard renders them against that field (F4); returns the NORMALISED
+    values to store.
+    """
+    if not email:
+        raise OnboardingError("An email is required.", code="missing_field")
+    try:
+        validate_email(email)
+    except ValidationError as exc:
+        raise OnboardingError(
+            "A valid email address is required.", code="invalid_field"
+        ) from exc
+
+    mobile = _normalize_indian_mobile(phone)
+    if mobile is None:
+        if not str(phone or "").strip():
+            raise OnboardingError(
+                "An Indian mobile number is required.", code="missing_field"
+            )
+        raise OnboardingError(
+            "The mobile number must be a 10-digit Indian number.",
+            code="invalid_field",
+        )
+
+    if not designation:
+        raise OnboardingError("A designation is required.", code="missing_field")
+
+    return email, mobile, designation
+
+
+def _authority_field_error(authority: OnboardingAuthority) -> OnboardingError | None:
+    """The DEC4 verdict for ONE saved slot, or ``None`` when it satisfies."""
+    try:
+        _validate_authority_fields(
+            email=authority.email,
+            phone=authority.phone,
+            designation=authority.designation,
+        )
+    except OnboardingError as exc:
+        return exc
+    return None
+
+
+def _authority_fields_satisfied(authority: OnboardingAuthority) -> bool:
+    """DEC4 backstop for ``draft_is_complete`` (never raises)."""
+    return _authority_field_error(authority) is None
 
 
 # --- Draft lifecycle -------------------------------------------------------
@@ -182,17 +270,19 @@ def upsert_authority(
         raise OnboardingError(
             "Unknown authority role.", code="unknown_role", http_status=404
         )
-    email = str(fields.get("email", "")).strip().lower()
-    if not email:
-        raise OnboardingError("An email is required.", code="missing_field")
+    email, phone, designation = _validate_authority_fields(
+        email=str(fields.get("email", "")).strip().lower(),
+        phone=str(fields.get("phone", "")).strip(),
+        designation=str(fields.get("designation", "")).strip(),
+    )
     authority, _created = OnboardingAuthority.objects.update_or_create(
         draft=draft,
         role=role,
         defaults={
             "full_name": str(fields.get("full_name", "")).strip(),
             "email": email,
-            "phone": str(fields.get("phone", "")).strip(),
-            "designation": str(fields.get("designation", "")).strip(),
+            "phone": phone,
+            "designation": designation,
         },
     )
     return authority
@@ -301,6 +391,9 @@ def draft_is_complete(draft: OnboardingDraft) -> bool:
         return False
     if any(a.otp_verified_at is None for a in roles.values()):
         return False
+    # DEC4 backstop: a slot saved before the contact rule still cannot submit.
+    if not all(_authority_fields_satisfied(a) for a in roles.values()):
+        return False
     return OnboardingUpload.objects.filter(draft=draft).exists()
 
 
@@ -308,6 +401,13 @@ def draft_is_complete(draft: OnboardingDraft) -> bool:
 def submit_draft(draft: OnboardingDraft, request: Any = None) -> CharterApplication:
     """W1 gate + enqueue: ONE CharterApplication row (status=queued) + audit."""
     if not draft_is_complete(draft):
+        # Name the ACTUAL blocker. A slot written before the DEC4 rule is not
+        # an OTP problem, and telling the applicant to re-check codes that are
+        # already correct sends them hunting for a fault that is not there.
+        for saved in OnboardingAuthority.objects.filter(draft=draft):
+            verdict = _authority_field_error(saved)
+            if verdict is not None:
+                raise verdict
         raise OnboardingError(
             "Every authority step must be OTP-verified and the document "
             "uploaded before submitting.",

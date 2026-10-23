@@ -12,7 +12,8 @@ import {
   GraduationCap,
   Landmark,
   Languages,
-  Globe
+  Globe,
+  LogIn
 } from 'lucide-react';
 import { BranchType } from '../types';
 import { t } from "../i18n";
@@ -237,6 +238,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Quick Action Buttons */}
         <div className="hidden lg:flex items-center space-x-2.5">
+          <button
+            onClick={() => {
+              setCurrentBranch('landing');
+              setCurrentTab('login');
+            }}
+            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#E2ECE7] bg-white text-[#1A503E] shadow-xs hover:bg-[#F4F8F6] transition-all"
+          >
+            <LogIn className="h-3.5 w-3.5 text-[#0D7751]" />
+            <span>{t("Sign in")}</span>
+          </button>
           <button
             onClick={openPasskeyModal}
             className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#0D7751] bg-[#1A503E] text-white shadow-xs hover:bg-[#103125] transition-all"

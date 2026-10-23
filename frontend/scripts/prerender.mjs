@@ -5,6 +5,8 @@
  *   dist/index.html            <- /
  *   dist/verify/index.html     <- /verify/
  *   dist/directory/index.html  <- /directory/
+ *   dist/clubs/index.html      <- /clubs/
+ *   dist/join/index.html       <- /join/
  *
  * The HTML template is the client build's dist/index.html (same asset tags);
  * only the #root payload differs. Django serves these files per route and
@@ -18,7 +20,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const frontendDir = join(here, '..');
 const dist = join(frontendDir, 'dist');
 
-const { render } = await import(pathToFileURL(join(dist, '..', 'dist-ssr', 'entry-server.js')).href);
+const { render } = await import(
+  pathToFileURL(join(dist, '..', 'dist-ssr', 'entry-server.js')).href,
+);
 
 const template = readFileSync(join(dist, 'index.html'), 'utf8');
 const rootMarker = '<div id="root"></div>';
@@ -31,6 +35,8 @@ const routes = [
   { path: '/', file: join(dist, 'index.html') },
   { path: '/verify/', file: join(dist, 'verify', 'index.html') },
   { path: '/directory/', file: join(dist, 'directory', 'index.html') },
+  { path: '/clubs/', file: join(dist, 'clubs', 'index.html') },
+  { path: '/join/', file: join(dist, 'join', 'index.html') },
 ];
 
 for (const route of routes) {

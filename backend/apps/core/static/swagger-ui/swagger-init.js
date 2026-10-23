@@ -110,7 +110,14 @@ const requestInterceptor = (request, ...args) => {
   }
   // selectively omit adding headers to mitigate CORS issues.
   if (!["GET", undefined].includes(request.method) && request.credentials === "same-origin") {
-    request.headers["X-CSRFTOKEN"] = "REDACTED";
+    // Never bake a CSRF token into this file: it is static, served to every
+    // visitor, and would leak a live credential to the whole world (P0). Read
+    // the per-session csrftoken cookie at request time instead — Django's CSRF
+    // cookie is deliberately JS-readable, while SESSION_COOKIE stays HttpOnly.
+    const csrfCookie = /(?:^|;\s*)csrftoken=([^;]+)/.exec(document.cookie);
+    if (csrfCookie) {
+      request.headers["X-CSRFTOKEN"] = decodeURIComponent(csrfCookie[1]);
+    }
   }
   return request;
 };

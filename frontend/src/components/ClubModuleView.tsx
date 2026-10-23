@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import QRCode from 'qrcode';
 import { 
   Building2, 
   Users, 
@@ -10,19 +9,10 @@ import {
   FileSpreadsheet, 
   UserPlus, 
   PlusCircle, 
-  Download, 
-  Upload, 
   CheckCircle2, 
-  AlertCircle, 
-  ExternalLink,
-  Edit2,
-  Trash2,
   Share2,
-  KeyRound,
-  FileText,
   Award,
   Sparkles,
-  Search,
   Check,
   X,
   Send,
@@ -39,6 +29,7 @@ import {
 } from '../types';
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from "../i18n";
+import { RosterManager } from './roster/RosterManager';
 
 interface ClubModuleViewProps {
   activeClub: InstituteClub;
@@ -46,10 +37,6 @@ interface ClubModuleViewProps {
   activities: ClubActivity[];
   tickets: IssueTicket[];
   authorityRequests: AuthorityChangeRequest[];
-  onAddStudent: (student: StudentMember) => void;
-  onBulkAddStudents: (students: StudentMember[]) => void;
-  onUpdateStudent: (student: StudentMember) => void;
-  onDeleteStudent: (id: string) => void;
   onCreateActivity: (activity: ClubActivity) => void;
   onRaiseTicket: (ticket: IssueTicket) => void;
   onSubmitAuthorityChange: (req: AuthorityChangeRequest) => void;
@@ -63,10 +50,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   activities,
   tickets,
   authorityRequests,
-  onAddStudent,
-  onBulkAddStudents,
-  onUpdateStudent,
-  onDeleteStudent,
   onCreateActivity,
   onRaiseTicket,
   onSubmitAuthorityChange,
@@ -76,23 +59,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   const [activeTab, setActiveTab] = useState<
     'overview' | 'roster' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash'
   >('overview');
-
-  // Roster States
-  const [rosterSearch, setRosterSearch] = useState('');
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [showBulkCsvModal, setShowBulkCsvModal] = useState(false);
-  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
-
-  // New Student Form
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentRoll, setNewStudentRoll] = useState('');
-  const [newStudentEmail, setNewStudentEmail] = useState('');
-  const [newStudentDept, setNewStudentDept] = useState('Computer Science');
-  const [newStudentYear, setNewStudentYear] = useState('3rd Year');
-
-  // Bulk CSV Text
-  const [csvRawText, setCsvRawText] = useState('');
-  const [csvSuccessMsg, setCsvSuccessMsg] = useState('');
 
   // New Activity Form State
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
@@ -126,14 +92,11 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   // NAAC Preview
   const [showNaacPreview, setShowNaacPreview] = useState(false);
 
-  // S1: shared dialog behaviour for the 6 inline dialogs — backdrop click and
-  // Escape close whichever dialog is open (only one is open at a time).
+  // S1: shared dialog behaviour for the remaining inline dialogs — backdrop
+  // click and Escape close whichever dialog is open (only one at a time).
   const anyDialogOpen =
-    showAddStudentModal || showBulkCsvModal || showNewActivityModal ||
-    showNewTicketModal || showSuccessionModal || showNaacPreview;
+    showNewActivityModal || showNewTicketModal || showSuccessionModal || showNaacPreview;
   const closeAnyDialog = () => {
-    setShowAddStudentModal(false);
-    setShowBulkCsvModal(false);
     setShowNewActivityModal(false);
     setShowNewTicketModal(false);
     setShowSuccessionModal(false);
@@ -141,102 +104,13 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   };
   useModalBehavior(anyDialogOpen, closeAnyDialog);
 
-  // Filter students for active club
+  // Students feed the overview / activities tabs; the ROSTER tab (M5-D4) is
+  // live API data and does not read this demo collection.
   const clubStudents = students.filter(s => s.clubId === activeClub.id);
-  const filteredStudents = clubStudents.filter(s => 
-    s.name.toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    s.rollNo.toLowerCase().includes(rosterSearch.toLowerCase()) ||
-    s.department.toLowerCase().includes(rosterSearch.toLowerCase())
-  );
 
   const clubActivities = activities.filter(a => a.clubId === activeClub.id || a.isInterInstitutional);
   const clubTickets = tickets.filter(t => t.clubId === activeClub.id);
   const clubAuthRequests = authorityRequests.filter(r => r.clubId === activeClub.id);
-
-  // Handler: Add Single Student
-  const handleAddStudentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName || !newStudentRoll) return;
-
-    const newStudent: StudentMember = {
-      id: `STU-${Date.now().toString().slice(-4)}`,
-      clubId: activeClub.id,
-      name: newStudentName,
-      rollNo: newStudentRoll,
-      email: newStudentEmail || `${newStudentRoll.toLowerCase()}@demo.example.edu`,
-      department: newStudentDept,
-      year: newStudentYear,
-      readingPoints: 100,
-      tier: 'Bronze',
-      status: 'Active',
-      joinedDate: new Date().toISOString().split('T')[0],
-      approvedCertificateCount: 0
-    };
-
-    onAddStudent(newStudent);
-    setNewStudentName('');
-    setNewStudentRoll('');
-    setNewStudentEmail('');
-    setShowAddStudentModal(false);
-  };
-
-  // Handler: Parse and Import Bulk CSV
-  const handleBulkCsvImport = () => {
-    if (!csvRawText.trim()) return;
-
-    const lines = csvRawText.trim().split('\n');
-    const newMembers: StudentMember[] = [];
-
-    lines.forEach((line, idx) => {
-      // skip header if contains name or roll
-      if (idx === 0 && (line.toLowerCase().includes('name') || line.toLowerCase().includes('roll'))) {
-        return;
-      }
-      const parts = line.split(',').map(p => p.trim());
-      if (parts.length >= 2) {
-        const name = parts[0];
-        const rollNo = parts[1];
-        const department = parts[2] || 'General Studies';
-        const email = parts[3] || `${rollNo.toLowerCase()}@demo.example.edu`;
-        const year = parts[4] || '1st Year';
-
-        newMembers.push({
-          id: `STU-${Date.now().toString().slice(-4)}-${idx}`,
-          clubId: activeClub.id,
-          name,
-          rollNo,
-          email,
-          department,
-          year,
-          readingPoints: 150,
-          tier: 'Bronze',
-          status: 'Active',
-          joinedDate: new Date().toISOString().split('T')[0],
-          approvedCertificateCount: 0
-        });
-      }
-    });
-
-    if (newMembers.length > 0) {
-      onBulkAddStudents(newMembers);
-      setCsvSuccessMsg(`Successfully imported ${newMembers.length} students into roster!`);
-      setTimeout(() => {
-        setCsvSuccessMsg('');
-        setCsvRawText('');
-        setShowBulkCsvModal(false);
-      }, 1500);
-    }
-  };
-
-  // Sample CSV Auto-filler
-  const handleSampleCsv = () => {
-    setCsvRawText(`Name, RollNo, Department, Email, Year
-Anirudh Roy, 24CS101, Computer Science, anirudh.r@demo.example.edu, 2nd Year
-Kavita Iyer, 24EC204, Electronics, kavita.i@demo.example.edu, 2nd Year
-Prateek Sen, 23ME302, Mechanical, prateek.s@demo.example.edu, 3rd Year
-Swati Banerjee, 24BT109, Biotechnology, swati.b@demo.example.edu, 2nd Year
-Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
-  };
 
   // Handler: Create Activity
   const handleCreateActivitySubmit = (e: React.FormEvent) => {
@@ -517,136 +391,8 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
         </div>
       )}
 
-      {/* TAB 2: Student Roster (Passkey + Bulk CSV + Inline Edit) */}
-      {activeTab === 'roster' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2ECE7] pb-4">
-            <div>
-              <h3 className="text-lg font-bold text-[#103125] flex items-center space-x-2">
-                <Users className="h-5 w-5 text-[#0D7751]" />
-                <span>{t("Student Member Enrollment & Roster Management")}</span>
-              </h3>
-              <p className="text-xs text-[#5A7366] mt-0.5">
-                {t("Onboard students via Passkey or upload bulk CSV spreadsheets. Details remain fully editable.")}
-                                            </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setShowBulkCsvModal(true)}
-                className="px-3.5 py-2 rounded-xl bg-[#E9F5EF] hover:bg-[#d3ede0] text-[#0D7751] text-xs font-bold flex items-center space-x-1.5 transition-colors border border-[#0D7751]/30"
-              >
-                <Upload className="h-4 w-4" />
-                <span>{t("Bulk CSV Upload")}</span>
-              </button>
-
-              <button
-                onClick={() => setShowAddStudentModal(true)}
-                className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>{t("Add Student")}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search bar & count */}
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#5A7366]" />
-              <input
-                type="text"
-                placeholder={t("Search by name, roll no, department...")}
-                value={rosterSearch}
-                onChange={(e) => setRosterSearch(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-[#E2ECE7] bg-[#F4F8F6] focus:ring-2 focus:ring-[#0D7751] focus:outline-hidden"
-              />
-            </div>
-
-            <div className="text-xs font-semibold text-[#5A7366]">
-              {t("Showing")} <span className="font-bold text-[#103125]">{filteredStudents.length}</span> {t("of")} {clubStudents.length} {t("enrolled members")}
-                                      </div>
-          </div>
-
-          {/* Student Table */}
-          <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
-            <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-              <thead className="bg-[#F4F8F6] text-[#5A7366] font-bold uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">{t("Student Name")}</th>
-                  <th className="py-3 px-4">{t("Roll / Enrolment No")}</th>
-                  <th className="py-3 px-4">{t("APAAR ID (ABC)")}</th>
-                  <th className="py-3 px-4">{t("Department & Year")}</th>
-                  <th className="py-3 px-4">{t("Reading Score")}</th>
-                  <th className="py-3 px-4">{t("NAD-ABC Status")}</th>
-                  <th className="py-3 px-4">{t("Certificates")}</th>
-                  <th className="py-3 px-4 text-right">{t("Actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-                {filteredStudents.map(student => (
-                  <tr key={student.id} className="hover:bg-[#F4F8F6]/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-[#103125]">
-                      {student.name}
-                      <span className="block font-normal text-[11px] text-[#5A7366]">{student.email}</span>
-                    </td>
-                    <td className="py-3 px-4 font-mono font-semibold text-[#2E4A3E]">{student.rollNo}</td>
-                    <td className="py-3 px-4 font-mono text-[11px]">
-                      {student.apaarId ? (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded bg-brand-50 text-brand-800 border border-brand-200 font-semibold">
-                          <span>{t("APAAR:")} {student.apaarId}</span>
-                        </span>
-                      ) : (
-                        <span className="text-ink-600 italic text-[11px]">{t("Unanchored (Roll No)")}</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-[#5A7366]">{t(student.department)} • {t(student.year)}</td>
-                    <td className="py-3 px-4">
-                      <span className="font-bold text-[#B45309]">{student.readingPoints} {t("pts")}</span>
-                      <span className="block text-[11px] text-[#5A7366]">{t(student.tier)}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        student.nadStatus === 'Deposited to NAD-ABC' ? 'bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20' :
-                        student.nadStatus === 'Pending Sync' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        'bg-ink-100 text-ink-600'
-                      }`}>
-                        {t(student.nadStatus || 'Not Linked')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-[#0D7751]">
-                      {student.approvedCertificateCount} {t("Approved")}
-                                                </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button
-                        onClick={() => {
-                          const newDept = prompt('Edit Department:', student.department);
-                          if (newDept) onUpdateStudent({ ...student, department: newDept });
-                        }}
-                        className="p-1 hover:bg-[#E9F5EF] rounded text-[#0D7751]"
-                        title={t("Edit Student")}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Remove ${student.name} from club roster?`)) {
-                            onDeleteStudent(student.id);
-                          }
-                        }}
-                        className="p-1 hover:bg-rose-50 rounded text-rose-600"
-                        title={t("Deactivate Student")}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* TAB 2: Student Roster (M5-D4) — the live API-backed manager. */}
+      {activeTab === 'roster' && <RosterManager />}
 
       {/* TAB 3: Activities & Workshops */}
       {activeTab === 'activities' && (
@@ -977,114 +723,6 @@ Arunava Das, 22CE410, Civil Engg, arunava.d@demo.example.edu, 4th Year`);
                 <Award className="h-4 w-4" />
                 <span>{t("View & Print Master Certificate")}</span>
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 1: Add Single Student */}
-      {showAddStudentModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
-          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Add Enrolled Student to Roster")} tabIndex={-1} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
-            <h3 className="text-base font-bold text-[#103125]">{t("Add Enrolled Student to Roster")}</h3>
-            <form onSubmit={handleAddStudentSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-ink-700 block mb-1">{t("Full Student Name *")}</label>
-                <input
-                  type="text"
-                  placeholder={t("e.g. Sweta Bhattacharya")}
-                  value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">{t("Roll / ID No. *")}</label>
-                  <input
-                    type="text"
-                    placeholder={t("e.g. 24CS401")}
-                    value={newStudentRoll}
-                    onChange={(e) => setNewStudentRoll(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 rounded-lg border border-ink-300 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">{t("Department")}</label>
-                  <input
-                    type="text"
-                    value={newStudentDept}
-                    onChange={(e) => setNewStudentDept(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-ink-300"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudentModal(false)}
-                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
-                >
-                  {t("Cancel")}
-                                                  </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#1A503E] text-white font-bold"
-                >
-                  {t("Save to Roster")}
-                                                  </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: Bulk CSV Upload */}
-      {showBulkCsvModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
-          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Bulk Student Enrollment via CSV")} tabIndex={-1} className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-[#103125]">{t("Bulk Student Enrollment via CSV")}</h3>
-              <button
-                type="button"
-                onClick={handleSampleCsv}
-                className="text-xs text-[#0D7751] font-bold hover:underline"
-              >
-                {t("Auto-fill Sample CSV Data")}
-                                            </button>
-            </div>
-            <p className="text-xs text-[#5A7366]">
-              {t("Format:")} <code>{t("Name, RollNo, Department, Email, Year")}</code> {t("(one student per line)")}
-                                      </p>
-            <textarea
-              rows={6}
-              value={csvRawText}
-              onChange={(e) => setCsvRawText(e.target.value)}
-              placeholder={t("Name, RollNo, Department, Email, Year&#10;Aarav Mukherjee, 22CS30045, Computer Science, aarav.m@demo.example.edu, 4th Year")}
-              className="w-full p-3 rounded-xl border border-ink-300 font-mono text-xs focus:ring-2 focus:ring-[#0D7751]"
-            />
-            {csvSuccessMsg && (
-              <div className="text-xs text-brand-700 bg-brand-50 p-2.5 rounded-lg font-bold">
-                ✓ {csvSuccessMsg}
-              </div>
-            )}
-            <div className="flex justify-between items-center pt-2">
-              <button
-                type="button"
-                onClick={() => setShowBulkCsvModal(false)}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-ink-600"
-              >
-                {t("Cancel")}
-                                            </button>
-              <button
-                type="button"
-                onClick={handleBulkCsvImport}
-                className="px-5 py-2 rounded-lg bg-[#1A503E] text-white text-xs font-bold shadow-xs hover:bg-[#103125]"
-              >
-                {t("Parse & Import Members")}
-                                            </button>
             </div>
           </div>
         </div>

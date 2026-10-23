@@ -47,6 +47,12 @@ ROUTE_FILES: dict[str, str] = {
     "directory": "directory/index.html",
     "directory/": "directory/index.html",
     "directory/index.html": "directory/index.html",
+    "clubs": "clubs/index.html",
+    "clubs/": "clubs/index.html",
+    "clubs/index.html": "clubs/index.html",
+    "join": "join/index.html",
+    "join/": "join/index.html",
+    "join/index.html": "join/index.html",
 }
 
 #: Requests under these prefixes never fall through to the SPA fallback.

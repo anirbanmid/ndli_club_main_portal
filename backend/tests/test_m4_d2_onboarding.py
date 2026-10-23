@@ -195,6 +195,8 @@ class OtpAdversarialTests(TestCase):
                 "full_name": "Patron",
                 "email": "patron@example.edu",
                 "phone": "+911234567890",
+                # DEC4 (M5): designation is MANDATORY for every authority.
+                "designation": "Prof",
             },
             content_type="application/json",
             **self.headers,
@@ -243,6 +245,8 @@ class OtpAdversarialTests(TestCase):
                 "full_name": "Sec",
                 "email": "secretary@example.edu",
                 "phone": "+911234567890",
+                # DEC4 (M5): designation is MANDATORY for every authority.
+                "designation": "Prof",
             },
             content_type="application/json",
             **self.headers,

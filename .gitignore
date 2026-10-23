@@ -21,6 +21,13 @@ htmlcov/
 backend/db.sqlite3
 backend/staticfiles/
 
+# --- runtime media (never source; never committed) ---
+# backend/var/ is ONBOARDING_UPLOAD_ROOT + ROSTER_IMPORT_ROOT (settings.base):
+# identity documents and student roster CSVs. Personal data belongs on the
+# server only — one careless `git add -A` would push it into permanent git
+# history. Guarded by tests/test_repo_gitignore_guard.py.
+backend/var/
+
 # --- Node ---
 node_modules/
 dist/

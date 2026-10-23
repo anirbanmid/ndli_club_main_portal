@@ -12,7 +12,7 @@ import {
  * the identity step.
  *
  * Rules:
- * 1. All fields are mandatory except AISHE code (which is optional).
+ * 1. All fields are mandatory except AISHE code (which is optional); server rejects if missing.
  * 2. State/UT provides a full dropdown of all 36 Indian States and Union Territories.
  * 3. Zone is automatically fetched / mapped from the State/UT database mapping.
  * 4. District is labeled as "District" (not "District code").
@@ -48,12 +48,9 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
     district_code: initial.district_code ?? '',
   }));
 
-  const [clientError, setClientError] = useState<string | null>(null);
-
   const selectedState: StateUT | undefined = findStateByQuery(values.state_code);
 
   const handleStateChange = (newCode: string): void => {
-    setClientError(null);
     const matched = INDIAN_STATES_AND_UTS.find((s) => s.code === newCode);
     const autoZone = matched ? matched.zoneCode : '';
     setValues((prev) => ({
@@ -66,51 +63,13 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (busy) return;
-    setClientError(null);
-
-    // Client-side mandatory checks (all except aishe_code)
-    if (!values.institution_name.trim()) {
-      setClientError(t('A institution name is required.'));
-      return;
-    }
-    if (!values.club_name.trim()) {
-      setClientError(t('A club name is required.'));
-      return;
-    }
-    if (!values.state_code.trim()) {
-      setClientError(t('A state code is required.'));
-      return;
-    }
-    if (!values.zone_code.trim()) {
-      setClientError(t('A zone code is required.'));
-      return;
-    }
-    if (!values.district_code.trim()) {
-      setClientError(t('A district code is required.'));
-      return;
-    }
-
-    onSubmit({
-      ...values,
-      institution_name: values.institution_name.trim(),
-      club_name: values.club_name.trim(),
-      aishe_code: values.aishe_code.trim(),
-      state_code: values.state_code.trim(),
-      zone_code: values.zone_code.trim(),
-      district_code: values.district_code.trim(),
-    });
+    onSubmit(values);
   };
 
   return (
     <form onSubmit={handleSubmit} noValidate>
       <fieldset disabled={busy} className="space-y-4">
         <legend className="sr-only">{t('Institution & club identity')}</legend>
-
-        {clientError && (
-          <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-900">
-            ⚠️ {clientError}
-          </div>
-        )}
 
         {/* 1. Institution Name (Mandatory) */}
         <div>
@@ -123,10 +82,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
             required
             placeholder={t('e.g. Indian Institute of Technology Kharagpur')}
             value={values.institution_name}
-            onChange={(e) => {
-              setClientError(null);
-              setValues((prev) => ({ ...prev, institution_name: e.target.value }));
-            }}
+            onChange={(e) => setValues((prev) => ({ ...prev, institution_name: e.target.value }))}
             aria-invalid={fieldErrors.institution_name !== undefined}
             aria-describedby={fieldErrors.institution_name !== undefined ? 'identity-institution_name-error' : undefined}
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
@@ -179,10 +135,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
             required
             placeholder={t('e.g. NDLI Readers Club')}
             value={values.club_name}
-            onChange={(e) => {
-              setClientError(null);
-              setValues((prev) => ({ ...prev, club_name: e.target.value }));
-            }}
+            onChange={(e) => setValues((prev) => ({ ...prev, club_name: e.target.value }))}
             aria-invalid={fieldErrors.club_name !== undefined}
             aria-describedby={fieldErrors.club_name !== undefined ? 'identity-club_name-error' : undefined}
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
@@ -234,34 +187,27 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
         {/* 5. Zone (Auto-fetched from State/UT, Mandatory) */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label htmlFor="identity-zone_display" className="block text-xs font-bold text-[#2E4A3E]">
+            <label htmlFor="identity-zone_code" className="block text-xs font-bold text-[#2E4A3E]">
               {t('Zone')} <span className="text-rose-600">*</span>
             </label>
             <span className="text-[11px] font-bold text-[#0D7751]">
               ⚡ {t('Auto-fetched from database')}
             </span>
           </div>
-
-          <div
-            id="identity-zone_display"
-            className={`w-full px-3.5 py-2.5 rounded-lg border text-sm flex items-center justify-between transition-colors ${
+          <input
+            id="identity-zone_code"
+            type="text"
+            readOnly
+            value={selectedState ? `${selectedState.zoneName} (${selectedState.zoneCode})` : (values.zone_code || '')}
+            placeholder={t('Auto-derived upon selecting State / UT')}
+            aria-invalid={fieldErrors.zone_code !== undefined}
+            aria-describedby={fieldErrors.zone_code !== undefined ? 'identity-zone_code-error' : undefined}
+            className={`w-full px-3.5 py-2.5 rounded-lg border text-sm font-semibold transition-colors focus:outline-none cursor-default ${
               selectedState
                 ? 'border-[#0D7751]/40 bg-[#EBF5F0] text-[#103125]'
                 : 'border-[#E2ECE7] bg-[#F4F8F6] text-[#5A7366]'
             }`}
-          >
-            <div className="flex items-center space-x-2">
-              <span className="font-bold">
-                {selectedState ? `${selectedState.zoneName} (${selectedState.zoneCode})` : t('Select a State / UT above to derive Zone')}
-              </span>
-            </div>
-            {selectedState && (
-              <span className="inline-flex items-center text-[11px] font-extrabold text-[#0D7751] bg-white px-2 py-0.5 rounded border border-[#0D7751]/30">
-                ✓ {t('Auto-Assigned')}
-              </span>
-            )}
-          </div>
-          <input type="hidden" name="zone_code" value={values.zone_code} />
+          />
           {fieldErrors.zone_code !== undefined && (
             <p id="identity-zone_code-error" role="alert" className="mt-1 text-xs font-bold text-[#B45309]">
               {t(fieldErrors.zone_code)}
@@ -280,10 +226,7 @@ export const IdentityForm: React.FC<IdentityFormProps> = ({
             required
             placeholder={t('e.g. Paschim Medinipur or Kolkata')}
             value={values.district_code}
-            onChange={(e) => {
-              setClientError(null);
-              setValues((prev) => ({ ...prev, district_code: e.target.value }));
-            }}
+            onChange={(e) => setValues((prev) => ({ ...prev, district_code: e.target.value }))}
             aria-invalid={fieldErrors.district_code !== undefined}
             aria-describedby={fieldErrors.district_code !== undefined ? 'identity-district_code-error' : undefined}
             className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"

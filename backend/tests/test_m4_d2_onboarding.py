@@ -333,7 +333,7 @@ class UploadHardeningTests(TestCase):
 
 
 class OnboardingIdentityRulesTests(TestCase):
-    """Test auto-fetching Zone from State/UT, mandatory field enforcement, and optional AISHE."""
+    """Test auto-fetching Zone, mandatory field enforcement, and optional AISHE."""
 
     def test_create_draft_auto_resolves_zone_from_state(self) -> None:
         # Create draft omitting zone_code, providing state_code

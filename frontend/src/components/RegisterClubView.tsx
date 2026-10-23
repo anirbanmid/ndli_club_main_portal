@@ -14,6 +14,7 @@ import {
 import { InstituteClub } from '../types';
 import { downloadOfficialCharterDoc } from '../utils/charterGenerator';
 import { t } from "../i18n";
+import { INDIAN_STATES_AND_UTS, findStateByQuery } from '../utils/indiaGeography';
 
 interface RegisterClubViewProps {
   onClubRegistered: (newClub: InstituteClub) => void;
@@ -85,7 +86,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
   const handleNextStep1 = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!aisheCode || !instituteName || !district) {
+    if (!instituteName || !district || !state) {
       setFormError('Please fill in all mandatory institutional fields.');
       return;
     }
@@ -111,17 +112,18 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
     const passkey = `${cleanPrefix}-NDL-${randomPin}`;
     const clubId = `CLUB-${cleanPrefix}-${randomPin}`;
 
+    const matchedGeo = findStateByQuery(state);
+    const zoneFormatted: InstituteClub['zone'] = matchedGeo
+      ? (matchedGeo.zoneCode === 'NORTH_EAST' ? 'North East' : (matchedGeo.zoneName.replace(' Zone', '') as any))
+      : 'East';
+
     const newClub: InstituteClub = {
       id: clubId,
-      aisheCode,
+      aisheCode: aisheCode.trim(),
       name: instituteName,
       state,
       district,
-      zone: (['Delhi', 'Uttar Pradesh', 'Punjab', 'Haryana', 'J&K', 'Himachal Pradesh'].includes(state) ? 'North' :
-             ['Maharashtra', 'Gujarat', 'Rajasthan', 'Goa'].includes(state) ? 'West' :
-             ['Tamil Nadu', 'Kerala', 'Puducherry', 'Karnataka', 'Telangana', 'Andhra Pradesh'].includes(state) ? 'South' :
-             ['Madhya Pradesh', 'Chhattisgarh'].includes(state) ? 'Central' :
-             ['Assam', 'Meghalaya', 'Manipur', 'Tripura'].includes(state) ? 'North East' : 'East') as any,
+      zone: zoneFormatted,
       category,
       passkey,
 
@@ -213,13 +215,15 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-ink-700">{t("AISHE / College Code *")}</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-ink-700">{t("AISHE / College Code")}</label>
+                <span className="text-[10px] text-ink-500 font-semibold">{t("(Optional)")}</span>
+              </div>
               <input
                 type="text"
-                placeholder={t("e.g. U-0570 or C-41295")}
+                placeholder={t("e.g. U-0570 or C-41295 (optional)")}
                 value={aisheCode}
                 onChange={(e) => setAisheCode(e.target.value)}
-                required
                 className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden"
               />
               <span className="text-[11px] text-ink-600">{t("Ministry of Education All India Survey on Higher Education Code")}</span>
@@ -252,20 +256,27 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-ink-700">{t("State *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("State / UT *")}</label>
               <select
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 className="w-full px-3.5 py-2 text-sm rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 focus:outline-hidden bg-white"
               >
-                {['West Bengal', 'Maharashtra', 'Delhi', 'Tamil Nadu', 'Karnataka', 'Telangana', 'Uttar Pradesh', 'Gujarat', 'Kerala', 'Rajasthan'].map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                <optgroup label={t("States")}>
+                  {INDIAN_STATES_AND_UTS.filter(s => s.kind === 'state').map(s => (
+                    <option key={s.code} value={s.name}>{s.name} ({s.zoneName})</option>
+                  ))}
+                </optgroup>
+                <optgroup label={t("Union Territories")}>
+                  {INDIAN_STATES_AND_UTS.filter(s => s.kind === 'ut').map(s => (
+                    <option key={s.code} value={s.name}>{s.name} ({s.zoneName})</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-ink-700">{t("District / City *")}</label>
+              <label className="text-xs font-bold text-ink-700">{t("District *")}</label>
               <input
                 type="text"
                 placeholder={t("e.g. Kolkata")}

@@ -19,7 +19,7 @@ from typing import Any, BinaryIO
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 from apps.accounts.services import send_email_otp, verify_email_otp
@@ -153,12 +153,94 @@ def _authority_fields_satisfied(authority: OnboardingAuthority) -> bool:
     return _authority_field_error(authority) is None
 
 
+def _resolve_zone_for_state(state_code: str) -> str:
+    """Auto-resolve regional zone code from the State table in the database,
+    with fallback to the canonical 36-state national map.
+    """
+    clean_state = str(state_code).strip()
+    if not clean_state:
+        return ""
+    try:
+        from apps.domain.models import State
+
+        state_obj = (
+            State.objects.filter(
+                models.Q(code__iexact=clean_state) | models.Q(name__iexact=clean_state)
+            )
+            .select_related("zone")
+            .first()
+        )
+        if state_obj and state_obj.zone:
+            return state_obj.zone.code
+    except Exception:
+        pass
+
+    state_zone_map = {
+        "ANDAMAN_AND_NICOBAR_ISLANDS": "SOUTH",
+        "ANDHRA_PRADESH": "SOUTH",
+        "ARUNACHAL_PRADESH": "NORTH_EAST",
+        "ASSAM": "NORTH_EAST",
+        "BIHAR": "EAST",
+        "CHANDIGARH": "NORTH",
+        "CHHATTISGARH": "CENTRAL",
+        "DADRA_AND_NAGAR_HAVELI_AND_DAMAN_AND_DIU": "WEST",
+        "DELHI": "NORTH",
+        "GOA": "WEST",
+        "GUJARAT": "WEST",
+        "HARYANA": "NORTH",
+        "HIMACHAL_PRADESH": "NORTH",
+        "JAMMU_AND_KASHMIR": "NORTH",
+        "JHARKHAND": "EAST",
+        "KARNATAKA": "SOUTH",
+        "KERALA": "SOUTH",
+        "LADAKH": "NORTH",
+        "LAKSHADWEEP": "SOUTH",
+        "MADHYA_PRADESH": "CENTRAL",
+        "MAHARASHTRA": "WEST",
+        "MANIPUR": "NORTH_EAST",
+        "MEGHALAYA": "NORTH_EAST",
+        "MIZORAM": "NORTH_EAST",
+        "NAGALAND": "NORTH_EAST",
+        "ODISHA": "EAST",
+        "PUDUCHERRY": "SOUTH",
+        "PUNJAB": "NORTH",
+        "RAJASTHAN": "WEST",
+        "SIKKIM": "EAST",
+        "TAMIL_NADU": "SOUTH",
+        "TELANGANA": "SOUTH",
+        "TRIPURA": "NORTH_EAST",
+        "UTTAR_PRADESH": "NORTH",
+        "UTTARAKHAND": "NORTH",
+        "WEST_BENGAL": "EAST",
+    }
+    normalized = re.sub(r"[\s\-_]+", "_", clean_state.upper())
+    if normalized in state_zone_map:
+        return state_zone_map[normalized]
+
+    abbr_map = {
+        "AP": "ANDHRA_PRADESH", "AR": "ARUNACHAL_PRADESH", "AS": "ASSAM", "BR": "BIHAR",
+        "CG": "CHHATTISGARH", "CH": "CHANDIGARH", "DL": "DELHI", "GA": "GOA",
+        "GJ": "GUJARAT", "HP": "HIMACHAL_PRADESH", "HR": "HARYANA", "JH": "JHARKHAND",
+        "JK": "JAMMU_AND_KASHMIR", "KA": "KARNATAKA", "KL": "KERALA", "LA": "LADAKH",
+        "LD": "LAKSHADWEEP", "MH": "MAHARASHTRA", "ML": "MEGHALAYA", "MN": "MANIPUR",
+        "MP": "MADHYA_PRADESH", "MZ": "MIZORAM", "NL": "NAGALAND", "OD": "ODISHA",
+        "PB": "PUNJAB", "PY": "PUDUCHERRY", "RJ": "RAJASTHAN", "SK": "SIKKIM",
+        "TN": "TAMIL_NADU", "TR": "TRIPURA", "TS": "TELANGANA", "UK": "UTTARAKHAND",
+        "UP": "UTTAR_PRADESH", "WB": "WEST_BENGAL",
+    }
+    if clean_state.upper() in abbr_map:
+        target = abbr_map[clean_state.upper()]
+        return state_zone_map.get(target, "")
+
+    return ""
+
+
 # --- Draft lifecycle -------------------------------------------------------
 def create_draft(
     *,
     institution_name: str,
     club_name: str,
-    zone_code: str,
+    zone_code: str = "",
     state_code: str,
     district_code: str,
     aishe_code: str = "",
@@ -168,6 +250,16 @@ def create_draft(
     Only the token hash is persisted (P0). The raw token is handed to the
     caller exactly once — it is the capability for every later step.
     """
+    institution_name = str(institution_name).strip()
+    club_name = str(club_name).strip()
+    state_code = str(state_code).strip()
+    district_code = str(district_code).strip()
+    aishe_code = str(aishe_code).strip()
+    zone_code = str(zone_code).strip()
+
+    if not zone_code and state_code:
+        zone_code = _resolve_zone_for_state(state_code)
+
     for label, value in (
         ("institution name", institution_name),
         ("club name", club_name),
@@ -180,12 +272,12 @@ def create_draft(
     raw_token = secrets.token_urlsafe(32)
     try:
         draft = OnboardingDraft.objects.create(
-            institution_name=institution_name.strip(),
-            aishe_code=aishe_code.strip(),
-            club_name=club_name.strip(),
-            zone_code=zone_code.strip(),
-            state_code=state_code.strip(),
-            district_code=district_code.strip(),
+            institution_name=institution_name,
+            aishe_code=aishe_code,
+            club_name=club_name,
+            zone_code=zone_code,
+            state_code=state_code,
+            district_code=district_code,
             resume_token_hash=_sha256_hex(raw_token.encode("utf-8")),
             resume_token_expires_at=timezone.now()
             + timedelta(hours=RESUME_TOKEN_TTL_HOURS),
@@ -253,6 +345,13 @@ def update_identity(draft: OnboardingDraft, **fields: str) -> None:
         "state_code",
         "district_code",
     }
+    state_val = str(fields.get("state_code", getattr(draft, "state_code", ""))).strip()
+    zone_val = str(fields.get("zone_code", "")).strip()
+    if not zone_val and state_val:
+        auto_zone = _resolve_zone_for_state(state_val)
+        if auto_zone:
+            fields["zone_code"] = auto_zone
+
     for key, value in fields.items():
         if key not in allowed:
             continue

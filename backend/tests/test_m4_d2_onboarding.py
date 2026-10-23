@@ -330,3 +330,66 @@ class UploadHardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("attachment", response["Content-Disposition"])
         self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
+
+class OnboardingIdentityRulesTests(TestCase):
+    """Test auto-fetching Zone from State/UT, mandatory field enforcement, and optional AISHE."""
+
+    def test_create_draft_auto_resolves_zone_from_state(self) -> None:
+        # Create draft omitting zone_code, providing state_code
+        draft, token = services.create_draft(
+            institution_name="Presidency University",
+            club_name="Literature Club",
+            state_code="WEST_BENGAL",
+            district_code="Kolkata",
+            aishe_code="",  # optional
+        )
+        self.assertEqual(draft.zone_code, "EAST")
+        self.assertEqual(draft.state_code, "WEST_BENGAL")
+        self.assertEqual(draft.aishe_code, "")
+
+    def test_create_draft_auto_resolves_zone_from_abbreviation(self) -> None:
+        draft, token = services.create_draft(
+            institution_name="Delhi Technological University",
+            club_name="Tech Club",
+            state_code="DL",
+            district_code="New Delhi",
+        )
+        self.assertEqual(draft.zone_code, "NORTH")
+
+    def test_create_draft_missing_mandatory_field_raises_error(self) -> None:
+        # Missing institution_name
+        with self.assertRaises(services.OnboardingError) as ctx:
+            services.create_draft(
+                institution_name="",
+                club_name="Music Club",
+                state_code="WEST_BENGAL",
+                district_code="Kolkata",
+            )
+        self.assertIn("institution name", str(ctx.exception))
+
+        # Missing district_code
+        with self.assertRaises(services.OnboardingError) as ctx:
+            services.create_draft(
+                institution_name="St. Xavier's",
+                club_name="Debate Club",
+                state_code="WEST_BENGAL",
+                district_code="",
+            )
+        self.assertIn("district code", str(ctx.exception))
+
+    def test_update_identity_auto_resolves_zone(self) -> None:
+        draft, token = services.create_draft(
+            institution_name="IIT Bombay",
+            club_name="Aero Club",
+            state_code="MAHARASHTRA",
+            district_code="Mumbai",
+        )
+        self.assertEqual(draft.zone_code, "WEST")
+
+        # Update state to Karnataka without specifying zone_code
+        services.update_identity(draft, state_code="KARNATAKA")
+        draft.refresh_from_db()
+        self.assertEqual(draft.state_code, "KARNATAKA")
+        self.assertEqual(draft.zone_code, "SOUTH")
+

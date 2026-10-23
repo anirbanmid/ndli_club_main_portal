@@ -3,6 +3,18 @@
 # frontend build + axe accessibility check. Parts of this pipeline exercise
 # stack components (docker, MinIO, Redis) that only exist in the compose stack;
 # every job here is designed to run on GitHub-hosted runners as-is.
+#
+# DEPLOY ARRANGEMENT (2026-10-23): production deploys are triggered by Render
+# itself — service -> Settings -> Build & Deploy -> Auto Deploy = "After CI
+# Checks Pass". This workflow runs on EVERY push to main (no path filters), so
+# Render always has checks to wait for.
+#
+# Do NOT re-add a deploy-hook workflow alongside it. One was removed because it
+# fired the Render Deploy Hook after CI while Render's own post-CI trigger
+# also fired, deploying every commit TWICE; and Render's trigger alone already
+# guarantees a red CI run never reaches production. If you ever need the hook
+# again (e.g. Render's setting is lost), delete Render's auto-deploy FIRST, or
+# you are back to duplicate deploys.
 
 name: CI
 

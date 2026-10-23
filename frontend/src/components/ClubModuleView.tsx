@@ -17,7 +17,10 @@ import {
   X,
   Send,
   Lock,
-  Globe2
+  Globe2,
+  ArrowLeft,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { 
   InstituteClub, 
@@ -37,6 +40,17 @@ interface ClubModuleViewProps {
   activities: ClubActivity[];
   tickets: IssueTicket[];
   authorityRequests: AuthorityChangeRequest[];
+  isAuthorityAuthenticated?: boolean;
+  authenticatedAuthority?: {
+    name: string;
+    role: string;
+    email: string;
+    clubId: string;
+  } | null;
+  onAuthoritySignIn?: () => void;
+  onAuthorityQuickSignIn?: (authority: { name: string; role: string; email: string; clubId: string }) => void;
+  onAuthoritySignOut?: () => void;
+  onBackToClubsList?: () => void;
   onCreateActivity: (activity: ClubActivity) => void;
   onRaiseTicket: (ticket: IssueTicket) => void;
   onSubmitAuthorityChange: (req: AuthorityChangeRequest) => void;
@@ -50,6 +64,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   activities,
   tickets,
   authorityRequests,
+  isAuthorityAuthenticated = false,
+  authenticatedAuthority = null,
+  onAuthoritySignIn,
+  onAuthorityQuickSignIn,
+  onAuthoritySignOut,
+  onBackToClubsList,
   onCreateActivity,
   onRaiseTicket,
   onSubmitAuthorityChange,
@@ -196,8 +216,154 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
     setShowSuccessionModal(false);
   };
 
+  // Point 3: The dashboard remains locked behind authority login screen
+  if (!isAuthorityAuthenticated) {
+    const presidentAuth = activeClub.authorities.find(a => a.role === 'President') || activeClub.authorities[0];
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-6 animate-in fade-in">
+        {onBackToClubsList && (
+          <button
+            onClick={onBackToClubsList}
+            className="flex items-center space-x-1.5 text-xs font-bold text-[#2E4A3E] hover:text-[#103125] transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>{t("Back to National Chapters Directory")}</span>
+          </button>
+        )}
+
+        <div className="bg-white rounded-3xl border border-[#E2ECE7] shadow-xl overflow-hidden">
+          {/* Top Security Banner */}
+          <div className="bg-gradient-to-r from-[#103125] via-[#1A503E] to-[#103125] text-white p-8 text-center relative">
+            <div className="inline-flex p-3.5 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-amber-300 mb-3">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {t("Club Authority Authentication Required")}
+            </h1>
+            <p className="text-xs sm:text-sm text-brand-200 mt-2 max-w-xl mx-auto">
+              {t("The Management Dashboard for")} <strong className="text-white">{activeClub.name}</strong> {t("is strictly locked behind authorized institutional credentials.")}
+            </p>
+            <div className="inline-flex items-center space-x-2 text-[11px] font-mono bg-white/10 px-3 py-1 rounded-full mt-3 text-brand-200 border border-white/10">
+              <span>{t("AISHE:")} {activeClub.aisheCode}</span>
+              <span>•</span>
+              <span>{t("Zone:")} {t(activeClub.zone)}</span>
+            </div>
+          </div>
+
+          <div className="p-6 sm:p-8 space-y-6">
+            {/* Security Explanation */}
+            <div className="bg-[#F4F8F6] p-4 rounded-2xl border border-[#E2ECE7] space-y-2">
+              <div className="flex items-center space-x-2 text-xs font-bold text-[#103125]">
+                <ShieldCheck className="h-4 w-4 text-[#0D7751]" />
+                <span>{t("Institutional Governance Protection")}</span>
+              </div>
+              <p className="text-xs text-[#5A7366] leading-relaxed">
+                {t("This dashboard provides privileged access to student member rosters, confidential NAAC 3.3 audit documentation, certificate issuance workflows, and official succession requests. Public access is disabled in compliance with NDLI Club security protocols.")}
+              </p>
+            </div>
+
+            {/* Recognized Authorities Roster */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D7751]">
+                {t("Recognized Institutional Authorities for this Chapter:")}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {activeClub.authorities.map(auth => (
+                  <div key={auth.role} className="p-3.5 rounded-xl bg-white border border-[#E2ECE7] shadow-2xs space-y-1">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="font-extrabold uppercase px-2 py-0.5 rounded bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
+                        {t(auth.role)}
+                      </span>
+                      <span className="text-[#0D7751] font-bold text-[11px]">✓ Verified</span>
+                    </div>
+                    <div className="font-bold text-xs text-[#103125] pt-0.5">{auth.name}</div>
+                    <div className="text-[11px] text-[#5A7366]">{t(auth.designation)}</div>
+                    <div className="text-[11px] font-mono text-[#2E4A3E]">{auth.email}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-4 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                onClick={() => onViewPublicProfile(activeClub)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Globe2 className="h-4 w-4 text-[#0D7751]" />
+                <span>{t("View Chapter Public Profile")}</span>
+              </button>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                {onAuthorityQuickSignIn && presidentAuth && (
+                  <button
+                    onClick={() => onAuthorityQuickSignIn({
+                      name: presidentAuth.name,
+                      role: presidentAuth.role,
+                      email: presidentAuth.email,
+                      clubId: activeClub.id
+                    })}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                    title={t("Test login as verified authority for evaluation")}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>{t("Demo Sign In:")} {presidentAuth.name} ({t(presidentAuth.role)})</span>
+                  </button>
+                )}
+
+                {onAuthoritySignIn && (
+                  <button
+                    onClick={onAuthoritySignIn}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <LogIn className="h-4 w-4 text-amber-300" />
+                    <span>{t("Sign In with Authority Email & OTP")}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
+      {/* Authorized Session Ribbon */}
+      <div className="bg-[#103125] text-white px-5 py-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs border border-[#1A503E] shadow-sm">
+        <div className="flex items-center space-x-2">
+          <ShieldCheck className="h-4 w-4 text-amber-300 shrink-0" />
+          <span>
+            {t("Authorized Management Session:")} <strong className="text-white">{authenticatedAuthority?.name || 'Club Authority'}</strong> ({t(authenticatedAuthority?.role || 'President')})
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          {onBackToClubsList && (
+            <button
+              onClick={onBackToClubsList}
+              className="text-xs text-brand-200 hover:text-white font-medium flex items-center space-x-1 cursor-pointer transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>{t("Change Chapter")}</span>
+            </button>
+          )}
+          {onAuthoritySignOut && (
+            <>
+              <span className="text-brand-600">|</span>
+              <button
+                onClick={onAuthoritySignOut}
+                className="text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center space-x-1 cursor-pointer transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>{t("Sign Out & Lock")}</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Club Module Header Banner */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">

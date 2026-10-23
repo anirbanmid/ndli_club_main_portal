@@ -1,21 +1,17 @@
-import React, { useState } from 'react';
-import QRCode from 'qrcode';
+import React from 'react';
 import { 
   Building2, 
   MapPin, 
-  Users, 
   Calendar, 
   KeyRound, 
-  UserCheck, 
   ShieldCheck, 
   ArrowLeft, 
   ExternalLink,
   Award,
   BookOpen,
-  Share2,
-  Check,
-  Copy,
-  Landmark
+  Lock,
+  Landmark,
+  ShieldAlert
 } from 'lucide-react';
 import { InstituteClub, ClubActivity } from '../types';
 import { t } from "../i18n";
@@ -23,6 +19,7 @@ import { t } from "../i18n";
 interface PublicClubProfileViewProps {
   club: InstituteClub;
   activities: ClubActivity[];
+  isAuthorityAuthenticated?: boolean;
   onBack: () => void;
   onOpenClubDashboard: (club: InstituteClub) => void;
   onJoinWithPasskey: (passkey: string) => void;
@@ -31,29 +28,12 @@ interface PublicClubProfileViewProps {
 export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
   club,
   activities,
+  isAuthorityAuthenticated = false,
   onBack,
   onOpenClubDashboard,
   onJoinWithPasskey,
 }) => {
-  const [copied, setCopied] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
-
-  React.useEffect(() => {
-    const joinUrl = `${window.location.origin}?joinPasskey=${club.passkey}`;
-    QRCode.toDataURL(joinUrl, {
-      width: 140,
-      margin: 1,
-      color: { dark: '#103125', light: '#ffffff' }
-    }).then(setQrDataUrl);
-  }, [club]);
-
   const clubActivities = activities.filter(a => a.clubId === club.id);
-
-  const handleCopyPasskey = () => {
-    navigator.clipboard.writeText(club.passkey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8 animate-in fade-in">
@@ -75,10 +55,19 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
 
           <button
             onClick={() => onOpenClubDashboard(club)}
-            className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5"
+            className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
           >
-            <Landmark className="h-4 w-4 text-amber-300" />
-            <span>{t("Open Club Management Dashboard")}</span>
+            {isAuthorityAuthenticated ? (
+              <>
+                <Landmark className="h-4 w-4 text-amber-300" />
+                <span>{t("Open Club Management Dashboard")}</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-4 w-4 text-amber-300" />
+                <span>{t("Authority Sign In & Dashboard")}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -147,56 +136,50 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
 
       {/* Grid: Passkey Enrollment & 4 Key Authorities */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left: Passkey & QR Enrollment */}
+        {/* Left: Student / Scholar Enrollment Info (Passkey/QR hidden from public) */}
         <div className="lg:col-span-5 bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6 flex flex-col justify-between">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-3 py-1 rounded-full">
               <KeyRound className="h-3.5 w-3.5" />
               <span>{t("Student / Scholar Enrollment")}</span>
             </div>
+
             <h3 className="text-xl font-bold text-[#103125]">
               {t("Join")} {club.name} {t("Chapter")}
-                                      </h3>
-            <p className="text-xs text-[#5A7366] leading-relaxed">
-              {t("If you are an enrolled student or faculty member of this institution, use the official institutional passkey to connect your NDLI account.")}
-                                      </p>
+            </h3>
 
-            {/* Passkey Banner */}
-            <div className="bg-[#F4F8F6] border-2 border-dashed border-[#0D7751]/50 p-4 rounded-2xl text-center space-y-2">
-              <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">
-                {t("Official Institutional Passkey")}
-                                            </div>
-              <div className="font-mono text-2xl font-black text-[#103125] tracking-widest">
-                {club.passkey}
+            <p className="text-xs text-[#5A7366] leading-relaxed">
+              {t("Enrolled students and faculty members of this institution can link their NDLI account to this chapter using the official institutional passkey.")}
+            </p>
+
+            {/* Confidential Passkey Protocol Notice */}
+            <div className="bg-[#F4F8F6] border border-[#E2ECE7] p-4 rounded-2xl space-y-3">
+              <div className="flex items-start space-x-2.5">
+                <ShieldAlert className="h-4 w-4 text-[#B45309] shrink-0 mt-0.5" />
+                <div className="text-xs text-[#2E4A3E] space-y-1">
+                  <span className="font-bold block text-[#103125]">{t("Confidential Passkey Protocol")}</span>
+                  <p className="text-[11px] text-[#5A7366] leading-relaxed">
+                    {t("To protect chapter integrity and ensure only bona fide campus members join, institutional passkeys and QR codes are not published publicly. Obtain your passkey from your institution's central library, intranet circular, or club coordinator.")}
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-center gap-2 pt-1">
+
+              <div className="pt-2 border-t border-[#E2ECE7]">
                 <button
-                  onClick={handleCopyPasskey}
-                  className="px-3 py-1 rounded-lg bg-white border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#E9F5EF] flex items-center gap-1 shadow-2xs"
+                  onClick={() => onJoinWithPasskey('')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center space-x-2 cursor-pointer"
                 >
-                  {copied ? <Check className="h-3.5 w-3.5 text-[#0D7751]" /> : <Copy className="h-3.5 w-3.5" />}
-                  <span>{copied ? t("Copied") : t("Copy Key")}</span>
+                  <KeyRound className="h-4 w-4 text-amber-300" />
+                  <span>{t("Enter Institutional Passkey to Join")}</span>
                 </button>
-                <button
-                  onClick={() => onJoinWithPasskey(club.passkey)}
-                  className="px-3.5 py-1 rounded-lg bg-[#B45309] hover:bg-[#92400E] text-white text-xs font-bold shadow-2xs"
-                >
-                  {t("Join Now")}
-                                                  </button>
               </div>
             </div>
           </div>
 
-          {/* QR Code */}
-          {qrDataUrl && (
-            <div className="pt-4 border-t border-[#E2ECE7] flex items-center space-x-4">
-              <img src={qrDataUrl} alt={t("Club QR Code")} className="h-20 w-20 border border-[#E2ECE7] p-1 rounded-xl bg-white shadow-2xs" />
-              <div className="text-xs text-[#5A7366]">
-                <strong className="text-[#103125] block font-bold">{t("Dynamic Campus QR")}</strong>
-                {t("Scan to join chapter directly from your mobile smartphone.")}
-                                            </div>
-            </div>
-          )}
+          <div className="pt-4 border-t border-[#E2ECE7] text-[11px] text-[#5A7366] flex items-center space-x-2">
+            <ShieldCheck className="h-4 w-4 text-[#0D7751] shrink-0" />
+            <span>{t("Direct student verification governed under institutional charter.")}</span>
+          </div>
         </div>
 
         {/* Right: Mandatory 4-Tier Governance Quorum */}

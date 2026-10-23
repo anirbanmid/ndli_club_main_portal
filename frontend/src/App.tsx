@@ -15,6 +15,7 @@ import { LoginView } from './components/auth/LoginView';
 import { OnboardingWizardView } from './components/onboarding/OnboardingWizardView';
 import { ShowcaseIndexView } from './components/clubs/ShowcaseIndexView';
 import { ClubShowcaseDetailView } from './components/clubs/ClubShowcaseDetailView';
+import { InstitutionalClubsLandingView } from './components/InstitutionalClubsLandingView';
 import { JoinView } from './components/clubs/JoinView';
 import { JoinClubModal } from './components/JoinClubModal';
 import { 
@@ -65,6 +66,13 @@ export function App({ ssrLocation }: AppProps = {}) {
   // Active selections
   const [activeClub, setActiveClub] = useState<InstituteClub>(INITIAL_CLUBS[0]);
   const [selectedClubForPublicProfile, setSelectedClubForPublicProfile] = useState<InstituteClub | null>(null);
+  const [authenticatedClubId, setAuthenticatedClubId] = useState<string | null>(null);
+  const [authenticatedAuthority, setAuthenticatedAuthority] = useState<{
+    name: string;
+    role: string;
+    email: string;
+    clubId: string;
+  } | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
   const [verifyInitialCertId, setVerifyInitialCertId] = useState(initialRoute.certId);
@@ -169,7 +177,7 @@ export function App({ ssrLocation }: AppProps = {}) {
         setCurrentBranch={(branch) => {
           setCurrentBranch(branch);
           if (branch === 'landing') setCurrentTab('home');
-          if (branch === 'club_module') setCurrentTab('club_dashboard');
+          if (branch === 'club_module') setCurrentTab(authenticatedClubId ? 'club_dashboard' : 'club_directory');
           if (branch === 'admin_module') setCurrentTab('admin_overview');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
@@ -203,7 +211,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                 onRegisterInstitute={() => setCurrentTab('onboarding')}
                 onGoToClubModule={() => {
                   setCurrentBranch('club_module');
-                  setCurrentTab('club_dashboard');
+                  setCurrentTab(authenticatedClubId ? 'club_dashboard' : 'club_directory');
                 }}
                 onGoToAdminModule={() => {
                   setCurrentBranch('admin_module');
@@ -218,6 +226,7 @@ export function App({ ssrLocation }: AppProps = {}) {
               <PublicClubProfileView
                 club={selectedClubForPublicProfile}
                 activities={activities}
+                isAuthorityAuthenticated={authenticatedClubId === selectedClubForPublicProfile.id}
                 onBack={() => setCurrentTab('home')}
                 onOpenClubDashboard={(club) => {
                   setActiveClub(club);
@@ -245,6 +254,22 @@ export function App({ ssrLocation }: AppProps = {}) {
                 onNavigate={(route) => {
                   setVerifyInitialCertId(route.certId);
                   setCurrentTab(route.tab);
+                }}
+                onSignedIn={(session) => {
+                  const matchedClub = clubs.find(c => 
+                    (session.club_code && c.id.toLowerCase().includes(session.club_code.toLowerCase())) ||
+                    (session.institution_code && c.aisheCode.toLowerCase() === session.institution_code.toLowerCase())
+                  ) || clubs[0];
+                  setAuthenticatedClubId(matchedClub.id);
+                  setAuthenticatedAuthority({
+                    name: session.username || 'Authorized Officer',
+                    role: session.sub_role || 'President',
+                    email: session.email,
+                    clubId: matchedClub.id
+                  });
+                  setActiveClub(matchedClub);
+                  setCurrentBranch('club_module');
+                  setCurrentTab('club_dashboard');
                 }}
               />
             )}
@@ -302,26 +327,84 @@ export function App({ ssrLocation }: AppProps = {}) {
 
         {/* BRANCH 2: INSTITUTIONAL CLUB MODULE */}
         {currentBranch === 'club_module' && (
-          <ClubModuleView
-            activeClub={activeClub}
-            students={students}
-            activities={activities}
-            tickets={tickets}
-            authorityRequests={authorityRequests}
-            onCreateActivity={handleCreateActivity}
-            onRaiseTicket={handleRaiseTicket}
-            onSubmitAuthorityChange={handleSubmitAuthorityChange}
-            onClaimCertificate={(cert) => {
-              setActiveCertificate(cert);
-              setCurrentBranch('landing');
-              setCurrentTab('view_certificate');
-            }}
-            onViewPublicProfile={(club) => {
-              setSelectedClubForPublicProfile(club);
-              setCurrentBranch('landing');
-              setCurrentTab('public_club_profile');
-            }}
-          />
+          <>
+            {currentTab === 'club_directory' && (
+              <InstitutionalClubsLandingView
+                clubs={clubs}
+                onSelectClub={(club) => {
+                  setSelectedClubForPublicProfile(club);
+                  setCurrentTab('public_club_profile');
+                }}
+                onManageClub={(club) => {
+                  setActiveClub(club);
+                  setCurrentTab('club_dashboard');
+                }}
+                onAuthoritySignIn={() => {
+                  setCurrentBranch('landing');
+                  setCurrentTab('login');
+                }}
+                onBackToLanding={() => {
+                  setCurrentBranch('landing');
+                  setCurrentTab('home');
+                }}
+              />
+            )}
+
+            {currentTab === 'public_club_profile' && selectedClubForPublicProfile && (
+              <PublicClubProfileView
+                club={selectedClubForPublicProfile}
+                activities={activities}
+                isAuthorityAuthenticated={authenticatedClubId === selectedClubForPublicProfile.id}
+                onBack={() => setCurrentTab('club_directory')}
+                onOpenClubDashboard={(club) => {
+                  setActiveClub(club);
+                  setCurrentTab('club_dashboard');
+                }}
+                onJoinWithPasskey={(passkey) => {
+                  setIsPasskeyModalOpen(true);
+                }}
+              />
+            )}
+
+            {currentTab === 'club_dashboard' && (
+              <ClubModuleView
+                activeClub={activeClub}
+                students={students}
+                activities={activities}
+                tickets={tickets}
+                authorityRequests={authorityRequests}
+                isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
+                authenticatedAuthority={authenticatedAuthority}
+                onAuthoritySignIn={() => {
+                  setCurrentBranch('landing');
+                  setCurrentTab('login');
+                }}
+                onAuthorityQuickSignIn={(authority) => {
+                  setAuthenticatedClubId(authority.clubId);
+                  setAuthenticatedAuthority(authority);
+                }}
+                onAuthoritySignOut={() => {
+                  setAuthenticatedClubId(null);
+                  setAuthenticatedAuthority(null);
+                }}
+                onBackToClubsList={() => {
+                  setCurrentTab('club_directory');
+                }}
+                onCreateActivity={handleCreateActivity}
+                onRaiseTicket={handleRaiseTicket}
+                onSubmitAuthorityChange={handleSubmitAuthorityChange}
+                onClaimCertificate={(cert) => {
+                  setActiveCertificate(cert);
+                  setCurrentBranch('landing');
+                  setCurrentTab('view_certificate');
+                }}
+                onViewPublicProfile={(club) => {
+                  setSelectedClubForPublicProfile(club);
+                  setCurrentTab('public_club_profile');
+                }}
+              />
+            )}
+          </>
         )}
 
         {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE */}

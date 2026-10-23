@@ -205,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={() => {
               setCurrentBranch('club_module');
-              setCurrentTab('club_dashboard');
+              setCurrentTab('club_directory');
             }}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
               currentBranch === 'club_module'

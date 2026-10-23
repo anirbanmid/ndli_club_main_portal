@@ -232,7 +232,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Landmark className="h-4 w-4" />
             <span>{t("3. IIT KGP Admin Module")}</span>
-            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("6 ZONES")}</span>
           </button>
         </div>
 

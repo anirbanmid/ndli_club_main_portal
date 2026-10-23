@@ -3,7 +3,9 @@
 # for the development/test/CI toolchain).
 
 Django==5.2.18
-djangorestframework==3.17.2
+# 3.18.2 is the fix release for CVE-2026-114136 / -114137 / -114138
+# (pip-audit gates CI); 3.18.3 is the latest patch on that line.
+djangorestframework==3.18.3
 drf-spectacular==0.28.0
 django-cors-headers==4.9.0
 # M1 identity: Argon2id password hashing (BRIEF_M1.md §6) + RFC 6238 TOTP (§2c).

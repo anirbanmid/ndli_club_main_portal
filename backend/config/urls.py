@@ -42,6 +42,10 @@ urlpatterns = [
     # like every other admin-module route, and BEFORE admin.site.urls so the
     # API prefix is never shadowed.
     path("admin/api/v1/data/", include("apps.data_admin.urls")),
+    # M6 D5: Employee Management (duty = a SET of States/UTs). Mounted under
+    # /admin/ like every other admin-module route, and BEFORE admin.site.urls
+    # so the API prefix is never shadowed.
+    path("admin/api/v1/employees/", include("apps.accounts.urls_admin")),
     path("admin/", admin.site.urls),
     # Health probes: liveness and readiness.
     path("health/", core_views.liveness, name="health-liveness"),

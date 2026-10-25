@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import timedelta
+from typing import Any
 from unittest import mock
 
 from django.contrib.auth import get_user_model
@@ -57,6 +58,15 @@ def _login(client: APIClient, user) -> None:
 @override_settings(HANDOVER_PIN_SHA256=PIN_SHA256)
 class HardResetGuardTests(TestCase):
     """Layer-by-layer: every guard refuses before the next one is reached."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    client: Any
+    club: Club
+    grievance: GrievanceTicket
+    inst: Institution
+    master: Any
+    officer: Any
+    state: State
+    zone: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -183,6 +193,14 @@ class HardResetGuardTests(TestCase):
 @override_settings(HANDOVER_PIN_SHA256=PIN_SHA256)
 class HardResetWipeTests(TestCase):
     """The wipe itself: skeleton kept, business data gone, no reseed."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    client: Any
+    club: Club
+    grievance: GrievanceTicket
+    inst: Institution
+    master: Any
+    state: State
+    zone: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:

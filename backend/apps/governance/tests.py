@@ -10,6 +10,7 @@ import base64
 import json
 import os
 from datetime import timedelta
+from typing import Any, cast
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -45,6 +46,13 @@ from apps.onboarding.models import (
 
 class CharterMaterialisationTests(TestCase):
     """D2b: sanction -> Institution + Club + AuthorityAssignment + certificate."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    application: CharterApplication
+    district: District
+    draft: OnboardingDraft
+    officer: Any
+    state: State
+    zone: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -242,6 +250,17 @@ class CharterMaterialisationTests(TestCase):
 
 class CharterDeskAPITests(TestCase):
     """D2c adversarial pins: EMP03 ↛ EMP05 (cross-zone = 404, never data)."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    app_n1: Any
+    app_n2: Any
+    central: Any
+    club_admin: Any
+    emp03: Any
+    emp05: Any
+    state_n1: State
+    state_n2: State
+    zone_n1: Zone
+    zone_n2: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -469,4 +488,4 @@ class CharterDeskAPITests(TestCase):
             reverse("governance:charter-upload", args=[self.app_n1.pk, upload.pk])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(b"".join(response.streaming_content), content)
+        self.assertEqual(b"".join(cast(Any, response).streaming_content), content)

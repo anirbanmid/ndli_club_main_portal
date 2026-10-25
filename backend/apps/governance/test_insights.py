@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -18,6 +19,16 @@ REPORT_URL = "/admin/api/v1/governance/insights/report/"
 
 class InsightsReportTests(TestCase):
     """Strategic report: derivation + audience (MCC = master control only)."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    central: Any
+    client: Any
+    club: Club
+    emp03: Any
+    inst: Institution
+    state_empty: State
+    state_rep: State
+    zone_n1: Zone
+    zone_w1: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:

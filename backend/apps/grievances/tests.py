@@ -6,6 +6,7 @@ the 72h / 7d / 30d numbers come from ``settings.GRIEVANCE_SLA`` (P4 store).
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any, cast
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -47,6 +48,20 @@ def _make_user(username: str, *, category, sub_role, zone_code: str = ""):
 
 class GrievanceFixture(TestCase):
     """Shared world: two zones, one club per zone, one authority + one officer."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    central: Any
+    club_n1: Club
+    club_w1: Club
+    inst_n1: Institution
+    inst_w1: Institution
+    officer_n1: Any
+    officer_w1: Any
+    outsider: Any
+    president: Any
+    state_n1: State
+    state_w1: State
+    zone_n1: Zone
+    zone_w1: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -195,6 +210,10 @@ class IntakeTests(GrievanceFixture):
 
 class ResolveLifecycleTests(GrievanceFixture):
     """The old issue_manager resolve semantics (72h/7d/30d streams)."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    admin_due_before: Any
+    reminder_before: Any
+    ticket: Any
 
     def setUp(self):
         self.ticket = create_ticket(
@@ -287,6 +306,9 @@ class ResolveLifecycleTests(GrievanceFixture):
 
 class ScopingTests(GrievanceFixture):
     """P0/P4: queryset-level zone scoping — cross-zone rows look missing."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    ticket_n1: Any
+    ticket_w1: Any
 
     def setUp(self):
         self.ticket_n1 = create_ticket(
@@ -328,6 +350,8 @@ class ScopingTests(GrievanceFixture):
 
 class SweepTests(GrievanceFixture):
     """P5 self-healing sweeps: breaches once per cycle, escalation latched."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    ticket: Any
 
     def setUp(self):
         self.ticket = create_ticket(
@@ -414,6 +438,10 @@ from django.conf import settings  # noqa: E402
 
 class GrievanceAPITests(GrievanceFixture):
     """Adversarial pins for the grievances API (club side + admin dispatcher)."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    president_w1: Any
+    public: Any
+    student: Any
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -638,7 +666,7 @@ class GrievanceAPITests(GrievanceFixture):
         self.assertEqual(ticket.status, GrievanceTicket.Status.NOT_RESOLVED)
         # The 30-day escalation anchor is NEVER postponed (old line 275).
         self.assertEqual(ticket.admin_reminder_due_at, before_admin)
-        cycle = timedelta(days=int(settings.GRIEVANCE_SLA["CYCLE_DAYS"]))
+        cycle = timedelta(days=cast(int, settings.GRIEVANCE_SLA["CYCLE_DAYS"]))
         drift = (ticket.reminder_due_at - timezone.now()) - cycle
         self.assertLess(abs(drift), timedelta(minutes=5))
         self.assertEqual(

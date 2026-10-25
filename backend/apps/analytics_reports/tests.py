@@ -12,6 +12,7 @@ Pinned here:
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
@@ -56,6 +57,19 @@ def _make_user(username: str, *, category, sub_role, zone_code: str = ""):
 
 class DashboardFixture(TestCase):
     """Shared world: two zones, one club per zone, two officers + central."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    central: Any
+    club_n1: Club
+    club_w1: Club
+    inst_n1: Institution
+    inst_w1: Institution
+    officer_n1: Any
+    officer_w1: Any
+    president: Any
+    state_n1: State
+    state_w1: State
+    zone_n1: Zone
+    zone_w1: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:

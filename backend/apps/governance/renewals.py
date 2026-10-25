@@ -121,6 +121,8 @@ def state_payload(
 
 
 def record_payload(record: RenewalRecord) -> dict[str, Any]:
+    # Guard on the FK id first (no query); mypy then narrows the object.
+    cert = record.certificate if record.certificate_id else None
     return {
         "id": record.pk,
         "club_code": record.club.code if record.club_id else "",
@@ -129,9 +131,7 @@ def record_payload(record: RenewalRecord) -> dict[str, Any]:
         "requested_at": record.created_at.isoformat(),
         "decision_note": record.decision_note,
         "decided_at": record.decided_at.isoformat() if record.decided_at else None,
-        "certificate_id": (
-            record.certificate.certificate_id if record.certificate_id else None
-        ),
+        "certificate_id": cert.certificate_id if cert is not None else None,
     }
 
 

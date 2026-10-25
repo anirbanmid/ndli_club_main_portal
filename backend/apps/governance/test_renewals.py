@@ -9,6 +9,7 @@ import base64
 import json
 import os
 from datetime import timedelta
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -26,6 +27,21 @@ User = get_user_model()
 
 class RenewalDeskAPITests(TestCase):
     """Renewal attention queue + both Q1 issuance paths (M6 D5)."""
+    # Fixture attributes created in setUpTestData/setUp (declared for mypy).
+    central: Any
+    client: Any
+    club_a: Club
+    club_b: Club
+    emp03: Any
+    emp05: Any
+    inst_n1: Institution
+    inst_w1: Institution
+    president_a: Any
+    president_b: Any
+    state_n1: State
+    state_w1: State
+    zone_n1: Zone
+    zone_w1: Zone
 
     @classmethod
     def setUpTestData(cls) -> None:

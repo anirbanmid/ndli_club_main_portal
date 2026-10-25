@@ -66,3 +66,12 @@ urlpatterns = [
         name="dashboard-passkey-qr",
     ),
 ]
+
+# M6 D5 Q1 Path A step 1: club authority submits a renewal request.
+urlpatterns += [
+    path(
+        "renewal/request/",
+        views.RenewalRequestView.as_view(),
+        name="renewal-request",
+    ),
+]

@@ -41,6 +41,7 @@ class CertificateCategory(models.TextChoices):
     PARTICIPATION = "Participation", "Participation"
     MERIT = "Merit", "Merit"
     CLUB_REGISTRATION = "Club Registration", "Club Registration"
+    RENEWAL = "Renewal", "Renewal"
 
 
 class Certificate(models.Model):

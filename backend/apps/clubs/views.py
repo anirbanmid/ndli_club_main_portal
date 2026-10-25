@@ -29,6 +29,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.policies import CLUB_AUTHORITY_GATE
 from apps.accounts.throttles import client_ip, sliding_window_allow
+from apps.governance.renewals import record_payload, request_renewal
+from apps.governance.services import GovernanceError
 
 from . import services
 from .models import ClubShowcase
@@ -346,3 +348,25 @@ class PasskeyQrView(APIView):
         response["Cache-Control"] = "no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+class RenewalRequestView(APIView):
+    """``POST /api/v1/clubs/renewal/request/`` — Path A step 1 (M6 D5 Q1).
+
+    A club authority asks for renewal; the EMP issues or rejects from the
+    zone desk. Exactly one open request per club (server-side, P0).
+    """
+
+    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+
+    def post(self, request: Request) -> Response:
+        note = request.data.get("note", "")
+        try:
+            record = request_renewal(
+                request.user, note=str(note)[:500], request=request
+            )
+        except GovernanceError as exc:
+            return Response(
+                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(record_payload(record), status=status.HTTP_201_CREATED)

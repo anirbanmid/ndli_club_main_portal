@@ -118,6 +118,10 @@ class CharterApplication(models.Model):
 
     class Status(models.TextChoices):
         QUEUED = "queued", "Queued"
+        # M6 governance review states (transition table in governance/services.py).
+        UNDER_REVIEW = "under_review", "Under review"
+        SANCTIONED = "sanctioned", "Sanctioned"
+        REJECTED = "rejected", "Rejected"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     draft = models.OneToOneField(
@@ -132,6 +136,16 @@ class CharterApplication(models.Model):
         max_length=16, choices=Status.choices, default=Status.QUEUED
     )
     submitted_at = models.DateTimeField(auto_now_add=True)
+    # M6 governance review trail (the immutable record lives in AuditLog).
+    reviewed_by = models.ForeignKey(
+        "accounts.User",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="charter_reviews",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_reason = models.CharField(max_length=500, blank=True)
 
     class Meta:
         constraints = [

@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "apps.grievances",
     "apps.notifications",
     "apps.audit",
+    "apps.data_admin",
     "apps.migration_salvage",
     "apps.public_api",
 ]
@@ -303,3 +304,21 @@ ROSTER_IMPORT_SYNC_LIMIT = 10_000
 # pipeline runs on a worker — zero code change (M4-A4).
 ROSTER_IMPORT_USE_CELERY = False
 ROSTER_IMPORT_CELERY_TASK = ""
+
+# ---------------------------------------------------------------------------
+# Grievance SLA timers — THE single settings-backed store (BRIEF_M6 §3 P4:
+# timers configured in exactly one place; dashboards derive from SLAEvent).
+# Lifecycle = the previous project's issue manager (BRIEF_M6 §6 C3):
+#   72h reminder stream -> 7-day recurrent cycles -> 30-day central escalation.
+# Deadlines are wall-clock (exactly as the previous project); the office-hours
+# window below is the business-hours SLA clock for sweeps/dispatch + compliance.
+# ---------------------------------------------------------------------------
+GRIEVANCE_SLA = {
+    "REMINDER_HOURS": 72,  # first reminder after ticket creation
+    "CYCLE_DAYS": 7,  # recurrent cycle after a "Not Resolved" mark
+    "ESCALATION_DAYS": 30,  # central-admin escalation deadline
+    "OFFICE_WEEKDAYS": (0, 1, 2, 3, 4),  # Mon-Fri (datetime.weekday())
+    "OFFICE_START": "09:00",
+    "OFFICE_END": "18:00",
+    "TIME_ZONE": "Asia/Kolkata",
+}

@@ -23,7 +23,6 @@ API_URLPATTERNS = [
     path("analytics-reports/", include("apps.analytics_reports.urls")),
     path("sharing/", include("apps.sharing.urls")),
     path("succession/", include("apps.succession.urls")),
-    path("governance/", include("apps.governance.urls")),
     path("grievances/", include("apps.grievances.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("audit/", include("apps.audit.urls")),
@@ -31,6 +30,18 @@ API_URLPATTERNS = [
 ]
 
 urlpatterns = [
+    # M6 D2 charter desk lives BEHIND the admin door (M1 T3 gate:
+    # admin-module routes must be under /admin/).
+    path("admin/api/v1/governance/", include("apps.governance.urls")),
+    path(
+        "admin/api/v1/dashboards/",
+        include("apps.analytics_reports.urls_admin"),
+    ),
+    path("admin/api/v1/grievances/", include("apps.grievances.urls_admin")),
+    # M6 D5 stage 3: the guarded red-zone hard reset. Mounted under /admin/
+    # like every other admin-module route, and BEFORE admin.site.urls so the
+    # API prefix is never shadowed.
+    path("admin/api/v1/data/", include("apps.data_admin.urls")),
     path("admin/", admin.site.urls),
     # Health probes: liveness and readiness.
     path("health/", core_views.liveness, name="health-liveness"),

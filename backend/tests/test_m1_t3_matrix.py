@@ -91,6 +91,7 @@ ENDPOINT_MATRIX: dict[str, str] = {
     # M4 D3 roster-side join decisions (confirm/reject) — club authorities
     # only, scope-keyed to the caller's club (W9).
     "/api/v1/members/": "club",
+    "/api/v1/grievances/": "club",
     "/admin/": "admin",
 }
 

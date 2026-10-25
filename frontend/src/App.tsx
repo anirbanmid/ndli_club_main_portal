@@ -25,7 +25,6 @@ import {
   INITIAL_TICKETS, 
   INITIAL_AUTHORITY_REQUESTS, 
   INITIAL_FORENSIC_RECORDS, 
-  INITIAL_EMPLOYEES
 } from './mockData';
 import { 
   BranchType, 
@@ -35,7 +34,6 @@ import {
   IssueTicket, 
   AuthorityChangeRequest, 
   ForensicQuarantineRecord, 
-  EmployeeNode,
   CertificateData
 } from './types';
 
@@ -61,7 +59,6 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [tickets, setTickets] = useState<IssueTicket[]>(INITIAL_TICKETS);
   const [authorityRequests, setAuthorityRequests] = useState<AuthorityChangeRequest[]>(INITIAL_AUTHORITY_REQUESTS);
   const [forensicRecords, setForensicRecords] = useState<ForensicQuarantineRecord[]>(INITIAL_FORENSIC_RECORDS);
-  const [employees, setEmployees] = useState<EmployeeNode[]>(INITIAL_EMPLOYEES);
 
   // Active selections
   const [activeClub, setActiveClub] = useState<InstituteClub>(INITIAL_CLUBS[0]);
@@ -411,7 +408,6 @@ export function App({ ssrLocation }: AppProps = {}) {
         {currentBranch === 'admin_module' && (
           <AdminModuleView
             clubs={clubs}
-            employees={employees}
             tickets={tickets}
             authorityRequests={authorityRequests}
             forensicRecords={forensicRecords}

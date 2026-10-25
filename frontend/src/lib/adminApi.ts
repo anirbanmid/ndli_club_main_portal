@@ -29,7 +29,10 @@ async function request<T>(
   init: RequestInit = {},
   query: Query = {},
 ): Promise<T> {
-  const url = new URL(ADMIN_API_BASE + path, window.location.origin);
+  const url = new URL(
+    path.startsWith('/api/') ? path : ADMIN_API_BASE + path,
+    window.location.origin,
+  );
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
   }
@@ -74,6 +77,12 @@ const get = <T,>(path: string, query: Query = {}) =>
 const post = <T,>(path: string, body: unknown) =>
   request<T>(path, {
     method: 'POST',
+    body: JSON.stringify(body ?? {}),
+  });
+
+const put = <T,>(path: string, body: unknown) =>
+  request<T>(path, {
+    method: 'PUT',
     body: JSON.stringify(body ?? {}),
   });
 
@@ -293,4 +302,59 @@ export function hardReset(input: {
   pin: string;
 }): Promise<HardResetResult> {
   return post<HardResetResult>('/data/hard-reset/', input);
+}
+
+// ---------------------------------------------------------------------------
+// Employee Management (apps.accounts) — GET/PUT /admin/api/v1/employees/…
+
+export interface DutyState {
+  code: string;
+  name: string;
+  zone: string;
+}
+
+export interface EmployeeDutyRow {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
+  state_codes: string[];
+  states: DutyState[];
+}
+
+export interface SessionSummary {
+  username: string;
+  email: string;
+  category: string;
+  sub_role: string;
+  account_state: string;
+  must_change_password: boolean;
+}
+
+/** GET /api/v1/accounts/me/ — who am I (view-vs-edit gating). */
+export function fetchSession(): Promise<SessionSummary> {
+  return request<SessionSummary>('/api/v1/accounts/me/', { method: 'GET' });
+}
+
+/** GET /admin/api/v1/employees/ — employees + current duty sets. */
+export function fetchEmployees(): Promise<{ results: EmployeeDutyRow[] }> {
+  return get('/employees/');
+}
+
+/** GET /admin/api/v1/employees/states/ — the multi-select dropdown source. */
+export function fetchDutyStates(): Promise<{ results: DutyState[] }> {
+  return get('/employees/states/');
+}
+
+/** PUT /admin/api/v1/employees/<id>/duty/ — replace the duty SET (masters only). */
+export function saveEmployeeDuty(
+  officerId: number,
+  states: string[],
+): Promise<{
+  officer: number;
+  state_codes: string[];
+  added: string[];
+  removed: string[];
+}> {
+  return put(`/employees/${officerId}/duty/`, { states });
 }

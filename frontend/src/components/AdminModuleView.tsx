@@ -21,17 +21,16 @@ import {
 } from 'lucide-react';
 import { 
   InstituteClub, 
-  EmployeeNode, 
   IssueTicket, 
   AuthorityChangeRequest, 
   ForensicQuarantineRecord,
   RegionalZone
 } from '../types';
 import { t } from "../i18n";
+import { EmployeeDutyPanel } from "./EmployeeDutyPanel";
 
 interface AdminModuleViewProps {
   clubs: InstituteClub[];
-  employees: EmployeeNode[];
   tickets: IssueTicket[];
   authorityRequests: AuthorityChangeRequest[];
   forensicRecords: ForensicQuarantineRecord[];
@@ -44,7 +43,6 @@ interface AdminModuleViewProps {
 
 export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   clubs,
-  employees,
   tickets,
   authorityRequests,
   forensicRecords,
@@ -472,41 +470,14 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4">
             <h3 className="text-lg font-bold text-[#103125]">
-              {t("National 6-Zone Operational Network (7 Regional Officers)")}
-                                      </h3>
+              {t("Employee Management")}
+            </h3>
             <p className="text-xs text-[#5A7366]">
-              {t("Regional deployment nodes coordinating institutional outreach, support ticket queues, and local university workshops.")}
-                                      </p>
+              {t("Who handles which States/UTs. Saving a duty set re-routes work immediately.")}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {employees.map(emp => (
-              <div key={emp.empId} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-mono text-xs font-bold text-white bg-[#103125] px-2 py-0.5 rounded">
-                    {emp.empId}
-                  </span>
-                  <span className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
-                    {t(emp.zone)} {t("Zone")}
-                                              </span>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-sm text-[#103125]">{emp.name}</h4>
-                  <div className="text-xs font-mono text-[#5A7366]">{emp.email}</div>
-                </div>
-
-                <div className="text-[11px] text-[#5A7366]">
-                  <strong>{t("States:")}</strong> {emp.assignedStates.join(', ')}
-                </div>
-
-                <div className="pt-2 border-t border-[#E2ECE7] flex justify-between items-center text-xs">
-                  <span className="text-[#5A7366]">{t("Active Support Tickets:")}</span>
-                  <span className="font-bold text-[#B45309]">{emp.activeTicketsCount}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <EmployeeDutyPanel />
         </div>
       )}
     </div>

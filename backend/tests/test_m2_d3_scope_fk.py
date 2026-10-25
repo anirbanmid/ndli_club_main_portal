@@ -23,7 +23,7 @@ from apps.domain.models import Club, Membership
 
 from .m2_support import add_membership, build_zone_graph
 from .support import M1PinTestCase as TestCase
-from .support import make_user
+from .support import attach_duty, ensure_state, make_user
 
 
 class JoinScopingPins(TestCase):
@@ -45,6 +45,9 @@ class JoinScopingPins(TestCase):
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="NORTH_EAST",
         )
+        # Duty lives in OfficerAssignment (client change 2026-10-25).
+        attach_duty(self.emp03, "MAHARASHTRA")
+        attach_duty(self.emp05, "ASSAM")
 
     def test_EMP03_never_reads_EMP05_clubs_over_the_joins(self) -> None:
         visible = scoping.scope_clubs(Club.objects.all(), self.emp03)
@@ -164,6 +167,25 @@ class JoinScopingPins(TestCase):
         )
         visible = scoping.scope_governance(User.objects.all(), user)
         self.assertFalse(visible.exists(), "club admins never reach governance")
+
+        # Client change (2026-10-25): duty is a SET of States/UTs held in
+        # OfficerAssignment, so visibility follows the assignment table and
+        # NOT the user's single zone_code. A profile with NO state is not
+        # state-routable and is therefore outside every officer's scope
+        # (manage.py verify_domain reports such rows as drift).
+        state = ensure_state("EAST", "EAST")
+        attach_duty(other_user, state.code)
         officer_view = scoping.scope_clubs(User.objects.all(), other_user)
-        self.assertTrue(officer_view.filter(pk=profile.pk).exists())
+        self.assertFalse(officer_view.filter(pk=profile.pk).exists())
+
+        # ...whereas a profile that IS in an assigned state is visible.
+        peer = make_user(
+            username="d3peer",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_SECRETARY,
+            institution_code="IIT",
+            club_code="CLB1",
+            state_code=state.code,
+        )
+        self.assertTrue(officer_view.filter(pk=peer.pk).exists())
         self.assertIsNotNone(user.pk)

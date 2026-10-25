@@ -203,6 +203,7 @@ class User(AbstractUser):
     #: including unbacked codes). The "user" key names THIS table's own row
     #: identity (was ``user_id`` on the dropped ``accounts_profile``).
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+        "state": "state_id",
         "zone": "zone_id",
         "institution": "institution_id",
         "club": "club_id",

@@ -1,0 +1,296 @@
+/**
+ * NDLI Club Main Portal — typed client for the ADMIN door (M6 D5).
+ *
+ * Every route lives under `/admin/api/v1/` because the admin prefix is the only
+ * admin door (M1 T3 gate: admin-module routes must live under /admin/).
+ *
+ * Contract notes:
+ * - All calls are authenticated: `credentials: 'include'` + the CSRF header
+ *   from `authApi.csrfHeader()`, matching `rosterApi` exactly.
+ * - Zone scoping is enforced server-side. A zone-bound officer who asks for
+ *   another zone's data gets 404 — never data, never a distinguishable error.
+ * - 429 is surfaced as `ApiError('rate-limit')`; the UI retries later, it never
+ *   invents a distinction the API refuses to make.
+ * - The hard reset is the red zone: it is typed here but MUST NOT be callable
+ *   without the operator typing the confirm phrase in the UI.
+ */
+import { ApiError } from './api';
+import { csrfHeader } from './authApi';
+
+export const ADMIN_API_BASE = '/admin/api/v1';
+
+/** The literal the red-zone UI forces the operator to type. */
+export const HARD_RESET_CONFIRM_PHRASE = 'HARD-RESET-FOR-HANDOVER';
+
+type Query = Record<string, string | number | undefined>;
+
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  query: Query = {},
+): Promise<T> {
+  const url = new URL(ADMIN_API_BASE + path, window.location.origin);
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(init.method && init.method !== 'GET'
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+        ...csrfHeader(),
+        ...(init.headers ?? {}),
+      },
+      ...init,
+    });
+  } catch {
+    throw new ApiError('network', 'network request failed', 0);
+  }
+
+  if (response.status === 429) {
+    throw new ApiError('rate-limit', 'rate limit exceeded, retry shortly', 429);
+  }
+  if (!response.ok) {
+    let detail = `unexpected status ${response.status}`;
+    try {
+      const body = (await response.json()) as { detail?: string; error?: string };
+      detail = body.detail ?? body.error ?? detail;
+    } catch {
+      /* non-JSON body: keep the generic message */
+    }
+    throw new ApiError('server', detail, response.status);
+  }
+  return (await response.json()) as T;
+}
+
+const get = <T,>(path: string, query: Query = {}) =>
+  request<T>(path, { method: 'GET' }, query);
+
+const post = <T,>(path: string, body: unknown) =>
+  request<T>(path, {
+    method: 'POST',
+    body: JSON.stringify(body ?? {}),
+  });
+
+// ---------------------------------------------------------------------------
+// Dashboards (apps.analytics_reports) — GET /admin/api/v1/dashboards/…
+// ---------------------------------------------------------------------------
+
+export interface AuditRow {
+  seq: number;
+  timestamp: string;
+  actor_label: string;
+  action: string;
+  outcome: string;
+  object_type: string;
+  object_id: string;
+  zone_code: string;
+}
+
+export interface ZoneDashboard {
+  zone_code: string;
+  recent_audit: AuditRow[];
+  [key: string]: unknown;
+}
+
+export interface OfficerEvaluation {
+  [key: string]: unknown;
+}
+
+export interface OfficerRatings {
+  zone_code: string;
+  officers: OfficerEvaluation[];
+}
+
+export interface AuditFeed {
+  zone_code: string;
+  results: AuditRow[];
+}
+
+/** GET /admin/api/v1/dashboards/zone/ — derived metrics + audit tail. */
+export function fetchZoneDashboard(params: {
+  zone?: string;
+  limit?: number;
+} = {}): Promise<ZoneDashboard> {
+  return get<ZoneDashboard>('/dashboards/zone/', params);
+}
+
+/** GET /admin/api/v1/dashboards/officers/ — ranked star ratings. */
+export function fetchOfficerRatings(params: {
+  zone?: string;
+  year?: number;
+  month?: number;
+} = {}): Promise<OfficerRatings> {
+  return get<OfficerRatings>('/dashboards/officers/', params);
+}
+
+/** GET /admin/api/v1/dashboards/audit/ — recent audit-trail activity. */
+export function fetchAuditFeed(params: {
+  zone?: string;
+  limit?: number;
+} = {}): Promise<AuditFeed> {
+  return get<AuditFeed>('/dashboards/audit/', params);
+}
+
+// ---------------------------------------------------------------------------
+// Governance (apps.governance) — charter desk + renewal desk + insights
+// ---------------------------------------------------------------------------
+
+export interface CharterRow {
+  id: string;
+  institution_name: string;
+  club_name: string;
+  zone_code: string;
+  state_code: string;
+  district_code: string;
+  status: string;
+  submitted_at: string;
+  reviewed_at: string | null;
+  review_reason: string;
+}
+
+export interface RenewalRow {
+  [key: string]: unknown;
+}
+
+export interface RenewalAttention {
+  results: RenewalRow[];
+  [key: string]: unknown;
+}
+
+export interface InsightsReport {
+  [key: string]: unknown;
+}
+
+/** GET /admin/api/v1/governance/charter/queue/ — pending charters. */
+export function fetchCharterQueue(): Promise<{ results: CharterRow[] }> {
+  return get<{ results: CharterRow[] }>('/governance/charter/queue/');
+}
+
+/** GET /admin/api/v1/governance/charter/<id>/ — one charter detail. */
+export function fetchCharter(id: string): Promise<CharterRow> {
+  return get<CharterRow>(`/governance/charter/${id}/`);
+}
+
+/** POST /admin/api/v1/governance/charter/<id>/decision/ — approve or reject. */
+export function decideCharter(
+  id: string,
+  body: { decision: 'approve' | 'reject'; reason?: string },
+): Promise<{ status: string }> {
+  return post<{ status: string }>(`/governance/charter/${id}/decision/`, body);
+}
+
+/** GET /admin/api/v1/governance/renewals/attention/ — the <=30d desk. */
+export function fetchRenewalAttention(params: {
+  zone?: string;
+} = {}): Promise<RenewalAttention> {
+  return get<RenewalAttention>('/governance/renewals/attention/', params);
+}
+
+/** GET /admin/api/v1/governance/renewals/ — full renewal history. */
+export function fetchRenewalHistory(params: {
+  zone?: string;
+  page?: number;
+} = {}): Promise<{ results: RenewalRow[] }> {
+  return get<{ results: RenewalRow[] }>('/governance/renewals/', params);
+}
+
+/** POST /admin/api/v1/governance/renewals/issue/ — issue a renewal directly. */
+export function issueRenewalDirect(body: Record<string, unknown>): Promise<unknown> {
+  return post<unknown>('/governance/renewals/issue/', body);
+}
+
+/** POST /admin/api/v1/governance/renewals/<id>/issue/ — issue an existing one. */
+export function issueRenewal(id: number, body: Record<string, unknown> = {}): Promise<unknown> {
+  return post<unknown>(`/governance/renewals/${id}/issue/`, body);
+}
+
+/** POST /admin/api/v1/governance/renewals/<id>/reject/ — reject a renewal. */
+export function rejectRenewal(
+  id: number,
+  body: { reason: string },
+): Promise<unknown> {
+  return post<unknown>(`/governance/renewals/${id}/reject/`, body);
+}
+
+/** GET /admin/api/v1/governance/insights/report/ — MCC strategic report. */
+export function fetchInsightsReport(params: {
+  zone?: string;
+} = {}): Promise<InsightsReport> {
+  return get<InsightsReport>('/governance/insights/report/', params);
+}
+
+// ---------------------------------------------------------------------------
+// Grievances (apps.grievances) — zone desk
+// ---------------------------------------------------------------------------
+
+export interface GrievanceRow {
+  [key: string]: unknown;
+}
+
+export interface GrievanceQueue {
+  results: GrievanceRow[];
+  [key: string]: unknown;
+}
+
+/** GET /admin/api/v1/grievances/queue/ — the caller's grievance queue. */
+export function fetchGrievanceQueue(params: {
+  zone?: string;
+} = {}): Promise<GrievanceQueue> {
+  return get<GrievanceQueue>('/grievances/queue/', params);
+}
+
+/** GET /admin/api/v1/grievances/<id>/ — one ticket. */
+export function fetchGrievance(id: string): Promise<GrievanceRow> {
+  return get<GrievanceRow>(`/grievances/${id}/`);
+}
+
+/** POST /admin/api/v1/grievances/<id>/resolve/ — resolve a ticket. */
+export function resolveGrievance(
+  id: string,
+  body: { note?: string } = {},
+): Promise<unknown> {
+  return post<unknown>(`/grievances/${id}/resolve/`, body);
+}
+
+/** POST /admin/api/v1/grievances/sweep/ — run the SLA reminder sweep. */
+export function sweepGrievances(): Promise<unknown> {
+  return post<unknown>('/grievances/sweep/', {});
+}
+
+// ---------------------------------------------------------------------------
+// RED ZONE (apps.data_admin) — destructive. Read the warning.
+// ---------------------------------------------------------------------------
+
+export interface HardResetResult {
+  success: boolean;
+  message: string;
+  accounts_kept: number;
+  rows_wiped: number;
+  checkpoint_backup_id: string;
+  wipe_manifest: Array<{ model: string; objects: number }>;
+}
+
+/**
+ * POST /admin/api/v1/data/hard-reset/ — wipe all product data.
+ *
+ * RED ZONE. This is destructive and is meant for one moment only: handing the
+ * system to the client as a clean, fresh product.
+ *
+ * The server independently enforces the triple-layer guard (confirm phrase ->
+ * handover PIN -> Master Admin re-auth) and aborts if the safety checkpoint
+ * cannot be written. This function is a thin pass-through; the UI must make
+ * the operator type `HARD_RESET_CONFIRM_PHRASE` before it will even call.
+ */
+export function hardReset(input: {
+  confirm: string;
+  password: string;
+  pin: string;
+}): Promise<HardResetResult> {
+  return post<HardResetResult>('/data/hard-reset/', input);
+}

@@ -62,6 +62,7 @@ class JoinRequest(models.Model):
     #: Scoping registry (core.scoping): mirrors ``domain.Membership`` exactly
     #: so the M1 policy layer scopes this table without per-view logic (I5).
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -150,6 +151,7 @@ class RosterEntry(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -224,6 +226,7 @@ class RosterImportJob(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",

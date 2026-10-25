@@ -75,7 +75,8 @@ class State(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {"zone": "zone__code"}
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "code","zone": "zone__code"}
 
     class Meta:
         ordering = ["code"]
@@ -98,7 +99,8 @@ class District(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     #: Only the zone scope applies to a district; missing keys fail closed.
-    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {"zone": "state__zone__code"}
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "state__code","zone": "state__zone__code"}
 
     class Meta:
         ordering = ["state", "code"]
@@ -156,6 +158,7 @@ class Institution(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "state__code",
         "zone": "state__zone__code",
         "institution": "code",
     }
@@ -218,6 +221,7 @@ class Club(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "institution__state__code",
         "zone": "institution__state__zone__code",
         "institution": "institution__code",
         "club": "code",
@@ -276,6 +280,7 @@ class Membership(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -335,6 +340,7 @@ class AuthorityAssignment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -380,6 +386,7 @@ class OfficerAssignment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "state__code",
         "zone": "state__zone__code",
         "user": "officer",
     }

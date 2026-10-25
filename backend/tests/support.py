@@ -109,6 +109,70 @@ def make_user(
     )
 
 
+
+
+def ensure_state(state_code: str, zone_code: str = "") -> Any:
+    """Create a Zone+State pair for a test (fixture only, never production).
+
+    The client change scopes officers by assigned States/UTs, so tests that
+    used to express duty with a bare ``zone_code`` now need a real State to
+    point ``OfficerAssignment`` at.
+    """
+    from apps.domain.models import State, Zone
+
+    zone = Zone.objects.filter(code=zone_code or state_code).first()
+    if zone is None:
+        zone = Zone.objects.create(
+            code=zone_code or state_code, name=zone_code or state_code
+        )
+    state = State.objects.filter(code=state_code).first()
+    if state is None:
+        state = State.objects.create(code=state_code, name=state_code, zone=zone)
+    return state
+
+
+def attach_duty(
+    user: Any,
+    *state_codes: str,
+    from_date: Any = None,
+    to_date: Any = None,
+) -> list[Any]:
+    """Express an officer's DUTY in ``domain.OfficerAssignment``.
+
+    Client change (2026-10-25, owner-approved): duty is a SET of States/UTs in
+    the assignment table - not the user's single ``zone_code``. Scoping and
+    routing are DERIVED from these rows, so a rearrangement needs no migration.
+
+    If the user has no ``state_code`` yet it is back-filled from the first
+    code, so user-row scoping and assignment-table duty agree. States must
+    already exist (never fabricated).
+    """
+    from datetime import date, timedelta
+
+    from apps.domain.models import OfficerAssignment, State
+
+    codes = [c for c in state_codes if c]
+    if not codes and user.state_id:
+        codes = [user.state_id]
+    if not codes:
+        raise ValueError("attach_duty needs at least one state code")
+    if not user.state_id:
+        user.state_id = codes[0]
+        user.save(update_fields=["state"])
+    rows = []
+    for code in codes:
+        state = State.objects.get(code=code)
+        rows.append(
+            OfficerAssignment.objects.create(
+                state=state,
+                officer=user,
+                from_date=from_date or (date.today() - timedelta(days=30)),
+                to_date=to_date,
+            )
+        )
+    return rows
+
+
 def request_for(user: Any = None, *, ip: str = "203.0.113.10") -> Any:
     """A request object carrying META/user, as the services expect."""
     request: Any = RequestFactory().post("/api/v1/test/", REMOTE_ADDR=ip)

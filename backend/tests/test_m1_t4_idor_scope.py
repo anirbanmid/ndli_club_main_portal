@@ -18,7 +18,14 @@ from apps.accounts.models import Category, SubRole, User
 from apps.accounts.policies import CategoryGate
 from apps.core import scoping
 
-from .support import MODULE_CATEGORIES, iter_routes, make_user, request_for
+from .support import (
+    MODULE_CATEGORIES,
+    attach_duty,
+    ensure_state,
+    iter_routes,
+    make_user,
+    request_for,
+)
 from .support import M1PinTestCase as TestCase
 from .test_m1_t3_matrix import module_for
 
@@ -47,17 +54,21 @@ class CrossOfficerPins(TestCase):
         )
 
     def test_EMP03_reads_its_own_zone(self) -> None:
+        state = ensure_state("EAST", "EAST")
         emp03 = make_user(
             username="EMP03b",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
+            state_code=state.code,
         )
+        attach_duty(emp03, state.code)
         peer = make_user(
             username="eastpeer",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
             zone_code="EAST",
+            state_code=state.code,
             institution_code="IIT",
             club_code="CLB1",
         )

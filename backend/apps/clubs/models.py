@@ -45,6 +45,7 @@ class ClubShowcase(models.Model):
 
     #: Scoping registry (core.scoping): mirrors ``domain.Membership``.
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -120,6 +121,7 @@ class CampusPasskey(models.Model):
     is_active = models.BooleanField(default=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+"state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",

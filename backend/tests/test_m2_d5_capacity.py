@@ -21,7 +21,7 @@ from apps.domain.models import Club, Institution, Membership
 
 from .m2_support import add_membership, assign_officer, build_zone_graph
 from .support import M1PinTestCase as TestCase
-from .support import make_user
+from .support import attach_duty, make_user
 
 
 def _bulk_students(prefix: str, count: int) -> list:
@@ -138,6 +138,8 @@ class ScopingQueryPins(TestCase):
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="WEST",
         )
+        # Duty lives in OfficerAssignment (client change 2026-10-25).
+        attach_duty(self.emp03, "MAHARASHTRA")
 
     def test_zone_scoping_over_joins_is_a_single_query(self) -> None:
         with self.assertNumQueries(1):

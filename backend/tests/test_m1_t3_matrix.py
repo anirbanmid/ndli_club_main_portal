@@ -26,6 +26,8 @@ from .support import (
     CATEGORY_SUB_ROLES,
     GOOD_PASSWORD,
     MODULE_CATEGORIES,
+    attach_duty,
+    ensure_state,
     iter_routes,
     make_user,
 )
@@ -279,17 +281,21 @@ class ObjectScopeMatrixTests(TestCase):
             ObjectScope("clubs").has_object_permission(request, None, target)
 
     def test_in_scope_object_passes(self) -> None:
+        state = ensure_state("EAST", "EAST")
         emp03 = make_user(
             username="t3emp03b",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code="EAST",
+            state_code=state.code,
         )
+        attach_duty(emp03, state.code)
         target = make_user(
             username="t3peer",
             category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_SECRETARY,
             zone_code="EAST",
+            state_code=state.code,
             institution_code="IIT",
             club_code="CLB1",
         )

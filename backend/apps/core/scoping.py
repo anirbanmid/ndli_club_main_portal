@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from apps.accounts.models import (
     Category,
@@ -64,6 +64,58 @@ def _filter(queryset: QuerySet, **keys: Any) -> QuerySet:
     return queryset.filter(**conditions)
 
 
+
+def _duty_state_codes(user: Any) -> Any:
+    """The officer's duty as a SUBQUERY (P2: keeps scoping a single SQL query).
+
+    Same semantics as ``domain.assignments.state_codes_for_officer`` - open
+    ``OfficerAssignment`` windows only - but returned as a queryset so it
+    inlines into the outer filter instead of costing a second round-trip.
+    """
+    from django.utils import timezone
+
+    from apps.domain.models import OfficerAssignment
+
+    today = timezone.localdate()
+    return (
+        OfficerAssignment.objects.filter(officer=user, from_date__lte=today)
+        .filter(Q(to_date__isnull=True) | Q(to_date__gte=today))
+        .values("state__code")
+    )
+
+
+def _filter_states(queryset: QuerySet, states: Any) -> QuerySet:
+    """Scope ``queryset`` to the officer's assigned States/UTs.
+
+    Client change (2026-10-25, owner-approved): duty is a SET of States/UTs,
+    not a single zone - an employee may hold states spanning several zones.
+    Deny by default exactly like ``_filter``: a model that does not declare a
+    ``state`` scope key, or an officer with no current duty, resolves EMPTY.
+    """
+    lookups = _lookups(queryset)
+    path = lookups.get("state")
+    if path is None:
+        return queryset.none()
+    if isinstance(states, (set, frozenset, list, tuple)):
+        if not states:
+            return queryset.none()
+        return queryset.filter(**{f"{path}__in": states})
+    # A subquery: empty naturally matches nothing, so no pre-check is needed.
+    return queryset.filter(**{f"{path}__in": states})
+
+
+def assigned_states(user: Any) -> set[str]:
+    """States/UTs currently assigned to ``user`` (P4 single source).
+
+    Derived from ``domain.OfficerAssignment`` on every call, so a duty
+    rearrangement takes effect immediately - nothing is stamped onto rows and
+    nothing has to be migrated when duties change.
+    """
+    from apps.domain.assignments import state_codes_for_officer
+
+    return state_codes_for_officer(user)
+
+
 def scope_clubs(queryset: QuerySet, user: Any) -> QuerySet:
     """Scope club-facing rows to the caller's club (admins: zone / all)."""
     profile = _profile(user)
@@ -73,7 +125,7 @@ def scope_clubs(queryset: QuerySet, user: Any) -> QuerySet:
         if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
             return queryset.none()
         if profile.sub_role == SubRole.REGIONAL_OFFICER:
-            return _filter(queryset, zone=profile.zone_code)
+            return _filter_states(queryset, _duty_state_codes(profile))
         return queryset.all()
     return _filter(
         queryset,
@@ -99,7 +151,7 @@ def scope_members(queryset: QuerySet, user: Any) -> QuerySet:
         if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
             return queryset.none()
         if profile.sub_role == SubRole.REGIONAL_OFFICER:
-            return _filter(queryset, zone=profile.zone_code)
+            return _filter_states(queryset, _duty_state_codes(profile))
         return queryset.all()
     return queryset.none()
 
@@ -114,5 +166,5 @@ def scope_governance(queryset: QuerySet, user: Any) -> QuerySet:
     if profile.sub_role == SubRole.SUPER_ADMIN_OPS:
         return queryset.none()
     if profile.sub_role == SubRole.REGIONAL_OFFICER:
-        return _filter(queryset, zone=profile.zone_code)
+        return _filter_states(queryset, _duty_state_codes(profile))
     return queryset.all()

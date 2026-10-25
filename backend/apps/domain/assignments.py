@@ -70,6 +70,31 @@ def officer_assignment_for_state(state_code: str) -> OfficerAssignment | None:
     )
 
 
+def state_codes_for_officer(officer: Any) -> set[str]:
+    """State/UT codes currently assigned to ``officer`` (P4 single source).
+
+    Client change (2026-10-25, owner-approved): duty is defined by a SET of
+    States/UTs, not a single zone - an employee may hold states from several
+    zones at once. Reads ONLY ``OfficerAssignment`` and honours the
+    ``from_date``/``/to_date`` windows, so a duty rearrangement is visible
+    immediately WITHOUT migrating any rows: routing and scoping are derived
+    from this table, never stamped onto requests.
+
+    An empty set means "no current duty" - callers must deny, never guess a
+    zone mate (that guess is a drift bug by construction).
+    """
+    if officer is None:
+        return set()
+    today = timezone.localdate()
+    codes = (
+        OfficerAssignment.objects.filter(officer=officer)
+        .filter(from_date__lte=today)
+        .filter(Q(to_date__isnull=True) | Q(to_date__gte=today))
+        .values_list("state__code", flat=True)
+    )
+    return {code for code in codes if code}
+
+
 def officer_username_for_state(state_code: str) -> str | None:
     """Username of the officer responsible for ``state_code``, or ``None``.
 

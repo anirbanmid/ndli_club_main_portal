@@ -188,6 +188,30 @@ class HardResetGuardTests(TestCase):
         self.assertFalse(
             AuditLog.objects.filter(action="hard_reset.completed").exists()
         )
+        # PG-parity pin: the abort audit row must FIT the audit column and
+        # must not poison the transaction (CI: varchar overflow on Postgres).
+        abort_row = AuditLog.objects.get(action="hard_reset.aborted")
+        self.assertEqual(abort_row.outcome, "checkpoint_failed")
+
+    def test_wipe_exception_audits_failure_with_error_detail(self) -> None:
+        """Free-text errors go to ``detail`` - never to the short
+        ``outcome`` column (overflow there broke PG transactions)."""
+        with mock.patch(
+            "apps.data_admin.views.HardResetView._create_checkpoint",
+            return_value={"success": True, "backup_id": "bk-1"},
+        ), mock.patch(
+            "apps.data_admin.views.hard_reset_for_handover",
+            side_effect=RuntimeError("x" * 300),
+        ):
+            response = self._post(GOOD_BODY, user=self.master)
+        self.assertEqual(
+            response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        row = AuditLog.objects.get(action="hard_reset.failed")
+        self.assertEqual(row.outcome, "failure")
+        self.assertEqual(row.detail["error"], "x" * 200)
+        # A failed audit write must leave the transaction usable.
+        self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
 
 
 @override_settings(HANDOVER_PIN_SHA256=PIN_SHA256)

@@ -132,7 +132,16 @@ class HardResetView(APIView):
         try:
             result = hard_reset_for_handover(actor_label=username)
         except Exception as exc:  # pragma: no cover - defensive
-            self._audit(request, "hard_reset.failed", str(exc)[:200])
+            # ``outcome`` holds SHORT codes only (a varchar column that
+            # PostgreSQL enforces; SQLite does not). The free-text exception
+            # goes into ``detail`` (JSON) - filling ``outcome`` with raw text
+            # overflowed the column and poisoned the PG transaction.
+            self._audit(
+                request,
+                "hard_reset.failed",
+                "failure",
+                detail={"error": str(exc)[:200]},
+            )
             return Response(
                 {"error": f"Error during hard reset: {exc}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

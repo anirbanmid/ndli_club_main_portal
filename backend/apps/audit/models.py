@@ -56,7 +56,7 @@ class AuditLog(models.Model):
     category = models.CharField(max_length=32, blank=True, default="")
 
     action = models.CharField(max_length=128)
-    outcome = models.CharField(max_length=16, default="success")
+    outcome = models.CharField(max_length=64, default="success")
     object_type = models.CharField(max_length=64, blank=True, default="")
     object_id = models.CharField(max_length=64, blank=True, default="")
 

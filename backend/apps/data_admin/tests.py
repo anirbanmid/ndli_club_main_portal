@@ -23,9 +23,11 @@ from rest_framework.test import APIClient
 from apps.accounts.models import AccountState, Category, SubRole
 from apps.audit.models import AuditLog
 from apps.data_admin.services import (
+    EXEMPT_MODELS,
     KEEP_MODELS,
     WIPE_MODELS,
     hard_reset_for_handover,
+    unclassified_models,
     wipe_manifest,
 )
 from apps.domain.models import Club, Institution, State, Zone
@@ -270,13 +272,41 @@ class HardResetWipeTests(TestCase):
         }
         self.assertEqual(names, expected)
 
-    def test_audit_log_is_retained_by_default(self) -> None:
-        """Documented judgment call: the trail survives the handover."""
-        from apps.data_admin.services import WIPE_AUDIT_LOG
+    def test_audit_trail_is_retained_by_design(self) -> None:
+        """The ledger is append-only; a hard reset is not a way to erase history.
 
-        self.assertFalse(WIPE_AUDIT_LOG)
+        Pre-reset rows survive, the reset itself is appended as one honest row,
+        and the model physically refuses deletion.
+        """
+        AuditLog.objects.create(action="some.earlier.action", outcome="ok")
+
         self._run()
-        self.assertTrue(AuditLog.objects.exists())
+
+        self.assertTrue(
+            AuditLog.objects.filter(action="some.earlier.action").exists()
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="hard_reset.completed").exists()
+        )
+
+    def test_audit_log_refuses_deletion(self) -> None:
+        """Pinned: the tamper-evidence guard must never be bypassed."""
+        row = AuditLog.objects.create(action="x", outcome="ok")
+        with self.assertRaises(PermissionError):
+            row.delete()
+        with self.assertRaises(PermissionError):
+            AuditLog.objects.all().delete()
+
+    def test_every_project_model_is_classified(self) -> None:
+        """Coverage gate: no model may ship unclassified (no ticking bombs)."""
+        self.assertEqual(
+            unclassified_models(),
+            [],
+            "classify new models in KEEP_MODELS / WIPE_MODELS / EXEMPT_MODELS",
+        )
+
+    def test_exempt_set_is_only_the_immutable_ledger(self) -> None:
+        self.assertEqual(tuple(EXEMPT_MODELS), (AuditLog,))
 
 
 class HardResetServiceTests(TestCase):

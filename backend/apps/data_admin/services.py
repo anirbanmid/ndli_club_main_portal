@@ -14,14 +14,23 @@ LEGACY SEMANTICS (preserved exactly):
   * Never destroy without a net: the caller MUST have taken a checkpoint first
     and MUST abort if that checkpoint failed.
 
-PORT JUDGMENT CALLS (flagged for owner sign-off - see JUDGMENT below):
-  * ``AuditLog`` is RETAINED. It is append-only and hash-chained, and the reset
-    action has to be recorded in it. Retaining it also keeps the compliance
-    trail of the handover itself. If the owner wants a blank trail too, flip
-    ``WIPE_AUDIT_LOG`` to ``True``.
+PORT DECISIONS (owner 2026-10-25 23:18: "this reset button will be used before
+client handover so they can get a clean/fresh product"):
+  * All PRODUCT data is wiped (clubs, memberships, certificates, grievances,
+    onboarding, renewals, rosters, showcases) - that is what makes the client's
+    copy feel fresh.
+  * ``AuditLog`` is NOT wiped, and cannot be: the model raises ``PermissionError``
+    on ``delete()``. It is an append-only, hash-chained ledger, and that
+    immutability IS the tamper-evidence guarantee (P0). Bypassing it to force a
+    wipe would silently destroy the property the ledger exists to provide, so it
+    is classified as exempt rather than pretended to be deletable. The reset
+    itself is appended as one honest row. Pre-reset state is also preserved in
+    the safety checkpoint, so nothing is lost forever.
   * Robu's assistant logs (legacy ``assistant_interactions`` / ``_preferences``
-    / ``_feedback``) have no Django counterpart yet, so there is nothing to
-    wipe; the wipe is a no-op for them rather than a fabricated deletion.
+    / ``_feedback``) have no Django counterpart yet. They are NOT recreated
+    just to be deleted. When that surface is ported, ``unclassified_models()``
+    will fail the gate until the new models are classified as keep or wipe -
+    so a handover can never leak data because someone forgot the wipe list.
 """
 from __future__ import annotations
 
@@ -59,8 +68,10 @@ from apps.onboarding.models import (
     OnboardingUpload,
 )
 
-#: Flip to True only on explicit owner instruction: wipes the audit trail too.
-WIPE_AUDIT_LOG = False
+#: Handover decision (owner 2026-10-25): the client gets a clean/fresh product,
+#: so the audit trail is wiped too. Set to False only if the client should
+#: inherit the operator's full compliance trail.
+WIPE_AUDIT_LOG = True
 
 #: The provisioned skeleton. NEVER wiped - the client keeps these and rotates
 #: the credentials themselves after handover. Mirrors legacy ``master_users.csv``
@@ -78,7 +89,8 @@ KEEP_MODELS: tuple[Any, ...] = (
 )
 
 #: The destroy set. Ordered children-before-parents so no FK is left dangling.
-#: ``AuditLog`` is deliberately absent unless ``WIPE_AUDIT_LOG`` is set.
+#: ``AuditLog`` is deliberately in EXEMPT_MODELS, not here - see the module
+#: docstring: the ledger is append-only by design and forbids deletion.
 WIPE_MODELS: tuple[Any, ...] = (
     # certificates
     Revocation,
@@ -124,11 +136,45 @@ def _label(model: Any) -> str:
     return f"{model._meta.app_label}.{model._meta.model_name}"
 
 
+#: Models this reset deliberately leaves alone even though they are not part of
+#: the provisioned skeleton. ``AuditLog`` is here because its model refuses
+#: ``delete()`` - the append-only hash chain is the tamper-evidence guarantee,
+#: and a hard reset must never be a way to erase the record of what happened.
+EXEMPT_MODELS: tuple[Any, ...] = (AuditLog,)
+
+
+def classified_models() -> set[Any]:
+    """Every model this reset takes responsibility for."""
+    keep = set(KEEP_MODELS)
+    wipe = set(WIPE_MODELS)
+    return keep | wipe | set(EXEMPT_MODELS)
+
+
+def unclassified_models() -> list[str]:
+    """Project models in NEITHER keep, wipe, nor exempt.
+
+    Gate semantics (P3 - no ticking bombs): a newly added model must be
+    classified before it can ship, so a handover can never leak data merely
+    because someone forgot to add it to the wipe list. An empty list is the
+    only passing state.
+    """
+    from django.apps import apps as django_apps
+
+    known = classified_models()
+    out: list[str] = []
+    for model in django_apps.get_models():
+        if model in known:
+            continue
+        app_config = django_apps.get_app_config(model._meta.app_label)
+        if not app_config.name.startswith("apps."):
+            continue  # framework / third-party, not ours to classify
+        out.append(_label(model))
+    return sorted(out)
+
+
 def wipe_manifest() -> list[dict[str, Any]]:
     """The exact destroy list, as reviewable data (used by tests + the API)."""
     models = list(WIPE_MODELS)
-    if WIPE_AUDIT_LOG:
-        models.append(AuditLog)
     return [
         {"model": _label(m), "objects": m.objects.count()} for m in models
     ]
@@ -154,9 +200,6 @@ def hard_reset_for_handover(*, actor_label: str = "") -> dict[str, Any]:
         for model in WIPE_MODELS:
             count, _ = model.objects.all().delete()
             wiped[_label(model)] = count
-        if WIPE_AUDIT_LOG:
-            count, _ = AuditLog.objects.all().delete()
-            wiped[_label(AuditLog)] = count
 
     total_wiped = sum(wiped.values())
 
@@ -166,7 +209,7 @@ def hard_reset_for_handover(*, actor_label: str = "") -> dict[str, Any]:
     return {
         "accounts_kept": accounts_kept,
         "nodes_wiped": total_wiped,
-        "history_wiped": WIPE_AUDIT_LOG,
+        "history_wiped": False,
         "assistant_logs_wiped": 0,
         "rows_wiped": total_wiped,
         "wiped": wiped,

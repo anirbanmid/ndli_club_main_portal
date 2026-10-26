@@ -112,30 +112,8 @@ export function App({ ssrLocation }: AppProps = {}) {
     setAuthorityRequests(prev => [req, ...prev]);
   };
 
-  // --- Handlers for Admin Module ---
-  const handleApproveClub = (clubId: string) => {
-    const randomPin = Math.floor(1000 + Math.random() * 9000);
-    setClubs(prev => prev.map(c => {
-      if (c.id === clubId) {
-        const cleanPrefix = c.name.replace(/[^a-zA-Z]/g, '').slice(0, 4).toUpperCase();
-        return {
-          ...c,
-          status: 'Active',
-          passkey: `${cleanPrefix}-NDL-${randomPin}`
-        };
-      }
-      return c;
-    }));
-  };
-
-  const handleRejectClub = (clubId: string) => {
-    setClubs(prev => prev.map(c => c.id === clubId ? { ...c, status: 'Revision Required' } : c));
-  };
-
-  const handleResolveTicket = (ticketId: string, notes: string) => {
-    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'Resolved', resolutionNotes: notes, resolvedAt: 'Just Now' } : t));
-  };
-
+  // --- Handlers for Admin Module (demo desks 3-4 only; desks 1-2 are
+  // real API-driven since D5 slice 2) ---
   const handleApproveAuthorityChange = (reqId: string) => {
     const req = authorityRequests.find(r => r.id === reqId);
     if (!req) return;
@@ -407,13 +385,8 @@ export function App({ ssrLocation }: AppProps = {}) {
         {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE */}
         {currentBranch === 'admin_module' && (
           <AdminModuleView
-            clubs={clubs}
-            tickets={tickets}
             authorityRequests={authorityRequests}
             forensicRecords={forensicRecords}
-            onApproveClub={handleApproveClub}
-            onRejectClub={handleRejectClub}
-            onResolveTicket={handleResolveTicket}
             onApproveAuthorityChange={handleApproveAuthorityChange}
             onHealForensicRecord={handleHealForensicRecord}
           />

@@ -163,6 +163,33 @@ export interface CharterRow {
   review_reason: string;
 }
 
+/** One authority row from the charter detail (metadata only). */
+export interface CharterAuthority {
+  role: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  designation: string;
+  otp_verified: boolean;
+}
+
+/** Upload metadata only — the bytes live behind the scoped upload endpoint. */
+export interface CharterUpload {
+  id: string;
+  original_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_at: string;
+}
+
+export interface CharterDetail extends CharterRow {
+  authorities: CharterAuthority[];
+  uploads: CharterUpload[];
+}
+
+/** The charter state machine's exact literals (apps.governance.services). */
+export type CharterDecision = 'review' | 'sanction' | 'reject';
+
 export interface RenewalRow {
   [key: string]: unknown;
 }
@@ -181,17 +208,21 @@ export function fetchCharterQueue(): Promise<{ results: CharterRow[] }> {
   return get<{ results: CharterRow[] }>('/governance/charter/queue/');
 }
 
-/** GET /admin/api/v1/governance/charter/<id>/ — one charter detail. */
-export function fetchCharter(id: string): Promise<CharterRow> {
-  return get<CharterRow>(`/governance/charter/${id}/`);
+/** GET /admin/api/v1/governance/charter/<id>/ — row + authorities + uploads. */
+export function fetchCharter(id: string): Promise<CharterDetail> {
+  return get<CharterDetail>(`/governance/charter/${id}/`);
 }
 
-/** POST /admin/api/v1/governance/charter/<id>/decision/ — approve or reject. */
+/**
+ * POST /admin/api/v1/governance/charter/<id>/decision/ — one state-machine move.
+ * Literals: 'review' | 'sanction' | 'reject'. The server owns the transition
+ * table; an illegal move surfaces as an ApiError, never a silent no-op.
+ */
 export function decideCharter(
   id: string,
-  body: { decision: 'approve' | 'reject'; reason?: string },
-): Promise<{ status: string }> {
-  return post<{ status: string }>(`/governance/charter/${id}/decision/`, body);
+  body: { decision: CharterDecision; reason?: string },
+): Promise<CharterRow> {
+  return post<CharterRow>(`/governance/charter/${id}/decision/`, body);
 }
 
 /** GET /admin/api/v1/governance/renewals/attention/ — the <=30d desk. */
@@ -239,7 +270,31 @@ export function fetchInsightsReport(params: {
 // ---------------------------------------------------------------------------
 
 export interface GrievanceRow {
-  [key: string]: unknown;
+  id: string;
+  club_id: string;
+  raised_by: string | null;
+  subject: string;
+  description: string;
+  status: string;
+  state_code: string;
+  zone_code: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  reminder_due_at: string;
+  admin_reminder_due_at: string;
+  is_admin_escalated: boolean;
+  escalated_at: string | null;
+  created_at: string;
+}
+
+export interface SlaEventRow {
+  kind: string;
+  occurred_at: string;
+  note: string;
+}
+
+export interface GrievanceDetail extends GrievanceRow {
+  sla_events: SlaEventRow[];
 }
 
 export interface GrievanceQueue {
@@ -247,29 +302,35 @@ export interface GrievanceQueue {
   [key: string]: unknown;
 }
 
-/** GET /admin/api/v1/grievances/queue/ — the caller's grievance queue. */
-export function fetchGrievanceQueue(params: {
-  zone?: string;
-} = {}): Promise<GrievanceQueue> {
-  return get<GrievanceQueue>('/grievances/queue/', params);
+/**
+ * GET /admin/api/v1/grievances/queue/ — the caller's grievance queue.
+ * Scope is the server's job (zone-bound officers see their duty set only);
+ * the UI filters the returned rows by zone display-side.
+ */
+export function fetchGrievanceQueue(): Promise<GrievanceQueue> {
+  return get<GrievanceQueue>('/grievances/queue/');
 }
 
-/** GET /admin/api/v1/grievances/<id>/ — one ticket. */
-export function fetchGrievance(id: string): Promise<GrievanceRow> {
-  return get<GrievanceRow>(`/grievances/${id}/`);
+/** GET /admin/api/v1/grievances/<id>/ — ticket + SLA ledger. */
+export function fetchGrievance(id: string): Promise<GrievanceDetail> {
+  return get<GrievanceDetail>(`/grievances/${id}/`);
 }
 
-/** POST /admin/api/v1/grievances/<id>/resolve/ — resolve a ticket. */
+/**
+ * POST /admin/api/v1/grievances/<id>/resolve/ — Resolved / Not Resolved mark.
+ * Literals: 'resolved' | 'not_resolved' (a 'not_resolved' restarts the 7-day
+ * recurrence cycle; a central actor's mark schedules the 30-day escalation).
+ */
 export function resolveGrievance(
   id: string,
-  body: { note?: string } = {},
-): Promise<unknown> {
-  return post<unknown>(`/grievances/${id}/resolve/`, body);
+  body: { decision: 'resolved' | 'not_resolved'; reason?: string },
+): Promise<GrievanceRow> {
+  return post<GrievanceRow>(`/grievances/${id}/resolve/`, body);
 }
 
-/** POST /admin/api/v1/grievances/sweep/ — run the SLA reminder sweep. */
-export function sweepGrievances(): Promise<unknown> {
-  return post<unknown>('/grievances/sweep/', {});
+/** POST /admin/api/v1/grievances/sweep/ — the bounded SLA self-heal pass. */
+export function sweepGrievances(): Promise<Record<string, unknown>> {
+  return post<Record<string, unknown>>('/grievances/sweep/', {});
 }
 
 // ---------------------------------------------------------------------------

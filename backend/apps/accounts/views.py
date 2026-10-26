@@ -23,12 +23,14 @@ from __future__ import annotations
 
 from django.contrib.auth import login as auth_login
 from django.contrib.auth import logout as auth_logout
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from . import captcha
 from . import services
 from .policies import CategoryGate
 from .throttles import client_ip, sliding_window_allow
@@ -114,8 +116,33 @@ class OtpVerifyView(APIView):
         return Response(_session_payload(user))
 
 
+class CaptchaView(APIView):
+    """``GET /api/v1/accounts/captcha/`` — mint the office-login captcha.
+
+    Renders an SVG straight from the server (stdlib only, no image deps) and
+    holds the answer ONLY in the session — one-shot, 10-minute TTL
+    (apps/accounts/captcha.py). ``Cache-Control: no-store`` plus the client's
+    ``?t=`` nonce keep every refresh fresh.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes: list = []
+
+    def get(self, request: Request) -> HttpResponse:
+        return HttpResponse(
+            captcha.issue_captcha(request),
+            content_type="image/svg+xml",
+            headers={"Cache-Control": "no-store, max-age=0"},
+        )
+
+
 class PasswordLoginView(APIView):
-    """``POST /api/v1/accounts/login/`` — username + password (M1 ``club_login``)."""
+    """``POST /api/v1/accounts/login/`` — employee code + password + captcha.
+
+    The office login gate (owner 2026-10-27, previous-project pattern): no
+    email delivery anywhere on this door — it must work with NO mail server.
+    ``services.password_login`` owns the gate rules (P4 single source).
+    """
 
     permission_classes = [AllowAny]
     authentication_classes: list = []
@@ -124,9 +151,10 @@ class PasswordLoginView(APIView):
         blocked = _throttled("password_login", PASSWORD_LOGIN_LIMIT, request)
         if blocked is not None:
             return blocked
-        user = services.club_login(
+        user = services.password_login(
             username=str(request.data.get("username", "")).strip(),
             password=str(request.data.get("password", "")),
+            captcha=str(request.data.get("captcha", "")).strip(),
             request=request,
         )
         auth_login(request, user)

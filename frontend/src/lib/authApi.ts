@@ -9,9 +9,9 @@
  *   server's `detail` verbatim and the UI renders it verbatim. The client
  *   never rewrites, recomputes or invents a verdict (P4 single source).
  * - Verdict body shapes differ by exception type and must be normalised
- *   without losing bytes: DRF ValidationError bodies carry `detail` as a
- *   one-element LIST ({"detail": ["That code is not valid."]}), while
- *   Throttled / hand-built dict verdicts carry a plain STRING
+ *   without losing bytes: a DRF ValidationError raised with a plain string
+ *   renders as a BARE top-level LIST (["That code is not valid."]), while
+ *   Throttled / hand-built dict verdicts carry a plain STRING under `detail`
  *   ({"detail": "Too many attempts. Try again in a minute."}). The accounts
  *   service raises `rest_framework.exceptions.ValidationError` (the Django
  *   one is imported aliased and never reaches the wire).
@@ -63,6 +63,8 @@ export const AUTH_VERDICTS = {
   codeLocked: 'Too many attempts on this code. Try again later.',
   /** 429 — OTP send quota raised inside send_email_otp. */
   otpQuota: 'Too many verification codes requested. Try again later.',
+  /** 400 POST /accounts/login/ — captcha missing, wrong, or already consumed. */
+  captchaInvalid: 'The captcha answer is not valid.',
   /** 200 POST /accounts/logout/. */
   signedOut: 'Signed out.',
 } as const;
@@ -106,9 +108,12 @@ export function classifyAuthVerdict(message: string): AuthVerdictKind {
 /**
  * Normalise the `detail` field of an error/success body without losing bytes:
  * plain strings pass through; DRF ValidationError lists are joined with '\n'
- * (single-element lists are byte-identical to the message).
+ * (single-element lists are byte-identical to the message). A BARE top-level
+ * list body (a DRF ValidationError raised with a string) is the same list,
+ * one level up — normalised identically.
  */
 export function detailMessage(body: unknown): string | null {
+  if (Array.isArray(body)) return body.map((item) => String(item)).join('\n');
   if (body !== null && typeof body === 'object' && 'detail' in body) {
     const detail = (body as { detail: unknown }).detail;
     if (typeof detail === 'string') return detail;
@@ -198,6 +203,20 @@ export function requestLoginOtp(email: string): Promise<{ detail: string }> {
 /** POST /api/v1/accounts/otp/verify/ — consumes a code and opens the session. */
 export function verifyLoginOtp(email: string, code: string): Promise<SessionPayload> {
   return postJson<SessionPayload>(`${ACCOUNTS_API_BASE}/otp/verify/`, { email, code });
+}
+
+/**
+ * POST /api/v1/accounts/login/ — employee code + password + captcha -> session.
+ * The office login gate (owner 2026-10-27): no email delivery anywhere on
+ * this door — it must work with NO mail server. The captcha is one-shot
+ * server-side; the UI refreshes the image after EVERY attempt.
+ */
+export function passwordLogin(
+  username: string,
+  password: string,
+  captcha: string,
+): Promise<SessionPayload> {
+  return postJson<SessionPayload>(`${ACCOUNTS_API_BASE}/login/`, { username, password, captcha });
 }
 
 /**

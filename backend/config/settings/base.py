@@ -228,11 +228,14 @@ X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "no-referrer"
 
-# Argon2id (RFC 9106 third variant) — BRIEF_M1.md §6. The custom hasher pins
-# the type explicitly so the requirement holds regardless of Django defaults.
+# Password hashing — CLIENT STANDARD (owner 2026-10-27, previous-project
+# parity): PBKDF2-HMAC-SHA256, 100,000 rounds, 16-byte random salts.
+# PBKDF2ClientHasher is PRIMARY (set_password default + migration target);
+# Argon2id (M1-era) stays for verification and re-hashes to the standard on
+# the next successful login (its must_update is True).
 PASSWORD_HASHERS = [
+    "apps.accounts.hashers.PBKDF2ClientHasher",
     "apps.accounts.hashers.Argon2idPasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
     "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
 ]
 

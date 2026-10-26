@@ -1,24 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  KeyRound,
   Loader2,
   LogOut,
-  Mail,
   RefreshCw,
 } from 'lucide-react';
 import { t } from '../../i18n';
 import { ApiError } from '../../lib/api';
 import {
   AuthApiError,
-  classifyAuthVerdict,
   fetchSession,
-  requestLoginOtp,
+  passwordLogin,
   SessionPayload,
   signOut,
-  verifyLoginOtp,
 } from '../../lib/authApi';
 import {
   consumeInterruptedRoute,
@@ -26,24 +22,21 @@ import {
   peekInterruptedRoute,
 } from '../../lib/returnTo';
 import type { AppRoute } from '../../lib/route';
-import { PasskeyLoginEntry } from './PasskeyLoginEntry';
 
 /**
- * M5-D1 login door (BRIEF_M5 §3 D1; gates F1 + F2).
+ * M5-D1 login door — OFFICE GATE (owner 2026-10-27, previous-project pattern).
  *
- * Email + OTP flow (the M4 accounts API is EMAIL+OTP and deliberately has no
- * SMS/phone delivery anywhere — apps/accounts/models.py): request code ->
- * enter code -> session established. The resend cooldown mirrors the server's
- * per-minute ceilings; the timer is presentation only and never grants access
- * (P4: the API is the single source of every verdict).
+ * Employee code + password + captcha. The email-OTP door is GONE from here:
+ * with no mail server at the backend it could never establish a session, and
+ * email verification everywhere only burns mail quota and chokes the gate.
+ * No new auth primitive (P0): `services.password_login` is the single gate and
+ * the captcha is one-shot, server-held (apps/accounts/captcha.py).
  *
  * Verdict rendering (F2): any `detail` the API sends is rendered VERBATIM as
  * data — never through the i18n pipeline and never paraphrased. All UI chrome
- * (labels, buttons, help text) goes through t(). Unknown/known addresses are
- * indistinguishable by design (anti-enumeration).
+ * (labels, buttons, help text) goes through t().
  *
- * Passkey campus-code entry lives in PasskeyLoginEntry. Re-login returns to
- * the interrupted route via lib/returnTo.ts.
+ * Re-login returns to the interrupted route via lib/returnTo.ts.
  */
 
 interface LoginViewProps {
@@ -55,19 +48,11 @@ interface LoginViewProps {
   onSignedIn?: (session: SessionPayload) => void;
 }
 
-type Phase = 'request' | 'verify' | 'established';
-
 type FlowError =
   | { kind: 'verdict' | 'rate-limit'; message: string }
   | { kind: 'network' | 'server' };
 
-const RESEND_COOLDOWN_SECONDS = 60;
-
-function formatClock(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
+const CAPTCHA_SRC = '/api/v1/accounts/captcha/';
 
 /** Map any thrown value onto the UI's honest error states. */
 function flowErrorFrom(err: unknown): FlowError {
@@ -88,17 +73,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onNavigate,
   onSignedIn,
 }) => {
-  const [phase, setPhase] = useState<Phase>('request');
-  const [method, setMethod] = useState<'otp' | 'passkey'>('otp');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [captcha, setCaptcha] = useState('');
+  const [captchaSrc, setCaptchaSrc] = useState(() => `${CAPTCHA_SRC}?t=${Date.now()}`);
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [error, setError] = useState<FlowError | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [cooldownEndsAt, setCooldownEndsAt] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const codeInputRef = useRef<HTMLInputElement | null>(null);
 
   // Interrupted-route target: the explicit ?next= wins; otherwise whatever a
   // mid-flow guard stored (peeked here, consumed at return time).
@@ -107,16 +88,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
     return isSafeLocalPath(next) ? next : peekInterruptedRoute();
   });
 
-  // Resend cooldown ticker (F1: resend cooldown timer).
-  useEffect(() => {
-    if (cooldownEndsAt === 0) return undefined;
-    const tick = (): void => {
-      setSecondsLeft(Math.max(0, Math.ceil((cooldownEndsAt - Date.now()) / 1000)));
-    };
-    tick();
-    const id = window.setInterval(tick, 250);
-    return () => window.clearInterval(id);
-  }, [cooldownEndsAt]);
+  /** One-shot captcha: the server burns it on every attempt — always refresh. */
+  const refreshCaptcha = (): void => {
+    setCaptcha('');
+    setCaptchaSrc(`${CAPTCHA_SRC}?t=${Date.now()}`);
+  };
 
   const returnToInterruptedRoute = (): void => {
     const stored = consumeInterruptedRoute();
@@ -137,7 +113,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const existing = await fetchSession();
         if (cancelled || existing === null) return;
         setSession(existing);
-        setPhase('established');
         onSignedIn?.(existing);
         returnToInterruptedRoute();
       } catch (err) {
@@ -151,61 +126,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startCooldown = (): void => {
-    const endsAt = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
-    setCooldownEndsAt(endsAt);
-    setSecondsLeft(RESEND_COOLDOWN_SECONDS);
-  };
-
-  const handleRequestOtp = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const accepted = await requestLoginOtp(email.trim());
-      // Enumeration-safe accepted verdict, rendered VERBATIM (F2).
-      setNotice(accepted.detail);
-      setPhase('verify');
-      setCode('');
-      startCooldown();
-      window.setTimeout(() => codeInputRef.current?.focus(), 0);
-    } catch (err) {
-      setError(flowErrorFrom(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleVerifyOtp = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const established = await verifyLoginOtp(email.trim(), code.trim());
+      const established = await passwordLogin(
+        employeeCode.trim(),
+        password,
+        captcha.trim(),
+      );
       setSession(established);
-      setPhase('established');
       onSignedIn?.(established);
     } catch (err) {
       setError(flowErrorFrom(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleResend = async (): Promise<void> => {
-    if (busy || secondsLeft > 0) return;
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const accepted = await requestLoginOtp(email.trim());
-      setNotice(accepted.detail);
-      startCooldown();
-    } catch (err) {
-      setError(flowErrorFrom(err));
+      // The captcha is one-shot — every attempt burns it (fresh image next try).
+      refreshCaptcha();
     } finally {
       setBusy(false);
     }
@@ -218,9 +155,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
     try {
       await signOut();
       setSession(null);
-      setCode('');
-      setNotice(null);
-      setPhase('request');
+      setPassword('');
+      refreshCaptcha();
     } catch (err) {
       setError(flowErrorFrom(err));
     } finally {
@@ -242,136 +178,81 @@ export const LoginView: React.FC<LoginViewProps> = ({
               {t("Sign in to NDLI Club")}
             </h1>
             <p className="text-xs text-[#5A7366] font-medium">
-              {t("Passwordless sign-in with the code sent to your email.")}
+              {t("Office sign-in: employee code, password and captcha.")}
             </p>
           </div>
         </div>
 
-        {/* Method switch: email code (default) vs campus passkey entry. */}
-        <div
-          className="flex items-center p-1 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7] mb-6"
-          role="tablist"
-          aria-label={t("Sign-in method")}
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={method === 'otp'}
-            onClick={() => setMethod('otp')}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-              method === 'otp'
-                ? 'bg-[#1A503E] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
-            }`}
-          >
-            <Mail className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{t("Email code")}</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={method === 'passkey'}
-            onClick={() => setMethod('passkey')}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${
-              method === 'passkey'
-                ? 'bg-[#1A503E] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
-            }`}
-          >
-            <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{t("Sign in with passkey")}</span>
-          </button>
-        </div>
-
-        {method === 'passkey' && <PasskeyLoginEntry />}
-
-        {method === 'otp' && phase === 'request' && (
-          <form onSubmit={handleRequestOtp} noValidate>
-            <label htmlFor="login-email" className="block text-xs font-bold text-[#2E4A3E] mb-1.5">
-              {t("Email address")}
+        {session === null && (
+          <form onSubmit={handleSignIn} noValidate>
+            <label htmlFor="login-employee-code" className="block text-xs font-bold text-[#2E4A3E] mb-1.5">
+              {t("Employee code or username")}
             </label>
             <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
+              id="login-employee-code"
+              type="text"
+              autoComplete="username"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={employeeCode}
+              onChange={(e) => setEmployeeCode(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
             />
-            <button
-              type="submit"
-              disabled={busy || email.trim() === ''}
-              className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-[#1A503E] text-white text-sm font-bold hover:bg-[#103125] transition-colors disabled:opacity-60"
-            >
-              {busy ? busyIcon : <Mail className="h-4 w-4" aria-hidden="true" />}
-              <span>{busy ? t("Sending…") : t("Send code")}</span>
-            </button>
-          </form>
-        )}
 
-        {method === 'otp' && phase === 'verify' && (
-          <form onSubmit={handleVerifyOtp} noValidate>
-            <p className="text-sm text-[#2E4A3E] mb-3">
-              {t("Enter the verification code sent to your email.")}
-            </p>
-            <label htmlFor="login-code" className="block text-xs font-bold text-[#2E4A3E] mb-1.5">
-              {t("Verification code")}
+            <label htmlFor="login-password" className="block text-xs font-bold text-[#2E4A3E] mb-1.5 mt-4">
+              {t("Password")}
             </label>
             <input
-              id="login-code"
-              ref={codeInputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={12}
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
               required
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
+            />
+
+            <label htmlFor="login-captcha" className="block text-xs font-bold text-[#2E4A3E] mb-1.5 mt-4">
+              {t("Captcha")}
+            </label>
+            <div className="flex items-center space-x-2.5 mb-2">
+              <img
+                src={captchaSrc}
+                alt={t("Captcha image")}
+                className="h-12 rounded-lg border border-[#E2ECE7] bg-white"
+              />
+              <button
+                type="button"
+                onClick={refreshCaptcha}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors"
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{t("Refresh captcha")}</span>
+              </button>
+            </div>
+            <input
+              id="login-captcha"
+              type="text"
+              autoComplete="off"
+              maxLength={8}
+              required
+              value={captcha}
+              onChange={(e) => setCaptcha(e.target.value)}
+              placeholder={t("Enter the characters shown in the image.")}
               className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] tracking-widest focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
             />
+
             <button
               type="submit"
-              disabled={busy || code.trim() === ''}
+              disabled={busy || employeeCode.trim() === '' || password === '' || captcha.trim() === ''}
               className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-[#1A503E] text-white text-sm font-bold hover:bg-[#103125] transition-colors disabled:opacity-60"
             >
               {busy ? busyIcon : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-              <span>{busy ? t("Verifying…") : t("Verify code")}</span>
+              <span>{busy ? t("Signing in…") : t("Sign in")}</span>
             </button>
-
-            <div className="mt-4 flex items-center justify-between">
-              {secondsLeft > 0 ? (
-                <p className="text-xs text-[#5A7366]" role="status">
-                  {t("Resend code in {{time}}", { time: formatClock(secondsLeft) })}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void handleResend()}
-                  disabled={busy}
-                  className="flex items-center space-x-1.5 text-xs font-bold text-[#0D7751] hover:text-[#103125] transition-colors disabled:opacity-60"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{t("Resend code")}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setPhase('request');
-                  setCode('');
-                  setError(null);
-                  setNotice(null);
-                }}
-                className="text-xs font-bold text-[#2E4A3E] hover:text-[#103125] transition-colors"
-              >
-                {t("Use a different email")}
-              </button>
-            </div>
           </form>
         )}
 
-        {method === 'otp' && phase === 'established' && session !== null && (
+        {session !== null && (
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <CheckCircle2 className="h-5 w-5 text-[#0D7751]" aria-hidden="true" />
@@ -436,12 +317,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
         )}
 
         {/* Verdicts render VERBATIM (F2 byte-consistency): API data, not copy. */}
-        {notice !== null && (
-          <p role="status" className="mt-4 flex items-start space-x-1.5 text-xs text-[#0D7751]">
-            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{notice}</span>
-          </p>
-        )}
         {error !== null && (
           <p role="alert" className="mt-4 flex items-start space-x-1.5 text-xs font-bold text-[#B45309]">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />

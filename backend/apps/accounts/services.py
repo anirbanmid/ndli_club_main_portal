@@ -26,6 +26,7 @@ from rest_framework.exceptions import (
 from apps.audit.decorators import set_audit_detail
 
 from . import conf
+from .captcha import consume_captcha
 from .email_providers import EmailMessage, EmailProvider, get_email_provider
 from .hashing import (
     generate_link_token,
@@ -360,6 +361,51 @@ def admin_login(
         method="password+totp",
     )
     return user
+
+
+def password_login(
+    *,
+    username: str,
+    password: str,
+    captcha: str,
+    request: Any,
+) -> User:
+    """Office login door (owner 2026-10-27): employee code + password + captcha.
+
+    The previous project's office pattern — the module gate must work with NO
+    mail server and burn no email quota, so this door uses no OTP and no email
+    delivery anywhere. The captcha is one-shot and session-held (P0: nothing
+    forgeable on the client). ``admin_login`` (password + TOTP) stays available
+    for provisioned admins; this is the everyday gate.
+
+    One gate (P4/I5): club faces go through ``_require_club_login_eligible``;
+    the admin face applies the same account-state rule (ACTIVE only).
+    """
+    if not consume_captcha(request, captcha):
+        raise ValidationError("The captcha answer is not valid.")
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        raise AuthenticationFailed("Invalid username or password.")
+    profile = user if isinstance(user, User) else None
+    if profile is None:
+        raise AuthenticationFailed("Invalid username or password.")
+    if profile.category == Category.IIT_KGP_ADMIN:
+        if profile.account_state != AccountState.ACTIVE:
+            raise PermissionDenied("Account is not active.", code="account_inactive")
+        module = "admin"
+    else:
+        _require_club_login_eligible(user)
+        module = "club"
+    _audit(
+        "auth.login",
+        request,
+        actor=user,
+        object_type="account",
+        object_id=user.get_username(),
+        module=module,
+        method="password+captcha",
+    )
+    return profile
 
 
 def record_login_failure(

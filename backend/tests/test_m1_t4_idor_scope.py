@@ -254,7 +254,14 @@ class AnonymousPins(TestCase):
         """Any non-public route answers 401/403/redirect — never 200 + data."""
         # The admin login/logout pages are the authentication entry point:
         # they are reachable anonymously by definition and carry no data.
-        AUTH_ENTRY = {"/admin/login/", "/admin/logout/"}
+        # The office login captcha (D5 slice 7) is the same kind of entry:
+        # anonymous by necessity (a login door cannot demand a session first)
+        # and carries NO data — only a one-shot challenge image.
+        AUTH_ENTRY = {
+            "/admin/login/",
+            "/admin/logout/",
+            "/api/v1/accounts/captcha/",
+        }
         non_public = [
             path
             for _n, path in iter_routes()

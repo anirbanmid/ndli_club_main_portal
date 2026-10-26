@@ -30,8 +30,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import captcha
-from . import services
+from . import captcha, services
 from .policies import CategoryGate
 from .throttles import client_ip, sliding_window_allow
 

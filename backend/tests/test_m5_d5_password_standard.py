@@ -17,8 +17,12 @@ from django.contrib.auth.hashers import (
 )
 from django.core.management import call_command
 
+from apps.accounts.hashers import PBKDF2ClientHasher
 from apps.accounts.models import Category, SubRole
-from apps.core.management.commands.seed_office_demo import IDENTITIES
+from apps.core.management.commands.seed_office_demo import (
+    IDENTITIES,
+    demo_password,
+)
 from tests.support import GOOD_PASSWORD, M1PinTestCase, make_user
 
 #: The wire shape the client standard mandates.
@@ -43,8 +47,9 @@ class PasswordStandardTests(M1PinTestCase):
 
     def test_hasher_pins(self) -> None:
         hasher = identify_hasher(make_password("***"))
-        self.assertEqual(hasher.iterations, 100_000)
-        self.assertEqual(hasher.salt_entropy, 128)
+        self.assertIsInstance(hasher, PBKDF2ClientHasher)
+        self.assertEqual(PBKDF2ClientHasher.iterations, 100_000)
+        self.assertEqual(PBKDF2ClientHasher.salt_entropy, 128)
 
     def test_verify_round_trip_and_wrong_password_rejected(self) -> None:
         encoded = make_password("***")
@@ -65,5 +70,6 @@ class PasswordStandardTests(M1PinTestCase):
         user = get_user_model().objects.get(username="SUPEROPS")
         self.assertEqual(user.category, Category.IIT_KGP_ADMIN)
         self.assertRegex(user.password, HASH_RE)
-        documented = next(row[4] for row in IDENTITIES if row[0] == "SUPEROPS")
+        token = next(row[4] for row in IDENTITIES if row[0] == "SUPEROPS")
+        documented = demo_password(token)
         self.assertTrue(check_password(documented, user.password))

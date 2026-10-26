@@ -41,7 +41,12 @@ import {
 } from '../lib/adminApi';
 
 function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : t('Something went wrong.');
+  if (err instanceof ApiError) {
+    return err.status === 401
+      ? t('Please sign in as an administrator to use this desk.')
+      : err.message;
+  }
+  return t('Something went wrong.');
 }
 
 function formatDate(iso: string | null | undefined): string {

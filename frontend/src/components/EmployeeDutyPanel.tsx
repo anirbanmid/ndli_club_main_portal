@@ -22,7 +22,12 @@ import { t } from '../i18n';
 const MASTER_ROLES = new Set(['central_admin', 'super_admin_ops']);
 
 function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : t('Something went wrong.');
+  if (err instanceof ApiError) {
+    return err.status === 401
+      ? t('Please sign in as an administrator to use this desk.')
+      : err.message;
+  }
+  return t('Something went wrong.');
 }
 
 export const EmployeeDutyPanel: React.FC = () => {

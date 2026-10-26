@@ -190,12 +190,30 @@ export interface CharterDetail extends CharterRow {
 /** The charter state machine's exact literals (apps.governance.services). */
 export type CharterDecision = 'review' | 'sanction' | 'reject';
 
-export interface RenewalRow {
-  [key: string]: unknown;
+export interface RenewalRecordRow {
+  id: number;
+  club_code: string;
+  status: string;
+  request_note: string;
+  requested_at: string;
+  decision_note: string;
+  decided_at: string | null;
+  certificate_id: string | null;
+}
+
+export interface RenewalAttentionRow {
+  club_code: string;
+  club_name: string;
+  zone_code: string;
+  formation_date: string;
+  last_renewal_date: string | null;
+  due_date: string;
+  days_left: number;
+  open_request_id?: number | null;
 }
 
 export interface RenewalAttention {
-  results: RenewalRow[];
+  results: RenewalAttentionRow[];
   [key: string]: unknown;
 }
 
@@ -236,26 +254,29 @@ export function fetchRenewalAttention(params: {
 export function fetchRenewalHistory(params: {
   zone?: string;
   page?: number;
-} = {}): Promise<{ results: RenewalRow[] }> {
-  return get<{ results: RenewalRow[] }>('/governance/renewals/', params);
+} = {}): Promise<{ results: RenewalRecordRow[] }> {
+  return get<{ results: RenewalRecordRow[] }>('/governance/renewals/', params);
 }
 
-/** POST /admin/api/v1/governance/renewals/issue/ — issue a renewal directly. */
-export function issueRenewalDirect(body: Record<string, unknown>): Promise<unknown> {
-  return post<unknown>('/governance/renewals/issue/', body);
+/** POST /admin/api/v1/governance/renewals/issue/ — Path B: issue directly. */
+export function issueRenewalDirect(body: Record<string, unknown>): Promise<RenewalRecordRow> {
+  return post<RenewalRecordRow>('/governance/renewals/issue/', body);
 }
 
-/** POST /admin/api/v1/governance/renewals/<id>/issue/ — issue an existing one. */
-export function issueRenewal(id: number, body: Record<string, unknown> = {}): Promise<unknown> {
-  return post<unknown>(`/governance/renewals/${id}/issue/`, body);
+/** POST /admin/api/v1/governance/renewals/<id>/issue/ — Path A: issue request. */
+export function issueRenewal(
+  id: number,
+  body: Record<string, unknown> = {},
+): Promise<RenewalRecordRow> {
+  return post<RenewalRecordRow>(`/governance/renewals/${id}/issue/`, body);
 }
 
-/** POST /admin/api/v1/governance/renewals/<id>/reject/ — reject a renewal. */
+/** POST /admin/api/v1/governance/renewals/<id>/reject/ — reject a request. */
 export function rejectRenewal(
   id: number,
   body: { reason: string },
-): Promise<unknown> {
-  return post<unknown>(`/governance/renewals/${id}/reject/`, body);
+): Promise<RenewalRecordRow> {
+  return post<RenewalRecordRow>(`/governance/renewals/${id}/reject/`, body);
 }
 
 /** GET /admin/api/v1/governance/insights/report/ — MCC strategic report. */

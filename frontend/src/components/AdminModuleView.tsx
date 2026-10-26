@@ -36,6 +36,7 @@ import { ApiError } from '../lib/api';
 import { AuthorityChangeRequest, ForensicQuarantineRecord } from '../types';
 import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
+import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
 import {
   CharterDecision,
   CharterDetail,
@@ -113,7 +114,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   onHealForensicRecord,
 }) => {
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'succession' | 'migration' | 'zones'>('approvals');
+  const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones' | 'system'>('approvals');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -346,6 +347,36 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           >
             <Landmark className="h-4 w-4" />
             <span>{t("7 Regional Officers")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('renewals')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'renewals' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            <span>{t("Renewal Desk")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('insights')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'insights' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>{t("MCC Insights")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('system')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'system' ? 'bg-rose-700 text-white shadow-xs' : 'text-rose-700 hover:bg-rose-50'
+            }`}
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <span>{t("System")}</span>
           </button>
         </div>
 
@@ -809,6 +840,15 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* DESK 6: Renewal Desk (REAL — D5 stage 1 backend, both Q1 paths) */}
+      {adminTab === 'renewals' && <RenewalDesk />}
+
+      {/* DESK 7: MCC Strategic Insights (REAL — D5 stage 2 backend) */}
+      {adminTab === 'insights' && <InsightsPanel />}
+
+      {/* DESK 8: Red Zone guarded hard reset (REAL — D5 stage 3 backend) */}
+      {adminTab === 'system' && <RedZoneReset />}
 
       {/* DESK 5: The 6 Zonal Regions / 7 Regional Officers (REAL since slice 1) */}
       {adminTab === 'zones' && (

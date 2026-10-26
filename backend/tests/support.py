@@ -177,6 +177,9 @@ def request_for(user: Any = None, *, ip: str = "203.0.113.10") -> Any:
     """A request object carrying META/user, as the services expect."""
     request: Any = RequestFactory().post("/api/v1/test/", REMOTE_ADDR=ip)
     request.user = user if user is not None else _Anonymous()
+    # Dict session — the convention test_m1_t3_matrix uses; login services
+    # write entry-verification state (patch 0016).
+    request.session = {}
     return request
 
 

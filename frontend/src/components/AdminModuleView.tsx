@@ -57,6 +57,8 @@ interface AdminModuleViewProps {
   forensicRecords: ForensicQuarantineRecord[];
   onApproveAuthorityChange: (reqId: string) => void;
   onHealForensicRecord: (recordId: string) => void;
+  /** Patch 0016: sign-out control (the admin module had no logout). */
+  onSignOut?: () => void;
 }
 
 /** Display zones -> API zone codes (domain.Zone.code, C2 canonical mapping). */
@@ -119,6 +121,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   forensicRecords,
   onApproveAuthorityChange,
   onHealForensicRecord,
+  onSignOut,
 }) => {
   const [selectedZone, setSelectedZone] = useState<string>('All');
   const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
@@ -283,6 +286,16 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             {t("Coordinating club charter approvals, regional support desk dispatches (EMP01–EMP07), institutional authority transitions, and legacy data healing.")}
           </p>
         </div>
+
+        {onSignOut && (
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0"
+          >
+            {t("Sign out")}
+          </button>
+        )}
 
         {/* Telemetry Pills — live counts from the real queues */}
         <div className="grid grid-cols-2 gap-3 text-center shrink-0">

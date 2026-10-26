@@ -8,6 +8,7 @@ import { PublicClubProfileView } from './components/PublicClubProfileView';
 import { ClubModuleView } from './components/ClubModuleView';
 import { AdminModuleView } from './components/AdminModuleView';
 import { fetchSession } from './lib/adminApi';
+import { signOut } from './lib/authApi';
 
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
@@ -54,6 +55,13 @@ export function App({ ssrLocation }: AppProps = {}) {
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
+  const handleAdminSignOut = async (): Promise<void> => {
+    try {
+      await signOut();
+    } finally {
+      setAdminAuthed(false);
+    }
+  };
   const [adminGateError, setAdminGateError] = useState<string | null>(null);
   const probeAdminSession = () => {
     fetchSession()
@@ -412,6 +420,7 @@ export function App({ ssrLocation }: AppProps = {}) {
               forensicRecords={forensicRecords}
               onApproveAuthorityChange={handleApproveAuthorityChange}
               onHealForensicRecord={handleHealForensicRecord}
+              onSignOut={() => void handleAdminSignOut()}
             />
           ) : (
             <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">

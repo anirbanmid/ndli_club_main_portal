@@ -360,6 +360,9 @@ def admin_login(
         module="admin",
         method="password+totp",
     )
+    # Patch 0016: the password+TOTP door marks the session entry-verified
+    # too (it never did — same lockout as the office door).
+    request.session["mfa_verified"] = True
     return user
 
 
@@ -405,6 +408,13 @@ def password_login(
         module=module,
         method="password+captcha",
     )
+    # Patch 0016 (owner report 2026-10-27): the office door (password +
+    # one-shot captcha) IS the admin module-entry challenge. The admin gates
+    # (policies.CategoryGate) check session["mfa_verified"], which NO login
+    # path ever set -> every admin desk answered 403. Mark the session
+    # entry-verified here; sensitive actions get their own Dual-Layer
+    # re-auth (CLIENT_SECURITY_STANDARD.md).
+    request.session["mfa_verified"] = True
     return profile
 
 

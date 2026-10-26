@@ -7,12 +7,16 @@ and session-held (P0: nothing forgeable on the client).
 """
 from __future__ import annotations
 
+from django.core.management import call_command
+
 from apps.accounts.models import AccountState, Category, SubRole
+from apps.core.management.commands.seed_office_demo import demo_password
 from tests.support import GOOD_PASSWORD, M1PinTestCase, make_user
 
 CAPTCHA_URL = "/api/v1/accounts/captcha/"
 LOGIN_URL = "/api/v1/accounts/login/"
 ME_URL = "/api/v1/accounts/me/"
+EMPLOYEE_LIST_URL = "/admin/api/v1/employees/"
 
 #: Wire bytes (byte-pinned, F2): a DRF ``ValidationError`` raised with a plain
 #: string renders as a BARE top-level list; auth failures render
@@ -62,6 +66,41 @@ class OfficeLoginGateTests(M1PinTestCase):
             sub_role=SubRole.STUDENT_MEMBER,
             password=GOOD_PASSWORD,
         )
+
+    def test_office_login_marks_the_session_entry_verified(self) -> None:
+        """Patch 0016 pin: the office door must unlock the admin gates."""
+        captcha = _solve(self.client)
+        response = self.client.post(
+            LOGIN_URL,
+            {"username": "EMP01", "password": GOOD_PASSWORD, "captcha": captcha},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.client.session.get("mfa_verified"))
+
+    def test_admin_desks_load_after_office_login(self) -> None:
+        """Regression pin for the owner report 2026-10-27: every admin desk
+        answered 'You do not have permission to perform this action.'"""
+        captcha = _solve(self.client)
+        self.client.post(
+            LOGIN_URL,
+            {"username": "EMP01", "password": GOOD_PASSWORD, "captcha": captcha},
+        )
+        desk = self.client.get(EMPLOYEE_LIST_URL)
+        self.assertEqual(desk.status_code, 200)
+
+    def test_seed_demo_credentials_work_end_to_end(self) -> None:
+        """The seed's OWN credentials must open the gate (deploy-smoke pin:
+        guards the docs-vs-seed mismatch behind the owner's first smoke)."""
+        call_command("seed_office_demo")
+        captcha = _solve(self.client)
+        demo = demo_password("Emp01")
+        response = self.client.post(
+            LOGIN_URL,
+            {"username": "EMP01", "password": demo, "captcha": captcha},
+        )
+        self.assertEqual(response.status_code, 200)
+        desk = self.client.get(EMPLOYEE_LIST_URL)
+        self.assertEqual(desk.status_code, 200)
 
     def test_captcha_is_required(self) -> None:
         _solve(self.client)

@@ -55,11 +55,13 @@ export function App({ ssrLocation }: AppProps = {}) {
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminRole, setAdminRole] = useState('');
   const handleAdminSignOut = async (): Promise<void> => {
     try {
       await signOut();
     } finally {
       setAdminAuthed(false);
+      setAdminRole('');
     }
   };
   const [adminGateError, setAdminGateError] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export function App({ ssrLocation }: AppProps = {}) {
       .then((s) => {
         if (s.category === 'iit_kgp_admin') {
           setAdminAuthed(true);
+          setAdminRole(s.sub_role ?? '');
           setAdminGateError(null);
         }
       })
@@ -421,6 +424,7 @@ export function App({ ssrLocation }: AppProps = {}) {
               onApproveAuthorityChange={handleApproveAuthorityChange}
               onHealForensicRecord={handleHealForensicRecord}
               onSignOut={() => void handleAdminSignOut()}
+              subRole={adminRole}
             />
           ) : (
             <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">
@@ -450,6 +454,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                     const s = await fetchSession();
                     if (s.category === 'iit_kgp_admin') {
                       setAdminAuthed(true);
+                      setAdminRole(s.sub_role ?? '');
                       setAdminGateError(null);
                       return;
                     }

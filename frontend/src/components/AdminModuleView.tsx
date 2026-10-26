@@ -59,6 +59,8 @@ interface AdminModuleViewProps {
   onHealForensicRecord: (recordId: string) => void;
   /** Patch 0016: sign-out control (the admin module had no logout). */
   onSignOut?: () => void;
+  /** Patch 0017: session sub-role — MCC Insights is Central/Super only. */
+  subRole?: string;
 }
 
 /** Display zones -> API zone codes (domain.Zone.code, C2 canonical mapping). */
@@ -122,7 +124,14 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   onApproveAuthorityChange,
   onHealForensicRecord,
   onSignOut,
+  subRole,
 }) => {
+  // Master-control desks (patch 0017) — visibility mirrors the backend gates
+  // (enforcement stays server-side): MCC Insights = INSIGHTS_GATE
+  // (CentralAdmin/SuperAdminOps); Forensic Migration + System = data_admin
+  // ADMIN_GATE (CentralAdmin only — SUPEROPS re-auths via Dual-Layer later).
+  const canSeeMcc = subRole === 'central_admin' || subRole === 'super_admin_ops';
+  const canSeeRedZone = subRole === 'central_admin';
   const [selectedZone, setSelectedZone] = useState<string>('All');
   const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
 
@@ -348,6 +357,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Authority Succession")} ({authorityRequests.length})</span>
           </button>
 
+          {canSeeRedZone && (
           <button
             onClick={() => setAdminTab('migration')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
@@ -358,6 +368,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Forensic Migration Desk")}</span>
             <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">{t("Legacy Data Healing")}</span>
           </button>
+          )}
 
           <button
             onClick={() => setAdminTab('zones')}
@@ -379,6 +390,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Renewal Desk")}</span>
           </button>
 
+          {canSeeMcc && (
           <button
             onClick={() => setAdminTab('insights')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
@@ -388,6 +400,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <Users className="h-4 w-4" />
             <span>{t("MCC Insights")}</span>
           </button>
+          )}
 
           <button
             onClick={() => setAdminTab('dashboards')}
@@ -399,6 +412,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Dashboards")}</span>
           </button>
 
+          {canSeeRedZone && (
           <button
             onClick={() => setAdminTab('system')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
@@ -408,6 +422,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <AlertTriangle className="h-4 w-4" />
             <span>{t("System")}</span>
           </button>
+          )}
         </div>
 
         {/* Regional Zone Filter */}
@@ -775,7 +790,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       )}
 
       {/* DESK 4: Forensic Migration — DEMO SHOWCASE (out of M6 per C7) */}
-      {adminTab === 'migration' && (
+      {adminTab === 'migration' && canSeeRedZone && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -875,13 +890,13 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       {adminTab === 'renewals' && <RenewalDesk />}
 
       {/* DESK 7: MCC Strategic Insights (REAL — D5 stage 2 backend) */}
-      {adminTab === 'insights' && <InsightsPanel />}
+      {adminTab === 'insights' && canSeeMcc && <InsightsPanel />}
 
       {/* DESK 9: Zone dashboards (REAL — D4 endpoints) */}
       {adminTab === 'dashboards' && <DashboardsPanel zoneCode={zoneCode} />}
 
       {/* DESK 8: Red Zone guarded hard reset (REAL — D5 stage 3 backend) */}
-      {adminTab === 'system' && <RedZoneReset />}
+      {adminTab === 'system' && canSeeRedZone && <RedZoneReset />}
 
       {/* DESK 5: The 6 Zonal Regions / 7 Regional Officers (REAL since slice 1) */}
       {adminTab === 'zones' && (

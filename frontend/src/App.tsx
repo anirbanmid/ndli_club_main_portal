@@ -7,6 +7,7 @@ import { HomeView } from './components/HomeView';
 import { PublicClubProfileView } from './components/PublicClubProfileView';
 import { ClubModuleView } from './components/ClubModuleView';
 import { AdminModuleView } from './components/AdminModuleView';
+import { fetchSession } from './lib/adminApi';
 
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
@@ -50,6 +51,22 @@ export function App({ ssrLocation }: AppProps = {}) {
   );
 
   const [currentBranch, setCurrentBranch] = useState<BranchType>('landing');
+  // Admin module is login-gated (owner 2026-10-26: "like the previous project").
+  // The gate probes the real session: a signed-in iit_kgp_admin skips it.
+  const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminGateError, setAdminGateError] = useState<string | null>(null);
+  const probeAdminSession = () => {
+    fetchSession()
+      .then((s) => {
+        if (s.category === 'iit_kgp_admin') {
+          setAdminAuthed(true);
+          setAdminGateError(null);
+        }
+      })
+      .catch(() => {
+        /* not signed in — the gate stays */
+      });
+  };
   const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
 
   // Application Data States
@@ -153,7 +170,10 @@ export function App({ ssrLocation }: AppProps = {}) {
           setCurrentBranch(branch);
           if (branch === 'landing') setCurrentTab('home');
           if (branch === 'club_module') setCurrentTab(authenticatedClubId ? 'club_dashboard' : 'club_directory');
-          if (branch === 'admin_module') setCurrentTab('admin_overview');
+          if (branch === 'admin_module') {
+            setCurrentTab('admin_overview');
+            probeAdminSession();
+          }
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         currentTab={currentTab}
@@ -382,14 +402,58 @@ export function App({ ssrLocation }: AppProps = {}) {
           </>
         )}
 
-        {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE */}
+        {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE — LOGIN-GATED.
+            Without a real iit_kgp_admin session this branch renders the sign-in
+            door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
-          <AdminModuleView
-            authorityRequests={authorityRequests}
-            forensicRecords={forensicRecords}
-            onApproveAuthorityChange={handleApproveAuthorityChange}
-            onHealForensicRecord={handleHealForensicRecord}
-          />
+          adminAuthed ? (
+            <AdminModuleView
+              authorityRequests={authorityRequests}
+              forensicRecords={forensicRecords}
+              onApproveAuthorityChange={handleApproveAuthorityChange}
+              onHealForensicRecord={handleHealForensicRecord}
+            />
+          ) : (
+            <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">
+              <div className="p-4 rounded-2xl bg-[#103125] text-white space-y-1">
+                <div className="text-[11px] font-black uppercase tracking-wider text-amber-300">
+                  IIT KHARAGPUR NODAL COMMAND
+                </div>
+                <h2 className="text-lg font-extrabold">Administrator sign-in required</h2>
+                <p className="text-xs text-brand-200/90">
+                  The IIT KGP Admin Module is locked behind a real admin session
+                  (EMP01–EMP07, CENTRALADM or SUPEROPS).
+                </p>
+              </div>
+              {adminGateError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                  {adminGateError}
+                </div>
+              )}
+              <LoginView
+                initialNext={''}
+                onNavigate={(route) => {
+                  setVerifyInitialCertId(route.certId);
+                  setCurrentTab(route.tab);
+                }}
+                onSignedIn={async () => {
+                  try {
+                    const s = await fetchSession();
+                    if (s.category === 'iit_kgp_admin') {
+                      setAdminAuthed(true);
+                      setAdminGateError(null);
+                      return;
+                    }
+                    setAdminGateError(
+                      'This account is not an IIT KGP administrator. Use an EMP01–EMP07 / CENTRALADM / SUPEROPS admin login.',
+                    );
+                  } catch {
+                    setAdminGateError('Sign-in did not open an admin session. Please try again.');
+                  }
+                }}
+              />
+            </div>
+          )
         )}
       </main>
 

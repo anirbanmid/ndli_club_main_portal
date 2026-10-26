@@ -31,12 +31,14 @@ import {
   FileText,
   Users,
   Zap,
+  BarChart3,
 } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { AuthorityChangeRequest, ForensicQuarantineRecord } from '../types';
 import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
 import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
+import { DashboardsPanel } from './AdminDashboardsPanel';
 import {
   CharterDecision,
   CharterDetail,
@@ -114,7 +116,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   onHealForensicRecord,
 }) => {
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones' | 'system'>('approvals');
+  const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -367,6 +369,16 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           >
             <Users className="h-4 w-4" />
             <span>{t("MCC Insights")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('dashboards')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'dashboards' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{t("Dashboards")}</span>
           </button>
 
           <button
@@ -846,6 +858,9 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
 
       {/* DESK 7: MCC Strategic Insights (REAL — D5 stage 2 backend) */}
       {adminTab === 'insights' && <InsightsPanel />}
+
+      {/* DESK 9: Zone dashboards (REAL — D4 endpoints) */}
+      {adminTab === 'dashboards' && <DashboardsPanel zoneCode={zoneCode} />}
 
       {/* DESK 8: Red Zone guarded hard reset (REAL — D5 stage 3 backend) */}
       {adminTab === 'system' && <RedZoneReset />}

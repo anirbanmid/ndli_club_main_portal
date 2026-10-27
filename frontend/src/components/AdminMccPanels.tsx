@@ -468,7 +468,7 @@ export const RedZoneReset: React.FC = () => {
     <div className="bg-white p-6 sm:p-8 rounded-3xl border-2 border-rose-300 shadow-xs space-y-6">
       <SecurityChallengeModal
         open={challengeOpen}
-        domain="business"
+        domain="server"
         onCancel={() => setChallengeOpen(false)}
         onAuthorize={onAuthorized}
       />
@@ -483,7 +483,7 @@ export const RedZoneReset: React.FC = () => {
 
       <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-semibold flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0" />
-        {t('The server independently enforces the triple guard (confirm phrase → handover PIN → Dual-Layer challenge (canvas CAPTCHA + Central Admin password)) and aborts if the safety checkpoint cannot be written.')}
+        {t('The server independently enforces the triple guard (confirm phrase → handover PIN → Dual-Layer challenge (canvas CAPTCHA + Master Admin password)) and aborts if the safety checkpoint cannot be written.')}
       </div>
 
       {error && (
@@ -679,7 +679,7 @@ export const SecurityChallengeModal: React.FC<SecurityChallengeModalProps> = ({
           />
         </label>
         <label className="space-y-1 block">
-          <span className="font-bold text-[#103125] text-xs">{t('Domain password')}</span>
+          <span className="font-bold text-[#103125] text-xs">{domain === 'server' ? t('Master Admin password') : t('Central Admin password')}</span>
           <input
             type="password"
             value={secret}

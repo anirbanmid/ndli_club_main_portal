@@ -121,6 +121,23 @@ class OfficeLoginGateTests(M1PinTestCase):
         # One-shot: the challenge row is gone even for the next, right answer.
         self.assertNotIn("login_captcha", self.client.session)
 
+    def test_case_mismatched_captcha_is_rejected_and_burned(self) -> None:
+        while True:
+            captcha = _solve(self.client)
+            if any(ch.isalpha() for ch in captcha):
+                break
+        response = self.client.post(
+            LOGIN_URL,
+            {
+                "username": "EMP01",
+                "password": GOOD_PASSWORD,
+                "captcha": captcha.lower(),
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), CAPTCHA_VERDICT)
+        self.assertNotIn("login_captcha", self.client.session)
+
     def test_admin_office_login_opens_an_admin_session(self) -> None:
         captcha = _solve(self.client)
         response = self.client.post(

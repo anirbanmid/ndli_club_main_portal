@@ -61,7 +61,7 @@ def issue_challenge(request: Any, domain: str) -> dict[str, Any]:
     for stale in dead:
         slot.pop(stale, None)
     slot[token] = {
-        'answer': code.lower(),
+        'answer': code,
         'domain': domain,
         'expires': now + SC_TTL_SECONDS,
     }
@@ -88,7 +88,7 @@ def consume_challenge(request: Any, token: str, answer: str, domain: str) -> boo
         return False
     if row.get('domain') != domain:
         return False
-    return hmac.compare_digest(str(row.get('answer', '')), answer.strip().lower())
+    return hmac.compare_digest(str(row.get('answer', '')), answer.strip())
 
 
 def verify_domain_password(domain: str, password: str) -> Any | None:

@@ -38,7 +38,7 @@ def issue_captcha(request: Any) -> bytes:
     """Mint a fresh challenge into the session and return its SVG rendering."""
     code = _new_code()
     request.session[CAPTCHA_SESSION_KEY] = {
-        "answer": code.lower(),
+        "answer": code,
         "expires": time.time() + CAPTCHA_TTL_SECONDS,
     }
     return _render_svg(code)
@@ -47,7 +47,7 @@ def issue_captcha(request: Any) -> bytes:
 def consume_captcha(request: Any, answer: str) -> bool:
     """ONE-SHOT check: every login attempt burns the challenge.
 
-    Returns True only when a live challenge matches (case-insensitive). The
+    Returns True only when a live challenge matches (case-sensitive). The
     row is popped BEFORE the comparison — a wrong guess cannot retry the same
     challenge (brute-force amplifier removed).
     """
@@ -56,7 +56,7 @@ def consume_captcha(request: Any, answer: str) -> bool:
         return False
     if time.time() > float(row.get("expires", 0)):
         return False
-    return hmac.compare_digest(str(row.get("answer", "")), answer.strip().lower())
+    return hmac.compare_digest(str(row.get("answer", "")), answer.strip())
 
 
 def _render_svg(code: str) -> bytes:

@@ -59,7 +59,7 @@ def _mint_challenge(client: APIClient) -> dict[str, str]:
         raise AssertionError(f"challenge mint failed: {response.status_code}")
     token = response.json()["token"]
     answer = client.session[SC_SESSION_KEY][token]["answer"]
-    return {"challenge": token, "captcha": answer.upper()}
+    return {"challenge": token, "captcha": answer}
 
 
 def _login(client: APIClient, user) -> None:

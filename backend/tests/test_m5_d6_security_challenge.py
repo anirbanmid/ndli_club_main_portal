@@ -114,6 +114,23 @@ class ChallengeLifecycleTests(TestCase):
             consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
         )
 
+    def test_case_mismatched_answer_rejected_and_burned(self) -> None:
+        request = _SessionRequest()
+        while True:
+            challenge = issue_challenge(request, DOMAIN_BUSINESS)
+            answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+            if any(ch.isalpha() for ch in answer):
+                break
+        self.assertFalse(
+            consume_challenge(
+                request, challenge['token'], answer.lower(), DOMAIN_BUSINESS
+            )
+        )
+        # One-shot: even trying the right answer now fails because the row is popped
+        self.assertFalse(
+            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+        )
+
     def test_domain_bound_token_rejected_across_turfs(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_SERVER)

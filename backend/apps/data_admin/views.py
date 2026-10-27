@@ -37,7 +37,6 @@ from rest_framework.views import APIView
 from apps.accounts.models import SubRole
 from apps.accounts.policies import CategoryGate
 from apps.accounts.security_challenge import (
-    DOMAIN_BUSINESS,
     DOMAIN_SERVER,
     consume_challenge,
     verify_domain_password,

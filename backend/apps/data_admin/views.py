@@ -9,7 +9,9 @@ ORDER is the security property and must not be re-arranged:
   1. admin session                    -> 403 (``ADMIN_GATE``)
   2. exact confirm phrase             -> 400 (returns the body template)
   3. handover PIN  **checked first**  -> 403 "Invalid handover PIN. ..."
-  4. Master Admin password re-auth    -> 401 empty / 403 wrong
+  4. Dual-Layer Security Challenge    -> 403 challenge / 401 password
+     (Layer 1 one-shot canvas captcha + Layer 2 CENTRALADM password,
+      AUTH-TURF 2026-10-27: business -> Central Admin, NEVER MIX)
   5. pre-reset safety checkpoint      -> 500 abort, data untouched
   6. the wipe
 
@@ -26,7 +28,6 @@ import hashlib
 from typing import Any
 
 from django.conf import settings
-from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -35,6 +36,12 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import SubRole
 from apps.accounts.policies import CategoryGate
+from apps.accounts.security_challenge import (
+    DOMAIN_BUSINESS,
+    DOMAIN_SERVER,
+    consume_challenge,
+    verify_domain_password,
+)
 from apps.audit.models import AuditLog
 
 from .services import hard_reset_for_handover, wipe_manifest
@@ -45,11 +52,14 @@ CONFIRM_PHRASE = "HARD-RESET-FOR-HANDOVER"
 
 #: Only the Master Admin (Central Admin) may execute this. Deciders never get
 #: the destructive door.
-ADMIN_GATE = CategoryGate("admin", {SubRole.CENTRAL_ADMIN})
+ADMIN_GATE = CategoryGate("admin", {SubRole.SUPER_ADMIN_OPS})
 
 _BAD_PIN = "Invalid handover PIN. Reset aborted."
-_NO_PASSWORD = "Master Admin password is required to authorize the hard reset."
-_BAD_PASSWORD = "Authentication failed: Invalid Master Admin password."
+_NO_PASSWORD = (
+    'Central Admin password is required to authorize the hard reset.'
+)
+_BAD_PASSWORD = 'Authentication failed: Invalid Master Admin password.'
+_STALE_CHALLENGE = 'Security challenge expired or already used.'
 _TEMPLATE = (
     "This is a destructive operation that wipes ALL data except the "
     "provisioned accounts. To proceed, resend with body: "
@@ -98,24 +108,37 @@ class HardResetView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # ---- Layer 4: Master Admin password re-auth ---------------------
-        # A session alone must never authorize a full data wipe.
-        password = str(body.get("password", "")).strip()
-        if not password:
-            self._audit(request, "hard_reset.denied", "password_missing")
+        # ---- Layer 4: Dual-Layer Security Challenge ------------------
+        # Layer 1: one-shot canvas captcha. Layer 2: the DOMAIN password -
+        # red-zone is destructive SERVER-level -> Master Admin house ONLY
+        # (AUTH-TURF, owner 2026-10-27 21:29; the
+        # two turfs NEVER MIX; server-level actions will re-auth with the
+        # Master Admin password when Emergency Restore is built).
+        challenge = str(body.get('challenge', '')).strip()
+        captcha_answer = str(body.get('captcha', '')).strip()
+        if not consume_challenge(
+            request, challenge, captcha_answer, DOMAIN_SERVER
+        ):
+            self._audit(request, 'hard_reset.denied', 'challenge_invalid')
             return Response(
-                {"error": _NO_PASSWORD},
+                {'error': _STALE_CHALLENGE},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Layer 2: the Master Admin password authorises a server-level reset.
+        password = str(body.get('password', '')).strip()
+        if not password:
+            self._audit(request, 'hard_reset.denied', 'password_missing')
+            return Response(
+                {'error': _NO_PASSWORD},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         username = request.user.get_username()
-        reauth = authenticate(
-            request=request, username=username, password=password
-        )
-        if reauth is None or reauth.pk != request.user.pk:
-            self._audit(request, "hard_reset.denied", "password_invalid")
+        if verify_domain_password(DOMAIN_SERVER, password) is None:
+            self._audit(request, 'hard_reset.denied', 'password_invalid')
             return Response(
-                {"error": f"{_BAD_PASSWORD} Reset aborted."},
+                {'error': f'{_BAD_PASSWORD} Reset aborted.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

@@ -131,7 +131,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   // (CentralAdmin/SuperAdminOps); Forensic Migration + System = data_admin
   // ADMIN_GATE (CentralAdmin only — SUPEROPS re-auths via Dual-Layer later).
   const canSeeMcc = subRole === 'central_admin' || subRole === 'super_admin_ops';
-  const canSeeRedZone = subRole === 'central_admin';
+  const canSeeRedZone = subRole === 'super_admin_ops'; // red-zone = SERVER turf (owner 2026-10-27 21:29)
   const [selectedZone, setSelectedZone] = useState<string>('All');
   const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
 

@@ -22,6 +22,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.accounts.models import AccountState, Category, SubRole
+from apps.accounts.security_challenge import SC_SESSION_KEY
 from apps.audit.models import AuditLog
 from apps.data_admin.services import (
     EXEMPT_MODELS,
@@ -45,6 +46,20 @@ GOOD_BODY = {
     "password": MASTER_PASSWORD,
     "pin": PIN,
 }
+
+
+CHALLENGE_URL = "/api/v1/accounts/security-challenge/"
+CENTRAL_PASSWORD = "central-pass-1"
+
+
+def _mint_challenge(client: APIClient) -> dict[str, str]:
+    """Mint a live Dual-Layer Layer-1 challenge (SERVER turf: red-zone)."""
+    response = client.post(CHALLENGE_URL, {"domain": "server"}, format="json")
+    if response.status_code != status.HTTP_200_OK:
+        raise AssertionError(f"challenge mint failed: {response.status_code}")
+    token = response.json()["token"]
+    answer = client.session[SC_SESSION_KEY][token]["answer"]
+    return {"challenge": token, "captcha": answer.upper()}
 
 
 def _login(client: APIClient, user) -> None:
@@ -85,7 +100,7 @@ class HardResetGuardTests(TestCase):
             email="master@example.test",
             password=MASTER_PASSWORD,
             category=Category.IIT_KGP_ADMIN,
-            sub_role=SubRole.CENTRAL_ADMIN,
+            sub_role=SubRole.SUPER_ADMIN_OPS,
             account_state=AccountState.ACTIVE,
         )
         cls.officer = User.objects.create_user(
@@ -101,9 +116,11 @@ class HardResetGuardTests(TestCase):
     def setUp(self) -> None:
         self.client = APIClient()
 
-    def _post(self, body: dict, user=None):
+    def _post(self, body: dict, user=None, with_challenge: bool = True):
         if user is not None:
             _login(self.client, user)
+        if with_challenge:
+            body = {**body, **_mint_challenge(self.client)}
         return self.client.post(URL, body, format="json")
 
     # ---- Layer 1 ------------------------------------------------------
@@ -167,6 +184,62 @@ class HardResetGuardTests(TestCase):
     def test_wrong_password_is_403_and_leaves_data(self) -> None:
         body = dict(GOOD_BODY, password="not-the-password")
         response = self._post(body, user=self.master)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
+
+    # ---- Layer 4b: Dual-Layer Security Challenge (0018) ---------------
+
+    def test_missing_challenge_is_rejected(self) -> None:
+        response = self._post(GOOD_BODY, user=self.master, with_challenge=False)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn(
+            'Security challenge expired or already used.',
+            response.json()['error'],
+        )
+        self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
+
+    def test_wire_replay_of_burned_challenge_is_rejected(self) -> None:
+        _login(self.client, self.master)
+        fields = _mint_challenge(self.client)
+        # A wrong-turf (Central Admin) password burns the challenge - one-shot.
+        bad = dict(GOOD_BODY, password=CENTRAL_PASSWORD, **fields)
+        self.client.post(URL, bad, format="json")
+        replay = dict(GOOD_BODY, **fields)
+        response = self.client.post(URL, replay, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn(
+            'Security challenge expired or already used.',
+            response.json()['error'],
+        )
+        self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
+
+    def test_wrong_turf_password_is_rejected(self) -> None:
+        User.objects.create_user(
+            username="centraladm",
+            email="centraladm@example.test",
+            password=CENTRAL_PASSWORD,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.CENTRAL_ADMIN,
+            account_state=AccountState.ACTIVE,
+        )
+        body = dict(GOOD_BODY, password=CENTRAL_PASSWORD)
+        response = self._post(body, user=self.master)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('Invalid Master Admin password', response.json()['error'])
+        self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
+
+    def test_central_admin_house_is_denied_at_the_gate(self) -> None:
+        """Even with its OWN correct password the Central Admin house is
+        refused: red-zone is SUPEROPS house only (owner 2026-10-27 21:29)."""
+        central = User.objects.create_user(
+            username="centraladm2",
+            email="centraladm2@example.test",
+            password=CENTRAL_PASSWORD,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.CENTRAL_ADMIN,
+            account_state=AccountState.ACTIVE,
+        )
+        response = self._post(GOOD_BODY, user=central)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
 
@@ -243,7 +316,7 @@ class HardResetWipeTests(TestCase):
             email="master@example.test",
             password=MASTER_PASSWORD,
             category=Category.IIT_KGP_ADMIN,
-            sub_role=SubRole.CENTRAL_ADMIN,
+            sub_role=SubRole.SUPER_ADMIN_OPS,
             account_state=AccountState.ACTIVE,
         )
         cls.grievance = GrievanceTicket.objects.create(
@@ -267,7 +340,9 @@ class HardResetWipeTests(TestCase):
             "apps.data_admin.views.HardResetView._create_checkpoint",
             return_value={"success": True, "backup_id": "bk-1"},
         ):
-            return self.client.post(URL, GOOD_BODY, format="json")
+            return self.client.post(
+                URL, {**GOOD_BODY, **_mint_challenge(self.client)}, format="json"
+            )
 
     def test_wipe_removes_business_data_keeps_skeleton(self) -> None:
         response = self._run()
@@ -366,7 +441,7 @@ class HardResetServiceTests(TestCase):
             email="master@example.test",
             password="x",
             category=Category.IIT_KGP_ADMIN,
-            sub_role=SubRole.CENTRAL_ADMIN,
+            sub_role=SubRole.SUPER_ADMIN_OPS,
             account_state=AccountState.ACTIVE,
         )
 

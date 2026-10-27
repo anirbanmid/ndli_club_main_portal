@@ -14,31 +14,11 @@
  *                   phrase; the server independently enforces its own triple
  *                   guard and aborts if the safety checkpoint cannot be written.
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Lock,
-  Zap,
-} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, RefreshCw, ShieldCheck, X, Zap } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { t } from '../i18n';
-import {
-  HARD_RESET_CONFIRM_PHRASE,
-  HardResetResult,
-  InsightsReport,
-  RenewalAttentionRow,
-  RenewalRecordRow,
-  fetchInsightsReport,
-  fetchRenewalAttention,
-  fetchRenewalHistory,
-  hardReset,
-  issueRenewal,
-  issueRenewalDirect,
-  rejectRenewal,
-} from '../lib/adminApi';
+import { fetchInsightsReport, fetchRenewalAttention, fetchRenewalHistory, fetchSecurityChallenge, HARD_RESET_CONFIRM_PHRASE, hardReset, HardResetResult, InsightsReport, issueRenewal, issueRenewalDirect, rejectRenewal, RenewalAttentionRow, RenewalRecordRow } from '../lib/adminApi';
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -441,27 +421,41 @@ export const InsightsPanel: React.FC = () => {
 
 export const RedZoneReset: React.FC = () => {
   const [confirm, setConfirm] = useState('');
-  const [password, setPassword] = useState('');
+  const [challengeOpen, setChallengeOpen] = useState(false);
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<HardResetResult | null>(null);
 
   const phraseOk = confirm.trim() === HARD_RESET_CONFIRM_PHRASE;
-  const canSubmit = phraseOk && password.length > 0 && pin.length > 0 && !busy;
+  const canSubmit = phraseOk && pin.length > 0 && !busy;
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     if (!phraseOk) return;
     const go = window.confirm(
       t('This WIPES all product data (accounts are kept) and writes a safety checkpoint. This is meant for ONE moment: handing the system over clean. Continue?'),
     );
     if (!go) return;
+    setError(null);
+    setChallengeOpen(true);
+  };
+
+  // Dual-Layer Layer 1+2 happen in the modal; this runs only when BOTH pass.
+  const onAuthorized = async (challenge: string, captcha: string, secret: string) => {
+    setChallengeOpen(false);
     setBusy(true);
     setError(null);
     try {
-      setResult(await hardReset({ confirm: confirm.trim(), password, pin }));
+      setResult(
+        await hardReset({
+          confirm: confirm.trim(),
+          challenge,
+          captcha,
+          password: secret,
+          pin,
+        }),
+      );
       setConfirm('');
-      setPassword('');
       setPin('');
     } catch (err) {
       setError(errorMessage(err));
@@ -472,6 +466,12 @@ export const RedZoneReset: React.FC = () => {
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-3xl border-2 border-rose-300 shadow-xs space-y-6">
+      <SecurityChallengeModal
+        open={challengeOpen}
+        domain="business"
+        onCancel={() => setChallengeOpen(false)}
+        onAuthorize={onAuthorized}
+      />
       <div className="border-b border-rose-200 pb-4">
         <h3 className="text-lg font-bold text-rose-800 flex items-center gap-2">
           <Lock className="h-5 w-5" /> {t('Red Zone — Guarded Hard Reset')}
@@ -483,7 +483,7 @@ export const RedZoneReset: React.FC = () => {
 
       <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-semibold flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0" />
-        {t('The server independently enforces the triple guard (confirm phrase → handover PIN → Master Admin re-auth) and aborts if the safety checkpoint cannot be written.')}
+        {t('The server independently enforces the triple guard (confirm phrase → handover PIN → Dual-Layer challenge (canvas CAPTCHA + Central Admin password)) and aborts if the safety checkpoint cannot be written.')}
       </div>
 
       {error && (
@@ -492,7 +492,7 @@ export const RedZoneReset: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
         <label className="space-y-1">
           <span className="font-bold text-[#103125]">
             {t('Type the confirm phrase:')} <code className="font-mono bg-[#F4F8F6] px-1 rounded">{HARD_RESET_CONFIRM_PHRASE}</code>
@@ -502,15 +502,6 @@ export const RedZoneReset: React.FC = () => {
             onChange={(e) => setConfirm(e.target.value)}
             className="w-full border border-[#E2ECE7] rounded-lg px-3 py-2 font-mono focus:outline-hidden focus:ring-2 focus:ring-rose-300"
             placeholder={HARD_RESET_CONFIRM_PHRASE}
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="font-bold text-[#103125]">{t('Master Admin password')}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-[#E2ECE7] rounded-lg px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-rose-300"
           />
         </label>
         <label className="space-y-1">
@@ -557,6 +548,160 @@ export const RedZoneReset: React.FC = () => {
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+
+// ---------------------------------------------------------------------------
+// SECURITY CHALLENGE — Dual-Layer modal (PATCH 0018, PLAN_0018_DUAL_LAYER.md)
+// Layer 1: dynamic Canvas CAPTCHA (server-issued, one-shot — every attempt
+// burns it). Layer 2: the password of the DOMAIN the action belongs to
+// (business -> Central Admin, server -> Master Admin; NEVER MIX — the two
+// turfs are enforced server-side; owner rule 2026-10-27).
+// ---------------------------------------------------------------------------
+
+export interface SecurityChallengeModalProps {
+  open: boolean;
+  domain: 'business' | 'server';
+  onCancel: () => void;
+  onAuthorize: (challenge: string, captcha: string, password: string) => void;
+}
+
+export const SecurityChallengeModal: React.FC<SecurityChallengeModalProps> = ({
+  open,
+  domain,
+  onCancel,
+  onAuthorize,
+}) => {
+  type Challenge = Awaited<ReturnType<typeof fetchSecurityChallenge>>;
+  const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [answer, setAnswer] = useState('');
+  const [secret, setSecret] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const refresh = useCallback(async () => {
+    setError(null);
+    setAnswer('');
+    setSecret('');
+    try {
+      setChallenge(await fetchSecurityChallenge(domain));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }, [domain]);
+
+  useEffect(() => {
+    if (open) void refresh();
+  }, [open, refresh]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !challenge) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height, glyphs, noise } = challenge.draw;
+    canvas.width = width;
+    canvas.height = height;
+    ctx.fillStyle = '#F4F8F6';
+    ctx.fillRect(0, 0, width, height);
+    ctx.lineWidth = 1.2;
+    for (const line of noise) {
+      ctx.strokeStyle = line.color;
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath();
+      ctx.moveTo(line.x1, line.y1);
+      ctx.lineTo(line.x2, line.y2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.font = 'bold 26px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const glyph of glyphs) {
+      ctx.save();
+      ctx.translate(glyph.x, glyph.y);
+      ctx.rotate((glyph.rotate * Math.PI) / 180);
+      ctx.fillStyle = glyph.color;
+      ctx.fillText(glyph.char, 0, 0);
+      ctx.restore();
+    }
+  }, [challenge]);
+
+  const submit = () => {
+    if (!challenge || !answer.trim() || !secret) return;
+    onAuthorize(challenge.token, answer.trim(), secret);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl border-2 border-[#E2ECE7] shadow-xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-[#103125] flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" /> {t('Security Challenge')}
+          </h3>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={t('Cancel')}
+            className="text-[#5A7366] hover:text-[#103125]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-xs text-[#5A7366]">
+          {t('Layer 1: type the characters drawn on the canvas (refresh if unreadable). Layer 2: the password of the domain this action belongs to. Every attempt burns the challenge.')}
+        </p>
+        <div className="flex items-center gap-3">
+          <canvas
+            ref={canvasRef}
+            role="img"
+            aria-label={t('security captcha')}
+            className="border border-[#E2ECE7] rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="px-3 py-2 rounded-lg border border-[#E2ECE7] text-[#5A7366] hover:text-[#103125] flex items-center gap-2 text-xs font-semibold"
+          >
+            <RefreshCw className="h-4 w-4" /> {t('Refresh')}
+          </button>
+        </div>
+        <label className="space-y-1 block">
+          <span className="font-bold text-[#103125] text-xs">{t('Captcha answer')}</span>
+          <input
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            className="w-full border border-[#E2ECE7] rounded-lg px-3 py-2 font-mono focus:outline-hidden focus:ring-2 focus:ring-rose-300"
+          />
+        </label>
+        <label className="space-y-1 block">
+          <span className="font-bold text-[#103125] text-xs">{t('Domain password')}</span>
+          <input
+            type="password"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            className="w-full border border-[#E2ECE7] rounded-lg px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-rose-300"
+          />
+        </label>
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!challenge || !answer.trim() || !secret}
+          className="px-5 py-2.5 rounded-xl bg-[#103125] hover:bg-[#1A503E] text-white text-sm font-bold transition-all shadow-xs disabled:opacity-40 flex items-center gap-2"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          {t('Authorize')}
+        </button>
+      </div>
     </div>
   );
 };

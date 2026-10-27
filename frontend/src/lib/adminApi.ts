@@ -358,6 +358,43 @@ export function sweepGrievances(): Promise<Record<string, unknown>> {
 // RED ZONE (apps.data_admin) — destructive. Read the warning.
 // ---------------------------------------------------------------------------
 
+export interface SecurityChallengeGlyph {
+  char: string;
+  x: number;
+  y: number;
+  rotate: number;
+  color: string;
+}
+
+export interface SecurityChallengeLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+}
+
+/** POST /api/v1/accounts/security-challenge/ — mint a one-shot Dual-Layer
+ * Layer-1 challenge (canvas glyph draw instructions; the answer lives only
+ * server-side and burns on every attempt — P0). */
+export interface SecurityChallenge {
+  token: string;
+  svg: string;
+  draw: {
+    width: number;
+    height: number;
+    glyphs: SecurityChallengeGlyph[];
+    noise: SecurityChallengeLine[];
+  };
+  expires_in: number;
+}
+
+export function fetchSecurityChallenge(
+  domain: 'business' | 'server',
+): Promise<SecurityChallenge> {
+  return post<SecurityChallenge>('/api/v1/accounts/security-challenge/', { domain });
+}
+
 export interface HardResetResult {
   success: boolean;
   message: string;
@@ -374,12 +411,14 @@ export interface HardResetResult {
  * system to the client as a clean, fresh product.
  *
  * The server independently enforces the triple-layer guard (confirm phrase ->
- * handover PIN -> Master Admin re-auth) and aborts if the safety checkpoint
+ * handover PIN -> Dual-Layer challenge) and aborts if the safety checkpoint
  * cannot be written. This function is a thin pass-through; the UI must make
  * the operator type `HARD_RESET_CONFIRM_PHRASE` before it will even call.
  */
 export function hardReset(input: {
   confirm: string;
+  challenge: string;
+  captcha: string;
   password: string;
   pin: string;
 }): Promise<HardResetResult> {

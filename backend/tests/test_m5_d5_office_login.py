@@ -50,6 +50,12 @@ class CaptchaEndpointTests(M1PinTestCase):
         second = _solve(self.client)
         self.assertNotEqual(first, second)
 
+    def test_captcha_is_always_mixed_case(self) -> None:
+        for _ in range(20):
+            code = _solve(self.client)
+            self.assertTrue(any(ch.isupper() for ch in code))
+            self.assertTrue(any(ch.islower() for ch in code))
+
 
 class OfficeLoginGateTests(M1PinTestCase):
     def setUp(self) -> None:

@@ -131,6 +131,14 @@ class ChallengeLifecycleTests(TestCase):
             consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
         )
 
+    def test_challenge_is_always_mixed_case(self) -> None:
+        request = _SessionRequest()
+        for _ in range(20):
+            challenge = issue_challenge(request, DOMAIN_BUSINESS)
+            answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+            self.assertTrue(any(ch.isupper() for ch in answer))
+            self.assertTrue(any(ch.islower() for ch in answer))
+
     def test_domain_bound_token_rejected_across_turfs(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_SERVER)

@@ -22,8 +22,8 @@ from typing import Any
 CAPTCHA_SESSION_KEY = "login_captcha"
 #: Seconds a minted challenge stays alive.
 CAPTCHA_TTL_SECONDS = 600
-#: Unambiguous alphabet — no 0/O, 1/I/L confusables.
-ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
+#: Unambiguous alphabet — no 0/O/o, 1/I/l/i confusables.
+ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz"
 CODE_LENGTH = 5
 
 _PALETTE = ("#103125", "#1A503E", "#0D7751", "#2E4A3E", "#5A7366")
@@ -31,7 +31,10 @@ _PALETTE = ("#103125", "#1A503E", "#0D7751", "#2E4A3E", "#5A7366")
 
 def _new_code() -> str:
     rnd = random.SystemRandom()
-    return "".join(rnd.choice(ALPHABET) for _ in range(CODE_LENGTH))
+    while True:
+        code = "".join(rnd.choice(ALPHABET) for _ in range(CODE_LENGTH))
+        if any(ch.isupper() for ch in code) and any(ch.islower() for ch in code):
+            return code
 
 
 def issue_captcha(request: Any) -> bytes:

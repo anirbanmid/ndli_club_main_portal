@@ -45,6 +45,7 @@ from apps.accounts.models import (
     EmailOTP,
     TOTPRecoveryCode,
 )
+from apps.activities.models import ActivityLog
 from apps.audit.models import AuditLog
 from apps.certificates.models import Certificate, Revocation
 from apps.clubs.models import CampusPasskey, ClubShowcase, ShowcaseSection
@@ -92,6 +93,8 @@ KEEP_MODELS: tuple[Any, ...] = (
 #: ``AuditLog`` is deliberately in EXEMPT_MODELS, not here - see the module
 #: docstring: the ledger is append-only by design and forbids deletion.
 WIPE_MODELS: tuple[Any, ...] = (
+    # activities (business data; the audit ledger stays exempt below)
+    ActivityLog,
     # certificates
     Revocation,
     Certificate,

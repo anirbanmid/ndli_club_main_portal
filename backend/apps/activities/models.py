@@ -12,6 +12,7 @@ no ticking bombs).
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from django.conf import settings
 from django.db import models
@@ -80,7 +81,7 @@ class ActivityLog(models.Model):
     def __str__(self) -> str:
         return f"{self.employee.username}: {self.support_type} @ {self.timestamp}"
 
-    def save(self, *args: object, **kwargs: object) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         """Derive the priority flag from the type (single source, P4)."""
         self.priority_flag = self.support_type in APPROVAL_LOG_TYPES
         super().save(*args, **kwargs)

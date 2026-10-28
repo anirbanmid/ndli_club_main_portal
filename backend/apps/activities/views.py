@@ -24,7 +24,13 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import AccountState, SubRole, User
+from apps.accounts.models import AccountState
+from apps.accounts.policies import (
+    BUSINESS_ADMIN_SUB_ROLES,
+    CategoryGate,
+    may_delete_approval_log,
+    resolve_activity_target,
+)
 
 from .models import (
     APPROVAL_LOG_TYPES,
@@ -46,18 +52,6 @@ _SUPPORT_REQUIRED = "Support type is required."
 _SUPPORT_UNKNOWN = "Unknown support type."
 _IDS_REQUIRED = "emp_id and activity_ids (or activity_id) are required."
 
-#: Business-data admin override = Central Admin house ONLY (AUTH-TURF).
-_BUSINESS_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN})
-
-
-def _sub_role(user: Any) -> str:
-    return str(getattr(user, "sub_role", "") or "")
-
-
-def _is_business_admin(user: Any) -> bool:
-    return _sub_role(user) in _BUSINESS_ADMIN_SUB_ROLES
-
-
 def _is_active(user: Any) -> bool:
     if not getattr(user, "is_active", False):
         return False
@@ -67,20 +61,6 @@ def _is_active(user: Any) -> bool:
     if state is not None:
         return str(state) == AccountState.ACTIVE
     return True
-
-
-def _resolve_target(request: Request, emp_id: str) -> User:
-    """Self, or any employee for the Central Admin (never the other way)."""
-    if not emp_id:
-        return request.user
-    if str(emp_id).upper() != str(request.user.username).upper():
-        if not _is_business_admin(request.user):
-            raise PermissionError(_NO_SELF)
-        user = User.objects.filter(username__iexact=emp_id).first()
-        if user is None:
-            raise LookupError(_NOT_FOUND_EMP)
-        return user
-    return request.user
 
 
 def _serialize(row: Any) -> dict[str, Any]:
@@ -99,12 +79,15 @@ def _serialize(row: Any) -> dict[str, Any]:
 class ActivityLogListView(APIView):
     """GET /api/v1/activities/ -- newest first (parity: reversed list)."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
 
     def get(self, request: Request) -> Response:
         emp_id = str(request.query_params.get("emp_id", "") or "").strip()
         try:
-            target = _resolve_target(request, emp_id)
+            target = resolve_activity_target(request, emp_id)
         except PermissionError as exc:
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN
@@ -124,7 +107,10 @@ class ActivityLogListView(APIView):
 class ActivityLogCreateView(APIView):
     """POST /api/v1/activities/log/ -- SEC A daily support log."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
 
     @transaction.atomic
     def post(self, request: Request) -> Response:
@@ -139,7 +125,7 @@ class ActivityLogCreateView(APIView):
             or 1
         )
         try:
-            target = _resolve_target(request, emp_id)
+            target = resolve_activity_target(request, emp_id)
         except PermissionError as exc:
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN
@@ -214,7 +200,10 @@ class ActivityDeleteView(APIView):
     parity): removing one member removes its whole bulk group.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
 
     @transaction.atomic
     def post(self, request: Request) -> Response:
@@ -232,7 +221,7 @@ class ActivityDeleteView(APIView):
                 {"detail": _IDS_REQUIRED}, status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            target = _resolve_target(request, emp_id)
+            target = resolve_activity_target(request, emp_id)
         except PermissionError as exc:
             return Response(
                 {"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN
@@ -258,7 +247,7 @@ class ActivityDeleteView(APIView):
         approval_hits = [
             r for r in found if r.support_type in APPROVAL_LOG_TYPES
         ]
-        if approval_hits and not _is_business_admin(request.user):
+        if approval_hits and not may_delete_approval_log(request):
             # Server-enforced (not just UI): reject the WHOLE request -- no
             # partial silent deletes around protected rows.
             return Response(

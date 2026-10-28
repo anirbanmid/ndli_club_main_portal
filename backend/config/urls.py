@@ -18,7 +18,6 @@ API_URLPATTERNS = [
     path("institutions/", include("apps.institutions.urls")),
     path("clubs/", include("apps.clubs.urls")),
     path("members/", include("apps.members.urls")),
-    path("activities/", include("apps.activities.urls")),
     path("certificates/", include("apps.certificates.urls")),
     path("analytics-reports/", include("apps.analytics_reports.urls")),
     path("sharing/", include("apps.sharing.urls")),
@@ -46,6 +45,7 @@ urlpatterns = [
     # /admin/ like every other admin-module route, and BEFORE admin.site.urls
     # so the API prefix is never shadowed.
     path("admin/api/v1/employees/", include("apps.accounts.urls_admin")),
+    path("admin/api/v1/activities/", include("apps.activities.urls")),
     path("admin/", admin.site.urls),
     # Health probes: liveness and readiness.
     path("health/", core_views.liveness, name="health-liveness"),

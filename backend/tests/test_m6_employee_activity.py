@@ -9,6 +9,7 @@ AUTH-TURF: the business-admin override is the Central Admin house only.
 from __future__ import annotations
 
 import uuid
+from typing import Any, ClassVar
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -19,9 +20,9 @@ from apps.activities.models import ActivityLog, SupportType
 
 User = get_user_model()
 
-LIST_URL = "/api/v1/activities/"
-LOG_URL = "/api/v1/activities/log/"
-DELETE_URL = "/api/v1/activities/delete/"
+LIST_URL = "/admin/api/v1/activities/"
+LOG_URL = "/admin/api/v1/activities/log/"
+DELETE_URL = "/admin/api/v1/activities/delete/"
 PASSWORD = "S3cure-test-pass!"
 
 
@@ -41,6 +42,9 @@ def _user(
 
 
 class ActivityLogEndpointTests(TestCase):
+    emp: ClassVar[Any]
+    emp2: ClassVar[Any]
+    central: ClassVar[Any]
     @classmethod
     def setUpTestData(cls) -> None:
         cls.emp = _user("emp01", SubRole.REGIONAL_OFFICER)
@@ -51,7 +55,10 @@ class ActivityLogEndpointTests(TestCase):
         self.client = APIClient()
 
     def _auth(self, user: object) -> None:
-        self.client.force_authenticate(user=user)
+        self.client.force_authenticate(user=user)  # type: ignore[attr-defined]
+        session = self.client.session
+        session["mfa_verified"] = True
+        session.save()
 
     # --- SEC A logging ------------------------------------------------
     def test_sec_a_log_creates_standard_row(self) -> None:
@@ -88,7 +95,9 @@ class ActivityLogEndpointTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ActivityLog.objects.count(), 6)
-        self.assertIsNotNone(ActivityLog.objects.first().bulk_group)
+        first = ActivityLog.objects.first()
+        assert first is not None
+        self.assertIsNotNone(first.bulk_group)
 
     def test_bulk_capped_at_100(self) -> None:
         self._auth(self.emp)

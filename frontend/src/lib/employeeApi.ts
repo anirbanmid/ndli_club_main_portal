@@ -12,7 +12,7 @@
 import { ApiError } from './api';
 import { csrfHeader } from './authApi';
 
-const BASE = '/api/v1/activities';
+const BASE = '/admin/api/v1/activities';
 
 export interface ActivityRow {
   activity_id: string;
@@ -85,9 +85,9 @@ async function request<T>(
       ...init,
     });
   } catch {
-    throw new ApiError('network');
+    throw new ApiError('network', 'network request failed', 0);
   }
-  if (response.status === 429) throw new ApiError('rate-limit');
+  if (response.status === 429) throw new ApiError('rate-limit', 'rate limit exceeded, retry shortly', 429);
   if (!response.ok) {
     let detail = '';
     try {
@@ -96,7 +96,7 @@ async function request<T>(
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiError('server', detail || response.statusText);
+    throw new ApiError('server', detail || response.statusText, response.status);
   }
   return (await response.json()) as T;
 }

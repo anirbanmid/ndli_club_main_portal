@@ -149,3 +149,34 @@ ADMIN_STAFF_GATE = CategoryGate("admin", IIT_KGP_ADMIN_SUB_ROLES)
 # Per-user row visibility is decided mechanically by core.scoping (a student
 # gets their own rows only) — never by hand-rolled view logic (I5).
 CLUB_MODULE_GATE = CategoryGate("club")
+
+
+#: Business-data sub-roles (AUTH-TURF 2026-10-27): the employee activity
+#: surface is the Central Admin + regional officer house -- never the
+#: Master Admin (SUPEROPS) house (no business data there).
+BUSINESS_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN, SubRole.REGIONAL_OFFICER})
+#: Cross-employee actions + club-approval-log deletion = Central Admin house
+#: only (employees may never act on other employees, PLAN_0018 section 6).
+CENTRAL_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN})
+
+
+def resolve_activity_target(request: Any, emp_id: str) -> Any:
+    """Self, or any employee for a business admin (never the other way)."""
+    user = getattr(request, "user", None)
+    if not emp_id:
+        return user
+    if str(emp_id).upper() == str(getattr(user, "username", "") or "").upper():
+        return user
+    if str(getattr(user, "sub_role", "") or "") not in CENTRAL_ADMIN_SUB_ROLES:
+        raise PermissionError("You may only manage your own activity log.")
+    target = User.objects.filter(username__iexact=emp_id).first()
+    if target is None:
+        raise LookupError("Employee not found.")
+    return target
+
+
+def may_delete_approval_log(request: Any) -> bool:
+    """Club-approval log rows are delete-protected (PLAN_0018 section 6):
+    employees can never delete them; the business-admin house may."""
+    user = getattr(request, "user", None)
+    return str(getattr(user, "sub_role", "") or "") in CENTRAL_ADMIN_SUB_ROLES

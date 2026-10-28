@@ -149,8 +149,8 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = () => {
       await loadHistory();
     } catch (err) {
       showNotice(
-        err instanceof ApiError && err.detail
-          ? err.detail
+        err instanceof ApiError && err.message
+          ? err.message
           : t('Could not record the support activity.'),
         true,
       );
@@ -180,8 +180,8 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = () => {
       await loadHistory();
     } catch (err) {
       showNotice(
-        err instanceof ApiError && err.detail
-          ? err.detail
+        err instanceof ApiError && err.message
+          ? err.message
           : t('Could not delete the selected entries.'),
         true,
       );
@@ -445,7 +445,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = () => {
                         <tr key={row.activity_id} className="border-b border-[#F0F5F2]">
                           <td className="py-2 pr-3">
                             {locked ? (
-                              <Lock className="w-3.5 h-3.5 text-amber-600" title={t('Club-approval log entry - permanent record')} />
+                              <span title={t('Club-approval log entry - permanent record')}><Lock className="w-3.5 h-3.5 text-amber-600" /></span>
                             ) : (
                               <input
                                 type="checkbox"

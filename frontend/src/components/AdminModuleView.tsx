@@ -37,6 +37,7 @@ import { ApiError } from '../lib/api';
 import { AuthorityChangeRequest, ForensicQuarantineRecord } from '../types';
 import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
+import { EmployeeModule } from './EmployeeModule';
 import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
 import { DashboardsPanel } from './AdminDashboardsPanel';
 import {
@@ -132,8 +133,10 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   // ADMIN_GATE (CentralAdmin only — SUPEROPS re-auths via Dual-Layer later).
   const canSeeMcc = subRole === 'central_admin' || subRole === 'super_admin_ops';
   const canSeeRedZone = subRole === 'super_admin_ops'; // red-zone = SERVER turf (owner 2026-10-27 21:29)
+  const canSeeEmployee =
+    subRole === 'central_admin' || subRole === 'regional_officer'; // business turf (AUTH-TURF: never SUPEROPS)
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
+  const [adminTab, setAdminTab] = useState<'approvals' | 'employee' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -357,6 +360,17 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Authority Succession")} ({authorityRequests.length})</span>
           </button>
 
+          {canSeeEmployee && (
+          <button
+            onClick={() => setAdminTab('employee')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'employee' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <span>{t("Employee Module")}</span>
+          </button>
+          )}
+
           {canSeeRedZone && (
           <button
             onClick={() => setAdminTab('migration')}
@@ -442,6 +456,10 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       </div>
 
       {/* DESK 1: Charter Review & Sanction Desk (REAL — apps.governance) */}
+      {adminTab === 'employee' && canSeeEmployee && (
+        <EmployeeModule subRole={subRole} />
+      )}
+
       {adminTab === 'approvals' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
           <div className="border-b border-[#E2ECE7] pb-4 flex justify-between items-center">

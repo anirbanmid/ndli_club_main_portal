@@ -30,4 +30,14 @@ urlpatterns = [
         views.PISignatureImageView.as_view(),
         name="pi-signature-image",
     ),
+    path(
+        "verify-password/",
+        views.VerifyEmployeePasswordView.as_view(),
+        name="verify-password",
+    ),
+    path(
+        "clubs/renew/",
+        views.ClubRenewView.as_view(),
+        name="club-renew",
+    ),
 ]

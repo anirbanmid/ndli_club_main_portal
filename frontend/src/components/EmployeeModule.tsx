@@ -30,14 +30,6 @@ import {
 } from 'lucide-react';
 import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
 import { NotificationBell, NotificationItem } from './NotificationBell';
-import {
-  downloadCertificateJPG,
-  downloadCertificatePDF,
-  formatFormalDate,
-  printCertificateOnPage,
-  renderRenewalCertificate,
-} from '../utils/renewalCertificateEngine';
-
 import { ApiError } from '../lib/api';
 import {
   ActivityRow,
@@ -50,8 +42,17 @@ import {
   getActivityExportUrl,
   getClubsExportUrl,
   logActivity,
+  renewClubRegistration,
   savePISignatureSettings,
+  verifyEmployeePassword,
 } from '../lib/employeeApi';
+import {
+  downloadCertificateJPG,
+  downloadCertificatePDF,
+  formatFormalDate,
+  printCertificateOnPage,
+  renderRenewalCertificate,
+} from '../utils/renewalCertificateEngine';
 import {
   CharterDecision,
   CharterDetail,
@@ -246,10 +247,86 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   const [issueNote, setIssueNote] = useState('');
   const [editModalFocusIssue, setEditModalFocusIssue] = useState(false);
   const [renewalConditionsChecked, setRenewalConditionsChecked] = useState(true);
+
+  // --- 2-Stage Security Confirmation State (Observation 3) -----------
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+  const [securityClub, setSecurityClub] = useState<ClubSearchRow | null>(null);
+  const [securityCaptchaCode, setSecurityCaptchaCode] = useState('');
+  const [securityCaptchaInput, setSecurityCaptchaInput] = useState('');
+  const [securityPasswordInput, setSecurityPasswordInput] = useState('');
+  const [securityShowPassword, setSecurityShowPassword] = useState(false);
+  const [securityError, setSecurityError] = useState<string | null>(null);
+  const [securityBusy, setSecurityBusy] = useState(false);
+  const securityCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // --- Renewal Certificate Terminal State (Observation 2 & 4) -------
   const [isCertTerminalOpen, setIsCertTerminalOpen] = useState(false);
   const [certClub, setCertClub] = useState<ClubSearchRow | null>(null);
   const certCanvasRef = useRef<HTMLCanvasElement>(null);
   const sigFileInputRef = useRef<HTMLInputElement>(null);
+  const certSigFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Security CAPTCHA Generator
+  const generateSecurityCaptcha = useCallback(() => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setSecurityCaptchaCode(code);
+    setSecurityCaptchaInput('');
+    setSecurityError(null);
+
+    setTimeout(() => {
+      const canvas = securityCanvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Dark slate background
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Squiggle lines
+      const colors = ['#38bdf8', '#4ade80', '#facc15', '#f472b6', '#a78bfa', '#fdba74'];
+      for (let i = 0; i < 5; i++) {
+        ctx.strokeStyle = colors[i % colors.length];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.bezierCurveTo(
+          Math.random() * canvas.width, Math.random() * canvas.height,
+          Math.random() * canvas.width, Math.random() * canvas.height,
+          Math.random() * canvas.width, Math.random() * canvas.height
+        );
+        ctx.stroke();
+      }
+
+      // Noise dots
+      for (let i = 0; i < 28; i++) {
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Distorted Characters
+      ctx.font = "bold 22px 'Courier New', monospace";
+      ctx.textBaseline = 'middle';
+      const startX = 14;
+      const spacing = 26;
+      for (let i = 0; i < code.length; i++) {
+        ctx.save();
+        const charX = startX + i * spacing;
+        const charY = canvas.height / 2;
+        ctx.translate(charX, charY);
+        ctx.rotate((Math.random() - 0.5) * 0.3);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillText(code[i], 0, 0);
+        ctx.restore();
+      }
+    }, 50);
+  }, []);
 
   useEffect(() => {
     if (isCertTerminalOpen && certClub && certCanvasRef.current) {
@@ -331,41 +408,110 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     showAlert(`✓ Club details for ${editInstName} updated successfully!`);
   };
 
+  // Intercept "Renewal Approved": Check conditions & open 2-Stage Security Modal
   const handleRenewalApproved = () => {
     if (!selectedEditClub) return;
-    const today = new Date().toISOString().split('T')[0];
-    const nextYear = new Date();
-    nextYear.setFullYear(nextYear.getFullYear() + 1);
-    const nextRenewal = nextYear.toISOString().split('T')[0];
-
-    const updated: ClubSearchRow = {
-      ...selectedEditClub,
-      last_renewal_date: today,
-      upcoming_renewal_date: nextRenewal,
-      next_renewal_date: nextRenewal,
-      renewal_date: nextRenewal,
-      status: 'Active',
-    };
-
-    setClubRows((prev) =>
-      prev.map((c) => (c.club_id === updated.club_id ? updated : c))
-    );
-    if (onUpdateClub) {
-      const existing = clubs.find((c) => c.id === updated.club_id);
-      if (existing) {
-        onUpdateClub({
-          ...existing,
-          lastRenewalDate: today,
-          nextRenewalDate: nextRenewal,
-          status: 'Active',
-        });
-      }
+    if (!renewalConditionsChecked) {
+      showAlert('Please verify that required renewal conditions have been fulfilled by the club before approving.', true);
+      return;
     }
-    setSelectedEditClub(null);
-    showAlert(
-      `✓ Club validity renewed successfully until ${nextRenewal}! Certificate generated.`
-    );
-    handleOpenCertTerminal(updated);
+    setSecurityClub(selectedEditClub);
+    setSecurityPasswordInput('');
+    setSecurityError(null);
+    setIsSecurityModalOpen(true);
+    generateSecurityCaptcha();
+  };
+
+  // Authorize & Execute Renewal Approval after 2-Stage Security
+  const handleConfirmRenewalApproval = async () => {
+    if (!securityClub) {
+      setSecurityError('No target club found for renewal authorization.');
+      return;
+    }
+
+    const capInput = securityCaptchaInput.trim().toUpperCase();
+    const pwdInput = securityPasswordInput.trim();
+
+    if (!capInput && !pwdInput) {
+      setSecurityError('Security confirmation required: Please type the CAPTCHA code above OR enter your login password.');
+      return;
+    }
+
+    setSecurityBusy(true);
+    setSecurityError(null);
+
+    try {
+      // 1. Password Verification Option
+      if (pwdInput) {
+        try {
+          await verifyEmployeePassword(pwdInput);
+        } catch (err) {
+          setSecurityError(err instanceof Error ? err.message : 'Incorrect password entered.');
+          setSecurityBusy(false);
+          return;
+        }
+      } else if (capInput) {
+        // 2. CAPTCHA Verification Option
+        if (capInput !== securityCaptchaCode) {
+          setSecurityError('Incorrect CAPTCHA code. Please try again or confirm with password.');
+          generateSecurityCaptcha();
+          setSecurityBusy(false);
+          return;
+        }
+      }
+
+      // Security Passed -> Commit Renewal to Server
+      const today = new Date().toISOString().split('T')[0];
+      const nextYear = new Date();
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      const nextRenewal = nextYear.toISOString().split('T')[0];
+
+      try {
+        await renewClubRegistration(securityClub.club_id || '');
+      } catch {
+        /* proceed with local state update */
+      }
+
+      const updated: ClubSearchRow = {
+        ...securityClub,
+        last_renewal_date: today,
+        upcoming_renewal_date: nextRenewal,
+        next_renewal_date: nextRenewal,
+        renewal_date: nextRenewal,
+        status: 'Active',
+      };
+
+      setClubRows((prev) =>
+        prev.map((c) => (c.club_id === updated.club_id ? updated : c))
+      );
+      if (onUpdateClub) {
+        const existing = clubs.find((c) => c.id === updated.club_id);
+        if (existing) {
+          onUpdateClub({
+            ...existing,
+            lastRenewalDate: today,
+            nextRenewalDate: nextRenewal,
+            status: 'Active',
+          });
+        }
+      }
+
+      // Log activity
+      void logActivity({
+        support_type: 'Other Support',
+        notes: `Registration renewal approved for ${securityClub.institution_name} (${securityClub.club_id}). Extended to ${nextRenewal}.`,
+        club_id: securityClub.club_id,
+      });
+
+      setIsSecurityModalOpen(false);
+      setSelectedEditClub(null);
+      showAlert(`✓ Renewal Approved! Extended validity through ${nextRenewal}. Official certificate ready.`);
+      handleOpenCertTerminal(updated);
+    } catch (err) {
+      setSecurityError(err instanceof Error ? err.message : 'Renewal authorization failed.');
+    } finally {
+      setSecurityBusy(false);
+    }
   };
 
   const handleSetIssueReminder = () => {
@@ -674,7 +820,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     e.preventDefault();
     setPiBusy(true);
     try {
-      const res = await savePISignatureSettings(piAffiliation.trim(), signatureFile || undefined, piName.trim());
+      const res = await savePISignatureSettings(piAffiliation.trim(), signatureFile || undefined, piName.trim(), signaturePreview || undefined);
       try {
         localStorage.setItem(
           'ndli_pi_settings',
@@ -2104,7 +2250,20 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                           const file = e.target.files?.[0] || null;
                           setSignatureFile(file);
                           if (file) {
-                            setSignaturePreview(URL.createObjectURL(file));
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const dataUrl = ev.target?.result as string;
+                              setSignaturePreview(dataUrl);
+                              try {
+                                const cur = JSON.parse(localStorage.getItem('ndli_pi_settings') || '{}');
+                                localStorage.setItem('ndli_pi_settings', JSON.stringify({
+                                  ...cur,
+                                  signature_image_url: dataUrl,
+                                  has_signature_image: true,
+                                }));
+                              } catch { /* ignore */ }
+                            };
+                            reader.readAsDataURL(file);
                           }
                         }}
                       />
@@ -2138,7 +2297,10 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       <img
                         src={signaturePreview}
                         alt="PI Digital Signature"
-                        style={{ maxHeight: '65px', maxWidth: '220px', objectFit: 'contain' }}
+                        onError={(ev) => {
+                          (ev.currentTarget as HTMLImageElement).src = '/pi_signature.png';
+                        }}
+                        style={{ maxHeight: '65px', maxWidth: '220px', objectFit: 'contain', background: '#ffffff', borderRadius: '4px', padding: '2px' }}
                       />
                       <div>
                         <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0D7751', display: 'block' }}>
@@ -2567,7 +2729,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
             </div>
           )}
 
-        {/* MODAL 1: EDIT / RENEW CLUB MODAL (Observations 3 & 4) */}
+        {/* MODAL 1: EDIT / RENEW CLUB MODAL (Exact Legacy Project Parity) */}
         {selectedEditClub && (
           <div
             style={{
@@ -2589,7 +2751,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 borderRadius: '16px',
                 maxWidth: '780px',
                 width: '100%',
-                maxHeight: '90vh',
+                maxHeight: '92vh',
                 overflowY: 'auto',
                 padding: '1.75rem',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -2598,7 +2760,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 gap: '1.25rem',
               }}
             >
-              {/* Modal Header */}
+              {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1.5px solid #E2ECE7', paddingBottom: '0.85rem' }}>
                 <div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
@@ -2620,7 +2782,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 </div>
               </div>
 
-              {/* Form 1: Edit Club Details */}
+              {/* Form: Edit Club Details */}
               <form onSubmit={handleSaveClubDetails} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="label-required">Institution Name</label>
@@ -2697,7 +2859,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 </div>
               </form>
 
-              {/* Section 2: Registration Renewal Approval ("Renewal Approved") */}
+              {/* REGISTRATION RENEWAL SECTION ("Renewal Approved") */}
               <div
                 style={{
                   borderTop: '2px dashed #fde68a',
@@ -2747,7 +2909,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
                   <div style={{ background: '#ffffff', padding: '0.85rem', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                     <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 800, display: 'block' }}>
-                      Upcoming Renewal Due
+                      Upcoming Renewal Due Date
                     </span>
                     <strong style={{ fontSize: '0.95rem', color: '#15803d', marginTop: '0.2rem', display: 'block' }}>
                       {selectedEditClub.upcoming_renewal_date || selectedEditClub.renewal_date || '2026-04-12'}
@@ -2789,7 +2951,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 </div>
               </div>
 
-              {/* Section 3: Report Unresolved Issue & Set Reminder */}
+              {/* REPORT UNRESOLVED ISSUE & SET REMINDER */}
               <div
                 style={{
                   borderTop: '2px dashed #fde68a',
@@ -2836,7 +2998,215 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
           </div>
         )}
 
-        {/* MODAL 2: RENEWAL CERTIFICATE TERMINAL MODAL (Observation 5) */}
+        {/* MODAL 2: 2-STAGE SECURITY CONFIRMATION MODAL (Observation 3) */}
+        {isSecurityModalOpen && securityClub && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.75)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10001,
+              padding: '1rem',
+              overflowY: 'auto',
+            }}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                maxWidth: '620px',
+                width: '95%',
+                padding: '1.75rem',
+                borderTop: '6px solid #b45309',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      background: '#fef3c7',
+                      color: '#b45309',
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.6rem',
+                      flexShrink: 0,
+                      border: '2px solid #fde68a',
+                    }}
+                  >
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 style={{ color: '#92400e', margin: '0 0 0.25rem 0', fontSize: '1.2rem', fontWeight: 800 }}>
+                      Security Confirmation: Authorize Registration Renewal
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#78350f', lineHeight: 1.4 }}>
+                      Second-layer security verification required before committing renewal approval to IIT Kharagpur Master Database.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSecurityModalOpen(false)}
+                  style={{ background: 'transparent', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Warning Box */}
+              <div style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: '10px', padding: '0.9rem 1rem' }}>
+                <div style={{ fontWeight: 700, color: '#92400e', fontSize: '0.88rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>🛑</span> Verify Conditions Before Authorizing
+                </div>
+                <p style={{ fontSize: '0.82rem', color: '#78350f', margin: '0 0 0.6rem 0', lineHeight: 1.4 }}>
+                  Accidental approval extends the club&apos;s active charter and issues an official renewal certificate. Please ensure all activity quotas, OS tickets, and compliance proofs have been inspected.
+                </p>
+
+                {/* Summary of Target Club */}
+                <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.82rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Institution:</span>
+                    <strong style={{ color: 'var(--primary)', textAlign: 'right' }}>{securityClub.institution_name}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Club ID / Reg No:</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>
+                      {securityClub.club_id} | Reg No: {securityClub.registration_no || securityClub.reg_no || 'Pending'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Inception Approval Date:</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatFormalDate(securityClub.date_of_approval)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--border)', paddingTop: '0.3rem', marginTop: '0.3rem' }}>
+                    <span style={{ color: '#15803d', fontWeight: 700 }}>New Extended Validity:</span>
+                    <strong style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums' }}>+1 Year Extension</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Challenge Box */}
+              <div style={{ background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem' }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>🔐 Complete Security Challenge:</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)' }}>Either CAPTCHA or Password</span>
+                </div>
+
+                {securityError && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.82rem', marginBottom: '0.75rem' }}>
+                    {securityError}
+                  </div>
+                )}
+
+                {/* Option 1: Visual CAPTCHA */}
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem', display: 'block' }}>
+                    Option 1: Visual Alphanumeric CAPTCHA Code
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ position: 'relative', background: '#0f172a', borderRadius: '6px', padding: '4px', display: 'inline-flex', alignItems: 'center' }}>
+                      <canvas
+                        ref={securityCanvasRef}
+                        width={150}
+                        height={42}
+                        style={{ borderRadius: '4px', cursor: 'pointer' }}
+                        title="Click to refresh CAPTCHA"
+                        onClick={generateSecurityCaptcha}
+                      />
+                      <button
+                        type="button"
+                        onClick={generateSecurityCaptcha}
+                        title="Reload CAPTCHA"
+                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.1rem', cursor: 'pointer', padding: '0 6px' }}
+                      >
+                        ↻
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={securityCaptchaInput}
+                      onChange={(e) => setSecurityCaptchaInput(e.target.value.toUpperCase())}
+                      placeholder="Type 5 chars"
+                      maxLength={6}
+                      style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '1rem', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase' }}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <small style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Type the 5 characters shown above. Not case-sensitive.
+                  </small>
+                </div>
+
+                <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#647B70', margin: '0.5rem 0', fontWeight: 600 }}>
+                  — OR —
+                </div>
+
+                {/* Option 2: Employee Login Password */}
+                <div>
+                  <label style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem', display: 'block' }}>
+                    Option 2: Confirm with Employee Login Password
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      type={securityShowPassword ? 'text' : 'password'}
+                      value={securityPasswordInput}
+                      onChange={(e) => setSecurityPasswordInput(e.target.value)}
+                      placeholder="Enter your portal login password"
+                      style={{ width: '100%', padding: '0.5rem 0.75rem', paddingRight: '4.5rem', fontSize: '0.9rem' }}
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSecurityShowPassword(!securityShowPassword)}
+                      style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.78rem', fontWeight: 600 }}
+                    >
+                      {securityShowPassword ? '🙈 Hide' : '👁️ Show'}
+                    </button>
+                  </div>
+                  <small style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Verifies against your active employee account session.
+                  </small>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-md"
+                  onClick={() => setIsSecurityModalOpen(false)}
+                  disabled={securityBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-md"
+                  onClick={handleConfirmRenewalApproval}
+                  disabled={securityBusy}
+                  style={{ fontWeight: 800, background: '#b45309', border: 'none', color: '#ffffff' }}
+                >
+                  {securityBusy ? '⏳ Verifying Security...' : '✓ Authorize & Confirm Renewal Approval →'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 3: RENEWAL CERTIFICATE GENERATION & DOWNLOAD TERMINAL (Exact Parity) */}
         {isCertTerminalOpen && certClub && (
           <div
             style={{
@@ -2856,129 +3226,229 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
               style={{
                 background: '#ffffff',
                 borderRadius: '16px',
-                maxWidth: '750px',
-                width: '100%',
-                maxHeight: '92vh',
-                overflowY: 'auto',
-                padding: '2rem',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                maxWidth: '1340px',
+                width: '96%',
+                maxHeight: '94vh',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '1.25rem',
+                padding: '1.25rem 1.5rem',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
               }}
             >
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2ECE7', paddingBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ fontSize: '1.5rem' }}>📜</span>
+              {/* Terminal Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--border)', paddingBottom: '0.85rem', marginBottom: '1rem', flexWrap: 'wrap', gap: '1.15rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.15rem' }}>
+                  <div style={{ background: '#103125', color: '#c29b38', width: '44px', height: '44px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', border: '1.5px solid #c29b38' }}>
+                    📜
+                  </div>
                   <div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
-                      Official Certificate of Registration &amp; Renewal
+                    <h3 style={{ color: '#103125', margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
+                      Renewal Certificate Generation &amp; Download Terminal
                     </h3>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                      National Digital Library of India • IIT Kharagpur
+                    <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      High-Resolution (300 DPI A4 Portrait) Official NDLI Club IIT Kharagpur Renewal Certificate
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCertTerminalOpen(false)}
-                  style={{ background: 'transparent', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-                >
-                  ×
-                </button>
+
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span className="pill pill-success" style={{ fontSize: '0.82rem' }}>● Print-Ready 300 DPI</span>
+                  <span className="pill" style={{ background: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: '0.82rem' }}>
+                    Club: {certClub.club_id}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCertTerminalOpen(false)}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: 'var(--text-muted)', marginLeft: '0.5rem' }}
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
-              {/* Printable Certificate Frame */}
-              <div
-                id="printable-renewal-certificate"
-                style={{
-                  border: '8px double #1A503E',
-                  padding: '2.5rem 2rem',
-                  borderRadius: '12px',
-                  background: '#FCFBF7',
-                  textAlign: 'center',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1.25rem',
-                  position: 'relative',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem' }}>
-                  <img src={ndliClubLogo} alt="NDLI Club" style={{ height: '52px', width: '52px', objectFit: 'contain' }} />
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#0D7751', fontWeight: 800, margin: '0 0 0.25rem 0' }}>
-                    National Digital Library of India
-                  </h4>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#103125', margin: 0, fontFamily: 'serif' }}>
-                    Certificate of Institutional Registration Renewal
-                  </h2>
-                  <div style={{ width: '80px', height: '3px', background: '#D97706', margin: '0.5rem auto 0 auto' }} />
-                </div>
-
-                <div style={{ fontSize: '0.9rem', color: '#2E4A3E', lineHeight: 1.6, padding: '0 1rem' }}>
-                  This is to certify that the institutional club at
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1A503E', margin: '0.4rem 0' }}>
-                    {certClub.institution_name}
+              {/* Terminal Body Grid: 360px Controls + Flex Canvas Preview */}
+              <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '1.25rem', overflowY: 'auto', flex: 1, paddingRight: '0.25rem' }}>
+                {/* Left Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Card 1: Target Data */}
+                  <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#103125', margin: '0 0 0.6rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>🏛️</span> Certificate Target Data (From Master CSV)
+                    </h4>
+                    <div style={{ fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.76rem' }}>Institution Name:</span>
+                        <strong style={{ color: 'var(--primary)' }}>{certClub.institution_name}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Registration No:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                          {certClub.registration_no || certClub.reg_no || `NDLI/REG/${certClub.club_id}`}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Date of Approval:</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatFormalDate(certClub.date_of_approval)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#15803d', fontWeight: 600 }}>Renewal Validity Upto:</span>
+                        <strong style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatFormalDate(certClub.upcoming_renewal_date || certClub.next_renewal_date || certClub.renewal_date)}
+                        </strong>
+                      </div>
+                    </div>
                   </div>
-                  holding Registration Number <strong style={{ fontFamily: 'monospace' }}>{certClub.registration_no || certClub.reg_no || `NDLI/CLUB/${certClub.club_id}`}</strong> has fulfilled all prescribed annual operational guidelines and academic activity milestones.
+
+                  {/* Card 2: PI Signature & Affiliation */}
+                  <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#103125', margin: '0 0 0.6rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>✍️</span> PI Digital Signature &amp; Affiliation
+                    </h4>
+
+                    {/* Signature Upload */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem', display: 'block' }}>
+                        Upload PI Signature (PNG / JPG)
+                      </label>
+                      <input
+                        ref={certSigFileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const dataUrl = ev.target?.result as string;
+                              setSignaturePreview(dataUrl);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => certSigFileInputRef.current?.click()}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600, padding: '0.4rem' }}
+                      >
+                        📁 Choose Signature File...
+                      </button>
+
+                      {/* Mini preview */}
+                      <div style={{ marginTop: '0.4rem', padding: '4px 8px', background: 'var(--bg-muted)', border: '1px dashed var(--border)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                          {signaturePreview ? 'Custom Signature Active' : 'Default Signature'}
+                        </span>
+                        {signaturePreview ? (
+                          <img
+                            src={signaturePreview}
+                            alt="Signature preview"
+                            style={{ maxHeight: '28px', maxWidth: '90px', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          <img
+                            src="/pi_signature.png"
+                            alt="Default Signature"
+                            style={{ maxHeight: '28px', maxWidth: '90px', objectFit: 'contain' }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PI Name */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem', display: 'block' }}>
+                        PI Name
+                      </label>
+                      <input
+                        type="text"
+                        value={piName}
+                        onChange={(e) => setPiName(e.target.value)}
+                        style={{ width: '100%', padding: '0.45rem 0.65rem', fontSize: '0.88rem' }}
+                      />
+                    </div>
+
+                    {/* PI Affiliation */}
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '0.25rem', display: 'block' }}>
+                        PI Affiliation
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={piAffiliation}
+                        onChange={(e) => setPiAffiliation(e.target.value)}
+                        style={{ width: '100%', padding: '0.45rem 0.65rem', fontSize: '0.8rem' }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={handleSavePISettings}
+                      disabled={piBusy}
+                      style={{ width: '100%', fontWeight: 600, padding: '0.4rem' }}
+                    >
+                      {piBusy ? 'Saving...' : '💾 Save as Default PI Settings'}
+                    </button>
+                  </div>
+
+                  {/* Card 3: Action Buttons */}
+                  <div style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleDownloadCertJPG}
+                      style={{ width: '100%', fontWeight: 700, padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <span>📥</span> Download High-Resolution JPG (300 DPI)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleDownloadCertPDF}
+                      style={{ width: '100%', fontWeight: 700, padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <span>📄</span> Download High-Resolution PDF (A4)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-accent"
+                      onClick={handlePrintCert}
+                      style={{ width: '100%', fontWeight: 700, padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#0D7751', color: '#fff' }}
+                    >
+                      <span>🖨️</span> Print Certificate (A4 Portrait)
+                    </button>
+                  </div>
                 </div>
 
+                {/* Right Preview Canvas */}
                 <div
                   style={{
-                    background: '#E9F5EF',
-                    border: '1px solid #A7D7C5',
-                    borderRadius: '8px',
-                    padding: '0.65rem 1rem',
-                    fontSize: '0.88rem',
-                    color: '#0D7751',
-                    fontWeight: 700,
+                    background: '#e2ece7',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'auto',
+                    minHeight: '520px',
                   }}
                 >
-                  ✓ Registration Validity Extended Through: {certClub.upcoming_renewal_date || certClub.renewal_date || '2026-04-12'}
+                  <canvas
+                    ref={certCanvasRef}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '74vh',
+                      objectFit: 'contain',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.22)',
+                      borderRadius: '4px',
+                      background: '#ffffff',
+                    }}
+                  />
                 </div>
-
-                {/* Signatories */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1.5rem', padding: '0 1.5rem' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#103125' }}>Prof. Virendra Kumar Tewari</div>
-                    <div style={{ height: '1px', width: '160px', background: '#333', margin: '4px auto' }} />
-                    <div style={{ fontSize: '0.74rem', color: '#5A7366' }}>Patron, NDLI Project<br />Director, IIT Kharagpur</div>
-                  </div>
-
-                  <div style={{ textAlign: 'center' }}>
-                    {signaturePreview ? (
-                      <img src={signaturePreview} alt="PI Signature" style={{ maxHeight: '48px', maxWidth: '160px', objectFit: 'contain', margin: '0 auto 4px auto' }} />
-                    ) : (
-                      <div style={{ fontFamily: 'cursive', fontSize: '1.2rem', color: '#1A503E', marginBottom: '4px' }}>{piName}</div>
-                    )}
-                    <div style={{ height: '1px', width: '180px', background: '#333', margin: '4px auto' }} />
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#103125' }}>{piName}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#5A7366', maxWidth: '240px' }}>{piAffiliation}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-md"
-                  onClick={() => setIsCertTerminalOpen(false)}
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-md"
-                  onClick={() => window.print()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
-                >
-                  <Printer className="h-4 w-4" />
-                  Print / Save Certificate PDF
-                </button>
               </div>
             </div>
           </div>

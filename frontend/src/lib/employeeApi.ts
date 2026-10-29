@@ -444,6 +444,7 @@ export async function savePISignatureSettings(
   affiliation: string,
   signatureFile?: File,
   piName?: string,
+  signatureData?: string,
 ): Promise<{ success: boolean; message: string } & PISignatureSettings> {
   const formData = new FormData();
   formData.append('pi_affiliation', affiliation);
@@ -453,6 +454,9 @@ export async function savePISignatureSettings(
   if (signatureFile) {
     formData.append('signature_image', signatureFile);
     formData.append('signature_file', signatureFile);
+  }
+  if (signatureData) {
+    formData.append('signature_data', signatureData);
   }
   const url = new URL(BASE + '/pi-signature-settings/', window.location.origin);
   const response = await fetch(url.toString(), {
@@ -474,4 +478,29 @@ export async function savePISignatureSettings(
     throw new ApiError('server', detail, response.status);
   }
   return response.json();
+}
+
+export async function verifyEmployeePassword(
+  password: string
+): Promise<{ success: boolean; message: string }> {
+  return request<{ success: boolean; message: string }>(BASE + '/verify-password/', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  });
+}
+
+export async function renewClubRegistration(
+  clubId: string
+): Promise<{
+  success: boolean;
+  message: string;
+  club: Partial<ClubSearchRow>;
+}> {
+  return request<{ success: boolean; message: string; club: Partial<ClubSearchRow> }>(
+    BASE + '/clubs/renew/',
+    {
+      method: 'POST',
+      body: JSON.stringify({ club_id: clubId }),
+    }
+  );
 }

@@ -1,5 +1,5 @@
 /**
- * M5-D1 Master Login Gate (IIT Kharagpur Central Master Administration & 6 Regional Zones).
+ * M5-D1 Master Login Gate (Universal Secure Access Gateway).
  *
  * Full fidelity reproduction of the Master Access Gateway from `templates/index.html` & `templates/employee.html`:
  * - Deep emerald gradient background with glowing ambient radial lights
@@ -10,10 +10,10 @@
  * - 2-column fields grid (User ID / Email + Password with Show/Hide toggle)
  * - Anti-bot alphanumeric captcha verification widget with refresh
  * - Big amber gradient unlock button "🔓 Unlock System Access →"
- * - 7 Nodal Officers Quick-Select directory chips with regional pastel color accents
  * - Error shake animation and clear alerts
+ * - Zero viewport overflow: compact dimensions perfectly calibrated for laptop and mobile screens
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AuthApiError,
   fetchSession,
@@ -27,6 +27,8 @@ import {
   peekInterruptedRoute,
 } from '../../lib/returnTo';
 import type { AppRoute } from '../../lib/route';
+import ndliClubLogo from '../../assets/img/ndli_club_logo.png';
+import ndliMainLogoSmallGreen from '../../assets/img/NDLI_Main_Logo_Small_Green.png';
 
 interface LoginViewProps {
   initialNext?: string;
@@ -54,16 +56,6 @@ function flowErrorFrom(err: unknown): FlowError {
   return { kind: 'server', message: 'Unable to authenticate. Please try again.' };
 }
 
-const NODAL_OFFICERS = [
-  { id: 'EMP01', name: 'Rohan Sharma', zone: 'North', bg: '#E2F0FB', color: '#1E5F8C' },
-  { id: 'EMP02', name: 'Pooja Verma', zone: 'Central', bg: '#EDE9FB', color: '#5B45A8' },
-  { id: 'EMP03', name: 'Amit Patel', zone: 'West', bg: '#FDEFD9', color: '#92500B' },
-  { id: 'EMP04', name: 'Debabrata Ghosh', zone: 'East', bg: '#D9EFE4', color: '#0A5C3E' },
-  { id: 'EMP05', name: 'M. Singh', zone: 'North East', bg: '#FBE9EC', color: '#9F1239' },
-  { id: 'EMP06', name: 'K. Venkatesh', zone: 'South 1', bg: '#E4F3F7', color: '#17637A' },
-  { id: 'EMP07', name: 'Ananya Nair', zone: 'South 2', bg: '#E4F3F7', color: '#17637A' },
-];
-
 export const LoginView: React.FC<LoginViewProps> = ({
   initialNext = '',
   onNavigate,
@@ -75,7 +67,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [captcha, setCaptcha] = useState('');
   const [captchaSrc, setCaptchaSrc] = useState(() => `${CAPTCHA_SRC}?t=${Date.now()}`);
-  const [session, setSession] = useState<SessionPayload | null>(null);
   const [error, setError] = useState<FlowError | null>(null);
   const [busy, setBusy] = useState(false);
   const [shaking, setShaking] = useState(false);
@@ -92,7 +83,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setCaptchaSrc(`${CAPTCHA_SRC}?t=${Date.now()}`);
   };
 
-  const returnToInterruptedRoute = (): void => {
+  const returnToInterruptedRoute = useCallback((): void => {
     const stored = consumeInterruptedRoute();
     const target = returnTo !== null && isSafeLocalPath(returnTo) ? returnTo : stored;
     if (target !== null && isSafeLocalPath(target)) {
@@ -100,7 +91,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
     onNavigate?.({ tab: 'home', certId: '', next: '', slug: '' });
-  };
+  }, [returnTo, onNavigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +99,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
       try {
         const existing = await fetchSession();
         if (cancelled || existing === null) return;
-        setSession(existing);
         onSignedIn?.(existing);
         returnToInterruptedRoute();
       } catch (err) {
@@ -118,7 +108,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onSignedIn, returnToInterruptedRoute]);
 
   const handleSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -131,7 +121,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
         password,
         captcha.trim(),
       );
-      setSession(established);
       onSignedIn?.(established);
     } catch (err) {
       setError(flowErrorFrom(err));
@@ -140,13 +129,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
       refreshCaptcha();
     } finally {
       setBusy(false);
-    }
-  };
-
-  const selectOfficer = (id: string) => {
-    setEmployeeCode(id);
-    if (passwordRef.current) {
-      passwordRef.current.focus();
     }
   };
 
@@ -172,7 +154,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </svg>
         <div className="logo-white-card">
           <img
-            src="/static/img/ndli_club_logo.png"
+            src={ndliClubLogo}
             alt="NDLI Club Logo"
             className="brand-logo-img"
           />
@@ -187,7 +169,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           title="Visit Official National Digital Library of India Portal"
         >
           <img
-            src="/static/img/NDLI_Main_Logo_Small_Green.png"
+            src={ndliMainLogoSmallGreen}
             alt="NDLI"
             style={{ height: '18px', width: '18px', verticalAlign: '-4px', marginRight: '6px', objectFit: 'contain', display: 'inline' }}
           />
@@ -315,54 +297,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </button>
       </form>
 
-      {/* QUICK CREDENTIAL ASSISTANT FOR 7 OPERATIONAL ZONES */}
-      <div style={{ marginTop: '0.85rem', borderTop: '1px dashed rgba(255, 255, 255, 0.15)', paddingTop: '0.65rem', textAlign: 'left' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FCD34D' }}>
-            7 Nodal Officers Directory (Click to select):
-          </span>
-          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Quick-Select</span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-          {NODAL_OFFICERS.map((off) => {
-            const isSelected = employeeCode.trim().toUpperCase() === off.id;
-            return (
-              <button
-                key={off.id}
-                type="button"
-                onClick={() => selectOfficer(off.id)}
-                style={{
-                  background: isSelected ? 'rgba(52, 211, 153, 0.25)' : 'rgba(255, 255, 255, 0.06)',
-                  border: isSelected ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '6px',
-                  padding: '3px 7px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1px',
-                  minWidth: '85px',
-                  flex: '1 1 85px',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.70rem' }}>{off.id}</span>
-                  <span style={{ fontSize: '0.58rem', background: off.bg, color: off.color, padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>
-                    {off.zone}
-                  </span>
-                </div>
-                <span style={{ color: '#cbd5e1', fontSize: '0.62rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {off.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="lock-footer-info">
-        National Digital Library of India Club Management System • Central Administration &amp; 6 Regional Zones
+        National Digital Library of India Club Management System • Central Administration &amp; Regional Nodal Operations
       </div>
     </div>
   );

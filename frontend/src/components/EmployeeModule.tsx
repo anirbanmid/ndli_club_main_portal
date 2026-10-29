@@ -13,6 +13,7 @@
  * - Tool Box with 12 regional utilities and PI Digital Signature & Affiliation settings
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ndliClubLogo from '../assets/img/ndli_club_logo.png';
 import {
   FileCheck,
   LifeBuoy,
@@ -511,7 +512,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
         <div className="brand">
           <div className="brand-logo-card">
             <img
-              src="/static/img/ndli_club_logo.png"
+              src={ndliClubLogo}
               alt="NDLI Club Logo"
               className="brand-logo-img"
             />

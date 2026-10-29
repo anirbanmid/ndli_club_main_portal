@@ -148,9 +148,12 @@ def serve_frontend(request: HttpRequest, path: str = "") -> HttpResponseBase:
 
 @require_http_methods(["GET", "HEAD"])
 def serve_static(request: HttpRequest, path: str) -> HttpResponseBase:
-    """Serve collected admin static files from ``STATIC_ROOT`` (P0: contained)."""
+    """Serve collected admin static files from ``STATIC_ROOT`` or dist (P0)."""
     root = Path(settings.STATIC_ROOT)
     target = _contained(root, path)
+    if target is None and hasattr(settings, "FRONTEND_DIST"):
+        dist_static = Path(settings.FRONTEND_DIST) / "static"
+        target = _contained(dist_static, path)
     if target is None:
         raise Http404
     return _respond(request, target, FILE_CACHE)

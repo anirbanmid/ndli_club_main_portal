@@ -15,6 +15,7 @@ Discipline (P0/P4/I5):
   branch on who the caller is (T3 greps for that).
 * Services own the rules and the audit rows; views adapt HTTP.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -62,9 +63,7 @@ def _throttled(scope: str, limit: int, request: Request) -> Response | None:
 
 
 def _error(exc: ClubError) -> Response:
-    return Response(
-        {"detail": exc.message, "code": exc.code}, status=exc.http_status
-    )
+    return Response({"detail": exc.message, "code": exc.code}, status=exc.http_status)
 
 
 def _public_response(payload: Any) -> Response:
@@ -86,14 +85,11 @@ class ShowcaseIndexView(APIView):
         blocked = _throttled("showcase_read", SHOWCASE_READ_LIMIT, request)
         if blocked is not None:
             return blocked
-        queryset = (
-            ClubShowcase.objects.select_related(
-                "club",
-                "club__institution",
-                "club__institution__state",
-            )
-            .order_by("slug")
-        )
+        queryset = ClubShowcase.objects.select_related(
+            "club",
+            "club__institution",
+            "club__institution__state",
+        ).order_by("slug")
         paginator = PageNumberPagination()
         page = paginator.paginate_queryset(queryset, request)
         cards = [
@@ -279,9 +275,7 @@ class PasskeyRegenerateView(APIView):
             )
         except ClubError as exc:
             return _error(exc)
-        return Response(
-            {"passkey": code, "status": services.passkey_payload(club)}
-        )
+        return Response({"passkey": code, "status": services.passkey_payload(club)})
 
 
 class PasskeyRevokeView(APIView):
@@ -366,7 +360,18 @@ class RenewalRequestView(APIView):
                 request.user, note=str(note)[:500], request=request
             )
         except GovernanceError as exc:
-            return Response(
-                {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(record_payload(record), status=status.HTTP_201_CREATED)
+
+
+class CanonicalClubsListView(APIView):
+    """GET /api/v1/clubs/ -- public single source for institutional clubs."""
+
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        from apps.domain.clubs import get_all_canonical_clubs
+
+        clubs = get_all_canonical_clubs()
+        return Response({"clubs": clubs, "count": len(clubs)})

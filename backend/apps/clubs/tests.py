@@ -4,6 +4,7 @@ Fast, HTTP-free pins for the pure parts: slug normalisation/blocklist, the
 join-token format (delegating to the ONE M3 signer) and the passkey hash
 rule. The adversarial W-series pins live in ``tests/test_m4_d3_*.py``.
 """
+
 from __future__ import annotations
 
 import base64
@@ -43,9 +44,7 @@ class SlugUnitTests(TestCase):
 
     def test_derivation_suffixes_never_reintroduce_blocked_words(self) -> None:
         taken = {"twin-club"}
-        self.assertEqual(
-            slugs.derive_slug("", "Twin Club", taken=taken), "twin-club-2"
-        )
+        self.assertEqual(slugs.derive_slug("", "Twin Club", taken=taken), "twin-club-2")
 
 
 class JoinTokenUnitTests(TestCase):
@@ -73,9 +72,7 @@ class JoinTokenUnitTests(TestCase):
         token, _expires = join_tokens.issue_join_token(
             club_code="CLB-UNIT", ttl_seconds=600
         )
-        envelope = json.loads(
-            base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
-        )
+        envelope = json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
         envelope["nonce"] = "different"
         forged = (
             base64.urlsafe_b64encode(
@@ -126,3 +123,24 @@ class PasskeyHashUnitTests(TestCase):
         )
         with self.assertRaises(SlugBlockedError):
             ClubShowcase.objects.create(club=club, slug="sign_up")
+
+
+class CanonicalClubsSingleSourceTests(TestCase):
+    def test_canonical_clubs_returns_unified_dataset(self) -> None:
+        from apps.domain.clubs import get_all_canonical_clubs
+
+        clubs = get_all_canonical_clubs()
+        self.assertGreaterEqual(len(clubs), 11)
+        dati = next((c for c in clubs if c["id"] == "NDLI-EMP01-002"), None)
+        self.assertIsNotNone(dati)
+        assert dati is not None
+        self.assertEqual(dati["name"], "Delhi Advanced Technical Institute")
+        self.assertEqual(dati["registrationNo"], "REG-2025-EMP01-002")
+        self.assertEqual(dati["dateOfApproval"], "2024-08-15")
+
+    def test_clubs_endpoint_is_publicly_accessible(self) -> None:
+        response = self.client.get("/api/v1/clubs/showcase/canonical/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("clubs", data)
+        self.assertGreaterEqual(data["count"], 11)

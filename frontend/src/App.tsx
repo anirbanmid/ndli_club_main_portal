@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchCanonicalClubs, subscribeToClubUpdates } from './lib/clubRepository';
 import { changeLanguage } from './i18n';
 import { resolveRoute } from './lib/route';
 import { Header } from './components/Header';
@@ -86,6 +87,7 @@ export function App({ ssrLocation }: AppProps = {}) {
 
   // Application Data States
   const [clubs, setClubs] = useState<InstituteClub[]>(INITIAL_CLUBS);
+
   const [activities, setActivities] = useState<ClubActivity[]>(INITIAL_ACTIVITIES);
   const [students] = useState<StudentMember[]>(INITIAL_STUDENTS);
   const [tickets, setTickets] = useState<IssueTicket[]>(INITIAL_TICKETS);
@@ -108,6 +110,32 @@ export function App({ ssrLocation }: AppProps = {}) {
   // M5-D3: showcase slug for /clubs/<slug>/ (deep-linked via route.ts, or set
   // when a card is opened from the showcase index).
   const [showcaseSlug, setShowcaseSlug] = useState<string>(initialRoute.slug);
+
+  // Single Source of Truth (SSOT): Hydrate clubs from canonical backend API on mount
+  // and maintain real-time reactive cross-module synchronization
+  useEffect(() => {
+    let mounted = true;
+    void fetchCanonicalClubs().then((canonicalClubs) => {
+      if (mounted && canonicalClubs && canonicalClubs.length > 0) {
+        setClubs(canonicalClubs);
+      }
+    });
+
+    const unsubscribe = subscribeToClubUpdates(({ clubId, updates }) => {
+      setClubs((prev) =>
+        prev.map((c) => (c.id === clubId ? { ...c, ...updates } : c))
+      );
+      setActiveClub((current) =>
+        current.id === clubId ? { ...current, ...updates } : current
+      );
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
 
   // Accessibility States
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'larger'>('normal');

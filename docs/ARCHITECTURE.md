@@ -76,3 +76,10 @@ docs/RBAC.md.
 Claims about the legacy system are labelled `[MEASURED]` or `[TO CONFIRM]`
 (see the build spec and SURVEY.md). No national-scale figures are printed in
 product UI copy.
+
+## Single Source of Truth Across Modules
+
+All institutional club data, registrations, renewal states, and authorities adhere
+to the hard-bound Single Source of Truth law. See [SINGLE_SOURCE_OF_TRUTH.md](./SINGLE_SOURCE_OF_TRUTH.md)
+for the architecture specification, data flow, and development rules.
+

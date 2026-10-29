@@ -205,80 +205,25 @@ class VerifyCertificateView(APIView):
             )
 
         if target_club is None:
-            CANONICAL_LOOKUP: dict[str, tuple[str, str, str]] = {
-                "NDLI-EMP01-002": (
-                    "Delhi Advanced Technical Institute",
-                    "Delhi Advanced Technical Institute",
-                    "NDLI-EMP01-002",
-                ),
-                "REG-2025-EMP01-002": (
-                    "Delhi Advanced Technical Institute",
-                    "Delhi Advanced Technical Institute",
-                    "NDLI-EMP01-002",
-                ),
-                "CLUB-IITKGP-001": (
-                    "Indian Institute of Technology Kharagpur",
-                    "Indian Institute of Technology Kharagpur",
-                    "CLUB-IITKGP-001",
-                ),
-                "CLUB-IITD-002": (
-                    "Indian Institute of Technology Delhi",
-                    "Indian Institute of Technology Delhi",
-                    "CLUB-IITD-002",
-                ),
-                "CLUB-IITB-003": (
-                    "Indian Institute of Technology Bombay",
-                    "Indian Institute of Technology Bombay",
-                    "CLUB-IITB-003",
-                ),
-                "CLUB-IITM-004": (
-                    "Indian Institute of Technology Madras",
-                    "Indian Institute of Technology Madras",
-                    "CLUB-IITM-004",
-                ),
-                "CLUB-IITK-005": (
-                    "Indian Institute of Technology Kanpur",
-                    "Indian Institute of Technology Kanpur",
-                    "CLUB-IITK-005",
-                ),
-                "CLUB-JU-006": (
-                    "Jadavpur University",
-                    "Jadavpur University",
-                    "CLUB-JU-006",
-                ),
-                "CLUB-DU-007": (
-                    "University of Delhi (Central Campus)",
-                    "University of Delhi (Central Campus)",
-                    "CLUB-DU-007",
-                ),
-                "CLUB-BHU-008": (
-                    "Banaras Hindu University",
-                    "Banaras Hindu University",
-                    "CLUB-BHU-008",
-                ),
-                "CLUB-IISCB-009": (
-                    "Indian Institute of Science Bangalore",
-                    "Indian Institute of Science Bangalore",
-                    "CLUB-IISCB-009",
-                ),
-                "CLUB-CU-010": (
-                    "University of Calcutta",
-                    "University of Calcutta",
-                    "CLUB-CU-010",
-                ),
-            }
-            # Match by raw_id, reg_no, or club_id against canonical registry
-            matched = None
-            for key, val in CANONICAL_LOOKUP.items():
+            from apps.domain.clubs import CANONICAL_INSTITUTIONAL_CLUBS
+
+            matched_entry = None
+            for canon_club in CANONICAL_INSTITUTIONAL_CLUBS:
+                cid = str(canon_club["id"]).upper()
+                c_reg = str(canon_club.get("registrationNo", "")).upper()
                 if (
-                    key.upper() in raw_id.upper()
-                    or (reg_no and key.upper() in reg_no.upper())
-                    or (club_id and key.upper() == club_id.upper())
+                    cid in raw_id.upper()
+                    or (c_reg and c_reg in raw_id.upper())
+                    or (reg_no and (cid in reg_no.upper() or c_reg in reg_no.upper()))
+                    or (club_id and cid == club_id.upper())
                 ):
-                    matched = val
+                    matched_entry = canon_club
                     break
-            if matched:
-                inst_name, club_name, code = matched
+
+            if matched_entry:
+                inst_name = matched_entry["institution_name"]
+                club_name = matched_entry["name"]
+                code = matched_entry["id"]
                 doa, last_ren, _upcoming = get_club_dates(code, None)
                 eff_date = (
                     last_ren
@@ -358,3 +303,20 @@ class VerifyCertificateView(APIView):
         # Build strictly from the six-field disclosure (P4/P0: nothing extra).
         payload = {key: result.disclosure[key] for key in PUBLIC_KEYS}
         return _cached(request, payload, 60)
+
+
+class PublicClubsListView(APIView):
+    """M3-4: Public single source of truth for all institutional clubs."""
+
+    authentication_classes: list = []
+    permission_classes = [CategoryGate("public")]
+
+    def get(self, request: Request) -> Response:
+        limited = _throttled("clubs", DIRECTORY_LIMIT, request)
+        if limited is not None:
+            return limited
+        from apps.domain.clubs import get_all_canonical_clubs
+
+        clubs = get_all_canonical_clubs()
+        payload = {"clubs": clubs, "count": len(clubs)}
+        return _cached(request, payload, domain_telemetry.HTTP_MAX_AGE_SECONDS)

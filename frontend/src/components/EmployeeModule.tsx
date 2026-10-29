@@ -31,6 +31,7 @@ import {
 import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
 import { NotificationBell, NotificationItem } from './NotificationBell';
 import { ApiError } from '../lib/api';
+import { notifyClubUpdated, subscribeToClubUpdates } from '../lib/clubRepository';
 import {
   ActivityRow,
   ClubSearchRow,
@@ -515,6 +516,13 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
         }
       }
 
+      // Realtime cross-module synchronization (SSOT Broadcast)
+      notifyClubUpdated(securityClub.club_id || '', {
+        lastRenewalDate: today,
+        nextRenewalDate: nextRenewal,
+        status: 'Active',
+      });
+
       // Log activity
       void logActivity({
         support_type: 'Other Support',
@@ -556,6 +564,26 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       setHistoryLoading(false);
     }
   }, [showAlert]);
+
+  // Realtime Cross-Module Synchronization Listener (SSOT)
+  useEffect(() => {
+    const unsub = subscribeToClubUpdates(({ clubId, updates }) => {
+      setClubRows((prev) =>
+        prev.map((c) =>
+          c.club_id === clubId
+            ? {
+                ...c,
+                last_renewal_date: updates.lastRenewalDate || c.last_renewal_date,
+                upcoming_renewal_date: updates.nextRenewalDate || c.upcoming_renewal_date,
+                next_renewal_date: updates.nextRenewalDate || c.next_renewal_date,
+                status: updates.status || c.status,
+              }
+            : c,
+        ),
+      );
+    });
+    return unsub;
+  }, []);
 
   // Load clubs
   const loadClubs = useCallback(async () => {

@@ -8,6 +8,7 @@ Mounted at ``/api/v1/clubs/``. Two doors:
   (showcase edit, passkey lifecycle, join URL/QR) — club authorities only,
   enforced server-side (W9).
 """
+
 from django.urls import path
 
 from . import views
@@ -15,6 +16,11 @@ from . import views
 app_name = "clubs"
 
 urlpatterns = [
+    path(
+        "showcase/canonical/",
+        views.CanonicalClubsListView.as_view(),
+        name="showcase-canonical-clubs",
+    ),
     # Public surface (read-only + the join door).
     path("showcase/", views.ShowcaseIndexView.as_view(), name="showcase-index"),
     path(

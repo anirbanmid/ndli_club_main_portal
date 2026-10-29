@@ -35,6 +35,7 @@ interface LoginViewProps {
   onNavigate?: (route: AppRoute) => void;
   onSignedIn?: (session: SessionPayload) => void;
   fullViewport?: boolean;
+  onDismiss?: () => void;
 }
 
 type FlowError =
@@ -61,6 +62,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onNavigate,
   onSignedIn,
   fullViewport = true,
+  onDismiss,
 }) => {
   const [employeeCode, setEmployeeCode] = useState('');
   const [password, setPassword] = useState('');
@@ -72,6 +74,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [shaking, setShaking] = useState(false);
 
   const passwordRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onDismiss) {
+        onDismiss();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onDismiss]);
+
 
   const [returnTo] = useState<string | null>(() => {
     const next = initialNext.trim();
@@ -133,7 +145,34 @@ export const LoginView: React.FC<LoginViewProps> = ({
   };
 
   const content = (
-    <div className={`lock-card ${shaking ? 'shake-anim' : ''}`} id="lock-card-box">
+    <div className={`lock-card ${shaking ? 'shake-anim' : ''}`} id="lock-card-box" style={{ position: 'relative' }}>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Back to portal (Esc)"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '14px',
+            background: 'rgba(255, 255, 255, 0.12)',
+            border: 'none',
+            color: '#A7D7C5',
+            fontSize: '1.4rem',
+            lineHeight: 1,
+            cursor: 'pointer',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10,
+          }}
+        >
+          ×
+        </button>
+      )}
       <span className="lock-header-badge">
         <span>🔒</span> Secure Enterprise Access Gateway
       </span>
@@ -255,10 +294,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
               src={captchaSrc}
               alt="Security captcha"
               style={{
-                height: '34px',
-                width: '120px',
-                borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
+                height: '42px',
+                width: '145px',
+                borderRadius: '8px',
+                border: '1.5px solid rgba(255, 255, 255, 0.35)',
                 background: '#ffffff',
                 objectFit: 'contain',
               }}
@@ -275,7 +314,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="text"
               id="lock-captcha-input"
               className="lock-input"
-              style={{ flex: 1, padding: '0.45rem 0.65rem', fontWeight: 700, letterSpacing: '0.12em' }}
+              style={{ flex: 1, padding: '0.5rem 0.75rem', fontWeight: 700, fontSize: '1.18rem', letterSpacing: '0.16em' }}
               placeholder="Enter Code (case-sensitive)"
               maxLength={8}
               required
@@ -305,7 +344,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   if (fullViewport) {
     return (
-      <div id="app-lock-gate" className="lock-screen-overlay">
+      <div
+        id="app-lock-gate"
+        className="lock-screen-overlay"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onDismiss?.();
+          }
+        }}
+        title="Click background to dismiss"
+      >
         {content}
       </div>
     );

@@ -300,6 +300,38 @@ class ActivityDeleteView(APIView):
 
 
 
+MASTER_CLUB_DATES: dict[str, tuple[str, str, str]] = {
+    "CLUB-IITKGP-001": ("2021-04-12", "2025-04-12", "2026-04-12"),
+    "CLUB-IITD-002": ("2021-05-10", "2025-05-10", "2026-05-10"),
+    "CLUB-IITB-003": ("2021-08-15", "2025-08-15", "2026-08-15"),
+    "CLUB-IITM-004": ("2021-09-01", "2025-09-01", "2026-09-01"),
+    "CLUB-IITK-005": ("2021-10-10", "2025-10-10", "2026-10-10"),
+    "CLUB-JNU-006": ("2021-11-15", "2025-11-15", "2026-11-15"),
+    "CLUB-DU-007": ("2020-11-05", "2025-11-05", "2026-11-05"),
+    "CLUB-BHU-008": ("2021-12-01", "2025-12-01", "2026-12-01"),
+    "CLUB-IISCB-009": ("2022-01-15", "2025-01-15", "2026-01-15"),
+    "CLUB-CU-010": ("2022-02-20", "2025-02-20", "2026-02-20"),
+}
+
+
+def get_club_dates(code: str, created_at: Any) -> tuple[str, str, str]:
+    """Return (date_of_approval, last_renewal_date, upcoming_renewal_date)."""
+    if code in MASTER_CLUB_DATES:
+        return MASTER_CLUB_DATES[code]
+    c_date = created_at.date() if created_at else None
+    doa = c_date.strftime("%Y-%m-%d") if c_date else "2021-04-12"
+    last_ren = ""
+    try:
+        next_year = c_date.replace(year=c_date.year + 1) if c_date else None
+        upcoming_ren = (
+            next_year.strftime("%Y-%m-%d") if next_year else "2027-04-12"
+        )
+    except ValueError:
+        upcoming_ren = f"{c_date.year + 1}-02-28" if c_date else "2027-04-12"
+    if last_ren and doa and last_ren < doa:
+        last_ren = ""
+    return doa, last_ren or "None (Initial)", upcoming_ren
+
 SIGNATURES_DIR = Path(settings.BASE_DIR) / "data" / "signatures"
 SETTINGS_FILE = SIGNATURES_DIR / "signature_settings.json"
 
@@ -399,10 +431,8 @@ class EmployeeClubsExportCSVView(APIView):
                 and c.institution.state.zone
                 else ""
             )
-            doa = (
-                c.created_at.strftime("%Y-%m-%d")
-                if getattr(c, "created_at", None)
-                else "2021-04-12"
+            doa, last_ren, upcoming_ren = get_club_dates(
+                c.code, getattr(c, "created_at", None)
             )
             writer.writerow([
                 c.code,
@@ -413,8 +443,8 @@ class EmployeeClubsExportCSVView(APIView):
                 zn,
                 c.status,
                 doa,
-                "2025-04-12",
-                "2026-04-12",
+                last_ren,
+                upcoming_ren,
                 "Prof. Patron Head",
                 f"patron@{c.code.lower()}.edu",
                 "Dr. Club President",
@@ -453,11 +483,10 @@ class UniversalClubsListView(APIView):
                 if c.institution and c.institution.state and c.institution.state.zone
                 else ""
             )
-            doa = (
-                c.created_at.strftime("%Y-%m-%d")
-                if getattr(c, "created_at", None)
-                else "2021-04-12"
+            doa, last_ren, upcoming_ren = get_club_dates(
+                c.code, getattr(c, "created_at", None)
             )
+
             clubs.append({
                 "club_id": c.code,
                 "registration_no": f"NDLI/CLUB/{c.code}",
@@ -466,9 +495,9 @@ class UniversalClubsListView(APIView):
                 "state": st,
                 "zone": zn or "East Zone",
                 "date_of_approval": doa,
-                "last_renewal_date": "2025-04-12",
-                "upcoming_renewal_date": "2026-04-12",
-                "renewal_date": "2026-04-12",
+                "last_renewal_date": last_ren or "None (Initial)",
+                "upcoming_renewal_date": upcoming_ren,
+                "renewal_date": upcoming_ren,
                 "status": getattr(c, "status", "Active") or "Active",
                 "email": getattr(c, "email", "") or f"club.{c.code.lower()}@ndli.edu",
                 "patron_name": "Prof. Patron Head",
@@ -497,7 +526,7 @@ class PISignatureSettingsView(APIView):
         sig_file = SIGNATURES_DIR / "pi_signature.png"
         has_sig = sig_file.exists()
         defaults = {
-            "pi_name": "Prof. Partha Pratim Chakrabarti",
+            "pi_name": "Dr. Plaban Kumar Bhowmick",
             "pi_affiliation": (
                 "Principal Investigator, NDLI Project, Central Library, IIT Kharagpur"
             ),
@@ -529,7 +558,7 @@ class PISignatureSettingsView(APIView):
         data = request.data
         pi_name = (
             str(data.get("pi_name", "")).strip()
-            or "Prof. Partha Pratim Chakrabarti"
+            or "Dr. Plaban Kumar Bhowmick"
         )
         pi_affiliation = (
             str(data.get("pi_affiliation", "")).strip()

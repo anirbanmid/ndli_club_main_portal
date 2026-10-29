@@ -16,7 +16,7 @@
  *   Migration desk is out of M6 scope per owner decision C7 (M6.1 candidate).
  * Desk 5 (Employee Management) is real since slice 1.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Building2,
   LifeBuoy,
@@ -39,6 +39,7 @@ import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
 import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
 import { DashboardsPanel } from './AdminDashboardsPanel';
+import { NotificationBell, NotificationItem } from './NotificationBell';
 import {
   CharterDecision,
   CharterDetail,
@@ -275,6 +276,48 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const filteredGrievances = grievances.filter((g) => zoneCode === 'All' || g.zone_code === zoneCode);
   const openGrievances = grievances.filter((g) => g.status !== 'resolved');
 
+  const adminNotifications: NotificationItem[] = useMemo(() => {
+    const list: NotificationItem[] = [];
+    const pendingSuccession = (authorityRequests || []).filter(
+      (r) => r.status === 'Pending Admin Review'
+    );
+    if (pendingSuccession.length > 0) {
+      list.push({
+        id: 'admin-succ-1',
+        type: 'succession',
+        title: `${pendingSuccession.length} Authority Succession Request(s)`,
+        description: 'Institutional leadership transition requests require verification & re-signing.',
+        timestamp: 'Pending Review',
+        read: false,
+        actionTab: 'succession',
+      });
+    }
+    if (filteredCharters.length > 0) {
+      list.push({
+        id: 'admin-chart-1',
+        type: 'approval',
+        title: `${filteredCharters.length} Club Charter(s) in Queue`,
+        description: 'New college club registration applications pending final administrative sanction.',
+        timestamp: 'Action Needed',
+        read: false,
+        actionTab: 'charters',
+      });
+    }
+    if (openGrievances.length > 0) {
+      list.push({
+        id: 'admin-griev-1',
+        type: 'reminder',
+        title: `${openGrievances.length} Active Support Ticket(s)`,
+        description: 'Unresolved grievance and technical issues pending resolution across zones.',
+        timestamp: 'Active Attention',
+        read: false,
+        actionTab: 'grievances',
+      });
+    }
+    return list;
+  }, [authorityRequests, filteredCharters, openGrievances]);
+
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
       {/* Top Admin Header */}
@@ -298,15 +341,22 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           </p>
         </div>
 
-        {onSignOut && (
-          <button
-            type="button"
-            onClick={onSignOut}
-            className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0"
-          >
-            {t("Sign out")}
-          </button>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          <NotificationBell
+            notifications={adminNotifications}
+            variant="dark"
+            onNavigateTab={(tab) => setAdminTab(tab as any)}
+          />
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0"
+            >
+              {t("Sign out")}
+            </button>
+          )}
+        </div>
 
         {/* Telemetry Pills — live counts from the real queues */}
         <div className="grid grid-cols-2 gap-3 text-center shrink-0">

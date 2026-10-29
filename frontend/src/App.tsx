@@ -55,6 +55,7 @@ export function App({ ssrLocation }: AppProps = {}) {
 
   const [currentBranch, setCurrentBranch] = useState<BranchType>('landing');
   const [loginSourceBranch, setLoginSourceBranch] = useState<BranchType>('landing');
+  const [loginSourceTab, setLoginSourceTab] = useState<string>('home');
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -213,6 +214,7 @@ export function App({ ssrLocation }: AppProps = {}) {
         setLanguage={handleSetLanguage}
         onOpenLogin={() => {
           setLoginSourceBranch(currentBranch);
+          setLoginSourceTab(currentTab === 'login' ? 'home' : currentTab);
           setCurrentBranch('landing');
           setCurrentTab('login');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -275,6 +277,11 @@ export function App({ ssrLocation }: AppProps = {}) {
             {currentTab === 'login' && (
               <LoginView
                 initialNext={initialRoute.next}
+                onDismiss={() => {
+                  setCurrentBranch(loginSourceBranch);
+                  setCurrentTab(loginSourceTab || 'home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 onNavigate={(route) => {
                   setVerifyInitialCertId(route.certId);
                   setCurrentTab(route.tab);
@@ -492,6 +499,11 @@ export function App({ ssrLocation }: AppProps = {}) {
             <LoginView
               initialNext={''}
               fullViewport={true}
+              onDismiss={() => {
+                setCurrentBranch('landing');
+                setCurrentTab('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
               onNavigate={(route) => {
                 setVerifyInitialCertId(route.certId);
                 setCurrentTab(route.tab);

@@ -82,10 +82,10 @@ def _render_svg(code: str) -> bytes:
         )
     # The glyphs — one rotated <text> each.
     for i, ch in enumerate(code):
-        x = 20 + i * 30 + rnd.randint(-3, 3)
-        y = 38 + rnd.randint(-5, 5)
-        rot = rnd.randint(-16, 16)
-        size = 26 + rnd.randint(-3, 3)
+        x = 18 + i * 30 + rnd.randint(-2, 2)
+        y = 40 + rnd.randint(-3, 3)
+        rot = rnd.randint(-10, 10)
+        size = 34 + rnd.randint(-2, 2)
         color = rnd.choice(_PALETTE)
         parts.append(
             f'<text x="{x}" y="{y}" font-family="monospace" font-size="{size}" '

@@ -305,7 +305,7 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
 
       <div class="sig-box">
         ${(() => {
-          let name = 'Prof. Partha Pratim Chakrabarti';
+          let name = 'Dr. Plaban Kumar Bhowmick';
           let affil = 'Principal Investigator<br>National Digital Library of India';
           let img = '';
           try {

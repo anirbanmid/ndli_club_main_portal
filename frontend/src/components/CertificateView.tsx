@@ -200,7 +200,7 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
 
           {/* Signatory 2 */}
           {(() => {
-            let name = 'Prof. Partha Pratim Chakrabarti';
+            let name = 'Dr. Plaban Kumar Bhowmick';
             let affil = 'National Digital Library of India';
             let sigUrl: string | null = null;
             try {

@@ -12,7 +12,7 @@
  * - Zonal Club Approvals desk (auto-triggers registration certificate upon sanction)
  * - Tool Box with 12 regional utilities and PI Digital Signature & Affiliation settings
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ndliClubLogo from '../assets/img/ndli_club_logo.png';
 import {
   FileCheck,
@@ -29,6 +29,15 @@ import {
   Building2,
 } from 'lucide-react';
 import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
+import { NotificationBell, NotificationItem } from './NotificationBell';
+import {
+  downloadCertificateJPG,
+  downloadCertificatePDF,
+  formatFormalDate,
+  printCertificateOnPage,
+  renderRenewalCertificate,
+} from '../utils/renewalCertificateEngine';
+
 import { ApiError } from '../lib/api';
 import {
   ActivityRow,
@@ -217,7 +226,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   // --- Tool Box / PI Signature State --------------------------------
   const [, setPiSettings] = useState<PISignatureSettings | null>(null);
-  const [piName, setPiName] = useState('Prof. Partha Pratim Chakrabarti');
+  const [piName, setPiName] = useState('Dr. Plaban Kumar Bhowmick');
   const [piAffiliation, setPiAffiliation] = useState(
     'Principal Investigator, NDLI Project, Central Library, IIT Kharagpur'
   );
@@ -239,6 +248,36 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   const [renewalConditionsChecked, setRenewalConditionsChecked] = useState(true);
   const [isCertTerminalOpen, setIsCertTerminalOpen] = useState(false);
   const [certClub, setCertClub] = useState<ClubSearchRow | null>(null);
+  const certCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sigFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isCertTerminalOpen && certClub && certCanvasRef.current) {
+      void renderRenewalCertificate(certCanvasRef.current, certClub, {
+        pi_name: piName,
+        pi_affiliation: piAffiliation,
+        signature_image_url: signaturePreview,
+      });
+    }
+  }, [isCertTerminalOpen, certClub, piName, piAffiliation, signaturePreview]);
+
+  const handleDownloadCertJPG = async () => {
+    if (!certCanvasRef.current || !certClub) return;
+    const cid = certClub.club_id || 'CLUB';
+    await downloadCertificateJPG(certCanvasRef.current, `NDLI_Renewal_Certificate_${cid}.jpg`);
+  };
+
+  const handleDownloadCertPDF = async () => {
+    if (!certCanvasRef.current || !certClub) return;
+    const cid = certClub.club_id || 'CLUB';
+    await downloadCertificatePDF(certCanvasRef.current, `NDLI_Renewal_Certificate_${cid}.pdf`);
+  };
+
+  const handlePrintCert = () => {
+    if (!certCanvasRef.current) return;
+    printCertificateOnPage(certCanvasRef.current);
+  };
+
 
   // Handlers for Club Edit & Renewal Modal
   const handleOpenEditModal = (club: ClubSearchRow) => {
@@ -667,6 +706,51 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     return grievances.filter((g) => g.status === 'open').length;
   }, [grievances]);
 
+  const employeeNotifications: NotificationItem[] = useMemo(() => {
+    const list: NotificationItem[] = [];
+    const pendingSuccession = (authorityRequests || []).filter(
+      (r) => r.status === 'Pending Admin Review'
+    );
+    if (pendingSuccession.length > 0) {
+      list.push({
+        id: 'emp-succ-1',
+        type: 'succession',
+        title: `${pendingSuccession.length} Authority Succession Request(s)`,
+        description: 'Colleges have submitted nomination orders for nodal sanction.',
+        timestamp: 'Requires Review',
+        read: false,
+        actionTab: 'succession',
+      });
+    }
+    const openGriev = grievances.filter((g) => g.status === 'open');
+    if (openGriev.length > 0) {
+      list.push({
+        id: 'emp-griev-1',
+        type: 'reminder',
+        title: `${openGriev.length} Active Reminders / Tickets`,
+        description: 'Zonal nodal follow-up required on open institution tickets.',
+        timestamp: 'Attention Due',
+        read: false,
+        actionTab: 'grievances',
+      });
+    }
+    const pendingCharters = charters.filter(
+      (c) => c.status === 'queued' || c.status === 'under_review'
+    );
+    if (pendingCharters.length > 0) {
+      list.push({
+        id: 'emp-chart-1',
+        type: 'approval',
+        title: `${pendingCharters.length} Club Approvals In Queue`,
+        description: 'New club charters awaiting verification and sanction.',
+        timestamp: 'In Queue',
+        read: false,
+        actionTab: 'approvals',
+      });
+    }
+    return list;
+  }, [authorityRequests, grievances, charters]);
+
   const pendingApprovals = useMemo(() => {
     return charters.filter((c) => c.status === 'queued' || c.status === 'under_review').length;
   }, [charters]);
@@ -932,6 +1016,11 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
             >
               {currentEmpId} ({currentOfficer.zone} Zone)
             </div>
+
+            <NotificationBell
+              notifications={employeeNotifications}
+              onNavigateTab={(tab) => setActiveTab(tab as EmployeeTab)}
+            />
 
             <div
               className="avatar"
@@ -1940,38 +2029,50 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                 </div>
               </div>
 
-{/* PI Digital Signature & Affiliation Settings */}
-              <div className="card" style={{ borderTop: '4px solid var(--accent)' }}>
-                <div className="card-header">
+{/* PI Digital Signature & Affiliation Settings (Prominent Lite Tinted Brand Card) */}
+              <div
+                className="card"
+                style={{
+                  background: '#F0F9F5',
+                  border: '1.5px solid #0D7751',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 16px rgba(13, 119, 81, 0.08)',
+                  padding: '1.5rem',
+                }}
+              >
+                <div className="card-header" style={{ borderBottom: '1px solid #D1E5DC', paddingBottom: '0.85rem', marginBottom: '1rem' }}>
                   <div>
-                    <h3 className="card-title">✍️ Project Investigator (PI) Digital Signature &amp; Affiliation</h3>
-                    <p className="card-subtitle">
-                      Configure the official digital signature and affiliation rendered on registration certificates and renewal letters.
+                    <h3 className="card-title" style={{ color: '#103125', fontSize: '1.15rem' }}>
+                      ✍️ Project Investigator (PI) Digital Signature &amp; Affiliation
+                    </h3>
+                    <p className="card-subtitle" style={{ color: '#5A7366' }}>
+                      Configure the official digital signature, name, and affiliation rendered on registration certificates and renewal letters.
                     </p>
                   </div>
-                  <span className="pill pill-warning">Official Credential</span>
+                  <span className="pill pill-success" style={{ fontWeight: 700 }}>Official Credential Authority</span>
                 </div>
 
-                <form onSubmit={handleSavePISettings} style={{ maxWidth: '640px' }}>
-                  <div className="form-group">
-                    <label htmlFor="pi-name-input" className="label-required">
+                <form onSubmit={handleSavePISettings} style={{ maxWidth: '680px' }}>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="pi-name-input" className="label-required" style={{ fontWeight: 700, color: '#103125' }}>
                       Project Investigator (PI) Full Name
                     </label>
                     <input
                       type="text"
                       id="pi-name-input"
                       required
-                      placeholder="e.g. Prof. Partha Pratim Chakrabarti"
+                      placeholder="e.g. Dr. Plaban Kumar Bhowmick"
                       value={piName}
                       onChange={(e) => setPiName(e.target.value)}
+                      style={{ background: '#ffffff', borderColor: '#A7D7C5', fontSize: '0.92rem' }}
                     />
-                    <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.2rem', display: 'block' }}>
-                      Official PI name printed on all generated registration certificates and renewal letters.
+                    <small style={{ color: '#5A7366', fontSize: '0.78rem', marginTop: '0.2rem', display: 'block' }}>
+                      Default authority displayed: Dr. Plaban Kumar Bhowmick. Printed on all registration charters and annual renewal letters.
                     </small>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="pi-affiliation-input" className="label-required">
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="pi-affiliation-input" className="label-required" style={{ fontWeight: 700, color: '#103125' }}>
                       Project Investigator Affiliation &amp; Designation
                     </label>
                     <input
@@ -1981,38 +2082,72 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       placeholder="e.g. Professor, Computer Science & Engineering, IIT Kharagpur"
                       value={piAffiliation}
                       onChange={(e) => setPiAffiliation(e.target.value)}
+                      style={{ background: '#ffffff', borderColor: '#A7D7C5', fontSize: '0.92rem' }}
                     />
-                    <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.2rem', display: 'block' }}>
+                    <small style={{ color: '#5A7366', fontSize: '0.78rem', marginTop: '0.2rem', display: 'block' }}>
                       Appears beneath the PI digital signature on minted certificates.
                     </small>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="pi-sig-file">Upload Digital Signature (PNG format recommended)</label>
-                    <input
-                      type="file"
-                      id="pi-sig-file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        setSignatureFile(file);
-                        if (file) {
-                          setSignaturePreview(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label style={{ fontWeight: 700, color: '#103125', display: 'block', marginBottom: '0.35rem' }}>
+                      Official PI Digital Signature (PNG format recommended)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <input
+                        ref={sigFileInputRef}
+                        type="file"
+                        id="pi-sig-file"
+                        accept="image/png,image/jpeg,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setSignatureFile(file);
+                          if (file) {
+                            setSignaturePreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => sigFileInputRef.current?.click()}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0.45rem 1rem', fontWeight: 700 }}
+                      >
+                        📁 Upload Signature
+                      </button>
+                      <span style={{ fontSize: '0.8rem', color: '#5A7366' }}>
+                        {signatureFile ? signatureFile.name : 'Supports transparent PNG or high-contrast JPG'}
+                      </span>
+                    </div>
                   </div>
 
                   {signaturePreview && (
-                    <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#ffffff', border: '1px dashed var(--border)', borderRadius: '8px', display: 'inline-block' }}>
-                      <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>
-                        Active Signature Preview:
-                      </span>
+                    <div
+                      style={{
+                        marginBottom: '1.25rem',
+                        padding: '0.85rem 1.15rem',
+                        background: '#ffffff',
+                        border: '1.5px dashed #0D7751',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1.25rem',
+                      }}
+                    >
                       <img
                         src={signaturePreview}
                         alt="PI Digital Signature"
-                        style={{ maxHeight: '70px', maxWidth: '240px', objectFit: 'contain' }}
+                        style={{ maxHeight: '65px', maxWidth: '220px', objectFit: 'contain' }}
                       />
+                      <div>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0D7751', display: 'block' }}>
+                          ✓ Digital Signature Verified &amp; Active
+                        </span>
+                        <p style={{ margin: 0, fontSize: '0.74rem', color: '#5A7366' }}>
+                          This signature will appear on all generated registration charters and renewal letters.
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -2021,6 +2156,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       type="submit"
                       className="btn btn-primary"
                       disabled={piBusy || !piAffiliation.trim()}
+                      style={{ fontWeight: 700, padding: '0.55rem 1.25rem' }}
                     >
                       {piBusy ? <span>Saving Settings…</span> : <span>Save Signature &amp; Affiliation</span>}
                     </button>

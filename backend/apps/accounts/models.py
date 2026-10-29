@@ -16,6 +16,7 @@ There is deliberately NO phone/SMS delivery model anywhere in this app:
 mobile numbers are human contact records for the F5 break-glass handover
 only (BRIEF_M1.md §2b), never a code delivery channel.
 """
+
 from __future__ import annotations
 
 from typing import ClassVar

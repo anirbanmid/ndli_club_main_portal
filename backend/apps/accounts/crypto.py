@@ -6,6 +6,7 @@ XOF. This keeps the TOTP secret confidential at rest without adding a
 third-party crypto dependency (the dependency pin list is locked), while
 still detecting tampering. See docs/SECURITY.md ("TOTP secret at rest").
 """
+
 from __future__ import annotations
 
 import base64
@@ -19,9 +20,7 @@ _DOMAIN = b"ndli-m1-totp-seal-v1|"
 
 
 def _key() -> bytes:
-    return hashlib.shake_256(
-        _DOMAIN + (settings.SECRET_KEY or "").encode()
-    ).digest(32)
+    return hashlib.shake_256(_DOMAIN + (settings.SECRET_KEY or "").encode()).digest(32)
 
 
 def _keystream(key: bytes, nonce: bytes, length: int) -> bytes:

@@ -46,7 +46,7 @@ def state_breakdown() -> dict[str, Any]:
     }
     club_rows = {
         row["institution__state__code"]: row["n"]
-        for row in Club.objects.filter(status=Club.Status.ACTIVE)
+        for row in Club.objects.filter(status=Club.Status.ACTIVE, is_sample=False)
         .values("institution__state__code")
         .annotate(n=Count("id"))
     }

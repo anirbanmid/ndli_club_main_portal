@@ -4,6 +4,7 @@ All business transitions happen here; views orchestrate, policies gate,
 the audit decorator records. No SMS/phone delivery exists anywhere — the
 F5 handover is manual and out-of-band by design (A7).
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -84,6 +85,7 @@ def _audit(
         actor_label=actor_label,
         detail=detail,
     )
+
 
 # --- F1: provisional club account -----------------------------------------
 
@@ -303,9 +305,7 @@ def login_with_otp(
         email=email, code=code, purpose=OTP_PURPOSE_LOGIN, request=request
     )
     if row.user_id is None:
-        raise AuthenticationFailed(
-            "That code is not attached to an account."
-        )
+        raise AuthenticationFailed("That code is not attached to an account.")
     user = cast(AbstractBaseUser, row.user)
     profile = _require_club_login_eligible(user)
     _audit(
@@ -503,8 +503,7 @@ def send_email_otp(
         user=cast(User, user),
         purpose=purpose,
         code_hash=hash_secret(code),
-        expires_at=timezone.now()
-        + timedelta(seconds=conf.OTP_TTL_SECONDS),
+        expires_at=timezone.now() + timedelta(seconds=conf.OTP_TTL_SECONDS),
     )
     (provider or get_email_provider()).send(
         EmailMessage(
@@ -801,11 +800,7 @@ def request_password_reset(
     ):
         set_audit_detail(request, rate_limited=True, flow="forgot_password")
         raise Throttled(detail="Too many reset requests. Try again later.")
-    user = (
-        get_user_model()
-        .objects.filter(email=email)
-        .first()
-    )
+    user = get_user_model().objects.filter(email=email).first()
     if user is None:
         return  # generic response; never confirm/deny the address
     profile = user if isinstance(user, User) else None

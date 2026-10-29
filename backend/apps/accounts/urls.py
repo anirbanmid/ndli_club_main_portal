@@ -3,6 +3,7 @@
 Mounted at ``/api/v1/accounts/`` (single origin; PLAN_ACCESS_ARCHITECTURE §6).
 These are the FIRST login routes in the system (M3-A2 deferred auth UI to M4).
 """
+
 from django.urls import path
 
 from apps.accounts import security_views
@@ -16,9 +17,9 @@ urlpatterns = [
     path("otp/verify/", views.OtpVerifyView.as_view(), name="otp-verify"),
     path("captcha/", views.CaptchaView.as_view(), name="captcha"),
     path(
-        'security-challenge/',
+        "security-challenge/",
         security_views.SecurityChallengeView.as_view(),
-        name='security-challenge',
+        name="security-challenge",
     ),
     path("login/", views.PasswordLoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),

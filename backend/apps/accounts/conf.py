@@ -3,6 +3,7 @@
 All values are read from Django settings so tests can override them with
 ``override_settings`` without touching the environment.
 """
+
 from __future__ import annotations
 
 from django.conf import settings

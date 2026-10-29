@@ -3,6 +3,7 @@
 No expiry nagging: a password stays valid until the user changes it (the
 ``must_change_password`` flag is only set by the F2/F5 one-time displays).
 """
+
 from __future__ import annotations
 
 import re

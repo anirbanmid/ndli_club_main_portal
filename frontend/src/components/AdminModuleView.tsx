@@ -19,6 +19,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Building2,
+  Key,
   LifeBuoy,
   Lock,
   Database,
@@ -51,6 +52,7 @@ import {
   fetchGrievanceQueue,
   resolveGrievance,
   sweepGrievances,
+  changeAdminPassword,
 } from '../lib/adminApi';
 
 interface AdminModuleViewProps {
@@ -62,6 +64,7 @@ interface AdminModuleViewProps {
   onSignOut?: () => void;
   /** Patch 0017: session sub-role — MCC Insights is Central/Super only. */
   subRole?: string;
+  onLaunchEmployeeNode?: (empId: string) => void;
 }
 
 /** Display zones -> API zone codes (domain.Zone.code, C2 canonical mapping). */
@@ -126,7 +129,42 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   onHealForensicRecord,
   onSignOut,
   subRole,
+  onLaunchEmployeeNode,
 }) => {
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('New password and confirmation do not match.'));
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError(t('New password must be at least 8 characters long.'));
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError(null);
+    setPasswordNotice(null);
+    try {
+      await changeAdminPassword(oldPassword, newPassword);
+      setPasswordNotice(t('✅ Administrator password updated successfully.'));
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setIsChangePasswordOpen(false), 2000);
+    } catch (err) {
+      setPasswordError(errorMessage(err));
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
   // Master-control desks (patch 0017) — visibility mirrors the backend gates
   // (enforcement stays server-side): MCC Insights = INSIGHTS_GATE
   // (CentralAdmin/SuperAdminOps); Forensic Migration + System = data_admin
@@ -347,6 +385,19 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             variant="dark"
             onNavigateTab={(tab) => setAdminTab(tab as any)}
           />
+          <button
+            type="button"
+            onClick={() => {
+              setIsChangePasswordOpen(true);
+              setPasswordError(null);
+              setPasswordNotice(null);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0 flex items-center gap-1.5"
+            title="Rotate Administrator Password"
+          >
+            <Key className="w-3.5 h-3.5 text-amber-300" />
+            <span>{t("Change Password")}</span>
+          </button>
           {onSignOut && (
             <button
               type="button"
@@ -937,17 +988,108 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
 
       {/* DESK 5: The 6 Zonal Regions / 7 Regional Officers (REAL since slice 1) */}
       {adminTab === 'zones' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="border-b border-[#E2ECE7] pb-4">
-            <h3 className="text-lg font-bold text-[#103125]">
-              {t("Employee Management")}
-            </h3>
-            <p className="text-xs text-[#5A7366]">
-              {t("Who handles which States/UTs. Saving a duty set re-routes work immediately.")}
-            </p>
-          </div>
+        <EmployeeDutyPanel onLaunchEmployeeNode={onLaunchEmployeeNode} />
+      )}
+   
+      {/* Change Admin Password Modal */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-[#103125]">
+                    {t("Change Administrator Password")}
+                  </h4>
+                  <p className="text-[11px] text-[#5A7366]">
+                    {t("Self-service credential rotation for Central Admin account")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChangePasswordOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
 
-          <EmployeeDutyPanel />
+            {passwordError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                {passwordError}
+              </div>
+            )}
+            {passwordNotice && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                {passwordNotice}
+              </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t("Current Password")}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="Enter current admin password"
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 focus:outline-hidden focus:border-[#0D7751]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t("New Password (min 8 characters)")}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter strong new password"
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 focus:outline-hidden focus:border-[#0D7751]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {t("Confirm New Password")}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 focus:outline-hidden focus:border-[#0D7751]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                >
+                  {t("Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordBusy}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-[#103125] hover:bg-[#1a503e] text-white disabled:opacity-50 transition-colors shadow-xs"
+                >
+                  {passwordBusy ? t("Updating...") : t("Update Password")}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

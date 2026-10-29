@@ -6,6 +6,7 @@ separation of duties), the replace semantics (kept rows untouched, no
 inverted windows), the audit row, and THE client requirement: routing
 re-points on the very next request.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -99,9 +100,7 @@ class EmployeeDutyApiTests(TestCase):
         attach_duty(self.officer, "UP")
         _login(self.client, self.officer)
         self.assertEqual(self.client.get(URL).status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            self.client.get(STATES_URL).status_code, status.HTTP_200_OK
-        )
+        self.assertEqual(self.client.get(STATES_URL).status_code, status.HTTP_200_OK)
         response = self.client.put(
             self._duty_url(self.officer), {"states": []}, format="json"
         )
@@ -116,9 +115,7 @@ class EmployeeDutyApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         rows = {row["username"]: row for row in response.json()["results"]}
         self.assertEqual(rows["emp-north"]["state_codes"], ["BR", "UP"])
-        self.assertEqual(
-            [s["code"] for s in rows["emp-north"]["states"]], ["BR", "UP"]
-        )
+        self.assertEqual([s["code"] for s in rows["emp-north"]["states"]], ["BR", "UP"])
         self.assertEqual(rows["emp-east"]["state_codes"], [])
 
     def test_states_endpoint_is_the_dropdown_source(self) -> None:
@@ -159,9 +156,7 @@ class EmployeeDutyApiTests(TestCase):
             {"states": ["BR", "WB"]},
             format="json",
         )
-        after = OfficerAssignment.objects.get(
-            state__code="BR", officer=self.officer
-        )
+        after = OfficerAssignment.objects.get(state__code="BR", officer=self.officer)
         self.assertEqual(after.pk, before)
         self.assertIsNone(after.to_date)
 
@@ -179,9 +174,7 @@ class EmployeeDutyApiTests(TestCase):
     def test_duty_replace_writes_the_audit_row(self) -> None:
         attach_duty(self.officer, "UP")
         _login(self.client, self.master)
-        self.client.put(
-            self._duty_url(self.officer), {"states": ["WB"]}, format="json"
-        )
+        self.client.put(self._duty_url(self.officer), {"states": ["WB"]}, format="json")
         row = AuditLog.objects.get(action="employee.duty.replaced")
         self.assertEqual(row.detail["officer"], self.officer.username)
         self.assertEqual(row.detail["added"], ["WB"])

@@ -11,6 +11,7 @@ Everything authorization-related lives in this one module:
 Views MUST NOT scatter ``if request.user...`` authorization logic
 (``tests/test_m1_t3_matrix.py`` greps for that and fails the build).
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable

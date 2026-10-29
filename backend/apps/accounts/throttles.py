@@ -4,6 +4,7 @@ Throttles are keyed per IP and per account on: login, OTP send, OTP verify
 and password reset. Every lockout is audited by the callers via the
 ``@audit_action`` rows (actions ``auth.lockout`` / ``email_otp.lockout``).
 """
+
 from __future__ import annotations
 
 import time

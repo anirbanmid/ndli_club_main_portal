@@ -11,6 +11,7 @@ image-based and fully server-held.
 * Short TTL (10 minutes) — a stale image is dead.
 * The SVG is rendered from the stdlib only (no Pillow, no new dependency).
 """
+
 from __future__ import annotations
 
 import hmac

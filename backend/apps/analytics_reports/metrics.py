@@ -180,7 +180,7 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     events = _sla_events(zone)
 
     # 1. Total NDLI Clubs
-    club_qs = Club.objects.all()
+    club_qs = Club.objects.filter(is_sample=False)
     if zone:
         club_qs = club_qs.filter(institution__state__zone__code=zone)
     total_clubs = club_qs.count()

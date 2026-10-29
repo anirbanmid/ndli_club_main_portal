@@ -521,6 +521,11 @@ export function App({ ssrLocation }: AppProps = {}) {
                 onHealForensicRecord={handleHealForensicRecord}
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}
+                onLaunchEmployeeNode={(_empId: string) => {
+                  setAdminRole('regional_officer');
+                  setCurrentBranch('admin_module');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
               />
             )
           ) : (

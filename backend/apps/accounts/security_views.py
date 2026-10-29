@@ -1,4 +1,5 @@
 """Dual-Layer Security Challenge -- the Layer-1 issue endpoint (0018)."""
+
 from __future__ import annotations
 
 from rest_framework import status
@@ -25,11 +26,11 @@ class SecurityChallengeView(APIView):
 
     def post(self, request: Request) -> Response:
         body = request.data if isinstance(request.data, dict) else {}
-        domain = str(body.get('domain', '')).strip()
+        domain = str(body.get("domain", "")).strip()
         if domain not in _DOMAINS:
             return Response(
-                {'error': 'Unknown security domain.'},
+                {"error": "Unknown security domain."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         payload = issue_challenge(request, domain)
-        return Response(payload, headers={'Cache-Control': 'no-store, max-age=0'})
+        return Response(payload, headers={"Cache-Control": "no-store, max-age=0"})

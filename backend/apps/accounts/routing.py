@@ -7,6 +7,7 @@ from ``data/samples/`` and admin-editable, never hard-coded. States with
 no open assignment resolve to ``None`` ("awaiting officer assignment" —
 ``manage.py verify_domain`` reports them; registrations are never blocked).
 """
+
 from __future__ import annotations
 
 

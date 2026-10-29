@@ -7,6 +7,7 @@ Rules enforced here (BRIEF_M1.md §6):
   plaintext.
 * Link tokens are 32 random bytes (secrets.token_urlsafe(32)).
 """
+
 from __future__ import annotations
 
 import hashlib

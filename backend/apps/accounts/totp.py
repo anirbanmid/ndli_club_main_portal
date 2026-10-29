@@ -4,6 +4,7 @@ Replay-window 1: codes are accepted within one time-step either side of
 now, and a time-step counter already used is never accepted again
 (``User.totp_last_counter``).
 """
+
 from __future__ import annotations
 
 import re
@@ -24,9 +25,7 @@ def new_totp_secret() -> str:
     return pyotp.random_base32()
 
 
-def provision_totp(
-    profile: User, secret: str | None = None
-) -> tuple[str, list[str]]:
+def provision_totp(profile: User, secret: str | None = None) -> tuple[str, list[str]]:
     """Enable TOTP on the account; returns (secret, recovery codes) ONCE."""
     secret = secret or new_totp_secret()
     profile.totp_secret_encrypted = crypto.seal(secret)
@@ -51,9 +50,7 @@ def issue_recovery_codes(profile: User) -> list[str]:
     for _ in range(10):
         code = generate_recovery_code()
         codes.append(code)
-        TOTPRecoveryCode.objects.create(
-            user=profile, code_hash=hash_secret(code)
-        )
+        TOTPRecoveryCode.objects.create(user=profile, code_hash=hash_secret(code))
     return codes
 
 

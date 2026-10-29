@@ -12,6 +12,7 @@ Drivers:
 There is NO SMS/voice adapter in this product — email is the only
 verification channel (user decision 2026-10-17 23:13).
 """
+
 from __future__ import annotations
 
 import json
@@ -58,9 +59,7 @@ class ConsoleEmailProvider(EmailProvider):
 
 def _urllib_transport(url: str, headers: dict[str, str], payload: bytes) -> int:
     """Default HTTP transport for the SendGrid driver (urllib, no extra deps)."""
-    request = urllib.request.Request(
-        url, data=payload, headers=headers, method="POST"
-    )
+    request = urllib.request.Request(url, data=payload, headers=headers, method="POST")
     try:
         # The request URL is the fixed SendGrid https class constant — never user input.
         with urllib.request.urlopen(request, timeout=10) as response:  # noqa: S310  # nosec B310
@@ -112,9 +111,7 @@ def get_email_provider() -> EmailProvider:
     """
     choice = getattr(settings, "EMAIL_PROVIDER", "").strip().lower()
     if not choice:
-        choice = (
-            "sendgrid" if getattr(settings, "SENDGRID_API_KEY", "") else "console"
-        )
+        choice = "sendgrid" if getattr(settings, "SENDGRID_API_KEY", "") else "console"
     if choice == "sendgrid":
         return SendGridEmailProvider()
     return ConsoleEmailProvider()

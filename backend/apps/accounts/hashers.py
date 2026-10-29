@@ -4,6 +4,7 @@ Django's stock Argon2 hasher is used as the library loader, but the type is
 pinned explicitly to Argon2id (``argon2.Type.ID``) here so the requirement
 holds regardless of Django defaults.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -66,9 +67,7 @@ class Argon2idPasswordHasher(BasePasswordHasher):
             # Argon2PasswordHasher uses this API for the same reason.
             # NB: argon2.PasswordHasher.verify takes (hash, password).
             return bool(
-                argon2.PasswordHasher().verify(
-                    self._argon2_hash(encoded), password
-                )
+                argon2.PasswordHasher().verify(self._argon2_hash(encoded), password)
             )
         except (argon2.exceptions.VerificationError, argon2.exceptions.InvalidHash):
             return False

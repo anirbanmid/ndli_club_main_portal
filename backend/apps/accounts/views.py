@@ -19,6 +19,7 @@ Discipline (P0/P4/I5):
   exactly one place, the change-password endpoint (``CategoryGate(
   require_fresh_password=False)``).
 """
+
 from __future__ import annotations
 
 from django.contrib.auth import login as auth_login
@@ -189,7 +190,7 @@ class ChangePasswordView(APIView):
 
     permission_classes = [
         IsAuthenticated,
-        CategoryGate("club", require_fresh_password=False),
+        CategoryGate("club", "admin", require_fresh_password=False),
     ]
 
     def post(self, request: Request) -> Response:

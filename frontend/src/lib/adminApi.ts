@@ -113,6 +113,18 @@ export interface ZoneDashboard {
 }
 
 export interface OfficerEvaluation {
+  officer_id?: string | number;
+  officer_name?: string;
+  emp_id?: string;
+  zone?: string;
+  calls?: number;
+  calls_made?: number;
+  emails?: number;
+  emails_sent?: number;
+  events?: number;
+  online_training?: number;
+  weighted_score?: number | string;
+  score?: number | string;
   [key: string]: unknown;
 }
 
@@ -441,11 +453,20 @@ export interface DutyState {
 
 export interface EmployeeDutyRow {
   id: number;
+  emp_id?: string;
   username: string;
   name: string;
+  full_name?: string;
   email: string;
+  zone?: string;
+  zone_code?: string;
   state_codes: string[];
+  assigned_states?: string;
   states: DutyState[];
+  is_active?: boolean;
+  account_state?: string;
+  clubs_approved_count?: number;
+  support_logs_count?: number;
 }
 
 export interface SessionSummary {
@@ -485,6 +506,114 @@ export function saveEmployeeDuty(
   return put(`/employees/${officerId}/duty/`, { states });
 }
 
+/** POST /admin/api/v1/employees/create/ — Onboard new employee. */
+export function createEmployee(data: {
+  username?: string;
+  full_name: string;
+  email: string;
+  password?: string;
+  zone: string;
+  states?: string[];
+}): Promise<{
+  success: boolean;
+  message: string;
+  employee: EmployeeDutyRow;
+}> {
+  return post('/employees/create/', data);
+}
+
+/** PUT /admin/api/v1/employees/<id>/update/ — Edit employee credentials & duty. */
+export function updateEmployee(
+  officerId: number,
+  data: {
+    name?: string;
+    email?: string;
+    password?: string;
+    zone?: string;
+    states?: string[];
+  },
+): Promise<{
+  success: boolean;
+  message: string;
+  employee: EmployeeDutyRow;
+}> {
+  return put(`/employees/${officerId}/update/`, data);
+}
+
+/** POST /admin/api/v1/employees/<id>/status/ — Block or unblock an employee. */
+export function toggleEmployeeStatus(
+  officerId: number,
+  action: 'block' | 'unblock',
+): Promise<{
+  success: boolean;
+  is_active: boolean;
+  account_state: string;
+  message: string;
+}> {
+  return post(`/employees/${officerId}/status/`, { action });
+}
+
+/** GET /admin/api/v1/employees/totp/setup/ — Get admin TOTP secret & QR URI. */
+export function fetchAdminTotpSetup(): Promise<{
+  is_enabled: boolean;
+  secret: string;
+  otpauth_uri: string;
+}> {
+  return get('/employees/totp/setup/');
+}
+
+/** POST /admin/api/v1/employees/totp/verify-setup/ — Verify and enable TOTP. */
+export function verifyAdminTotpSetup(code: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return post('/employees/totp/verify-setup/', { code });
+}
+
+/** POST /admin/api/v1/employees/clubs/<club_code>/reset-password/ — TOTP-gated password reset. */
+export function resetClubPassword(
+  clubCode: string,
+  totpCode: string,
+  customPassword?: string,
+): Promise<{
+  success: boolean;
+  club_code: string;
+  institution_name: string;
+  username: string;
+  temporary_password: string;
+  message: string;
+}> {
+  return post(`/employees/clubs/${clubCode}/reset-password/`, {
+    totp_code: totpCode,
+    custom_password: customPassword,
+  });
+}
+
+/** PUT /admin/api/v1/employees/clubs/<club_code>/update/ — Edit club record. */
+export function updateClubDetails(
+  clubCode: string,
+  data: Record<string, unknown>,
+): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  return put(`/employees/clubs/${clubCode}/update/`, data);
+}
+
+/** POST /api/v1/accounts/password/change/ — Self-service Admin Password Rotation. */
+export function changeAdminPassword(
+  oldPassword: string,
+  newPassword: string,
+): Promise<{ detail?: string; message?: string }> {
+  return request('/api/v1/accounts/password/change/', {
+    method: 'POST',
+    body: JSON.stringify({
+      old_password: oldPassword,
+      new_password: newPassword,
+    }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Local Backups & Master CSV Export (Tier 1 & Tier 2)
 // ---------------------------------------------------------------------------
@@ -512,3 +641,35 @@ export function createLocalBackup(notes?: string): Promise<{
 }> {
   return post('/data/local-backups/', { notes });
 }
+export interface AdminClubRow {
+  id: number;
+  code: string;
+  club_id: string;
+  registration_no: string;
+  institution_name: string;
+  name: string;
+  state: string;
+  state_code: string;
+  zone: string;
+  status: string;
+  date_of_approval?: string | null;
+  last_renewal_date?: string | null;
+  upcoming_renewal_date?: string | null;
+  member_count?: number;
+  patron_name?: string;
+  patron_email?: string;
+  patron_phone?: string;
+  president_name?: string;
+  president_email?: string;
+  president_phone?: string;
+  secretary_name?: string;
+  secretary_email?: string;
+  secretary_phone?: string;
+  approved_by_emp_id?: string;
+}
+
+/** GET /admin/api/v1/employees/clubs/ — All canonical clubs for the Club Register. */
+export function fetchAdminClubs(): Promise<{ clubs: AdminClubRow[]; total: number }> {
+  return get('/employees/clubs/');
+}
+

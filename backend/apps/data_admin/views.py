@@ -22,6 +22,7 @@ without a net.
 Mounted under ``/admin/`` because the admin prefix is the only admin door
 (M1 T3 gate: admin-module routes must live under /admin/).
 """
+
 from __future__ import annotations
 
 import csv
@@ -59,11 +60,9 @@ CONFIRM_PHRASE = "HARD-RESET-FOR-HANDOVER"
 ADMIN_GATE = CategoryGate("admin", {SubRole.SUPER_ADMIN_OPS})
 
 _BAD_PIN = "Invalid handover PIN. Reset aborted."
-_NO_PASSWORD = (
-    'Central Admin password is required to authorize the hard reset.'
-)
-_BAD_PASSWORD = 'Authentication failed: Invalid Master Admin password.'
-_STALE_CHALLENGE = 'Security challenge expired or already used.'
+_NO_PASSWORD = "Central Admin password is required to authorize the hard reset."
+_BAD_PASSWORD = "Authentication failed: Invalid Master Admin password."
+_STALE_CHALLENGE = "Security challenge expired or already used."
 _TEMPLATE = (
     "This is a destructive operation that wipes ALL data except the "
     "provisioned accounts. To proceed, resend with body: "
@@ -118,31 +117,29 @@ class HardResetView(APIView):
         # (AUTH-TURF, owner 2026-10-27 21:29; the
         # two turfs NEVER MIX; server-level actions will re-auth with the
         # Master Admin password when Emergency Restore is built).
-        challenge = str(body.get('challenge', '')).strip()
-        captcha_answer = str(body.get('captcha', '')).strip()
-        if not consume_challenge(
-            request, challenge, captcha_answer, DOMAIN_SERVER
-        ):
-            self._audit(request, 'hard_reset.denied', 'challenge_invalid')
+        challenge = str(body.get("challenge", "")).strip()
+        captcha_answer = str(body.get("captcha", "")).strip()
+        if not consume_challenge(request, challenge, captcha_answer, DOMAIN_SERVER):
+            self._audit(request, "hard_reset.denied", "challenge_invalid")
             return Response(
-                {'error': _STALE_CHALLENGE},
+                {"error": _STALE_CHALLENGE},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         # Layer 2: the Master Admin password authorises a server-level reset.
-        password = str(body.get('password', '')).strip()
+        password = str(body.get("password", "")).strip()
         if not password:
-            self._audit(request, 'hard_reset.denied', 'password_missing')
+            self._audit(request, "hard_reset.denied", "password_missing")
             return Response(
-                {'error': _NO_PASSWORD},
+                {"error": _NO_PASSWORD},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
         username = request.user.get_username()
         if verify_domain_password(DOMAIN_SERVER, password) is None:
-            self._audit(request, 'hard_reset.denied', 'password_invalid')
+            self._audit(request, "hard_reset.denied", "password_invalid")
             return Response(
-                {'error': f'{_BAD_PASSWORD} Reset aborted.'},
+                {"error": f"{_BAD_PASSWORD} Reset aborted."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -240,7 +237,6 @@ class HardResetView(APIView):
             pass
 
 
-
 BACKUPS_DIR = Path(settings.BASE_DIR) / "data" / "backups"
 
 
@@ -256,46 +252,50 @@ class MasterClubsCSVView(APIView):
         from apps.domain.models import Club
         from apps.governance.models import CharterMaterialisation
 
-        clubs = Club.objects.select_related(
-            "institution__state__zone",
-            "institution__district",
-        ).prefetch_related(
-            "authority_assignments__user",
-            "memberships"
-        ).order_by("code")
+        clubs = (
+            Club.objects.filter(is_sample=False)
+            .select_related(
+                "institution__state__zone",
+                "institution__district",
+            )
+            .prefetch_related("authority_assignments__user", "memberships")
+            .order_by("code")
+        )
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="master_clubs.csv"'
         writer = csv.writer(response)
-        writer.writerow([
-            "Club ID",
-            "Registration Number",
-            "Institution Name",
-            "State",
-            "District",
-            "Operational Zone",
-            "AISHE Code",
-            "Pincode",
-            "Official Communication Phone",
-            "Official Communication Email",
-            "President Name",
-            "President Phone",
-            "President Email",
-            "Secretary Name",
-            "Secretary Phone",
-            "Secretary Email",
-            "Patron Name",
-            "Patron Phone",
-            "Patron Email",
-            "Executive Member Name",
-            "Executive Member Phone",
-            "Executive Member Email",
-            "Total Member Count",
-            "Solo Activities Performed",
-            "Joint Cross-Campus Activities (Inter-Club Shield)",
-            "Approval Date",
-            "Current Club Status",
-        ])
+        writer.writerow(
+            [
+                "Club ID",
+                "Registration Number",
+                "Institution Name",
+                "State",
+                "District",
+                "Operational Zone",
+                "AISHE Code",
+                "Pincode",
+                "Official Communication Phone",
+                "Official Communication Email",
+                "President Name",
+                "President Phone",
+                "President Email",
+                "Secretary Name",
+                "Secretary Phone",
+                "Secretary Email",
+                "Patron Name",
+                "Patron Phone",
+                "Patron Email",
+                "Executive Member Name",
+                "Executive Member Phone",
+                "Executive Member Email",
+                "Total Member Count",
+                "Solo Activities Performed",
+                "Joint Cross-Campus Activities (Inter-Club Shield)",
+                "Approval Date",
+                "Current Club Status",
+            ]
+        )
 
         for c in clubs:
             inst = c.institution
@@ -337,39 +337,39 @@ class MasterClubsCSVView(APIView):
                 else f"NDLI/CLUB/{c.code}"
             )
 
-            district_name = (
-                inst.district.name if inst and inst.district else ""
-            )
+            district_name = inst.district.name if inst and inst.district else ""
 
-            writer.writerow([
-                c.code,
-                reg_num,
-                inst.name if inst else c.name,
-                st.name if st else "",
-                district_name,
-                zn.code if zn else "",
-                inst.aishe_code if inst and inst.aishe_code else "",
-                "",
-                comm_phone,
-                comm_email,
-                f"{pres.first_name} {pres.last_name}".strip() if pres else "",
-                getattr(pres, "phone", "") if pres else "",
-                pres.email if pres else "",
-                f"{sec.first_name} {sec.last_name}".strip() if sec else "",
-                getattr(sec, "phone", "") if sec else "",
-                sec.email if sec else "",
-                f"{pat.first_name} {pat.last_name}".strip() if pat else "",
-                getattr(pat, "phone", "") if pat else "",
-                pat.email if pat else "",
-                f"{exec_m.first_name} {exec_m.last_name}".strip() if exec_m else "",
-                getattr(exec_m, "phone", "") if exec_m else "",
-                exec_m.email if exec_m else "",
-                member_count,
-                0,  # Solo activities count
-                0,  # Joint activities (Inter-Club Shield) count
-                c.created_at.strftime("%Y-%m-%d"),
-                c.status,
-            ])
+            writer.writerow(
+                [
+                    c.code,
+                    reg_num,
+                    inst.name if inst else c.name,
+                    st.name if st else "",
+                    district_name,
+                    zn.code if zn else "",
+                    inst.aishe_code if inst and inst.aishe_code else "",
+                    "",
+                    comm_phone,
+                    comm_email,
+                    f"{pres.first_name} {pres.last_name}".strip() if pres else "",
+                    getattr(pres, "phone", "") if pres else "",
+                    pres.email if pres else "",
+                    f"{sec.first_name} {sec.last_name}".strip() if sec else "",
+                    getattr(sec, "phone", "") if sec else "",
+                    sec.email if sec else "",
+                    f"{pat.first_name} {pat.last_name}".strip() if pat else "",
+                    getattr(pat, "phone", "") if pat else "",
+                    pat.email if pat else "",
+                    f"{exec_m.first_name} {exec_m.last_name}".strip() if exec_m else "",
+                    getattr(exec_m, "phone", "") if exec_m else "",
+                    exec_m.email if exec_m else "",
+                    member_count,
+                    0,  # Solo activities count
+                    0,  # Joint activities (Inter-Club Shield) count
+                    c.created_at.strftime("%Y-%m-%d"),
+                    c.status,
+                ]
+            )
 
         return response
 
@@ -386,13 +386,15 @@ class LocalBackupView(APIView):
         BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
         items = []
         for p in sorted(BACKUPS_DIR.glob("backup_*.json"), reverse=True):
-            items.append({
-                "filename": p.name,
-                "size_bytes": p.stat().st_size,
-                "created_at": datetime.fromtimestamp(
-                    p.stat().st_mtime, tz=UTC
-                ).isoformat(),
-            })
+            items.append(
+                {
+                    "filename": p.name,
+                    "size_bytes": p.stat().st_size,
+                    "created_at": datetime.fromtimestamp(
+                        p.stat().st_mtime, tz=UTC
+                    ).isoformat(),
+                }
+            )
         return Response({"backups": items})
 
     def post(self, request: Request) -> Response:
@@ -408,11 +410,13 @@ class LocalBackupView(APIView):
         snapshot = {
             "created_at": datetime.now(UTC).isoformat(),
             "operator": request.user.username,
-            "clubs_count": Club.objects.count(),
+            "clubs_count": Club.objects.filter(is_sample=False).count(),
             "institutions_count": Institution.objects.count(),
             "activities_count": ActivityLog.objects.count(),
             "tickets_count": GrievanceTicket.objects.count(),
-            "clubs": list(Club.objects.values("code", "name", "status")),
+            "clubs": list(
+                Club.objects.filter(is_sample=False).values("code", "name", "status")
+            ),
             "activities": list(
                 ActivityLog.objects.values(
                     "activity_id", "support_type", "call_count", "timestamp"
@@ -422,9 +426,11 @@ class LocalBackupView(APIView):
         with open(target_path, "w", encoding="utf-8") as f:
             json.dump(snapshot, f, indent=2, default=str)
 
-        return Response({
-            "success": True,
-            "message": f"Local backup created: {filename}",
-            "filename": filename,
-            "size_bytes": target_path.stat().st_size,
-        })
+        return Response(
+            {
+                "success": True,
+                "message": f"Local backup created: {filename}",
+                "filename": filename,
+                "size_bytes": target_path.stat().st_size,
+            }
+        )

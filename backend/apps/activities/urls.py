@@ -1,4 +1,5 @@
 """URL routing for the activities surface."""
+
 from django.urls import path
 
 from . import views

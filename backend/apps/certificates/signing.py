@@ -17,6 +17,7 @@ Design law:
   length-prefixed UTF-8 fields), so a signature can never be replayed over a
   reinterpreted payload (no delimiter injection).
 """
+
 from __future__ import annotations
 
 import base64

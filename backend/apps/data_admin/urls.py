@@ -3,6 +3,7 @@
 Mounted at ``/admin/api/v1/data/`` in ``config/urls.py`` - before
 ``path("admin/", admin.site.urls)`` so the API prefix is never shadowed.
 """
+
 from django.urls import path
 
 from . import views

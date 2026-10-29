@@ -8,11 +8,11 @@ Named pins (each one measures QUERY COUNTS, not vibes):
 * the officer routing cache is explicit: 1 query cold, 0 warm, and every
   assignment/state write invalidates it (P4 explicit invalidation).
 """
+
 from __future__ import annotations
 
-from datetime import date
-
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from apps.accounts.models import Category, SubRole, User
 from apps.core import scoping
@@ -26,10 +26,7 @@ from .support import attach_duty, make_user
 
 def _bulk_students(prefix: str, count: int) -> list:
     user_model = get_user_model()
-    users = [
-        user_model(username=f"{prefix}-{index}")
-        for index in range(count)
-    ]
+    users = [user_model(username=f"{prefix}-{index}") for index in range(count)]
     user_model.objects.bulk_create(users)
     return list(users)
 
@@ -164,7 +161,7 @@ class OfficerCachePins(TestCase):
             self.assertEqual(assignments.officer_username_for_state("DELHI"), "EMP01")
         # Explicit invalidation on every assignment write (P4). The newer
         # window (today) wins the deterministic pick.
-        assign_officer("EMP09", self.delhi, from_date=date.today())
+        assign_officer("EMP09", self.delhi, from_date=timezone.localdate())
         with self.assertNumQueries(1):
             self.assertEqual(assignments.officer_username_for_state("DELHI"), "EMP09")
         with self.assertNumQueries(0):

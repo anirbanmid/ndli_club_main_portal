@@ -12,6 +12,7 @@ Engine note (M3-A5): PostgreSQL 16 is the tested engine. The non-Postgres
 branch below exists only so a dev shell on SQLite does not 500; it is
 deliberately NOT part of the tested surface and not faked as equivalent.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -35,11 +36,7 @@ def _trigram_clause(q: str) -> Q:
 
 def _fallback_clause(q: str) -> Q:
     """Dev-only fallback (non-PostgreSQL): substring match, no ranking."""
-    return (
-        Q(name__icontains=q)
-        | Q(code__icontains=q)
-        | Q(aishe_code__icontains=q)
-    )
+    return Q(name__icontains=q) | Q(code__icontains=q) | Q(aishe_code__icontains=q)
 
 
 def directory_search(

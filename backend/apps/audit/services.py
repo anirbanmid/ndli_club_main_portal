@@ -1,4 +1,5 @@
 """Audit recording + chain verification (BRIEF_M1.md §5)."""
+
 from __future__ import annotations
 
 import uuid

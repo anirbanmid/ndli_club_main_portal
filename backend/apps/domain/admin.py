@@ -6,6 +6,7 @@ loader — never hard-coded. The admin surface is staff-only (Module 3 gate),
 list views pre-fetch their relations (no N+1) and the immutable
 ``Institution.legacy_id`` is read-only (it is an anchor, not an input).
 """
+
 from __future__ import annotations
 
 from typing import Any

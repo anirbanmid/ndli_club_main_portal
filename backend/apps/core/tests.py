@@ -4,6 +4,7 @@ These run with the dev settings and zero external dependencies: Django test
 client requests against the health probes and the OpenAPI schema endpoint.
 Run with ``pytest`` (from backend/) or ``python manage.py test apps.core``.
 """
+
 from django.test import TestCase
 
 

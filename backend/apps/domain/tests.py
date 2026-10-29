@@ -4,6 +4,7 @@ The named milestone pins live in ``backend/tests/test_m2_d*.py`` (gates
 D1-D5) and ``backend/tests/test_m2_security.py`` (adversarial pins). This
 module only carries the per-app smoke checks in the M1 house style.
 """
+
 from django.test import TestCase
 
 from apps.domain.models import Zone

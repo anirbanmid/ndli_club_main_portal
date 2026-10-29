@@ -10,6 +10,7 @@ gate — it proves the FK swap kept the User semantics byte-for-byte):
 * the scope registry fails CLOSED for unscoped models;
 * the Profile code-string compat surface behaves exactly like M1.
 """
+
 from __future__ import annotations
 
 from django.test import RequestFactory
@@ -102,8 +103,11 @@ class JoinScopingPins(TestCase):
         visible = scoping.scope_clubs(Club.objects.all(), admin_a)
         self.assertIn(club_a.pk, set(visible.values_list("pk", flat=True)))
         self.assertNotIn(club_b.pk, set(visible.values_list("pk", flat=True)))
-        self.assertFalse(scoping.scope_members(User.objects.all(), admin_a)
-                         .filter(pk=admin_b.pk).exists())
+        self.assertFalse(
+            scoping.scope_members(User.objects.all(), admin_a)
+            .filter(pk=admin_b.pk)
+            .exists()
+        )
 
     def test_central_admin_sees_all_zones_over_the_joins(self) -> None:
         boss = make_user(

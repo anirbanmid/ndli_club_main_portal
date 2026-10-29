@@ -15,6 +15,7 @@ SF-003..SF-008):
 * AISHE linking is validated, unique and audited (soft verification done
   right).
 """
+
 from __future__ import annotations
 
 import json
@@ -161,6 +162,4 @@ class ImmutabilityAndReadOnlyPins(TestCase):
         with self.assertRaises(ValidationError):
             link_aishe_code(institution=other, aishe_code="AISHE-C-999999")
         with self.assertRaises(ValidationError):
-            link_aishe_code(
-                institution=institution, aishe_code="AISHE-C-111111"
-            )
+            link_aishe_code(institution=institution, aishe_code="AISHE-C-111111")

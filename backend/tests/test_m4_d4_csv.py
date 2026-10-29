@@ -12,6 +12,7 @@ Named pins:
   system (export) is prefix-escaped; formula cells in import are rejected
   as explicit row errors (strict: whitespace-padded too).
 """
+
 from __future__ import annotations
 
 import csv
@@ -88,9 +89,7 @@ class CsvFixture(TestCase):
         self.client.force_login(self.admin)
 
     def upload(self, data: bytes, name: str = "roster.csv") -> Any:
-        return self.client.post(
-            UPLOAD, {"file": SimpleUploadedFile(name, data)}
-        )
+        return self.client.post(UPLOAD, {"file": SimpleUploadedFile(name, data)})
 
     def upload_ok(self, data: bytes, name: str = "roster.csv") -> str:
         response = self.upload(data, name)
@@ -200,8 +199,13 @@ class DryRunPreviewTests(CsvFixture):
         data = csv_bytes(
             [ok_row(1)],
             header=[
-                "Name", "email", "phone", "admission_no",
-                "program", "batch_year", "role",
+                "Name",
+                "email",
+                "phone",
+                "admission_no",
+                "program",
+                "batch_year",
+                "role",
             ],
         )
         response = self.dry_run(self.upload_ok(data))
@@ -267,8 +271,13 @@ class W7MalformedRowTests(CsvFixture):
     def test_formula_phone_is_rejected_by_the_same_strict_rule(self) -> None:
         """Documented behaviour: ANY formula-prefixed cell is an error row."""
         row = [
-            "Student X", "sx@example.test", "+91 98765 43210",
-            "ADMX", "BTech", "2024", "member",
+            "Student X",
+            "sx@example.test",
+            "+91 98765 43210",
+            "ADMX",
+            "BTech",
+            "2024",
+            "member",
         ]
         response = self.dry_run(self.upload_ok(csv_bytes([row])))
         self.assertEqual(
@@ -315,7 +324,9 @@ class W7DuplicateTests(CsvFixture):
 
     def test_duplicates_against_the_roster_are_reported(self) -> None:
         RosterEntry.objects.create(
-            club=self.club, name="Existing", admission_no="ADM0001",
+            club=self.club,
+            name="Existing",
+            admission_no="ADM0001",
             email="s1@example.test",
         )
         response = self.dry_run(self.upload_ok(csv_bytes([ok_row(1), ok_row(2)])))
@@ -329,7 +340,9 @@ class W7DuplicateTests(CsvFixture):
     def test_cross_identity_duplicate_is_caught_on_either_key(self) -> None:
         """Same email, NEW admission number still counts as a duplicate."""
         RosterEntry.objects.create(
-            club=self.club, name="Existing", admission_no="ADMZZZ",
+            club=self.club,
+            name="Existing",
+            admission_no="ADMZZZ",
             email="s1@example.test",
         )
         response = self.dry_run(self.upload_ok(csv_bytes([ok_row(1)])))
@@ -443,7 +456,9 @@ class W8ZeroSilentLossTests(CsvFixture):
 
     def test_every_row_lands_as_success_or_an_explicit_error(self) -> None:
         RosterEntry.objects.create(
-            club=self.club, name="Existing", admission_no="ADM0000",
+            club=self.club,
+            name="Existing",
+            admission_no="ADM0000",
             email="existing@example.test",
         )
         rows = [
@@ -452,7 +467,15 @@ class W8ZeroSilentLossTests(CsvFixture):
             ["only", "six", "cells", "here", "now", "x"],  # error
             ["=SUM(A1)", "e1@example.test", "", "ADM0004", "BTech", "2024", "member"],  # noqa: E501
             # dup in file
-            ["Student 1 again", "s1@example.test", "", "ADM0001", "B", "2024", "member"],  # noqa: E501
+            [
+                "Student 1 again",
+                "s1@example.test",
+                "",
+                "ADM0001",
+                "B",
+                "2024",
+                "member",
+            ],  # noqa: E501
             ok_row(6),  # ok
             # dup vs roster
             ["Existing", "existing@example.test", "", "ADM0000", "B", "2024", "member"],  # noqa: E501
@@ -509,9 +532,7 @@ class P5ResumeTests(CsvFixture):
         job.refresh_from_db()
         self.assertEqual(job.status, RosterImportJob.Status.COMPLETED)
         self.assertEqual(job.total_rows, 2)  # rows 4-5 only
-        self.assertEqual(
-            sorted(row["row"] for row in job.row_report), [4, 5]
-        )
+        self.assertEqual(sorted(row["row"] for row in job.row_report), [4, 5])
 
     def test_completed_job_replays_without_double_writing(self) -> None:
         upload_id = self.upload_ok(csv_bytes([ok_row(1), ok_row(2)]))
@@ -536,16 +557,24 @@ class P0ExportNeutralizationTests(CsvFixture):
 
     def test_export_neutralizes_every_formula_prefix(self) -> None:
         RosterEntry.objects.create(
-            club=self.club, name="=SUM(A1)", email="e1@example.test",
+            club=self.club,
+            name="=SUM(A1)",
+            email="e1@example.test",
             admission_no="ADM1",
         )
         RosterEntry.objects.create(
-            club=self.club, name="Plain Jane", email="j@example.test",
-            admission_no="ADM2", phone="+91 98765 43210",
+            club=self.club,
+            name="Plain Jane",
+            email="j@example.test",
+            admission_no="ADM2",
+            phone="+91 98765 43210",
         )
         RosterEntry.objects.create(
-            club=self.club, name="@cmd", email="c@example.test",
-            admission_no="ADM3", program="-moz-box",
+            club=self.club,
+            name="@cmd",
+            email="c@example.test",
+            admission_no="ADM3",
+            program="-moz-box",
         )
         response = self.client.get(EXPORT)
         self.assertEqual(response.status_code, 200)

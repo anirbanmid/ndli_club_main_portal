@@ -386,31 +386,203 @@ export const InsightsPanel: React.FC = () => {
     void load();
   }, [load]);
 
+  const penetration = report?.penetration;
+  const renewalHealth = report?.renewal_health;
+  const recommendations = report?.strategic_recommendations ?? [];
+  const roadmap = report?.roadmap ?? [];
+  const unrepresented = penetration?.unrepresented_states ?? [];
+
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-      <div className="border-b border-[#E2ECE7] pb-4">
-        <h3 className="text-lg font-bold text-[#103125]">{t('MCC Strategic Insights')}</h3>
-        <p className="text-xs text-[#5A7366]">
-          {t('Derived at query time from the live data (penetration, renewal health, audit mix, recommendations, roadmap). Read-only.')}
-        </p>
+    <div className="space-y-6">
+      {/* AI Decision Engine Header & Recommendations Card */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E2ECE7] pb-5">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[11px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-[#5B45A8] text-white">
+                AI Decision Engine
+              </span>
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                Active Strategic Horizon
+              </span>
+            </div>
+            <h3 className="text-xl font-extrabold text-[#103125]">
+              {t('AI Strategic Roadmap & Policy Insights')}
+            </h3>
+            <p className="text-xs text-[#5A7366] max-w-3xl mt-1">
+              {t('Automated analytical pipelines processing master records to formulate data-backed recommendations for IIT Kharagpur administration.')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#5B45A8] hover:bg-[#4a378a] text-white flex items-center gap-1.5 shrink-0 transition-colors shadow-xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>{t('Re-Analyze Data ↻')}</span>
+          </button>
+        </div>
+
+        {error && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</span>
+            <button onClick={() => void load()} className="underline font-bold">{t('Retry')}</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-12 text-xs text-[#5A7366] flex flex-col items-center justify-center gap-2">
+            <RefreshCw className="w-5 h-5 animate-spin text-[#5B45A8]" />
+            <span>Running neural decision heuristics across master records...</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recommendations.map((rec, i) => {
+                const isHigh = rec.priority === 'High';
+                return (
+                  <div
+                    key={i}
+                    className="p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-xs transition-shadow"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isHigh
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}
+                        >
+                          {rec.priority} Priority
+                        </span>
+                        <span className="text-[10px] font-bold text-[#0D7751] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          {rec.category}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-extrabold text-[#103125]">
+                        {rec.title}
+                      </h4>
+                      <p className="text-xs text-[#5A7366] leading-relaxed">
+                        {rec.insight}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-[11px] text-[#0A5C3E] leading-relaxed">
+                      <strong className="block text-[10px] uppercase font-black tracking-wider text-emerald-900 mb-0.5">
+                        Recommended Policy Action:
+                      </strong>
+                      {rec.action}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> {error}</span>
-          <button onClick={() => void load()} className="underline font-bold">{t('Retry')}</button>
+      {/* State Penetration Deficit Table */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <div className="border-b border-[#E2ECE7] pb-3">
+          <h4 className="text-base font-extrabold text-[#103125]">
+            {t('State Penetration Deficit Analysis')}
+          </h4>
+          <p className="text-xs text-[#5A7366]">
+            {t('Identifies States and Union Territories needing immediate outreach campaigns.')}
+          </p>
         </div>
-      )}
 
-      {loading ? (
-        <div className="text-center py-12 text-xs text-[#5A7366]">{t('Building report…')}</div>
-      ) : report ? (
-        <div className="space-y-6">
-          {Object.entries(report).map(([key, value]) => (
-            <ReportSection key={key} name={key} value={value} />
+        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
+          <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
+            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
+              <tr>
+                <th className="p-3">{t('Deficit Category')}</th>
+                <th className="p-3 text-center">{t('Count')}</th>
+                <th className="p-3">{t('Target States / UTs')}</th>
+                <th className="p-3">{t('Recommended Action')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
+              <tr>
+                <td className="p-3 font-semibold text-rose-700">
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[10px] font-black uppercase mr-1.5">
+                    Zero-Club Deficit
+                  </span>
+                  Unrepresented States
+                </td>
+                <td className="p-3 text-center font-mono font-bold text-[#103125]">
+                  {unrepresented.length} / {penetration?.total_states ?? 36}
+                </td>
+                <td className="p-3 font-mono text-[11px] text-slate-600 max-w-md">
+                  {unrepresented.length > 0
+                    ? unrepresented.join(', ')
+                    : t('All states and union territories have active club presence.')}
+                </td>
+                <td className="p-3 text-[11px] text-[#2E4A3E]">
+                  Task corresponding regional nodal officers to initiate outreach with State Directorate of Higher Education.
+                </td>
+              </tr>
+              {renewalHealth && (renewalHealth.overdue ?? 0) > 0 && (
+                <tr>
+                  <td className="p-3 font-semibold text-amber-700">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-black uppercase mr-1.5">
+                      Retention Deficit
+                    </span>
+                    Overdue Renewal Clubs
+                  </td>
+                  <td className="p-3 text-center font-mono font-bold text-amber-900">
+                    {renewalHealth.overdue}
+                  </td>
+                  <td className="p-3 text-[11px] text-slate-600">
+                    Clubs with lapsed 1-year registration validity
+                  </td>
+                  <td className="p-3 text-[11px] text-[#2E4A3E]">
+                    Dispatch automatic reminders and phone support to complete renewal documentation.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Strategic Growth Horizons (30/90/365-Day Roadmap) */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <div className="border-b border-[#E2ECE7] pb-3">
+          <h4 className="text-base font-extrabold text-[#103125]">
+            {t('Strategic Growth Horizons (30 / 90 / 365-Day Roadmap)')}
+          </h4>
+          <p className="text-xs text-[#5A7366]">
+            {t('Multi-horizon milestones formulated by the administrative guidance heuristics.')}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {roadmap.map((item, idx) => (
+            <div
+              key={idx}
+              className="p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] space-y-2 relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-brand-900 bg-brand-100 px-2.5 py-0.5 rounded-full">
+                  {item.horizon_days} Days
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-500">
+                  Horizon {idx + 1}
+                </span>
+              </div>
+              <h5 className="text-sm font-extrabold text-[#103125] pt-1">
+                {item.focus}
+              </h5>
+              <p className="text-xs text-[#5A7366] leading-relaxed">
+                {item.goal}
+              </p>
+            </div>
           ))}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 };

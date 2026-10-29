@@ -4,6 +4,7 @@ Everything is driven by environment variables (documented in .env.example at the
 repository root). Secrets are never committed; DJANGO_SECRET_KEY is required in
 production and falls back to an insecure value only in the dev settings.
 """
+
 import os
 from pathlib import Path
 from typing import overload
@@ -211,8 +212,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "NDLI Club Main Portal API",
     "DESCRIPTION": (
-        "OpenAPI schema for the NDLI Club Main Portal "
-        "(NDLI, IIT Kharagpur)."
+        "OpenAPI schema for the NDLI Club Main Portal (NDLI, IIT Kharagpur)."
     ),
     "VERSION": "0.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
@@ -245,9 +245,7 @@ SITE_URL = env("SITE_URL", "http://localhost:8000")
 
 # --- Email / SMS (provider-agnostic; console drivers in development) ------
 
-EMAIL_BACKEND = env(
-    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
-)
+EMAIL_BACKEND = env("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "noreply@club.ndl.iitkgp.ac.in")
 # The ONE email provider interface (apps.accounts.email_providers).
 # A2: SENDGRID_API_KEY empty => the console driver (nothing leaves the

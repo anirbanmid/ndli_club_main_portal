@@ -9,6 +9,7 @@ Named pins:
   an AISHE code later is an audited, validated action;
 * ``--reset`` is BOUNDED (only seed rows) and ``--dry-run`` writes nothing.
 """
+
 from __future__ import annotations
 
 import json
@@ -169,9 +170,7 @@ class SeedLoadTests(TestCase):
             sub_role=SubRole.STUDENT_MEMBER,
         )
         Membership.objects.create(user=user, club=club)
-        self.assertTrue(
-            Membership.objects.filter(club__institution=legacy).exists()
-        )
+        self.assertTrue(Membership.objects.filter(club__institution=legacy).exists())
 
     def test_reset_is_bounded_to_seed_rows(self) -> None:
         call_command("seed_samples", verbosity=0)
@@ -187,9 +186,7 @@ class SeedLoadTests(TestCase):
         call_command("seed_samples", "--reset", verbosity=0)
         self.assertTrue(State.objects.filter(code="KEEPSTATE").exists())
         self.assertTrue(Zone.objects.filter(code="KEEPZONE").exists())
-        self.assertTrue(
-            get_user_model().objects.filter(username="keepme").exists()
-        )
+        self.assertTrue(get_user_model().objects.filter(username="keepme").exists())
         self.assertTrue(User.objects.filter(pk=keep_profile.pk).exists())
         # Reset removed ONLY seed rows and re-created them: exactly the 6 seed
         # zones again (the out-of-seed keeper survives → total 7).

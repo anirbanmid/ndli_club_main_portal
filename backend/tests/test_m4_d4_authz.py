@@ -13,6 +13,7 @@ server refuses (I5 / W9).
 Reuses ``CLUB_AUTHORITY_GATE`` + ``ObjectScope("members")`` (the M1 policy
 layer) — NO new authz machinery (W9 / P0).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -62,11 +63,15 @@ class W9RosterAuthzTests(TestCase):
             club_code=self.club.code,
         )
         self.entry = RosterEntry.objects.create(
-            club=self.club, name="W9 Row", admission_no="ADM900",
+            club=self.club,
+            name="W9 Row",
+            admission_no="ADM900",
             email="w9row@example.test",
         )
         self.other_entry = RosterEntry.objects.create(
-            club=self.other_club, name="Other Row", admission_no="ADM901",
+            club=self.other_club,
+            name="Other Row",
+            admission_no="ADM901",
             email="w9other@example.test",
         )
 
@@ -103,9 +108,7 @@ class W9RosterAuthzTests(TestCase):
         self.assertEqual(self.entry.version, 1)
 
     def test_w9_stale_password_state_is_refused_everywhere(self) -> None:
-        stale = make_club_admin(
-            "d4w9stale", self.club, must_change_password=True
-        )
+        stale = make_club_admin("d4w9stale", self.club, must_change_password=True)
         self.client.force_login(stale)
         self._assert_all_refused((401, 403))
 

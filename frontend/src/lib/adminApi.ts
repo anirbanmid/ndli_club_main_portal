@@ -114,23 +114,40 @@ export interface ZoneDashboard {
 
 export interface OfficerEvaluation {
   officer_id?: string | number;
+  officer?: string;
   officer_name?: string;
   emp_id?: string;
+  full_name?: string;
+  name?: string;
   zone?: string;
+  assigned_jurisdiction?: string;
+  assigned_states?: string[];
+  clubs_approved?: number;
+  tickets_closed?: number;
+  phone_calls?: number;
+  other_supports?: number;
+  offline_training?: number;
+  online_training?: number;
+  total_activities?: number;
   calls?: number;
   calls_made?: number;
   emails?: number;
   emails_sent?: number;
   events?: number;
-  online_training?: number;
   weighted_score?: number | string;
   score?: number | string;
+  rank?: number;
+  stars?: number;
+  rating_label?: string;
+  stars_display?: string;
   [key: string]: unknown;
 }
 
 export interface OfficerRatings {
   zone_code: string;
   officers: OfficerEvaluation[];
+  available_years?: string[];
+  available_states?: string[];
 }
 
 export interface AuditFeed {
@@ -149,8 +166,9 @@ export function fetchZoneDashboard(params: {
 /** GET /admin/api/v1/dashboards/officers/ — ranked star ratings. */
 export function fetchOfficerRatings(params: {
   zone?: string;
-  year?: number;
-  month?: number;
+  year?: number | string;
+  month?: number | string;
+  state?: string;
 } = {}): Promise<OfficerRatings> {
   return get<OfficerRatings>('/dashboards/officers/', params);
 }
@@ -221,20 +239,73 @@ export interface RenewalRecordRow {
 export interface RenewalAttentionRow {
   club_code: string;
   club_name: string;
-  zone_code: string;
-  formation_date: string;
-  last_renewal_date: string | null;
+  institution_name?: string;
+  state?: string;
+  zone?: string;
+  zone_code?: string;
+  registration_no?: string;
+  formation_date?: string;
+  date_of_approval?: string;
+  last_renewal_date?: string | null;
   due_date: string;
+  upcoming_renewal_date?: string;
   days_left: number;
+  days_diff?: number;
+  days_overdue?: number;
+  attention?: string;
+  attention_type?: 'Overdue' | 'Expiring Soon' | string;
+  badge_label?: string;
   open_request_id?: number | null;
+  [key: string]: unknown;
 }
 
 export interface RenewalAttention {
   results: RenewalAttentionRow[];
+  total_attention_count?: number;
+  overdue_count?: number;
+  expiring_soon_count?: number;
   [key: string]: unknown;
 }
 
 export interface InsightsReport {
+  generated_at?: string;
+  metrics?: {
+    total_clubs?: number;
+    unrepresented_states_count?: number;
+    renewal_attention_count?: number;
+    overdue_count?: number;
+  };
+  penetration?: {
+    total_states?: number;
+    total_zones?: number;
+    clubs_by_state?: Record<string, number>;
+    clubs_by_zone?: Record<string, number>;
+    unrepresented_states?: string[];
+    top_states?: Array<{ state: string; clubs: number }>;
+  };
+  renewal_health?: {
+    overdue?: number;
+    within_30d?: number;
+    within_90d?: number;
+    within_365d?: number;
+    attention_count?: number;
+  };
+  activity_mix?: {
+    audit_activity_by_category?: Record<string, number>;
+    training_mix_available?: boolean;
+  };
+  strategic_recommendations?: Array<{
+    category: string;
+    priority: string;
+    title: string;
+    insight: string;
+    action: string;
+  }>;
+  roadmap?: Array<{
+    horizon_days: number;
+    focus: string;
+    goal: string;
+  }>;
   [key: string]: unknown;
 }
 
@@ -263,6 +334,8 @@ export function decideCharter(
 /** GET /admin/api/v1/governance/renewals/attention/ — the <=30d desk. */
 export function fetchRenewalAttention(params: {
   zone?: string;
+  filter?: string;
+  q?: string;
 } = {}): Promise<RenewalAttention> {
   return get<RenewalAttention>('/governance/renewals/attention/', params);
 }

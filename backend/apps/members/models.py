@@ -10,6 +10,7 @@ roster as pending → club admin confirms in roster view").
 active/alumni/suspended — D4 §3). One pending request per (user, club) is a
 DATABASE constraint, so a replayed or double join can never pile up rows.
 """
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -62,7 +63,7 @@ class JoinRequest(models.Model):
     #: Scoping registry (core.scoping): mirrors ``domain.Membership`` exactly
     #: so the M1 policy layer scopes this table without per-view logic (I5).
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -79,9 +80,7 @@ class JoinRequest(models.Model):
             ),
         ]
         indexes = [
-            models.Index(
-                fields=["club", "status"], name="joinrequest_club_status_idx"
-            ),
+            models.Index(fields=["club", "status"], name="joinrequest_club_status_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
@@ -139,9 +138,7 @@ class RosterEntry(models.Model):
     admission_no = models.CharField(max_length=64, blank=True, default="")
     program = models.CharField(max_length=128, blank=True, default="")
     batch_year = models.PositiveIntegerField(null=True, blank=True)
-    role = models.CharField(
-        max_length=16, choices=Role.choices, default=Role.MEMBER
-    )
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.MEMBER)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )
@@ -151,7 +148,7 @@ class RosterEntry(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -226,7 +223,7 @@ class RosterImportJob(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",

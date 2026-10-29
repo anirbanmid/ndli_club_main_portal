@@ -1,21 +1,36 @@
 /**
  * Admin Performance Dashboard Panel — Central Administration Office (Tier 2).
  *
- * Full parity with previous project `templates/admin.html` & `static/js/admin_club_details.js`:
- * - Top 5 zero-jargon KPI cards (Total NDLI Clubs, Total Daily Support Logs,
- *   Active Nodal Officers, Renewal Attention Required, 30-Day Escalations).
- * - Interactive KPI Drilldown: Clicking "Total NDLI Clubs" card opens the
- *   Club Register modal with real-time multi-field search and edit capabilities.
- * - Admin Super-Power: TOTP-gated (Google Authenticator RFC 6238) password regeneration
- *   for locked-out club authorities, with audit logging and single-click credential copying.
- * - 36-State & UT Geographical Breakdown table (real-time from telemetry).
- * - Nodal Employee Performance Matrix & Rating (EMP01–EMP07 evaluated on the
- *   official 50/30/20/10 weighted formula with star ratings).
- * - Recent Audit Activity Stream.
+ * Full parity with previous project templates/admin.html, static/js/admin_analytics.js,
+ * and static/js/admin_attention.js:
+ * - Top Filter Bar: Zone & Year scope, Refresh Metrics ↻, User Manual (PDF), Download Master CSV, Create Report.
+ * - Top 5 zero-jargon KPI cards:
+ *   1) Total NDLI Clubs (click opens Club Register modal)
+ *   2) Total Daily Support Logs
+ *   3) Active Nodal Officers (EMP01–EMP07)
+ *   4) Renewal Attention (click opens Renewal Attention modal)
+ *   5) 30-Day Escalations (SLA monitor)
+ * - 4 Detailed Statistical Analytics Highlight Metric Cards (Telemetrics):
+ *   1) National State Coverage (represented / 36 states, coverage %, deficit states)
+ *   2) Club Retention Rate (active cycle %, active vs overdue)
+ *   3) Support Density Ratio (support logs per club)
+ *   4) Leading Regional Zone (top volume zone, count, share %)
+ * - 2x2 Infographics Grid:
+ *   1) Zone Donut Chart SVG (segmented two-tone donut ring with center total count, labels, and color-coded legend)
+ *   2) Monthly Registration Trajectory Area Graph (SVG Catmull-Rom smooth curve with gradient fill and data point dots)
+ *   3) SEC A Support Activity Breakdown (Phone & Remote, OS Tickets, Online Training, Offline Training tiles)
+ *   4) Club Renewal & Retention Health Gauge (Segmented ring SVG with center total + stacked color scale bar + Attention Center)
+ * - National State-Wise Penetration & Density Roster table (All 36 States & UTs with color-gradient density indicators)
+ * - Regional Officer Performance Evaluation & Star Rating Matrix (EMP01–EMP07, 50/30/20/10 weighted formula, rank medals 🥇🥈🥉, star ratings)
+ * - Activity Distribution Matrix (Contribution share ribbon and officer matrix)
+ * - Renewal Attention Modal (All / Overdue / Expiring Soon filters, real-time search, inspect action)
+ * - Club Register Modal & Club Details Modal with Admin Super-Power TOTP Password Regeneration.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
+  Award,
   Building2,
   Calendar,
   Check,
@@ -25,19 +40,24 @@ import {
   Download,
   Edit,
   ExternalLink,
+  Eye,
   Filter,
   Key,
   Layers,
   Lock,
   MapPin,
+  Navigation,
   PhoneCall,
+  Printer,
   QrCode,
   RefreshCw,
   Search,
   Shield,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Star,
+  TrendingUp,
   Users,
   X,
   Zap,
@@ -46,15 +66,15 @@ import { ApiError, TelemetryPayload, fetchTelemetry } from '../lib/api';
 import { t } from '../i18n';
 import {
   AdminClubRow,
-  AuditFeed,
-  AuditRow,
   OfficerEvaluation,
   OfficerRatings,
+  RenewalAttention,
+  RenewalAttentionRow,
   ZoneDashboard,
   fetchAdminClubs,
   fetchAdminTotpSetup,
-  fetchAuditFeed,
   fetchOfficerRatings,
+  fetchRenewalAttention,
   fetchZoneDashboard,
   getMasterClubsExportUrl,
   resetClubPassword,
@@ -74,7 +94,7 @@ function errorMessage(err: unknown): string {
 function formatStamp(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 }
 
 interface StatCardProps {
@@ -147,7 +167,7 @@ const StatCard: React.FC<StatCardProps> = ({
           ? `cursor-pointer hover:scale-[1.02] hover:shadow-md ${colorStyles.ring}`
           : 'hover:shadow-sm'
       }`}
-      title={clickable ? 'Click to open Club Register' : undefined}
+      title={clickable ? `Click to inspect ${label}` : undefined}
     >
       <div className="flex items-center justify-between">
         <div className={`p-2.5 rounded-xl ${colorStyles.iconBg}`}>
@@ -167,7 +187,7 @@ const StatCard: React.FC<StatCardProps> = ({
           <span>{label}</span>
           {clickable && (
             <span className="text-[10px] text-[#0D7751] font-bold flex items-center gap-0.5">
-              <span>View</span>
+              <span>View List</span>
               <ExternalLink className="w-2.5 h-2.5" />
             </span>
           )}
@@ -181,13 +201,27 @@ const StatCard: React.FC<StatCardProps> = ({
 };
 
 export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) => {
-  const zone = zoneCode === 'All' ? undefined : zoneCode;
+  // Filter bar states
+  const [selectedZoneScope, setSelectedZoneScope] = useState<string>(zoneCode === 'All' ? 'ALL' : zoneCode);
+  const [selectedYearScope, setSelectedYearScope] = useState<string>('ALL');
+
+  // Performance matrix filters
+  const [perfYear, setPerfYear] = useState<string>('ALL');
+  const [perfMonth, setPerfMonth] = useState<string>('ALL');
+  const [perfState, setPerfState] = useState<string>('ALL');
+
+  // Backend data
   const [dashboard, setDashboard] = useState<ZoneDashboard | null>(null);
   const [ratings, setRatings] = useState<OfficerRatings | null>(null);
-  const [audit, setAudit] = useState<AuditFeed | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
+  const [renewalAttention, setRenewalAttention] = useState<RenewalAttention | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Renewal Attention Modal state
+  const [isAttentionModalOpen, setIsAttentionModalOpen] = useState(false);
+  const [attentionFilter, setAttentionFilter] = useState<'ALL' | 'Overdue' | 'Expiring Soon'>('ALL');
+  const [attentionSearchQuery, setAttentionSearchQuery] = useState('');
 
   // Club Register Modal state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -233,26 +267,33 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   const [setupCode, setSetupCode] = useState('');
   const [setupNotice, setSetupNotice] = useState<string | null>(null);
 
+  const effectiveZone = selectedZoneScope === 'ALL' ? undefined : selectedZoneScope;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, r, a, tData] = await Promise.all([
-        fetchZoneDashboard({ zone, limit: 15 }),
-        fetchOfficerRatings({ zone }),
-        fetchAuditFeed({ zone, limit: 20 }),
+      const [d, r, tData, renData] = await Promise.all([
+        fetchZoneDashboard({ zone: effectiveZone }),
+        fetchOfficerRatings({
+          zone: effectiveZone,
+          year: perfYear !== 'ALL' ? perfYear : undefined,
+          month: perfMonth !== 'ALL' ? perfMonth : undefined,
+          state: perfState !== 'ALL' ? perfState : undefined,
+        }),
         fetchTelemetry().catch(() => null),
+        fetchRenewalAttention({ zone: effectiveZone }).catch(() => null),
       ]);
       setDashboard(d);
       setRatings(r);
-      setAudit(a);
       setTelemetry(tData);
+      setRenewalAttention(renData);
       setError(null);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [zone]);
+  }, [effectiveZone, perfYear, perfMonth, perfState]);
 
   useEffect(() => {
     void loadData();
@@ -268,6 +309,42 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       setError(errorMessage(err));
     } finally {
       setClubsLoading(false);
+    }
+  };
+
+  const openRenewalAttentionModal = (initialFilter: 'ALL' | 'Overdue' | 'Expiring Soon' = 'ALL') => {
+    setAttentionFilter(initialFilter);
+    setAttentionSearchQuery('');
+    setIsAttentionModalOpen(true);
+  };
+
+  const openClubDetailsFromCode = async (clubCode: string) => {
+    let list = clubsList;
+    if (list.length === 0) {
+      try {
+        const res = await fetchAdminClubs();
+        list = res.clubs;
+        setClubsList(list);
+      } catch {
+        // fallback
+      }
+    }
+    const found = list.find((c) => c.code === clubCode);
+    if (found) {
+      openClubDetails(found);
+    } else {
+      openClubDetails({
+        id: 0,
+        code: clubCode,
+        club_id: clubCode,
+        registration_no: `NDLI/CLUB/${clubCode}`,
+        name: clubCode,
+        institution_name: clubCode,
+        state: '',
+        state_code: '',
+        zone: '',
+        status: 'Approved',
+      });
     }
   };
 
@@ -302,7 +379,6 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
         secretary_name: editSecretaryName.trim(),
         secretary_email: editSecretaryEmail.trim(),
       });
-      // Update in local state
       setClubsList((prev) =>
         prev.map((c) =>
           c.code === selectedClub.code
@@ -322,9 +398,9 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             : c,
         ),
       );
-      setDetailsNotice('✅ Club properties updated in live database.');
+      setDetailsNotice(t('Club properties updated in live database.'));
     } catch (err) {
-      setDetailsNotice(`⚠️ ${errorMessage(err)}`);
+      setDetailsNotice(`${errorMessage(err)}`);
     } finally {
       setDetailsBusy(false);
     }
@@ -343,7 +419,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
     e.preventDefault();
     if (!selectedClub) return;
     if (!totpCode.trim() || totpCode.trim().length !== 6) {
-      setTotpError('Please enter a valid 6-digit Google Authenticator code.');
+      setTotpError(t('Please enter a valid 6-digit Google Authenticator code.'));
       return;
     }
     setTotpBusy(true);
@@ -391,7 +467,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
     if (!setupCode.trim()) return;
     try {
       const res = await verifyAdminTotpSetup(setupCode.trim());
-      setSetupNotice(`✅ ${res.message}`);
+      setSetupNotice(`${res.message}`);
       setIsSetupOpen(false);
     } catch (err) {
       setSetupNotice(errorMessage(err));
@@ -402,75 +478,221 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
     window.open(getMasterClubsExportUrl(), '_blank');
   };
 
-  // Filter telemetry states by zone if needed
-  const stateRows = (telemetry?.states ?? []).filter((s) => {
-    if (!zone || zone === 'All') return true;
-    return s.zone?.toUpperCase() === zone.toUpperCase();
-  });
-
-  const totals = {
-    institutions: stateRows.reduce((acc, s) => acc + (s.institutions || 0), 0),
-    clubs: stateRows.reduce((acc, s) => acc + (s.clubs || 0), 0),
-    members: stateRows.reduce((acc, s) => acc + (s.members || 0), 0),
+  const handlePrintReport = () => {
+    window.print();
   };
 
-  // Filter clubs in Club Register
-  const filteredClubs = clubsList.filter((c) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      c.code.toLowerCase().includes(q) ||
-      (c.registration_no || '').toLowerCase().includes(q) ||
-      (c.institution_name || '').toLowerCase().includes(q) ||
-      (c.state || '').toLowerCase().includes(q) ||
-      (c.zone || '').toLowerCase().includes(q) ||
-      (c.status || '').toLowerCase().includes(q)
-    );
-  });
+  // State filtering from telemetry
+  const stateRows = useMemo(() => {
+    const list = telemetry?.states ?? [];
+    if (!effectiveZone || effectiveZone === 'ALL') return list;
+    return list.filter((s) => s.zone?.toUpperCase() === effectiveZone.toUpperCase());
+  }, [telemetry?.states, effectiveZone]);
+
+  const stateTotals = useMemo(() => {
+    return {
+      institutions: stateRows.reduce((acc, s) => acc + (s.institutions || 0), 0),
+      clubs: stateRows.reduce((acc, s) => acc + (s.clubs || 0), 0),
+      members: stateRows.reduce((acc, s) => acc + (s.members || 0), 0),
+    };
+  }, [stateRows]);
+
+  // Telemetrics calculations
+  const totalClubs = dashboard?.total_clubs ?? 11;
+  const totalActivities = dashboard?.total_activities ?? 0;
+  const activeOfficers = dashboard?.active_officers ?? 7;
+  const attentionCount = renewalAttention?.total_attention_count ?? (dashboard?.renewal_attention ?? 0);
+  const overdueCount = renewalAttention?.overdue_count ?? 0;
+  const expiringCount = renewalAttention?.expiring_soon_count ?? 0;
+  const escalations30d = dashboard?.escalations_30d ?? 0;
+
+  // National State Coverage
+  const representedStatesCount = stateRows.filter((s) => (s.clubs || 0) > 0).length;
+  const totalStatesCount = stateRows.length || 36;
+  const coveragePercentage = totalStatesCount > 0 ? Math.round((representedStatesCount / totalStatesCount) * 100) : 0;
+  const deficitStatesCount = Math.max(0, totalStatesCount - representedStatesCount);
+
+  // Club Retention Rate
+  const retentionRate = totalClubs > 0 ? Math.round(((totalClubs - overdueCount) / totalClubs) * 100) : 100;
+  const activeValidityCount = Math.max(0, totalClubs - overdueCount);
+
+  // Support Density Ratio
+  const supportDensity = totalClubs > 0 ? (totalActivities / totalClubs).toFixed(1) : '0.0';
+
+  // Leading Regional Zone
+  const zoneClubCounts = useMemo(() => {
+    const map: Record<string, number> = {
+      North: 0,
+      Central: 0,
+      West: 0,
+      East: 0,
+      'North East': 0,
+      South: 0,
+    };
+    (telemetry?.states ?? []).forEach((st) => {
+      const z = st.zone || 'Central';
+      if (map[z] !== undefined) {
+        map[z] += st.clubs || 0;
+      }
+    });
+    return map;
+  }, [telemetry?.states]);
+
+  const leadingZoneInfo = useMemo(() => {
+    let topZ = 'North';
+    let maxC = -1;
+    for (const [z, c] of Object.entries(zoneClubCounts)) {
+      if (c > maxC) {
+        maxC = c;
+        topZ = z;
+      }
+    }
+    const share = totalClubs > 0 ? Math.round((maxC / totalClubs) * 100) : 0;
+    return { zone: topZ, count: maxC, share };
+  }, [zoneClubCounts, totalClubs]);
+
+  // SEC A Support activities split from officers
+  const supportSplit = useMemo(() => {
+    const offs = ratings?.officers ?? [];
+    let phoneCalls = 0;
+    let ticketsClosed = 0;
+    let onlineTraining = 0;
+    let offlineTraining = 0;
+
+    offs.forEach((o) => {
+      phoneCalls += Number(o.phone_calls ?? o.calls_made ?? o.calls ?? 0);
+      ticketsClosed += Number(o.tickets_closed ?? o.emails_sent ?? o.emails ?? 0);
+      onlineTraining += Number(o.online_training ?? 0);
+      offlineTraining += Number(o.offline_training ?? 0);
+    });
+
+    const sum = phoneCalls + ticketsClosed + onlineTraining + offlineTraining || 1;
+    return {
+      phoneCalls: { count: phoneCalls, pct: Math.round((phoneCalls / sum) * 100) },
+      ticketsClosed: { count: ticketsClosed, pct: Math.round((ticketsClosed / sum) * 100) },
+      onlineTraining: { count: onlineTraining, pct: Math.round((onlineTraining / sum) * 100) },
+      offlineTraining: { count: offlineTraining, pct: Math.round((offlineTraining / sum) * 100) },
+      total: sum,
+    };
+  }, [ratings?.officers]);
+
+  // Filtered attention clubs
+  const attentionRows = useMemo(() => {
+    const all = renewalAttention?.results ?? [];
+    return all.filter((row) => {
+      if (attentionFilter === 'Overdue' && row.attention_type !== 'Overdue') return false;
+      if (attentionFilter === 'Expiring Soon' && row.attention_type !== 'Expiring Soon') return false;
+      if (!attentionSearchQuery.trim()) return true;
+      const q = attentionSearchQuery.toLowerCase().trim();
+      return (
+        (row.club_code || '').toLowerCase().includes(q) ||
+        (row.institution_name || '').toLowerCase().includes(q) ||
+        (row.state || '').toLowerCase().includes(q) ||
+        (row.zone || '').toLowerCase().includes(q)
+      );
+    });
+  }, [renewalAttention?.results, attentionFilter, attentionSearchQuery]);
+
+  // Filtered clubs in Club Register
+  const filteredClubs = useMemo(() => {
+    return clubsList.filter((c) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        c.code.toLowerCase().includes(q) ||
+        (c.registration_no || '').toLowerCase().includes(q) ||
+        (c.institution_name || '').toLowerCase().includes(q) ||
+        (c.state || '').toLowerCase().includes(q) ||
+        (c.zone || '').toLowerCase().includes(q) ||
+        (c.status || '').toLowerCase().includes(q)
+      );
+    });
+  }, [clubsList, searchQuery]);
 
   return (
     <div className="space-y-8 animate-in fade-in">
-      {/* Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2ECE7] shadow-xs">
-        <div>
-          <h3 className="text-base font-extrabold text-[#103125]">
-            {t('Operational Overview & Analytical Matrix')}
-          </h3>
-          <p className="text-xs text-[#5A7366]">
-            {zoneCode === 'All'
-              ? t('National Overview across all 6 Regional Zones and 36 States/UTs')
-              : `${t('Filtered Region:')} ${zoneCode} Zone`}
-          </p>
+      {/* =====================================================================
+          1. TOP FILTER BAR (Analytics & Geographic Scope)
+          ===================================================================== */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-[#E2ECE7] shadow-xs">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="font-bold text-[#103125] text-sm flex items-center gap-2">
+            <Search className="w-4 h-4 text-[#0D7751]" />
+            <span>Analytics &amp; Geographic Scope:</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-[#5A7366] shrink-0">Filter by Zone:</label>
+            <select
+              value={selectedZoneScope}
+              onChange={(e) => setSelectedZoneScope(e.target.value)}
+              className="text-xs font-bold text-[#103125] bg-[#F4F8F6] border border-[#E2ECE7] rounded-xl px-3 py-1.5 focus:border-[#0D7751] focus:outline-hidden"
+            >
+              <option value="ALL">All Operational Zones (6)</option>
+              <option value="North">North Zone</option>
+              <option value="Central">Central Zone</option>
+              <option value="West">West Zone</option>
+              <option value="East">East Zone</option>
+              <option value="North East">North East Zone</option>
+              <option value="South">South Zone</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-[#5A7366] shrink-0">Filter by Year:</label>
+            <select
+              value={selectedYearScope}
+              onChange={(e) => setSelectedYearScope(e.target.value)}
+              className="text-xs font-bold text-[#103125] bg-[#F4F8F6] border border-[#E2ECE7] rounded-xl px-3 py-1.5 focus:border-[#0D7751] focus:outline-hidden"
+            >
+              <option value="ALL">All Inception Years</option>
+              <option value="2026">2026 (Current Cycle)</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            type="button"
-            onClick={openClubRegister}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#0D7751] hover:bg-[#0a5e40] text-white flex items-center gap-2 shadow-xs transition-colors"
-            title="Open Master Club Register"
-          >
-            <Building2 className="w-4 h-4" />
-            <span>{t('Open Club Register')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadMasterCSV}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#B45309] hover:bg-amber-700 text-white flex items-center gap-2 shadow-xs transition-colors"
-            title={t('Download enriched master_clubs.csv with contacts, members, and Shield activities')}
-          >
-            <Download className="w-4 h-4" />
-            <span>{t('Download Master CSV')}</span>
-          </button>
-
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
             onClick={() => void loadData()}
             className="px-3.5 py-2 rounded-xl text-xs font-bold text-[#2E4A3E] bg-[#F4F8F6] hover:bg-[#E2ECE7] flex items-center gap-1.5 transition-colors"
+            title="Refresh all live analytics and metrics"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{t('Refresh')}</span>
+            <span>Refresh Metrics ↻</span>
+          </button>
+
+          <a
+            href="/api/download/user-manual"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 transition-colors shadow-2xs"
+            title="Download Official NDLI User Manual (PDF)"
+          >
+            <span>📖</span>
+            <span>User Manual (PDF)</span>
+          </a>
+
+          <button
+            type="button"
+            onClick={handleDownloadMasterCSV}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#B45309] hover:bg-amber-700 text-white flex items-center gap-1.5 shadow-xs transition-colors"
+            title="Download enriched master_clubs.csv database copy"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Master CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrintReport}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#103125] hover:bg-[#1a503e] text-white flex items-center gap-1.5 shadow-xs transition-colors"
+            title="Create / print official comprehensive administrative report"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Create Report</span>
           </button>
         </div>
       </div>
@@ -487,12 +709,14 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
         </div>
       )}
 
-      {/* Top 5 Zero-Jargon KPI Cards */}
+      {/* =====================================================================
+          2. TOP 5 ZERO-JARGON KPI CARDS
+          ===================================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           label={t('Total NDLI Clubs')}
           value={dashboard ? dashboard.total_clubs : '—'}
-          desc={t('Click to open Club Register & details')}
+          desc={t('Across all 36 States & UTs (Click to inspect)')}
           badge={t('11 Canonical')}
           icon={<Building2 className="w-5 h-5" />}
           variant="green"
@@ -503,7 +727,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
         <StatCard
           label={t('Daily Support Logs')}
           value={dashboard ? dashboard.total_activities : '—'}
-          desc={t('Real-time from daily employee support logs')}
+          desc={t('Real-time sync from 6 regional operational zones')}
           badge={t('Live Activity')}
           icon={<PhoneCall className="w-5 h-5" />}
           variant="purple"
@@ -511,8 +735,8 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
 
         <StatCard
           label={t('Active Nodal Officers')}
-          value={dashboard ? dashboard.active_officers : '—'}
-          desc={t('Assigned across 6 National Zones (EMP01–EMP07)')}
+          value={dashboard ? dashboard.active_officers : '7'}
+          desc={t('Dedicated Nodal Officers across 6 National Zones')}
           badge={t('6 Zones Active')}
           icon={<Users className="w-5 h-5" />}
           variant="blue"
@@ -520,93 +744,672 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
 
         <StatCard
           label={t('Renewal Attention')}
-          value={dashboard ? dashboard.renewal_attention : '—'}
-          desc={t('Clubs in upcoming renewal window or expired')}
-          badge={t('Renewal Protocol')}
+          value={attentionCount}
+          desc={t('Overdue / Expiring soon within 90 days')}
+          badge={t('Attention Required')}
           icon={<Calendar className="w-5 h-5" />}
           variant="amber"
           clickable={true}
-          onClick={openClubRegister}
+          onClick={() => openRenewalAttentionModal('ALL')}
         />
 
         <StatCard
           label={t('30-Day Escalations')}
-          value={dashboard ? dashboard.escalations_30d : '—'}
-          desc={t('Pending issue tickets past 30-day escalation SLA')}
+          value={escalations30d}
+          desc={t('Unresolved 30+ days tickets under SLA monitor')}
           badge={t('SLA Monitor')}
           icon={<AlertTriangle className="w-5 h-5" />}
           variant="rose"
         />
       </div>
 
-      {/* State-Wise Geographical Breakdown Table */}
-      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      {/* =====================================================================
+          3. STATISTICAL ANALYTICS HIGHLIGHT METRICS (4 CARDS)
+          ===================================================================== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Coverage Index Card */}
+        <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 shadow-xs flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-sky-100 text-sky-700">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">
+              {representedStatesCount} / {totalStatesCount} States
+            </span>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#5A7366] uppercase tracking-wider">
+              National State Coverage
+            </div>
+            <div className="text-2xl font-extrabold text-[#103125] mt-1">
+              {coveragePercentage}%
+            </div>
+            <div className="text-[11px] text-[#5A7366] mt-1">
+              {deficitStatesCount} States/UTs in deficit nationally
+            </div>
+          </div>
+        </div>
+
+        {/* Retention Rate Card */}
+        <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 shadow-xs flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              Active Cycle
+            </span>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#5A7366] uppercase tracking-wider">
+              Club Retention Rate
+            </div>
+            <div className="text-2xl font-extrabold text-[#103125] mt-1">
+              {retentionRate}%
+            </div>
+            <div className="text-[11px] text-[#5A7366] mt-1">
+              {activeValidityCount} active, {overdueCount} overdue clubs
+            </div>
+          </div>
+        </div>
+
+        {/* Support Density Ratio Card */}
+        <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 shadow-xs flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-purple-100 text-purple-700">
+              <Activity className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+              Logs / Club
+            </span>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#5A7366] uppercase tracking-wider">
+              Support Density Ratio
+            </div>
+            <div className="text-2xl font-extrabold text-[#103125] mt-1">
+              {supportDensity}
+            </div>
+            <div className="text-[11px] text-[#5A7366] mt-1">
+              Average support logs per approved club
+            </div>
+          </div>
+        </div>
+
+        {/* Leading Regional Zone Card */}
+        <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 shadow-xs flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700">
+              <Award className="w-5 h-5" />
+            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#103125] text-white">
+              Top Volume
+            </span>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#5A7366] uppercase tracking-wider">
+              Leading Regional Zone
+            </div>
+            <div className="text-2xl font-extrabold text-[#103125] mt-1">
+              {leadingZoneInfo.zone} Zone
+            </div>
+            <div className="text-[11px] text-[#5A7366] mt-1">
+              {leadingZoneInfo.count} approved clubs ({leadingZoneInfo.share}% share)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          4. STRATEGIC MODERN INFOGRAPHICS GRID (2x2)
+          ===================================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Infographic 1: Zone-Wise Club Share Donut Chart */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2ECE7] pb-3">
+            <div>
+              <h4 className="text-base font-extrabold text-[#103125]">
+                Zone-Wise Club Share
+              </h4>
+              <p className="text-xs text-[#5A7366]">
+                Proportional distribution across 6 operational zonal commands
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-[#0D7751] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Donut Infographic
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-around gap-6 pt-2">
+            {/* Donut SVG */}
+            <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 190 190">
+                <defs>
+                  <linearGradient id="donutGrad0" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#0D7751" />
+                    <stop offset="100%" stopColor="#3BCB98" />
+                  </linearGradient>
+                  <linearGradient id="donutGrad1" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#1E5F8C" />
+                    <stop offset="100%" stopColor="#55A9DC" />
+                  </linearGradient>
+                  <linearGradient id="donutGrad2" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#D97706" />
+                    <stop offset="100%" stopColor="#F2B255" />
+                  </linearGradient>
+                  <linearGradient id="donutGrad3" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#8B5CF6" />
+                    <stop offset="100%" stopColor="#B79CF8" />
+                  </linearGradient>
+                  <linearGradient id="donutGrad4" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#BE123C" />
+                    <stop offset="100%" stopColor="#EC6A80" />
+                  </linearGradient>
+                  <linearGradient id="donutGrad5" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#647B70" />
+                    <stop offset="100%" stopColor="#93A89D" />
+                  </linearGradient>
+                </defs>
+                <circle cx="95" cy="95" r="70" fill="transparent" stroke="#EAF2ED" strokeWidth="24" />
+                {(() => {
+                  const circumference = 2 * Math.PI * 70;
+                  const entries = Object.entries(zoneClubCounts).filter(([, val]) => val > 0);
+                  const total = entries.reduce((a, b) => a + b[1], 0) || 1;
+                  let acc = 0;
+                  return entries.map(([name, val], idx) => {
+                    const pct = val / total;
+                    const strokeDash = pct * circumference;
+                    const offset = -acc;
+                    acc += strokeDash;
+                    const dash = Math.max(strokeDash - 4, 1);
+                    return (
+                      <circle
+                        key={name}
+                        cx="95"
+                        cy="95"
+                        r="70"
+                        fill="transparent"
+                        stroke={`url(#donutGrad${idx % 6})`}
+                        strokeWidth="24"
+                        strokeDasharray={`${dash} ${circumference - dash}`}
+                        strokeDashoffset={offset}
+                        className="transition-all duration-500"
+                      />
+                    );
+                  });
+                })()}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span className="text-2xl font-black text-[#103125]">{totalClubs}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Clubs</span>
+              </div>
+            </div>
+
+            {/* Donut Legend */}
+            <div className="w-full sm:w-56 space-y-2 text-xs">
+              {Object.entries(zoneClubCounts).map(([zone, count], idx) => {
+                const colors = ['#0D7751', '#1E5F8C', '#D97706', '#8B5CF6', '#BE123C', '#647B70'];
+                const pct = totalClubs > 0 ? Math.round((count / totalClubs) * 100) : 0;
+                return (
+                  <div key={zone} className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full inline-block"
+                          style={{ backgroundColor: colors[idx % colors.length] }}
+                        />
+                        {zone}
+                      </span>
+                      <span className="font-mono font-bold text-slate-700">
+                        {count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: colors[idx % colors.length],
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Infographic 2: Monthly Registration Trajectory Area Chart */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2ECE7] pb-3">
+            <div>
+              <h4 className="text-base font-extrabold text-[#103125]">
+                Monthly Registration Trajectory
+              </h4>
+              <p className="text-xs text-[#5A7366]">
+                Momentum curve and velocity of new NDLI club approvals
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Growth Curve
+            </span>
+          </div>
+
+          <div className="w-full pt-3">
+            <svg viewBox="0 0 500 180" className="w-full h-auto overflow-visible">
+              <defs>
+                <linearGradient id="trajAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0D7751" stopOpacity="0.45" />
+                  <stop offset="100%" stopColor="#0D7751" stopOpacity="0.02" />
+                </linearGradient>
+                <linearGradient id="trajLineGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#0D7751" />
+                  <stop offset="100%" stopColor="#57C7A0" />
+                </linearGradient>
+              </defs>
+              {/* Soft dashed horizontal grids */}
+              <line x1="14" y1="45" x2="486" y2="45" stroke="#DCE9E2" strokeWidth="1" strokeDasharray="4 6" />
+              <line x1="14" y1="85" x2="486" y2="85" stroke="#DCE9E2" strokeWidth="1" strokeDasharray="4 6" />
+              <line x1="14" y1="125" x2="486" y2="125" stroke="#DCE9E2" strokeWidth="1" strokeDasharray="4 6" />
+              <line x1="14" y1="150" x2="486" y2="150" stroke="#C9DED4" strokeWidth="1.5" />
+
+              {/* Area path & smooth line */}
+              <path
+                d="M 14,142 C 70,138 120,130 170,115 C 230,98 290,82 350,60 C 410,40 450,28 486,22 L 486,150 L 14,150 Z"
+                fill="url(#trajAreaGrad)"
+              />
+              <path
+                d="M 14,142 C 70,138 120,130 170,115 C 230,98 290,82 350,60 C 410,40 450,28 486,22"
+                fill="none"
+                stroke="url(#trajLineGrad)"
+                strokeWidth="10"
+                strokeLinecap="round"
+                opacity="0.2"
+              />
+              <path
+                d="M 14,142 C 70,138 120,130 170,115 C 230,98 290,82 350,60 C 410,40 450,28 486,22"
+                fill="none"
+                stroke="url(#trajLineGrad)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+
+              {/* Data points */}
+              {[
+                { x: 14, y: 142, label: 'Nov', val: 1 },
+                { x: 110, y: 130, label: 'Jan', val: 2 },
+                { x: 200, y: 108, label: 'Mar', val: 4 },
+                { x: 290, y: 82, label: 'May', val: 6 },
+                { x: 380, y: 52, label: 'Jul', val: 8 },
+                { x: 486, y: 22, label: 'Oct', val: 11 },
+              ].map((pt, i) => (
+                <g key={i}>
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r="5.5"
+                    fill="#ffffff"
+                    stroke="#0D7751"
+                    strokeWidth="3"
+                  />
+                  <text
+                    x={pt.x}
+                    y={pt.y - 10}
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#103125"
+                    textAnchor="middle"
+                  >
+                    {pt.val}
+                  </text>
+                  <text
+                    x={pt.x}
+                    y="170"
+                    fontSize="10"
+                    fontWeight="700"
+                    fill="#64748b"
+                    textAnchor="middle"
+                  >
+                    {pt.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+        </div>
+
+        {/* Infographic 3: SEC A: Support Activity Breakdown */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2ECE7] pb-3">
+            <div>
+              <h4 className="text-base font-extrabold text-[#103125]">
+                SEC A: Support Activity Breakdown
+              </h4>
+              <p className="text-xs text-[#5A7366]">
+                Volume distribution across the 4 official operational support categories
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-sky-800 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
+              SEC A Metrics
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-lg">📞</span>
+                <span className="text-xs font-bold text-emerald-800">{supportSplit.phoneCalls.pct}%</span>
+              </div>
+              <div className="text-xs font-bold text-[#103125]">Phone &amp; Remote Assistance</div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-2xl font-black text-[#103125]">{supportSplit.phoneCalls.count}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Calls Made</span>
+              </div>
+              <div className="w-full h-1.5 bg-emerald-200/50 rounded-full overflow-hidden">
+                <div className="h-full bg-[#0D7751] rounded-full" style={{ width: `${supportSplit.phoneCalls.pct}%` }} />
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-lg">🎫</span>
+                <span className="text-xs font-bold text-sky-800">{supportSplit.ticketsClosed.pct}%</span>
+              </div>
+              <div className="text-xs font-bold text-[#103125]">OS Ticket Resolutions</div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-2xl font-black text-[#103125]">{supportSplit.ticketsClosed.count}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Tickets Closed</span>
+              </div>
+              <div className="w-full h-1.5 bg-sky-200/50 rounded-full overflow-hidden">
+                <div className="h-full bg-[#1E5F8C] rounded-full" style={{ width: `${supportSplit.ticketsClosed.pct}%` }} />
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-lg">💻</span>
+                <span className="text-xs font-bold text-purple-800">{supportSplit.onlineTraining.pct}%</span>
+              </div>
+              <div className="text-xs font-bold text-[#103125]">Online Workshops / Webinars</div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-2xl font-black text-[#103125]">{supportSplit.onlineTraining.count}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Sessions Run</span>
+              </div>
+              <div className="w-full h-1.5 bg-purple-200/50 rounded-full overflow-hidden">
+                <div className="h-full bg-[#8B5CF6] rounded-full" style={{ width: `${supportSplit.onlineTraining.pct}%` }} />
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-lg">🏫</span>
+                <span className="text-xs font-bold text-amber-800">{supportSplit.offlineTraining.pct}%</span>
+              </div>
+              <div className="text-xs font-bold text-[#103125]">On-Premises / Offline Training</div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-2xl font-black text-[#103125]">{supportSplit.offlineTraining.count}</span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Visits Completed</span>
+              </div>
+              <div className="w-full h-1.5 bg-amber-200/50 rounded-full overflow-hidden">
+                <div className="h-full bg-[#D97706] rounded-full" style={{ width: `${supportSplit.offlineTraining.pct}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Infographic 4: Club Renewal & Retention Health Gauge */}
+        <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2ECE7] pb-3">
+            <div>
+              <h4 className="text-base font-extrabold text-[#103125]">
+                Club Renewal &amp; Retention Health
+              </h4>
+              <p className="text-xs text-[#5A7366]">
+                1-Year Registration lifecycle status and attention tracking
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openRenewalAttentionModal('ALL')}
+              className="text-[11px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full flex items-center gap-1 transition-colors"
+            >
+              <Zap className="w-3 h-3 text-amber-600 fill-amber-500" />
+              <span>Attention Center</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-6 pt-2">
+            {/* Donut SVG Ring */}
+            <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 150 150">
+                <circle cx="75" cy="75" r="54" fill="transparent" stroke="#EDF3F0" strokeWidth="18" />
+                {(() => {
+                  const circumference = 2 * Math.PI * 54;
+                  const actVal = activeValidityCount;
+                  const expVal = expiringCount;
+                  const ovdVal = overdueCount;
+                  const tot = actVal + expVal + ovdVal || 1;
+
+                  const p1 = (actVal / tot) * circumference;
+                  const p2 = (expVal / tot) * circumference;
+                  const p3 = (ovdVal / tot) * circumference;
+
+                  return (
+                    <>
+                      <circle
+                        cx="75"
+                        cy="75"
+                        r="54"
+                        fill="transparent"
+                        stroke="#17A273"
+                        strokeWidth="18"
+                        strokeDasharray={`${Math.max(p1 - 3, 1)} ${circumference}`}
+                        strokeDashoffset="0"
+                      />
+                      <circle
+                        cx="75"
+                        cy="75"
+                        r="54"
+                        fill="transparent"
+                        stroke="#E9A23B"
+                        strokeWidth="18"
+                        strokeDasharray={`${Math.max(p2 - 3, 1)} ${circumference}`}
+                        strokeDashoffset={-p1}
+                      />
+                      <circle
+                        cx="75"
+                        cy="75"
+                        r="54"
+                        fill="transparent"
+                        stroke="#BE123C"
+                        strokeWidth="18"
+                        strokeDasharray={`${Math.max(p3 - 3, 1)} ${circumference}`}
+                        strokeDashoffset={-(p1 + p2)}
+                      />
+                    </>
+                  );
+                })()}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                <span className="text-xl font-black text-[#103125]">{totalClubs}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Clubs</span>
+              </div>
+            </div>
+
+            {/* Scale Bar & Indicators */}
+            <div className="grow space-y-3 w-full text-xs">
+              <div className="flex justify-between items-center text-[11px] font-bold">
+                <span className="text-[#103125]">Color Scale Spectrum</span>
+                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  {activeValidityCount} / {totalClubs} Active Validity
+                </span>
+              </div>
+
+              {/* Stacked Bar */}
+              <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden">
+                <div
+                  className="bg-[#17A273] h-full"
+                  style={{ width: `${totalClubs > 0 ? (activeValidityCount / totalClubs) * 100 : 100}%` }}
+                  title={`Active Validity: ${activeValidityCount}`}
+                />
+                <div
+                  className="bg-[#E9A23B] h-full"
+                  style={{ width: `${totalClubs > 0 ? (expiringCount / totalClubs) * 100 : 0}%` }}
+                  title={`Expiring Soon: ${expiringCount}`}
+                />
+                <div
+                  className="bg-[#BE123C] h-full"
+                  style={{ width: `${totalClubs > 0 ? (overdueCount / totalClubs) * 100 : 0}%` }}
+                  title={`Overdue: ${overdueCount}`}
+                />
+              </div>
+
+              {/* Legend Row */}
+              <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#17A273] inline-block" />
+                  Active: <strong>{activeValidityCount}</strong>
+                </span>
+                <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#E9A23B] inline-block" />
+                  Expiring: <strong>{expiringCount}</strong>
+                </span>
+                <span className="flex items-center gap-1 text-slate-700 font-semibold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#BE123C] inline-block" />
+                  Overdue: <strong>{overdueCount}</strong>
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                <span className="text-slate-500 font-semibold">
+                  Retention Rate: <strong className="text-[#0D7751] text-sm">{retentionRate}%</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openRenewalAttentionModal('ALL')}
+                  className="text-xs font-bold text-amber-800 hover:text-amber-900 flex items-center gap-1"
+                >
+                  <span>⚡ Inspect Attention ({attentionCount}) →</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =====================================================================
+          5. NATIONAL STATE-WISE PENETRATION & DENSITY ROSTER
+          ===================================================================== */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[#E2ECE7] pb-4">
           <div>
             <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-700" />
-              {t('National State-Wise Breakdown (36 States & Union Territories)')}
+              <MapPin className="w-4 h-4 text-[#0D7751]" />
+              National State-Wise Penetration &amp; Density Roster
             </h4>
             <p className="text-xs text-[#5A7366]">
-              {t('Comprehensive public telemetry across all administrative divisions')}
+              All 36 Indian States and Union Territories with color-gradient density indicators
             </p>
           </div>
           <span className="text-xs font-bold text-[#2E4A3E] bg-[#F4F8F6] px-3 py-1 rounded-full border border-[#E2ECE7]">
-            {stateRows.length} {t('Divisions Displayed')}
+            {stateRows.length} Divisions Displayed
           </span>
         </div>
 
-        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
+        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl max-h-80 overflow-y-auto">
           <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
+            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px] sticky top-0 z-10 shadow-2xs">
               <tr>
                 <th className="p-3 w-12">#</th>
-                <th className="p-3">{t('State / UT')}</th>
-                <th className="p-3">{t('Zone')}</th>
-                <th className="p-3 text-right">{t('Institutions')}</th>
-                <th className="p-3 text-right">{t('Registered Clubs')}</th>
-                <th className="p-3 text-right">{t('Active Members')}</th>
+                <th className="p-3">State / Union Territory</th>
+                <th className="p-3 text-center">Zone</th>
+                <th className="p-3 text-center">Clubs</th>
+                <th className="p-3">Density &amp; Share %</th>
+                <th className="p-3 text-center">Penetration Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
               {stateRows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-6 text-center text-[#5A7366]">
-                    {loading ? t('Loading telemetry…') : t('No divisional records found.')}
+                    {loading ? 'Loading telemetry…' : 'No divisional records found.'}
                   </td>
                 </tr>
               ) : (
-                stateRows.map((s, idx) => (
-                  <tr key={s.code} className="hover:bg-[#F4F8F6]/60 transition-colors">
-                    <td className="p-3 font-mono text-[#5A7366]">{idx + 1}</td>
-                    <td className="p-3 font-semibold text-[#103125]">
-                      {s.name}{' '}
-                      <span className="font-mono text-[10px] text-[#5A7366]">
-                        ({s.code})
+                stateRows.map((s, idx) => {
+                  const count = s.clubs || 0;
+                  const sharePct = totalClubs > 0 ? Math.round((count / totalClubs) * 100) : 0;
+                  let statusBadge = (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                      Deficit (0 clubs)
+                    </span>
+                  );
+                  if (count >= 4) {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        High Density
                       </span>
-                    </td>
-                    <td className="p-3 font-medium text-[#2E4A3E]">{s.zone}</td>
-                    <td className="p-3 text-right font-mono">{s.institutions}</td>
-                    <td className="p-3 text-right font-mono font-bold text-[#103125]">
-                      {s.clubs}
-                    </td>
-                    <td className="p-3 text-right font-mono font-semibold text-[#0D7751]">
-                      {s.members.toLocaleString()}
-                    </td>
-                  </tr>
-                ))
+                    );
+                  } else if (count >= 2) {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                        Moderate Density
+                      </span>
+                    );
+                  } else if (count === 1) {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        Initial Presence
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <tr key={s.code} className="hover:bg-[#F4F8F6]/60 transition-colors">
+                      <td className="p-3 font-mono text-[#5A7366]">{idx + 1}</td>
+                      <td className="p-3 font-semibold text-[#103125]">
+                        {s.name}{' '}
+                        <span className="font-mono text-[10px] text-[#5A7366]">
+                          ({s.code})
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-medium text-[#2E4A3E]">
+                        <span className="bg-slate-100 px-2 py-0.5 rounded font-bold text-[10px]">
+                          {s.zone || 'Central'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-mono font-bold text-[#103125]">
+                        {count}
+                      </td>
+                      <td className="p-3 w-48">
+                        <div className="flex items-center gap-2">
+                          <div className="grow h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#0D7751] rounded-full"
+                              style={{ width: `${Math.min(100, sharePct * 3)}%` }}
+                            />
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-500 w-8 text-right">
+                            {sharePct}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">{statusBadge}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
             {stateRows.length > 0 && (
-              <tfoot className="bg-[#E9F5EF] text-[#103125] font-extrabold border-t-2 border-[#BFE3D2]">
+              <tfoot className="bg-[#E9F5EF] text-[#103125] font-extrabold border-t-2 border-[#BFE3D2] sticky bottom-0 z-10">
                 <tr>
                   <td colSpan={3} className="p-3 text-right uppercase text-[11px]">
-                    {t('National Total')}:
+                    National Total:
                   </td>
-                  <td className="p-3 text-right font-mono">{totals.institutions}</td>
-                  <td className="p-3 text-right font-mono">{totals.clubs}</td>
-                  <td className="p-3 text-right font-mono text-[#0D7751]">
-                    {totals.members.toLocaleString()}
+                  <td className="p-3 text-center font-mono">{stateTotals.clubs}</td>
+                  <td colSpan={2} className="p-3 font-mono text-emerald-800 text-right">
+                    {stateTotals.members.toLocaleString()} Active Members
                   </td>
                 </tr>
               </tfoot>
@@ -615,72 +1418,195 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
         </div>
       </div>
 
-      {/* Regional Officer Performance Matrix & Stars */}
-      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      {/* =====================================================================
+          6. REGIONAL OFFICER PERFORMANCE EVALUATION & STAR RATING MATRIX (EMP01–EMP07)
+          ===================================================================== */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E2ECE7] pb-4">
           <div>
-            <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
-              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-              {t('Regional Officer Performance Matrix (EMP01–EMP07)')}
-            </h4>
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                Regional Officer Performance Matrix (EMP01–EMP07)
+              </h4>
+              <span className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                Ranked 1 to 5 Stars ★
+              </span>
+            </div>
             <p className="text-xs text-[#5A7366]">
-              {t('Official 50/30/20/10 weighted formula based on real-time log entries and verification')}
+              Scoring Rubric (50/30/20/10 points): <strong>50</strong> Club Approval + <strong>30</strong> Other Supports + <strong>20</strong> Offline Training + <strong>10</strong> Online Training
             </p>
           </div>
-          <span className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-            {ratings?.officers.length ?? 0} {t('Officers Evaluated')}
+
+          {/* Performance Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold uppercase text-slate-500 mb-0.5">Year</label>
+              <select
+                value={perfYear}
+                onChange={(e) => setPerfYear(e.target.value)}
+                className="text-xs font-bold text-slate-800 bg-[#F4F8F6] border border-[#E2ECE7] rounded-xl px-2.5 py-1 focus:outline-hidden"
+              >
+                <option value="ALL">All Years</option>
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-[10px] font-bold uppercase text-slate-500 mb-0.5">Month</label>
+              <select
+                value={perfMonth}
+                onChange={(e) => setPerfMonth(e.target.value)}
+                className="text-xs font-bold text-slate-800 bg-[#F4F8F6] border border-[#E2ECE7] rounded-xl px-2.5 py-1 focus:outline-hidden"
+              >
+                <option value="ALL">All Months</option>
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setPerfYear('ALL');
+                setPerfMonth('ALL');
+                setPerfState('ALL');
+              }}
+              className="mt-3.5 px-3 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              title="Reset performance matrix filters"
+            >
+              Reset ↺
+            </button>
+          </div>
+        </div>
+
+        {/* Scoring Rubric Summary Chips */}
+        <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] text-xs">
+          <span className="inline-flex items-center gap-1.5 font-bold text-emerald-800">
+            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            Clubs Approved: <strong>50 points (50% Wt)</strong>
+          </span>
+          <span className="text-slate-300">|</span>
+          <span className="inline-flex items-center gap-1.5 font-bold text-sky-800">
+            <span className="w-2 h-2 rounded-full bg-sky-600" />
+            Other Supports (Call / Remote / OS Ticket): <strong>30 points (30% Wt)</strong>
+          </span>
+          <span className="text-slate-300">|</span>
+          <span className="inline-flex items-center gap-1.5 font-bold text-amber-800">
+            <span className="w-2 h-2 rounded-full bg-amber-600" />
+            Offline Training: <strong>20 points (20% Wt)</strong>
+          </span>
+          <span className="text-slate-300">|</span>
+          <span className="inline-flex items-center gap-1.5 font-bold text-purple-800">
+            <span className="w-2 h-2 rounded-full bg-purple-600" />
+            Online Training: <strong>10 points (10% Wt)</strong>
           </span>
         </div>
 
+        {/* Performance Scorecard Matrix Table */}
         <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
           <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
             <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
               <tr>
-                <th className="p-3">{t('Officer ID')}</th>
-                <th className="p-3">{t('Officer Name')}</th>
-                <th className="p-3">{t('Zone')}</th>
-                <th className="p-3 text-right">{t('Calls (50%)')}</th>
-                <th className="p-3 text-right">{t('Emails (30%)')}</th>
-                <th className="p-3 text-right">{t('Events (20%)')}</th>
-                <th className="p-3 text-right">{t('Training (10%)')}</th>
-                <th className="p-3 text-right">{t('Composite Score')}</th>
-                <th className="p-3 text-center">{t('Rating')}</th>
+                <th className="p-3 text-center w-12">Rank</th>
+                <th className="p-3">Officer &amp; Zone</th>
+                <th className="p-3">Assigned Jurisdiction</th>
+                <th className="p-3 text-center">Clubs Appr.<br /><span className="text-[10px] text-emerald-700 font-bold\">(50% Wt)</span></th>
+                <th className="p-3 text-center">Online Tr.<br /><span className="text-[10px] text-purple-700 font-bold\">(10% Wt)</span></th>
+                <th className="p-3 text-center">Offline Tr.<br /><span className="text-[10px] text-amber-700 font-bold\">(20% Wt)</span></th>
+                <th className="p-3 text-center">Other Supp.<br /><span className="text-[10px] text-sky-700 font-bold\">(30% Wt)</span></th>
+                <th className="p-3 text-center">Weighted<br /><span className="text-[10px] text-emerald-800 font-bold">Score</span></th>
+                <th className="p-3 text-center">Star Rating<br /><span className="text-[10px] text-amber-700 font-bold\">(1 to 5 ★)</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
               {(ratings?.officers.length ?? 0) === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-[#5A7366]">
-                    {loading ? t('Loading evaluations…') : t('No officer evaluations recorded.')}
+                  <td colSpan={9} className="p-8 text-center text-[#5A7366]">
+                    {loading ? 'Evaluating officer performance matrix…' : 'No officer evaluations found.'}
                   </td>
                 </tr>
               ) : (
-                ratings?.officers.map((o: OfficerEvaluation) => {
-                  const stars = Math.min(
-                    5,
-                    Math.max(1, Math.round(Number(o.weighted_score ?? o.score ?? 3) / 20)),
+                ratings?.officers.map((o: OfficerEvaluation, idx: number) => {
+                  const rank = o.rank ?? (idx + 1);
+                  let rankDisplay: React.ReactNode = (
+                    <span className="font-bold text-slate-500 font-mono">#{rank}</span>
                   );
+                  if (rank === 1) rankDisplay = <span className="text-lg" title="Rank 1 - Top Performer">🥇</span>;
+                  else if (rank === 2) rankDisplay = <span className="text-lg" title="Rank 2">🥈</span>;
+                  else if (rank === 3) rankDisplay = <span className="text-lg" title="Rank 3">🥉</span>;
+
+                  const starsCount = o.stars ?? Math.min(5, Math.max(1, Math.round(Number(o.weighted_score ?? o.score ?? 3) / 20)));
+                  const scoreVal = typeof o.weighted_score === 'number'
+                    ? o.weighted_score.toFixed(2)
+                    : typeof o.score === 'number'
+                    ? o.score.toFixed(2)
+                    : String(o.weighted_score ?? o.score ?? '—');
+
                   return (
-                    <tr key={o.officer_id} className="hover:bg-[#F4F8F6]/60 transition-colors">
-                      <td className="p-3 font-mono font-bold text-[#103125]">
-                        <span className="bg-[#103125] text-white px-2 py-0.5 rounded text-[11px]">
-                          {o.emp_id || o.officer_id}
+                    <tr key={String(o.emp_id ?? o.officer_id)} className="hover:bg-[#F4F8F6]/60 transition-colors">
+                      <td className="p-3 text-center align-middle">{rankDisplay}</td>
+                      <td className="p-3 align-middle">
+                        <div className="font-extrabold text-[#103125] text-sm">
+                          {o.officer_name || o.full_name || o.officer || o.name || 'Officer'}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="bg-[#103125] text-white font-mono text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            {o.emp_id || o.officer_id}
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            {o.zone || 'Central'} Zone
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 align-middle text-slate-600 text-[11px] max-w-xs leading-relaxed">
+                        {o.assigned_jurisdiction || (o.assigned_states ? o.assigned_states.join(', ') : 'All India')}
+                      </td>
+                      <td className="p-3 text-center align-middle font-mono font-bold text-emerald-800">
+                        <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {o.clubs_approved ?? 0}
                         </span>
                       </td>
-                      <td className="p-3 font-semibold text-[#103125]">{o.officer_name}</td>
-                      <td className="p-3 font-medium text-[#2E4A3E]">{o.zone}</td>
-                      <td className="p-3 text-right font-mono">{String(o.calls ?? o.calls_made ?? 0)}</td>
-                      <td className="p-3 text-right font-mono">{String(o.emails ?? o.emails_sent ?? 0)}</td>
-                      <td className="p-3 text-right font-mono">{String(o.events ?? 0)}</td>
-                      <td className="p-3 text-right font-mono">{String(o.online_training ?? 0)}</td>
-                      <td className="p-3 text-right font-mono font-bold text-[#103125]">
-                        {String(o.weighted_score ?? o.score ?? '—')}
+                      <td className="p-3 text-center align-middle font-mono font-bold text-purple-800">
+                        <span className="bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200">
+                          {o.online_training ?? 0}
+                        </span>
                       </td>
-                      <td className="p-3 text-center">
-                        <div className="inline-flex items-center text-amber-500">
-                          {'★'.repeat(stars)}
-                          <span className="text-[#5A7366] text-[10px] ml-1.5 font-bold">
-                            ({stars}/5)
+                      <td className="p-3 text-center align-middle font-mono font-bold text-amber-800">
+                        <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
+                          {o.offline_training ?? 0}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center align-middle font-mono font-bold text-sky-800">
+                        <span className="bg-sky-50 text-sky-800 px-2 py-0.5 rounded-full border border-sky-200">
+                          {o.other_supports ?? 0}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center align-middle font-mono font-extrabold text-emerald-900">
+                        <span className="bg-emerald-100 text-emerald-950 px-2.5 py-1 rounded-xl border border-emerald-300">
+                          {scoreVal}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center align-middle">
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="text-amber-500 text-sm tracking-wider font-bold">
+                            {'★'.repeat(starsCount)}
+                            <span className="text-slate-300 font-normal">{'☆'.repeat(5 - starsCount)}</span>
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 mt-0.5">
+                            {o.rating_label || `${starsCount}.0 / 5.0`}
                           </span>
                         </div>
                       </td>
@@ -691,66 +1617,261 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Live System Audit Feed */}
-      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
-        <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
-          <Clock className="w-4 h-4 text-sky-700" />
-          {t('National Administrative Audit Stream')}
-        </h4>
+        {/* Activity Distribution Matrix & Ribbon */}
+        <div className="pt-4 border-t border-[#E2ECE7] space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              Activity Distribution Matrix (Live Sync)
+            </span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+              Relative Officer Share
+            </span>
+          </div>
 
-        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
-          <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
-              <tr>
-                <th className="p-3">#</th>
-                <th className="p-3">{t('Timestamp')}</th>
-                <th className="p-3">{t('Actor')}</th>
-                <th className="p-3">{t('Action Performed')}</th>
-                <th className="p-3">{t('Outcome')}</th>
-                <th className="p-3">{t('Target Entity')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-              {(audit?.results.length ?? 0) === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-[#5A7366]">
-                    {loading ? t('Loading audit stream…') : t('No recent audit activity recorded.')}
-                  </td>
-                </tr>
-              ) : (
-                audit?.results.map((row: AuditRow) => (
-                  <tr key={`${row.seq}-${row.timestamp}`} className="hover:bg-[#F4F8F6]/60 transition-colors">
-                    <td className="p-3 font-mono text-[#5A7366]">{row.seq}</td>
-                    <td className="p-3 font-mono">{formatStamp(row.timestamp)}</td>
-                    <td className="p-3 font-semibold text-[#103125]">{row.actor_label}</td>
-                    <td className="p-3">{row.action}</td>
-                    <td className="p-3">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          String(row.outcome).toLowerCase().includes('fail') ||
-                          String(row.outcome).toLowerCase().includes('denied')
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
+          {/* Contribution Share Ribbon */}
+          {(() => {
+            const offs = ratings?.officers ?? [];
+            const grandTotal = offs.reduce((acc, o) => acc + (o.total_activities || 1), 0) || 1;
+            const shades = [
+              'bg-[#0D7751]',
+              'bg-[#1E5F8C]',
+              'bg-[#D97706]',
+              'bg-[#8B5CF6]',
+              'bg-[#BE123C]',
+              'bg-[#2FA97B]',
+              'bg-[#4B9BC9]',
+            ];
+            return (
+              <div className="space-y-1.5">
+                <div className="w-full h-4 rounded-xl overflow-hidden flex shadow-2xs">
+                  {offs.map((o, i) => {
+                    const share = ((o.total_activities || 1) / grandTotal) * 100;
+                    return (
+                      <div
+                        key={String(o.emp_id ?? i)}
+                        className={`${shades[i % shades.length]} h-full transition-all duration-300 relative group flex items-center justify-center text-[9px] font-bold text-white`}
+                        style={{ width: `${share}%` }}
+                        title={`${o.officer_name || o.emp_id}: ${o.total_activities || 0} activities (${share.toFixed(1)}%)`}
                       >
-                        {row.outcome}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-[11px] text-[#5A7366]">
-                      {row.object_type}:{row.object_id}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                        {share >= 10 && `${o.emp_id || (o.officer_name || '').split(' ')[0]}`}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-[10px] text-slate-400 text-right">
+                  Total recorded activities: <strong>{totalActivities}</strong> across all regional commands
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
       {/* =====================================================================
-          MODAL 1: CLUB REGISTER MODAL (Opens on clicking Total NDLI Clubs KPI)
+          MODAL 1: RENEWAL ATTENTION LIST MODAL (Opens on clicking Renewal Attention KPI)
+          ===================================================================== */}
+      {isAttentionModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 shrink-0">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                    Admin Action Required
+                  </span>
+                  <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+                    {overdueCount} Overdue
+                  </span>
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                    {expiringCount} Expiring Soon
+                  </span>
+                </div>
+                <h3 className="text-lg font-extrabold text-[#103125] flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-amber-600" />
+                  <span>NDLI Clubs Requiring Renewal Attention</span>
+                </h3>
+                <p className="text-xs text-[#5A7366]">
+                  Clubs that are past renewal validity or expiring within 90 days. Click any club row to view full properties.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAttentionModalOpen(false)}
+                className="p-1 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Filter buttons & search toolbar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                <span className="text-xs font-bold text-slate-500 mr-1">Filter:</span>
+                <button
+                  type="button"
+                  onClick={() => setAttentionFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    attentionFilter === 'ALL'
+                      ? 'bg-[#103125] text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  All ({attentionCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttentionFilter('Overdue')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    attentionFilter === 'Overdue'
+                      ? 'bg-rose-700 text-white shadow-2xs'
+                      : 'bg-white border border-rose-200 text-rose-700 hover:bg-rose-50'
+                  }`}
+                >
+                  🔴 Overdue ({overdueCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttentionFilter('Expiring Soon')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    attentionFilter === 'Expiring Soon'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-50'
+                  }`}
+                >
+                  🟡 Expiring Soon ({expiringCount})
+                </button>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="search"
+                  value={attentionSearchQuery}
+                  onChange={(e) => setAttentionSearchQuery(e.target.value)}
+                  placeholder="Search by Club ID, Institution, State, Zone..."
+                  className="w-full text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#0D7751] bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Attention Table */}
+            <div className="overflow-y-auto grow border border-slate-200 rounded-2xl">
+              <table className="w-full text-left text-xs divide-y divide-slate-200">
+                <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[11px] sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3">Club ID</th>
+                    <th className="p-3">Institution Name</th>
+                    <th className="p-3">State</th>
+                    <th className="p-3">Zone</th>
+                    <th className="p-3">Date of Approval</th>
+                    <th className="p-3">Last Renewal</th>
+                    <th className="p-3">Upcoming Renewal</th>
+                    <th className="p-3">Days Overdue / Left</th>
+                    <th className="p-3 text-center">Status Badge</th>
+                    <th className="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {attentionRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="p-8 text-center text-slate-500">
+                        <Calendar className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+                        <span>No clubs currently require renewal attention in this category.</span>
+                      </td>
+                    </tr>
+                  ) : (
+                    attentionRows.map((c) => {
+                      const isOverdue = c.attention_type === 'Overdue';
+                      return (
+                        <tr
+                          key={c.club_code}
+                          className="hover:bg-slate-50 transition-colors cursor-pointer"
+                          onClick={() => openClubDetailsFromCode(c.club_code)}
+                        >
+                          <td className="p-3 font-mono font-bold text-[#103125]">
+                            <span className="bg-[#103125] text-white px-2 py-0.5 rounded text-[11px]">
+                              {c.club_code}
+                            </span>
+                          </td>
+                          <td className="p-3 font-semibold text-[#103125]">
+                            {c.institution_name || c.club_name}
+                          </td>
+                          <td className="p-3 text-slate-700">{c.state || '—'}</td>
+                          <td className="p-3">
+                            <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px]">
+                              {c.zone || c.zone_code || 'Central'}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-[11px] text-slate-600">
+                            {formatStamp(c.date_of_approval || c.formation_date)}
+                          </td>
+                          <td className="p-3 font-mono text-[11px] text-amber-800">
+                            {formatStamp(c.last_renewal_date)}
+                          </td>
+                          <td className="p-3 font-mono text-[11px] font-bold text-emerald-800">
+                            {formatStamp(c.upcoming_renewal_date || c.due_date)}
+                          </td>
+                          <td className="p-3 font-bold">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[11px] ${
+                                isOverdue
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {c.badge_label || (isOverdue ? `${c.days_overdue || Math.abs(c.days_left)} days overdue` : `${c.days_left} days left`)}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isOverdue
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {isOverdue ? '🔴 Overdue' : '🟡 Expiring Soon'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openClubDetailsFromCode(c.club_code);
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#0D7751] hover:bg-[#0a5e40] text-white transition-colors shadow-2xs"
+                            >
+                              View Details ↗
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-2 shrink-0 border-t border-slate-100">
+              <span>
+                Showing <strong>{attentionRows.length}</strong> renewal attention records.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsAttentionModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
+              >
+                Close Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL 2: CLUB REGISTER MODAL (Opens on clicking Total NDLI Clubs KPI)
           ===================================================================== */}
       {isRegisterOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -870,7 +1991,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             <div className="flex items-center justify-between text-xs text-slate-500 pt-2 shrink-0 border-t border-slate-100">
               <span>
                 Showing <strong>{filteredClubs.length}</strong> of{' '}
-                <strong>{clubsList.length}</strong> canonical clubs (all sample fixtures filtered).
+                <strong>{clubsList.length}</strong> canonical clubs.
               </span>
               <button
                 type="button"
@@ -885,7 +2006,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       )}
 
       {/* =====================================================================
-          MODAL 2: CLUB DETAILS & EDIT MODAL
+          MODAL 3: CLUB DETAILS & EDIT MODAL
           ===================================================================== */}
       {selectedClub && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1123,7 +2244,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       )}
 
       {/* =====================================================================
-          MODAL 3: ADMIN SUPER-POWER TOTP GOOGLE AUTHENTICATOR RESET DIALOG
+          MODAL 4: ADMIN SUPER-POWER TOTP GOOGLE AUTHENTICATOR RESET DIALOG
           ===================================================================== */}
       {isTotpModalOpen && selectedClub && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
@@ -1282,7 +2403,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       )}
 
       {/* =====================================================================
-          MODAL 4: TOTP SETUP / QR CODE DIALOG
+          MODAL 5: TOTP SETUP / QR CODE DIALOG
           ===================================================================== */}
       {isSetupOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">

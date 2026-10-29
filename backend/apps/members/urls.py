@@ -5,6 +5,7 @@ club authorities for writes/imports/exports (scope-keyed to the caller's
 club, W9/W6), and roster READS are scoped per caller (a student sees their
 own rows only — the policy layer decides, never the view).
 """
+
 from django.urls import path
 
 from . import roster_views, views

@@ -5,6 +5,7 @@
 standard cannot silently drift. Credential values come from constants (never
 literals) and the seed table — mask-proof and honest.
 """
+
 from __future__ import annotations
 
 import re
@@ -61,7 +62,7 @@ class PasswordStandardTests(M1PinTestCase):
             username="std01",
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
-            password=GOOD_PASSWORD
+            password=GOOD_PASSWORD,
         )
         self.assertRegex(user.password, HASH_RE)
 

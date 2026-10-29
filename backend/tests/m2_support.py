@@ -4,12 +4,14 @@ New in M2 (the M1 builders in ``support.py`` stay untouched). Everything is
 offline and deterministic; the domain fixtures use the real sample codes
 from ``data/samples/`` so the pins read like the seed they mirror.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from apps.domain.models import (
     AuthorityAssignment,
@@ -82,7 +84,7 @@ def assign_officer(
     assignment = OfficerAssignment.objects.create(
         state=state,
         officer=user,
-        from_date=from_date or (date.today() - timedelta(days=30)),
+        from_date=from_date or (timezone.localdate() - timedelta(days=30)),
         to_date=to_date,
     )
     return user, assignment
@@ -101,7 +103,7 @@ def assign_authority(
         user=user,
         club=club,
         tier=tier,
-        from_date=from_date or (date.today() - timedelta(days=30)),
+        from_date=from_date or (timezone.localdate() - timedelta(days=30)),
         to_date=to_date,
     )
 

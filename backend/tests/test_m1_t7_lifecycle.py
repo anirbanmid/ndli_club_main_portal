@@ -13,6 +13,7 @@ Named pins:
 F5's new password is shown once to the admin and handed over MANUALLY —
 there is no SMS/voice delivery anywhere in this product (A7).
 """
+
 from __future__ import annotations
 
 import datetime

@@ -4,6 +4,7 @@ Distinct ``app_name`` (``grievances_admin``) on purpose: two includes of the
 same app_name collide in ``reverse()``. The admin-module routes MUST live
 under ``/admin/`` (the T3 "admin prefix is the only admin door" pin).
 """
+
 from django.urls import path
 
 from . import views

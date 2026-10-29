@@ -13,10 +13,11 @@ Named pins:
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django.core import mail
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied
 
 from apps.accounts import services
@@ -58,17 +59,17 @@ class ResponsibleOfficerTests(TestCase):
         from apps.domain.models import OfficerAssignment
 
         OfficerAssignment.objects.all().update(
-            to_date=date.today() - timedelta(days=1)
+            to_date=timezone.localdate() - timedelta(days=1)
         )
         self.assertIsNone(responsible_officer("DELHI"), "expired window")
         OfficerAssignment.objects.all().update(
-            from_date=date.today() + timedelta(days=1), to_date=None
+            from_date=timezone.localdate() + timedelta(days=1), to_date=None
         )
         self.assertIsNone(responsible_officer("DELHI"), "future window")
 
     def test_the_pick_is_deterministic_when_windows_overlap(self) -> None:
         assign_officer(
-            "EMP09", self.delhi, from_date=date.today() - timedelta(days=10)
+            "EMP09", self.delhi, from_date=timezone.localdate() - timedelta(days=10)
         )
         self.assertEqual(assignments.officer_username_for_state("DELHI"), "EMP09")
         self.assertTrue(assignments.officer_assignment_for_state("DELHI"))

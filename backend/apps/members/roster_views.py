@@ -8,6 +8,7 @@ hand-rolled authorization here (I5). Out-of-scope IDs are 404s, never data
 single-field and optimistic-locked: a stale write is a 409 conflict
 carrying the current row, never a silent overwrite (P2).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -87,9 +88,7 @@ def _caller_club(request: Request) -> Club:
 def _scoped_entry(request: Request, pk: int) -> RosterEntry:
     """Load one roster row inside the caller's scope (else 404, never data)."""
     entry = (
-        scoping.scope_members(
-            RosterEntry.objects.select_related("club"), request.user
-        )
+        scoping.scope_members(RosterEntry.objects.select_related("club"), request.user)
         .filter(pk=pk)
         .first()
     )
@@ -133,9 +132,7 @@ def _page(request: Request) -> tuple[int, int]:
     return max(1, min(limit, 1000)), max(0, offset)
 
 
-def _synthetic_cells(
-    entry: RosterEntry, field_name: str, value: Any
-) -> list[str]:
+def _synthetic_cells(entry: RosterEntry, field_name: str, value: Any) -> list[str]:
     """The entry's row with ONE field replaced — revalidated by the CSV contract."""
     draft = {
         "name": entry.name,
@@ -193,9 +190,7 @@ def _apply_field_change(
                 status=409,
             )
     with transaction.atomic():
-        changed = RosterEntry.objects.filter(
-            pk=entry.pk, version=expected
-        ).update(
+        changed = RosterEntry.objects.filter(pk=entry.pk, version=expected).update(
             **{field_name: cleaned},
             version=F("version") + 1,
             updated_at=timezone.now(),
@@ -390,9 +385,9 @@ class RosterStatusView(APIView):
                 status=409,
             )
         with transaction.atomic():
-            changed = RosterEntry.objects.filter(
-                pk=entry.pk, version=expected
-            ).update(status=target, version=F("version") + 1, updated_at=timezone.now())
+            changed = RosterEntry.objects.filter(pk=entry.pk, version=expected).update(
+                status=target, version=F("version") + 1, updated_at=timezone.now()
+            )
         if not changed:
             current = _scoped_entry(request, entry.pk)
             return _conflict(request, current)
@@ -516,9 +511,7 @@ class RosterImportCommitView(APIView):
         except roster_csv.CsvContractError as exc:
             return _csv_error(exc)
         idempotency_key = f"{club.code}:{upload_id}"
-        job = RosterImportJob.objects.filter(
-            idempotency_key=idempotency_key
-        ).first()
+        job = RosterImportJob.objects.filter(idempotency_key=idempotency_key).first()
         if job is not None and job.status == RosterImportJob.Status.COMPLETED:
             return Response(_job_payload(job, replayed=True))
         if job is None:

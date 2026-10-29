@@ -916,9 +916,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         dist = inst.district.name if inst and inst.district else ""
         clean_zone = zn.replace(" Zone", "").strip() or "North"
         doa = str(c.date_of_approval) if c.date_of_approval else "2021-04-12"
-        last_ren = (
-            str(c.last_renewal_date) if c.last_renewal_date else "None (Initial)"
-        )
+        last_ren = str(c.last_renewal_date) if c.last_renewal_date else "None (Initial)"
         upcoming_ren = (
             str(c.upcoming_renewal_date) if c.upcoming_renewal_date else "2026-04-12"
         )

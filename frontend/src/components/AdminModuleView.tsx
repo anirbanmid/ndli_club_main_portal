@@ -174,7 +174,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const canSeeEmployee =
     subRole === 'central_admin' || subRole === 'regional_officer'; // business turf (AUTH-TURF: never SUPEROPS)
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'dashboards' | 'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones'>('dashboards');
+  const [adminTab, setAdminTab] = useState<'dashboards' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones'>('dashboards');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -409,13 +409,13 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           )}
         </div>
 
-        {/* Telemetry Pills — live counts from the real queues */}
+        {/* Telemetry Pills */}
         <div className="grid grid-cols-2 gap-3 text-center shrink-0">
           <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
             <div className="text-2xl font-black text-amber-300">
-              {chartersLoading ? '—' : filteredCharters.length}
+              7
             </div>
-            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Charters In Queue")}</div>
+            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Nodal Officers")}</div>
           </div>
           <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
             <div className="text-2xl font-black text-white">
@@ -447,7 +447,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             }`}
           >
             <Users className="h-4 w-4" />
-            <span>{t("AI Strategic Roadmap")}</span>
+            <span>{t("AI Strategic Insights")}</span>
           </button>
 
           <button
@@ -458,16 +458,6 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           >
             <Landmark className="h-4 w-4" />
             <span>{t("Employee Management")}</span>
-          </button>
-
-          <button
-            onClick={() => setAdminTab('approvals')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'approvals' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-            }`}
-          >
-            <Building2 className="h-4 w-4" />
-            <span>{t("Club Approvals")} ({filteredCharters.length})</span>
           </button>
 
           <button
@@ -527,179 +517,6 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           </select>
         </div>
       </div>
-
-      {/* DESK 1: Charter Review & Sanction Desk (REAL — apps.governance) */}
-
-
-      {adminTab === 'approvals' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="border-b border-[#E2ECE7] pb-4 flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-bold text-[#103125]">
-                {t("Charter Review & Sanction Desk")}
-              </h3>
-              <p className="text-xs text-[#5A7366]">
-                {t("Review the onboarding file (4-tier quorum + uploads) and move the charter through queued → under review → sanctioned / rejected.")}
-              </p>
-            </div>
-            <span className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-3 py-1 rounded-full">
-              {filteredCharters.length} {t("In Queue")}
-            </span>
-          </div>
-
-          {charterNotice && (
-            <div className="p-3 rounded-xl bg-brand-50 border border-brand-200 text-brand-800 text-xs font-semibold">
-              {charterNotice}
-            </div>
-          )}
-          {charterError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
-              <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> {charterError}</span>
-              <button onClick={() => void loadCharters()} className="underline font-bold">{t("Retry")}</button>
-            </div>
-          )}
-
-          {chartersLoading ? (
-            <div className="text-center py-12 text-xs text-[#5A7366]">{t("Loading charter queue…")}</div>
-          ) : filteredCharters.length > 0 ? (
-            <div className="space-y-4">
-              {filteredCharters.map((row) => {
-                const detail = charterDetails[row.id];
-                const busy = charterBusy === row.id;
-                return (
-                  <div key={row.id} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center space-x-2 flex-wrap">
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                            row.status === 'sanctioned' ? 'bg-brand-100 text-brand-800'
-                              : row.status === 'rejected' ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {t(CHARTER_STATUS_LABEL[row.status] ?? row.status)}
-                          </span>
-                          <span className="text-xs font-semibold text-[#5A7366]">
-                            {t("Zone:")} <strong>{row.zone_code}</strong> • {row.state_code} • {row.district_code}
-                          </span>
-                        </div>
-                        <h4 className="text-base font-bold text-[#103125] mt-1">{row.club_name}</h4>
-                        <div className="text-xs text-[#5A7366]">{row.institution_name}</div>
-                        <div className="text-[11px] text-[#5A7366] mt-0.5">
-                          {t("Submitted:")} {formatDate(row.submitted_at)}
-                          {row.reviewed_at ? ` • ${t("Reviewed:")} ${formatDate(row.reviewed_at)}` : ''}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => void toggleCharter(row.id)}
-                          className="px-3.5 py-1.5 rounded-lg border border-[#0D7751]/30 bg-white hover:bg-[#E9F5EF] text-[#0D7751] text-xs font-bold transition-all flex items-center space-x-1"
-                        >
-                          <FileText className="h-4 w-4" />
-                          <span>{expandedCharter === row.id ? t("Hide File") : t("Review File")}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {expandedCharter === row.id && (
-                      <div className="pt-2 border-t border-[#E2ECE7] space-y-4">
-                        {!detail ? (
-                          <div className="text-xs text-[#5A7366]">{t("Loading file…")}</div>
-                        ) : (
-                          <>
-                            {/* 4-Authority Quorum (detail payload) */}
-                            <div>
-                              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#5A7366] block mb-2 flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5" /> {t("Submitted Authority Quorum")}
-                              </span>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                {detail.authorities.map((a) => (
-                                  <div key={a.role} className="p-2.5 rounded-lg bg-white border border-[#E2ECE7]">
-                                    <span className="text-[11px] font-bold text-[#0D7751] uppercase">{t(a.role)}</span>
-                                    <div className="font-bold text-[#103125]">{a.full_name}</div>
-                                    <div className="text-[11px] text-[#5A7366]">{t(a.designation)}</div>
-                                    <div className={`text-[11px] font-bold ${a.otp_verified ? 'text-brand-700' : 'text-amber-700'}`}>
-                                      {a.otp_verified ? t("OTP verified") : t("OTP pending")}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Uploads — metadata only, bytes stay behind the scoped endpoint */}
-                            <div>
-                              <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#5A7366] block mb-2 flex items-center gap-1.5">
-                                <FileText className="h-3.5 w-3.5" /> {t("Uploaded Documents")} ({detail.uploads.length})
-                              </span>
-                              <div className="space-y-1.5">
-                                {detail.uploads.map((u) => (
-                                  <div key={u.id} className="p-2.5 rounded-lg bg-white border border-[#E2ECE7] text-xs flex justify-between items-center">
-                                    <span className="font-mono font-semibold text-[#103125]">{u.original_name}</span>
-                                    <span className="text-[11px] text-[#5A7366]">{u.mime_type} • {Math.round(u.size_bytes / 1024)} KB • {formatDate(u.uploaded_at)}</span>
-                                  </div>
-                                ))}
-                                {detail.uploads.length === 0 && (
-                                  <div className="text-[11px] text-[#5A7366]">{t("No documents uploaded.")}</div>
-                                )}
-                              </div>
-                            </div>
-
-                            {row.review_reason && (
-                              <div className="text-xs text-[#5A7366]">
-                                {t("Review note:")} <span className="font-semibold">{row.review_reason}</span>
-                              </div>
-                            )}
-
-                            {/* State-machine actions — the server owns the transitions */}
-                            <div className="flex items-center space-x-2 pt-1">
-                              {row.status === 'queued' && (
-                                <button
-                                  onClick={() => void onCharterDecision(row.id, 'review')}
-                                  disabled={busy}
-                                  className="px-4 py-1.5 rounded-lg bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
-                                >
-                                  {t("Start Review")}
-                                </button>
-                              )}
-                              {row.status === 'under_review' && (
-                                <button
-                                  onClick={() => void onCharterDecision(row.id, 'sanction')}
-                                  disabled={busy}
-                                  className="px-4 py-1.5 rounded-lg bg-[#0D7751] hover:bg-[#0a5c3e] text-white text-xs font-bold transition-all shadow-xs flex items-center space-x-1 disabled:opacity-50"
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                  <span>{t("Sanction Charter")}</span>
-                                </button>
-                              )}
-                              {(row.status === 'queued' || row.status === 'under_review') && (
-                                <button
-                                  onClick={() => void onCharterDecision(row.id, 'reject')}
-                                  disabled={busy}
-                                  className="px-3.5 py-1.5 rounded-lg border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all flex items-center space-x-1 disabled:opacity-50"
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                  <span>{t("Reject")}</span>
-                                </button>
-                              )}
-                              {busy && <span className="text-[11px] text-[#5A7366]">{t("Saving…")}</span>}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-xs text-[#5A7366]">
-              <CheckCircle2 className="h-10 w-10 text-brand-500 mx-auto mb-2" />
-              <h4 className="font-bold text-[#103125]">{t("Charter Queue Clear")}</h4>
-              <p>{t("No charter applications in the selected zone.")}</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* DESK 2: Grievance & SLA Dispatch Desk (REAL — apps.grievances) */}
       {adminTab === 'tickets' && (

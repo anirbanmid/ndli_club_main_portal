@@ -17,6 +17,7 @@ hygiene, BRIEF_M2.md §3): cache keys are namespaced by a version token that
 invalidation is explicit (never implicit staleness) and the TTL bounds any
 worst-case staleness at ``CACHE_TTL_SECONDS``.
 """
+
 from __future__ import annotations
 
 from typing import Any

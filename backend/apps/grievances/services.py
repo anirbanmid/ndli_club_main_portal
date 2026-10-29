@@ -18,6 +18,7 @@ All timers come from ``settings.GRIEVANCE_SLA`` — the ONE settings store (P4).
 Access rules: intake is **club authorities only** (C4); the dispatcher side is
 zone-scoped at the queryset level (P0/P4 — cross-zone rows look missing).
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -91,9 +92,8 @@ def tickets_for_club_authority(user: Any) -> Any:
     club_ids = AuthorityAssignment.objects.filter(
         user=user, status=AuthorityAssignment.Status.ACTIVE
     ).values_list("club_id", flat=True)
-    return (
-        GrievanceTicket.objects.filter(club_id__in=list(club_ids))
-        .order_by("-created_at")
+    return GrievanceTicket.objects.filter(club_id__in=list(club_ids)).order_by(
+        "-created_at"
     )
 
 
@@ -140,8 +140,7 @@ def create_ticket(
         subject=subject[:200],
         description=str(description),
         reminder_due_at=now + timedelta(hours=int(cfg["REMINDER_HOURS"])),
-        admin_reminder_due_at=now
-        + timedelta(days=int(cfg["ESCALATION_DAYS"])),
+        admin_reminder_due_at=now + timedelta(days=int(cfg["ESCALATION_DAYS"])),
     )
     audit_services.record(
         action="grievance.created",
@@ -163,16 +162,13 @@ def create_ticket(
 def due_reminders(as_of: Any = None) -> Any:
     """Unresolved tickets whose reminder stream is due (old get_employee_reminders)."""
     as_of = as_of or timezone.now()
-    return (
-        GrievanceTicket.objects.filter(
-            reminder_due_at__lte=as_of,
-            status__in=[
-                GrievanceTicket.Status.OPEN,
-                GrievanceTicket.Status.NOT_RESOLVED,
-            ],
-        )
-        .order_by("reminder_due_at")
-    )
+    return GrievanceTicket.objects.filter(
+        reminder_due_at__lte=as_of,
+        status__in=[
+            GrievanceTicket.Status.OPEN,
+            GrievanceTicket.Status.NOT_RESOLVED,
+        ],
+    ).order_by("reminder_due_at")
 
 
 def due_admin_escalations(as_of: Any = None) -> Any:
@@ -180,18 +176,15 @@ def due_admin_escalations(as_of: Any = None) -> Any:
     as_of = as_of or timezone.now()
     cfg = _sla()
     min_age = as_of - timedelta(days=int(cfg["ESCALATION_DAYS"]))
-    return (
-        GrievanceTicket.objects.filter(
-            admin_reminder_due_at__lte=as_of,
-            created_at__lte=min_age,
-            status__in=[
-                GrievanceTicket.Status.OPEN,
-                GrievanceTicket.Status.NOT_RESOLVED,
-            ],
-            is_admin_escalated=False,
-        )
-        .order_by("created_at")
-    )
+    return GrievanceTicket.objects.filter(
+        admin_reminder_due_at__lte=as_of,
+        created_at__lte=min_age,
+        status__in=[
+            GrievanceTicket.Status.OPEN,
+            GrievanceTicket.Status.NOT_RESOLVED,
+        ],
+        is_admin_escalated=False,
+    ).order_by("created_at")
 
 
 @transaction.atomic

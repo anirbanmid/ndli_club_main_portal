@@ -1,4 +1,5 @@
 """M6 D5 MCC insights tests — read-only report + RBAC (P0: MCC-only)."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -19,6 +20,7 @@ REPORT_URL = "/admin/api/v1/governance/insights/report/"
 
 class InsightsReportTests(TestCase):
     """Strategic report: derivation + audience (MCC = master control only)."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     central: Any
     client: Any
@@ -83,9 +85,7 @@ class InsightsReportTests(TestCase):
         self.assertNotIn("UP", data["penetration"]["unrepresented_states"])
         self.assertEqual(data["penetration"]["clubs_by_state"]["UP"], 1)
         self.assertEqual(len(data["roadmap"]), 3)
-        self.assertEqual(
-            [h["horizon_days"] for h in data["roadmap"]], [30, 90, 365]
-        )
+        self.assertEqual([h["horizon_days"] for h in data["roadmap"]], [30, 90, 365])
         self.assertTrue(data["strategic_recommendations"])
 
     def test_renewal_horizon_counts(self) -> None:

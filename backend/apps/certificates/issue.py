@@ -4,6 +4,7 @@ Registration (D2b) and renewal (D5) certificates are both minted through
 ``issue_certificate`` — collision-safe id generation + HMAC signing included.
 There is no second cert path anywhere in the portal.
 """
+
 from __future__ import annotations
 
 from datetime import date

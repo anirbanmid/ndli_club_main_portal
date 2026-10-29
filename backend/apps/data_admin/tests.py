@@ -8,6 +8,7 @@ are tested adversarially:
   * the provisioned skeleton (accounts + credentials + geography) survives
   * NO reseed of any kind happens after the wipe
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -73,6 +74,7 @@ def _login(client: APIClient, user) -> None:
 @override_settings(HANDOVER_PIN_SHA256=PIN_SHA256)
 class HardResetGuardTests(TestCase):
     """Layer-by-layer: every guard refuses before the next one is reached."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     client: Any
     club: Club
@@ -86,9 +88,7 @@ class HardResetGuardTests(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.zone = Zone.objects.create(code="N1", name="North 1")
-        cls.state = State.objects.create(
-            code="UP", name="Uttar Pradesh", zone=cls.zone
-        )
+        cls.state = State.objects.create(code="UP", name="Uttar Pradesh", zone=cls.zone)
         cls.inst = Institution.objects.create(
             code="INST-N1", legacy_id="LEG-N1", name="N1 Institute", state=cls.state
         )
@@ -193,8 +193,8 @@ class HardResetGuardTests(TestCase):
         response = self._post(GOOD_BODY, user=self.master, with_challenge=False)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn(
-            'Security challenge expired or already used.',
-            response.json()['error'],
+            "Security challenge expired or already used.",
+            response.json()["error"],
         )
         self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
 
@@ -208,8 +208,8 @@ class HardResetGuardTests(TestCase):
         response = self.client.post(URL, replay, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn(
-            'Security challenge expired or already used.',
-            response.json()['error'],
+            "Security challenge expired or already used.",
+            response.json()["error"],
         )
         self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
 
@@ -225,7 +225,7 @@ class HardResetGuardTests(TestCase):
         body = dict(GOOD_BODY, password=CENTRAL_PASSWORD)
         response = self._post(body, user=self.master)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn('Invalid Master Admin password', response.json()['error'])
+        self.assertIn("Invalid Master Admin password", response.json()["error"])
         self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
 
     def test_central_admin_house_is_denied_at_the_gate(self) -> None:
@@ -252,9 +252,7 @@ class HardResetGuardTests(TestCase):
             return_value=None,
         ):
             response = self._post(GOOD_BODY, user=self.master)
-        self.assertEqual(
-            response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertIn("data is untouched", response.json()["error"])
         self.assertTrue(Club.objects.filter(pk=self.club.pk).exists())
         self.assertEqual(Club.objects.count(), 1)
@@ -269,17 +267,18 @@ class HardResetGuardTests(TestCase):
     def test_wipe_exception_audits_failure_with_error_detail(self) -> None:
         """Free-text errors go to ``detail`` - never to the short
         ``outcome`` column (overflow there broke PG transactions)."""
-        with mock.patch(
-            "apps.data_admin.views.HardResetView._create_checkpoint",
-            return_value={"success": True, "backup_id": "bk-1"},
-        ), mock.patch(
-            "apps.data_admin.views.hard_reset_for_handover",
-            side_effect=RuntimeError("x" * 300),
+        with (
+            mock.patch(
+                "apps.data_admin.views.HardResetView._create_checkpoint",
+                return_value={"success": True, "backup_id": "bk-1"},
+            ),
+            mock.patch(
+                "apps.data_admin.views.hard_reset_for_handover",
+                side_effect=RuntimeError("x" * 300),
+            ),
         ):
             response = self._post(GOOD_BODY, user=self.master)
-        self.assertEqual(
-            response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         row = AuditLog.objects.get(action="hard_reset.failed")
         self.assertEqual(row.outcome, "failure")
         self.assertEqual(row.detail["error"], "x" * 200)
@@ -290,6 +289,7 @@ class HardResetGuardTests(TestCase):
 @override_settings(HANDOVER_PIN_SHA256=PIN_SHA256)
 class HardResetWipeTests(TestCase):
     """The wipe itself: skeleton kept, business data gone, no reseed."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     client: Any
     club: Club
@@ -302,9 +302,7 @@ class HardResetWipeTests(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.zone = Zone.objects.create(code="N1", name="North 1")
-        cls.state = State.objects.create(
-            code="UP", name="Uttar Pradesh", zone=cls.zone
-        )
+        cls.state = State.objects.create(code="UP", name="Uttar Pradesh", zone=cls.zone)
         cls.inst = Institution.objects.create(
             code="INST-N1", legacy_id="LEG-N1", name="N1 Institute", state=cls.state
         )
@@ -373,9 +371,7 @@ class HardResetWipeTests(TestCase):
 
     def test_wipe_is_recorded_in_the_audit_trail(self) -> None:
         self._run()
-        self.assertTrue(
-            AuditLog.objects.filter(action="hard_reset.completed").exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="hard_reset.completed").exists())
 
     def test_keep_and_wipe_sets_are_disjoint(self) -> None:
         keep = set(KEEP_MODELS)
@@ -384,9 +380,7 @@ class HardResetWipeTests(TestCase):
 
     def test_wipe_manifest_names_every_wipe_model(self) -> None:
         names = {row["model"] for row in wipe_manifest()}
-        expected = {
-            f"{m._meta.app_label}.{m._meta.model_name}" for m in WIPE_MODELS
-        }
+        expected = {f"{m._meta.app_label}.{m._meta.model_name}" for m in WIPE_MODELS}
         self.assertEqual(names, expected)
 
     def test_audit_trail_is_retained_by_design(self) -> None:
@@ -399,12 +393,8 @@ class HardResetWipeTests(TestCase):
 
         self._run()
 
-        self.assertTrue(
-            AuditLog.objects.filter(action="some.earlier.action").exists()
-        )
-        self.assertTrue(
-            AuditLog.objects.filter(action="hard_reset.completed").exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="some.earlier.action").exists())
+        self.assertTrue(AuditLog.objects.filter(action="hard_reset.completed").exists())
 
     def test_audit_log_refuses_deletion(self) -> None:
         """Pinned: the tamper-evidence guard must never be bypassed."""

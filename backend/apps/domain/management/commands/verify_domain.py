@@ -6,6 +6,7 @@ It NEVER blocks, never mutates domain data and is safe to run at any time —
 it is the future bounded auto-repair trigger point (BRIEF_M2.md §3). Every
 run appends one audit row (P5: the check itself is traceable).
 """
+
 from __future__ import annotations
 
 from typing import Any

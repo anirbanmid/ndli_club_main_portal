@@ -7,6 +7,7 @@ blocks both, so ``/api/docs/`` rendered a blank white screen (owner-reported
 ``apps/core/static/swagger-ui/`` and moves the init into an external file.
 These pins keep the page renderable under the unchanged policy.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,9 +26,9 @@ class ApiDocsCspTests(TestCase):
         response = self.client.get("/api/docs/")
         self.assertEqual(response.status_code, 200)
         body = response.content.decode()
-        self.assertIn('/static/swagger-ui/swagger-ui-bundle.js', body)
-        self.assertIn('/static/swagger-ui/swagger-ui-standalone-preset.js', body)
-        self.assertIn('/static/swagger-ui/swagger-init.js', body)
+        self.assertIn("/static/swagger-ui/swagger-ui-bundle.js", body)
+        self.assertIn("/static/swagger-ui/swagger-ui-standalone-preset.js", body)
+        self.assertIn("/static/swagger-ui/swagger-init.js", body)
         # No third-party origin anywhere on the page (M4H: CDN removed).
         self.assertNotIn("cdn.jsdelivr.net", body)
 

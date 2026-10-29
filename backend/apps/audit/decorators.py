@@ -5,6 +5,7 @@ row per call (success or failure). Views attach rich context by writing to
 ``request.audit_detail`` while they run; the decorator picks it up into the
 row's ``detail``.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

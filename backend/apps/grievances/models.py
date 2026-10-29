@@ -13,6 +13,7 @@ Lifecycle timers (``reminder_due_at`` = created + 72h, ``admin_reminder_due_at``
 = created + 30d, 7-day recurrent cycles after a "Not Resolved" mark) live in
 ``settings.GRIEVANCE_SLA`` — the ONE settings-backed store (P4).
 """
+
 from __future__ import annotations
 
 import uuid

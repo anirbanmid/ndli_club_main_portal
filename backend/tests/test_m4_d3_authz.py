@@ -13,6 +13,7 @@ Note (scope): the activity-logger controls land in M5 (``apps.activities``
 ships no endpoints yet) — they MUST reuse ``CLUB_AUTHORITY_GATE`` +
 ``ObjectScope("clubs")`` and extend this matrix.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -91,9 +92,7 @@ class W9AuthzMatrixTests(TestCase):
         self.assertFalse(Membership.objects.filter(user=self.student).exists())
 
     def test_w9_stale_password_state_is_refused_everywhere(self) -> None:
-        stale = make_club_admin(
-            "d3w9stale", self.club, must_change_password=True
-        )
+        stale = make_club_admin("d3w9stale", self.club, must_change_password=True)
         self.client.force_login(stale)
         self._assert_all_refused((401, 403))
 

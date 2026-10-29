@@ -11,6 +11,7 @@ Discipline (P0/P4):
 * These endpoints are READ-ONLY: no view writes to any table.
 * Out-of-scope zones resolve to an empty/own-zone view, never data (P0).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,7 +30,7 @@ from .metrics import (
     visible_zone,
     zone_dashboard,
 )
-from .ratings import evaluate_officers
+from .ratings import CANONICAL_BASELINES, evaluate_officers
 
 #: The one door to the dashboards (admin module, decider sub-roles only).
 DASHBOARD_GATE = CategoryGate("admin", DASHBOARD_SUB_ROLES)
@@ -85,6 +86,7 @@ class OfficerRatingsView(APIView):
             officers,
             year=_positive_int(request.query_params.get("year"), 0) or None,
             month=_positive_int(request.query_params.get("month"), 0) or None,
+            baselines=CANONICAL_BASELINES,
         )
         return Response({"officers": evaluations, "zone_code": zone})
 

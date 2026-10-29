@@ -3,6 +3,7 @@
 Adversarial zone cases included (P0): an officer from another zone must get
 404 (never data) on every renewal surface.
 """
+
 from __future__ import annotations
 
 import base64
@@ -27,6 +28,7 @@ User = get_user_model()
 
 class RenewalDeskAPITests(TestCase):
     """Renewal attention queue + both Q1 issuance paths (M6 D5)."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     central: Any
     client: Any

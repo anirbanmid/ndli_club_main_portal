@@ -15,6 +15,7 @@ certificate. ``event_ref`` is the stable event identifier that the M4+
 activities domain will point at; ``holder``/``club`` stay relational (P4:
 institution is ALWAYS derived via ``club.institution``, never stored here).
 """
+
 from __future__ import annotations
 
 from django.conf import settings

@@ -6,6 +6,7 @@ States/UTs, Districts, Institutions, Clubs and the relational links
 data-driven (seed files under ``data/samples/`` + admin-editable); no zone,
 state or officer mapping is hard-coded anywhere in Python.
 """
+
 from __future__ import annotations
 
 from django.apps import AppConfig

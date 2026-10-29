@@ -13,6 +13,7 @@ IDEMPOTENTLY (``update_or_create`` on documented natural keys — re-running
 * seeding is an explicit, flagged, audited action in production (M2-A4);
 * sample accounts get UNUSABLE passwords — the seed never ships credentials.
 """
+
 from __future__ import annotations
 
 import json
@@ -79,6 +80,7 @@ class SeedResult:
 
 
 # --- row validation (strict whitelist; P0 injection/mass-assignment guard) --
+
 
 def _v_code(value: Any, where: str) -> str:
     if not isinstance(value, str) or not CODE_RE.match(value):
@@ -376,9 +378,7 @@ def _reset(result: SeedResult, rows: dict[str, list[dict[str, Any]]]) -> None:
     drop(
         District,
         "districts",
-        District.objects.filter(
-            _pair_filter(district_pairs, ("state__code", "code"))
-        ),
+        District.objects.filter(_pair_filter(district_pairs, ("state__code", "code"))),
     )
     drop(State, "states", State.objects.filter(code__in=state_codes))
     drop(Zone, "zones", Zone.objects.filter(code__in=zone_codes))
@@ -480,9 +480,7 @@ def load_samples(
             result.bump("institutions", "created" if created else "updated")
 
         for row in rows["clubs.json"]:
-            institution = Institution.objects.filter(
-                code=row["institution"]
-            ).first()
+            institution = Institution.objects.filter(code=row["institution"]).first()
             if institution is None:
                 raise SeedValidationError(
                     f"clubs.json: {row['code']} references unknown institution "
@@ -526,9 +524,7 @@ def load_samples(
             else:
                 for field, value in profile_defaults.items():
                     setattr(user, field, value)
-                user.save(
-                    update_fields=[*profile_defaults, "updated_at"]
-                )
+                user.save(update_fields=[*profile_defaults, "updated_at"])
             result.bump("users", "created" if created else "updated")
 
         for row in rows["memberships.json"]:
@@ -551,9 +547,7 @@ def load_samples(
             result.bump("memberships", "created" if created else "updated")
 
         for row in rows["authority_assignments.json"]:
-            authority_user = user_model.objects.filter(
-                username=row["username"]
-            ).first()
+            authority_user = user_model.objects.filter(username=row["username"]).first()
             club = Club.objects.filter(code=row["club"]).first()
             if authority_user is None or club is None:
                 raise SeedValidationError(
@@ -570,9 +564,7 @@ def load_samples(
                     "status": row.get("status", "active"),
                 },
             )
-            result.bump(
-                "authority_assignments", "created" if created else "updated"
-            )
+            result.bump("authority_assignments", "created" if created else "updated")
 
         for row in rows["officer_assignments.json"]:
             officer_user = user_model.objects.filter(username=row["username"]).first()
@@ -588,9 +580,7 @@ def load_samples(
                 from_date=row["from_date"],
                 defaults={"to_date": row.get("to_date")},
             )
-            result.bump(
-                "officer_assignments", "created" if created else "updated"
-            )
+            result.bump("officer_assignments", "created" if created else "updated")
 
         if dry_run:
             transaction.set_rollback(True)

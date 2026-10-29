@@ -19,6 +19,7 @@ Named pins (evidence, not claims):
 
 Everything is offline and deterministic: fixed test keys, no network.
 """
+
 from __future__ import annotations
 
 import base64
@@ -125,9 +126,7 @@ class CertPinTestCase(TestCase):
             hmac_tag="",
             **fields,
         )
-        cert.hmac_tag = signing.sign(
-            signing.canonical_payload_for(cert), key_id=key_id
-        )
+        cert.hmac_tag = signing.sign(signing.canonical_payload_for(cert), key_id=key_id)
         cert.save(update_fields=["hmac_tag"])
         return cert
 
@@ -233,9 +232,17 @@ class V2DisclosureFloorPins(CertPinTestCase):
             frozenset(result.disclosure.keys()),
             frozenset(services.DISCLOSURE_FIELDS),
         )
-        self.assertEqual(set(services.DISCLOSURE_FIELDS), {
-            "name", "club", "institution", "event_title", "date", "status",
-        })
+        self.assertEqual(
+            set(services.DISCLOSURE_FIELDS),
+            {
+                "name",
+                "club",
+                "institution",
+                "event_title",
+                "date",
+                "status",
+            },
+        )
         self.assertEqual(result.disclosure["club"], self.club.name)
         self.assertEqual(result.disclosure["institution"], self.institution.name)
         self.assertEqual(result.disclosure["event_title"], "Sample Event")
@@ -469,8 +476,8 @@ class SeedFixturePins(CertPinTestCase):
         # Idempotent re-run keeps every signature intact.
         for cert in Certificate.objects.all():
             self.assertEqual(
-                services.verify_certificate(cert.certificate_id).status in
-                (services.STATUS_VALID, services.STATUS_REVOKED),
+                services.verify_certificate(cert.certificate_id).status
+                in (services.STATUS_VALID, services.STATUS_REVOKED),
                 True,
                 cert,
             )
@@ -487,9 +494,7 @@ class SeedFixturePins(CertPinTestCase):
 
     def test_unknown_reference_is_rejected_atomically(self):
         load_domain_samples()
-        poisoned = self._write_fixture(
-            [self._good_row(username="NO-SUCH-USER-XYZ")]
-        )
+        poisoned = self._write_fixture([self._good_row(username="NO-SUCH-USER-XYZ")])
         with mock.patch.object(cert_seed, "CERT_SAMPLES_FILE", poisoned):
             with self.assertRaises(cert_seed.SeedValidationError):
                 cert_seed.load_certificate_samples()

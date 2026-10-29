@@ -15,6 +15,7 @@ Credentials follow the documented scheme in M6D5UI4_DEPLOY_GUIDE.md and are
 stored with the client password standard (PBKDF2-HMAC-SHA256, 100k rounds,
 16-byte random salts — apps/accounts/hashers.py::PBKDF2ClientHasher).
 """
+
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model

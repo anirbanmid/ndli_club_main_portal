@@ -7,6 +7,7 @@
 * **Read-only public surface** — everyone can read; only club authorities
   can write (the W9 matrix lives in ``test_m4_d3_authz.py``).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -128,9 +129,7 @@ class SlugRulesTests(TestCase):
             state, tag="T2", institution_name="Twin Institute", club_name="Twin Club"
         )
         taken: set[str] = set()
-        first_slug = slugs.derive_slug(
-            first.institution.name, first.name, taken=taken
-        )
+        first_slug = slugs.derive_slug(first.institution.name, first.name, taken=taken)
         taken.add(first_slug)
         second_slug = slugs.derive_slug(
             second.institution.name, second.name, taken=taken

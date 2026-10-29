@@ -11,6 +11,7 @@ Owner decisions (``BRIEF_M6.md`` §6, 2026-10-24):
   registration certificate deposited to the club admin side (slice D2b —
   wired on top of :func:`review_charter`, which returns the sanctioned row).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -116,9 +117,7 @@ def review_charter(
     # select_for_update + scope filter: the row is locked AND zone-filtered in
     # one query, so a cross-zone IDOR resolves to the same 404 as a bad id.
     try:
-        application = (
-            _scoped_queryset(user).select_for_update().get(pk=application_id)
-        )
+        application = _scoped_queryset(user).select_for_update().get(pk=application_id)
     except CharterApplication.DoesNotExist:
         raise GovernanceError("not_found") from None
 

@@ -11,6 +11,7 @@ Both Q1 paths live here:
 The club-side submission door (Path A step 1) is ``/api/v1/clubs/renewal/
 request/`` (club authorities only).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -89,10 +90,46 @@ class RenewalAttentionView(APIView):
             rows = renewals.attention_for(request.user)
         except GovernanceError as exc:
             return _error(exc)
+
+        f = request.query_params.get("filter", "ALL").strip()
+        if f.lower() == "overdue":
+            rows = [
+                r
+                for r in rows
+                if r.get("attention") == "overdue"
+                or r.get("attention_type") == "Overdue"
+            ]
+        elif f.lower() in ("expiring", "expiring soon") or "expir" in f.lower():
+            rows = [
+                r
+                for r in rows
+                if r.get("attention") == "expiring"
+                or r.get("attention_type") == "Expiring Soon"
+            ]
+
+        q = request.query_params.get("q", "").strip().lower()
+        if q:
+            rows = [
+                r
+                for r in rows
+                if q in r.get("club_code", "").lower()
+                or q in r.get("club_name", "").lower()
+                or q in r.get("institution_name", "").lower()
+                or q in r.get("state", "").lower()
+                or q in r.get("zone", "").lower()
+            ]
+
+        overdue_cnt = sum(1 for r in rows if r.get("days_left", 0) < 0)
+        expiring_cnt = len(rows) - overdue_cnt
+
         paginator = PageNumberPagination()
         paginator.page_size = _PAGE_SIZE
         page = paginator.paginate_queryset(rows, request)
-        return paginator.get_paginated_response(page or [])
+        resp = paginator.get_paginated_response(page or [])
+        resp.data["total_attention_count"] = len(rows)
+        resp.data["overdue_count"] = overdue_cnt
+        resp.data["expiring_soon_count"] = expiring_cnt
+        return resp
 
 
 class RenewalListView(APIView):

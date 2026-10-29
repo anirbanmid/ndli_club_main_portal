@@ -17,6 +17,7 @@ filter user rows and domain querysets with one mechanical rule set. The
 never reaches EMP05 data even across the institution/club joins
 (tests/test_m2_d3_scope_fk.py).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -62,7 +63,6 @@ def _filter(queryset: QuerySet, **keys: Any) -> QuerySet:
             return queryset.none()
         conditions[path] = value
     return queryset.filter(**conditions)
-
 
 
 def _duty_state_codes(user: Any) -> Any:

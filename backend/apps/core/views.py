@@ -6,6 +6,7 @@
 These endpoints are public and intentionally expose no configuration detail
 beyond per-check ok/fail status — no hostnames, credentials or versions.
 """
+
 from django.core.cache import cache
 from django.db import connection
 from django.http import HttpRequest, JsonResponse

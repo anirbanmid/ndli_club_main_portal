@@ -5,6 +5,7 @@ The module gate must work with NO mail server running and must not burn email
 quota, so this door contains NO email/OTP step at all. The captcha is one-shot
 and session-held (P0: nothing forgeable on the client).
 """
+
 from __future__ import annotations
 
 from django.core.management import call_command

@@ -16,6 +16,7 @@ nonce, sig}`` where ``sig`` is the HMAC over the canonical payload of
 ``(club, exp, nonce)``. Verification re-derives the canonical payload from
 the envelope fields — the envelope is transport, the payload is truth.
 """
+
 from __future__ import annotations
 
 import base64
@@ -78,16 +79,12 @@ def issue_join_token(
     # Second precision: the envelope serialises ``exp`` as ISO seconds, so
     # the returned expiry must match the token EXACTLY — never report a
     # microsecond-precision expiry the signed token does not carry.
-    expires_at = (moment + dt.timedelta(seconds=ttl_seconds)).replace(
-        microsecond=0
-    )
+    expires_at = (moment + dt.timedelta(seconds=ttl_seconds)).replace(microsecond=0)
     expires_iso = _iso(expires_at)
     nonce = secrets.token_urlsafe(16)
     key_id = signing.active_key_id()
     signature = signing.sign(
-        canonical_payload(
-            club_code=club_code, expires_at=expires_iso, nonce=nonce
-        ),
+        canonical_payload(club_code=club_code, expires_at=expires_iso, nonce=nonce),
         key_id=key_id,
     )
     envelope: dict[str, Any] = {

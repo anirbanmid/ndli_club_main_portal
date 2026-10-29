@@ -17,6 +17,7 @@ CSV hardening (P0):
   ``'`` (RFC quoting alone does not stop spreadsheet apps from executing a
   formula, so the value is made inert before the writer quotes it).
 """
+
 from __future__ import annotations
 
 import csv
@@ -63,9 +64,7 @@ ROLE_CHOICES = frozenset(choice.value for choice in RosterEntry.Role)
 class CsvContractError(Exception):
     """Contract-level failure (bad header/encoding/size) — a clean 4xx."""
 
-    def __init__(
-        self, message: str, *, code: str, http_status: int = 400
-    ) -> None:
+    def __init__(self, message: str, *, code: str, http_status: int = 400) -> None:
         super().__init__(message)
         self.message = message
         self.code = code
@@ -255,9 +254,7 @@ def validate_row(row_number: int, cells: list[str]) -> RowOutcome:
             row=row_number, status="error", reason=problems[0], data=values
         )
     data: dict[str, Any] = dict(values)
-    data["batch_year"] = (
-        int(values["batch_year"]) if values["batch_year"] else None
-    )
+    data["batch_year"] = int(values["batch_year"]) if values["batch_year"] else None
     # M4-A3: role is OPTIONAL in the contract — normalize once, here (P4),
     # so every writer (add / edit / import) stores the same default.
     data["role"] = values["role"] or RosterEntry.Role.MEMBER
@@ -364,9 +361,7 @@ def export_lines(entries: Iterable[RosterEntry]) -> Iterator[str]:
     for entry in entries:
         buffer.seek(0)
         buffer.truncate()
-        writer.writerow(
-            [neutralize_cell(getattr(entry, column)) for column in columns]
-        )
+        writer.writerow([neutralize_cell(getattr(entry, column)) for column in columns])
         yield buffer.getvalue()
 
 
@@ -432,9 +427,7 @@ def process_file(
         counts = {
             "ok": sum(1 for row in buffer if row.status == "ok"),
             "errors": sum(1 for row in buffer if row.status == "error"),
-            "duplicates": sum(
-                1 for row in buffer if row.status == "duplicate"
-            ),
+            "duplicates": sum(1 for row in buffer if row.status == "duplicate"),
         }
         row_dicts = [row.as_dict() for row in buffer]
         if commit and fresh:
@@ -516,9 +509,7 @@ def _advance_job(
 # --- Two runners, ONE pipeline (§4b / M4-A4) -------------------------------
 
 
-def run_import_job(
-    job: RosterImportJob, *, request: Any = None
-) -> RosterImportJob:
+def run_import_job(job: RosterImportJob, *, request: Any = None) -> RosterImportJob:
     """Celery when a worker is wired, sync-chunked fallback otherwise.
 
     Only the RUNNER differs (M4-A4): same pipeline, same idempotency, same
@@ -535,9 +526,7 @@ def run_import_job(
     return run_sync(job, request=request)
 
 
-def run_sync(
-    job: RosterImportJob, *, request: Any = None
-) -> RosterImportJob:
+def run_sync(job: RosterImportJob, *, request: Any = None) -> RosterImportJob:
     """The free-tier runner: synchronous, chunked, resumable (M4-A4)."""
     if max_rows() > sync_limit():
         raise CsvContractError(
@@ -555,9 +544,7 @@ def run_sync(
         # and the dry-run count can never exceed what a commit accounts for.
         for _row_number, _cells in iter_raw_rows(source_path):
             pass
-        process_file(
-            club=job.club, source_path=source_path, commit=True, job=job
-        )
+        process_file(club=job.club, source_path=source_path, commit=True, job=job)
     except CsvContractError as exc:
         job.status = RosterImportJob.Status.FAILED
         job.finished_at = timezone.now()

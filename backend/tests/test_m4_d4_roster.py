@@ -10,6 +10,7 @@ Named pins:
 * single add row (contract-validated, club-scoped uniqueness) and the
   closed status transition set (active/alumni/suspended).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -59,7 +60,9 @@ class RosterFixture(TestCase):
         )
         self.entry = make_entry(self.club)
         self.other_entry = make_entry(
-            self.other_club, name="Bela Singh", admission_no="ADM901",
+            self.other_club,
+            name="Bela Singh",
+            admission_no="ADM901",
             email="bela@example.test",
         )
 
@@ -113,19 +116,18 @@ class W6RosterScopingTests(RosterFixture):
 
     def test_w6_cross_club_and_unknown_ids_are_indistinguishable(self) -> None:
         self.client.force_login(self.other_admin)
-        known = self.patch_entry(
-            self.entry.pk, field="name", value="X", version=1
-        )
-        unknown = self.patch_entry(
-            999999, field="name", value="X", version=1
-        )
+        known = self.patch_entry(self.entry.pk, field="name", value="X", version=1)
+        unknown = self.patch_entry(999999, field="name", value="X", version=1)
         self.assertEqual(known.status_code, unknown.status_code)
         self.assertEqual(known.content, unknown.content)
 
     def test_w6_student_sees_own_rows_only(self) -> None:
         own = make_entry(
-            self.club, name="Own Row", admission_no="ADM002",
-            email="own@example.test", user=self.student,
+            self.club,
+            name="Own Row",
+            admission_no="ADM002",
+            email="own@example.test",
+            user=self.student,
         )
         self.client.force_login(self.student)
         body = self.client.get(ROSTER).json()
@@ -135,8 +137,11 @@ class W6RosterScopingTests(RosterFixture):
 
     def test_w6_student_cannot_write_even_their_own_row(self) -> None:
         own = make_entry(
-            self.club, name="Own Row", admission_no="ADM002",
-            email="own@example.test", user=self.student,
+            self.club,
+            name="Own Row",
+            admission_no="ADM002",
+            email="own@example.test",
+            user=self.student,
         )
         self.client.force_login(self.student)
         for response in (
@@ -155,13 +160,13 @@ class W6RosterScopingTests(RosterFixture):
             self.assertIn(response.status_code, (401, 403))
         own.refresh_from_db()
         self.assertEqual(own.name, "Own Row")
-        self.assertFalse(
-            RosterEntry.objects.filter(admission_no="ADM666").exists()
-        )
+        self.assertFalse(RosterEntry.objects.filter(admission_no="ADM666").exists())
 
     def test_w6_student_never_reads_other_students_rows(self) -> None:
         make_entry(
-            self.club, name="Classmate", admission_no="ADM003",
+            self.club,
+            name="Classmate",
+            admission_no="ADM003",
             email="classmate@example.test",
         )
         self.client.force_login(self.student)
@@ -222,9 +227,7 @@ class InlineEditTests(RosterFixture):
 
     def test_stale_version_is_409_and_never_silently_overwrites(self) -> None:
         self.patch_entry(self.entry.pk, field="name", value="First", version=1)
-        stale = self.patch_entry(
-            self.entry.pk, field="name", value="Second", version=1
-        )
+        stale = self.patch_entry(self.entry.pk, field="name", value="Second", version=1)
         self.assertEqual(stale.status_code, 409)
         body = stale.json()
         self.assertEqual(body["code"], "version_conflict")
@@ -303,7 +306,9 @@ class InlineEditTests(RosterFixture):
 
     def test_email_collision_is_409(self) -> None:
         make_entry(
-            self.club, name="Other", admission_no="ADM002",
+            self.club,
+            name="Other",
+            admission_no="ADM002",
             email="other@example.test",
         )
         response = self.patch_entry(
@@ -336,17 +341,13 @@ class InlineEditTests(RosterFixture):
         # a contract rejection writes nothing, so it must NOT burn the
         # version — the client can retry the corrected value at the same
         # version (only real writes bump, P2 one-lock-truth).
-        blank_role = self.patch_entry(
-            self.entry.pk, field="role", value="", version=2
-        )
+        blank_role = self.patch_entry(self.entry.pk, field="role", value="", version=2)
         self.assertEqual(blank_role.status_code, 200, blank_role.content)
         self.assertEqual(blank_role.json()["role"], RosterEntry.Role.MEMBER)
 
     def test_edit_is_audited(self) -> None:
         self.patch_entry(self.entry.pk, field="name", value="Audited", version=1)
-        self.assertTrue(
-            AuditLog.objects.filter(action="roster.entry.updated").exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="roster.entry.updated").exists())
 
 
 class AddRowTests(RosterFixture):
@@ -363,8 +364,10 @@ class AddRowTests(RosterFixture):
 
     def test_add_creates_an_active_member_row(self) -> None:
         response = self.add(
-            name="New Student", email="new@example.test",
-            admission_no="ADM777", batch_year="2025",
+            name="New Student",
+            email="new@example.test",
+            admission_no="ADM777",
+            batch_year="2025",
         )
         self.assertEqual(response.status_code, 201, response.content)
         body = response.json()
@@ -398,9 +401,7 @@ class AddRowTests(RosterFixture):
 
     def test_add_is_audited(self) -> None:
         self.add(name="Audited Add", admission_no="ADM888")
-        self.assertTrue(
-            AuditLog.objects.filter(action="roster.entry.created").exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="roster.entry.created").exists())
 
 
 class StatusManagementTests(RosterFixture):
@@ -435,7 +436,8 @@ class StatusManagementTests(RosterFixture):
     def test_alumni_is_terminal(self) -> None:
         self.move(self.entry.pk, RosterEntry.Status.ALUMNI, 1)
         for target in (
-            RosterEntry.Status.ACTIVE, RosterEntry.Status.SUSPENDED,
+            RosterEntry.Status.ACTIVE,
+            RosterEntry.Status.SUSPENDED,
             RosterEntry.Status.ALUMNI,
         ):
             with self.subTest(target=target):

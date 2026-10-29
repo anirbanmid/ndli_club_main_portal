@@ -23,6 +23,7 @@ hard-coded anywhere in Python (BRIEF_M2.md §1).
 P4 (single source): the zone of an institution/club is ALWAYS derived from
 ``institution.state.zone`` — it is never stored in parallel (M2-A1).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -75,8 +76,7 @@ class State(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "code","zone": "zone__code"}
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {"state": "code", "zone": "zone__code"}
 
     class Meta:
         ordering = ["code"]
@@ -100,7 +100,9 @@ class District(models.Model):
 
     #: Only the zone scope applies to a district; missing keys fail closed.
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "state__code","zone": "state__zone__code"}
+        "state": "state__code",
+        "zone": "state__zone__code",
+    }
 
     class Meta:
         ordering = ["state", "code"]
@@ -135,9 +137,7 @@ class Institution(models.Model):
 
     code = models.CharField(max_length=CODE_MAX_LENGTH, unique=True)
     legacy_id = models.CharField(max_length=64, unique=True, editable=False)
-    aishe_code = models.CharField(
-        max_length=32, unique=True, null=True, blank=True
-    )
+    aishe_code = models.CharField(max_length=32, unique=True, null=True, blank=True)
     name = models.CharField(max_length=255)
     state = models.ForeignKey(
         State,
@@ -158,7 +158,7 @@ class Institution(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "state__code",
+        "state": "state__code",
         "zone": "state__zone__code",
         "institution": "code",
     }
@@ -238,7 +238,7 @@ class Club(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "institution__state__code",
+        "state": "institution__state__code",
         "zone": "institution__state__zone__code",
         "institution": "institution__code",
         "club": "code",
@@ -287,9 +287,7 @@ class Membership(models.Model):
         on_delete=models.PROTECT,
         related_name="memberships",
     )
-    role = models.CharField(
-        max_length=16, choices=Role.choices, default=Role.MEMBER
-    )
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.MEMBER)
     joined_on = models.DateField(default=date.today)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
@@ -298,7 +296,7 @@ class Membership(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -358,7 +356,7 @@ class AuthorityAssignment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -404,7 +402,7 @@ class OfficerAssignment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "state__code",
+        "state": "state__code",
         "zone": "state__zone__code",
         "user": "officer",
     }
@@ -418,9 +416,7 @@ class OfficerAssignment(models.Model):
             ),
         ]
         indexes = [
-            models.Index(
-                fields=["state", "from_date"], name="officer_state_from_idx"
-            ),
+            models.Index(fields=["state", "from_date"], name="officer_state_from_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper

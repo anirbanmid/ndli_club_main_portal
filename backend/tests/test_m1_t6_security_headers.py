@@ -3,6 +3,7 @@
 Pinned: the full header policy lands on EVERY response, including 4xx/5xx
 error responses, and CSP is enforced (no ``unsafe-inline`` in ``script-src``).
 """
+
 from __future__ import annotations
 
 from django.http import HttpResponse

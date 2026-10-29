@@ -4,6 +4,7 @@
 EVERY response — including 4xx/5xx error responses — and assigns the
 per-request audit correlation id (header ``X-Request-ID``, never a URL).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -42,8 +43,9 @@ class SecurityHeadersMiddleware:
         setattr(request, "audit_request_id", request_id)  # noqa: B010 - runtime attr
         response = self.get_response(request)  # type: ignore[operator]
         response.setdefault("X-Request-ID", request_id)
-        response.setdefault("Strict-Transport-Security",
-                            "max-age=31536000; includeSubDomains; preload")
+        response.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload"
+        )
         response.setdefault("X-Content-Type-Options", "nosniff")
         response.setdefault("X-Frame-Options", "DENY")
         response.setdefault("Referrer-Policy", "no-referrer")

@@ -5,6 +5,7 @@ no session or user is involved at this stage (the authorities have no
 accounts yet — they are OTP-validated in place, W1/W2). Per-IP sliding
 windows guard every credential-taking endpoint (P0).
 """
+
 from __future__ import annotations
 
 from django.http import FileResponse
@@ -46,9 +47,7 @@ def _throttled(scope: str, limit: int, request: Request) -> Response | None:
 
 
 def _error(exc: OnboardingError) -> Response:
-    return Response(
-        {"detail": exc.message, "code": exc.code}, status=exc.http_status
-    )
+    return Response({"detail": exc.message, "code": exc.code}, status=exc.http_status)
 
 
 def _token(request: Request) -> str:

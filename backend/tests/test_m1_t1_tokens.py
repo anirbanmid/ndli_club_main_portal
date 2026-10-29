@@ -11,6 +11,7 @@ Three layers:
   3. sweeping  — every route in the URLconf is requested and its response
      body must not contain any secret this test minted.
 """
+
 from __future__ import annotations
 
 from django.core import mail
@@ -99,9 +100,7 @@ class StorageIsHashedTests(TestCase):
             institution_code="IIT",
             club_code="CLB2",
         )
-        token = services._issue_link_token(
-            user, EmailLinkToken.Purpose.FORGOT_PASSWORD
-        )
+        token = services._issue_link_token(user, EmailLinkToken.Purpose.FORGOT_PASSWORD)
         entry = EmailLinkToken.objects.get()
         self.assertEqual(entry.token_hash, hash_secret(token))
         self.assertNotEqual(entry.token_hash, token)
@@ -178,9 +177,7 @@ class NoSecretInAuditRowsTests(TestCase):
     def test_otp_code_never_reaches_the_audit_trail(self) -> None:
         request = request_for()
         with override_settings(**LOC):
-            row = services.send_email_otp(
-                email="aud@example.test", request=request
-            )
+            row = services.send_email_otp(email="aud@example.test", request=request)
         secrets = [row.code_hash]
         from apps.audit.models import AuditLog
 

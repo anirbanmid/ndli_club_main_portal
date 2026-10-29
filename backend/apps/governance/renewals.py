@@ -11,6 +11,7 @@ issuer (``certificates.issue.issue_certificate``, P4). Every mutation writes
 an immutable AuditLog row (BRIEF_M6 §2). Out-of-zone rows are indistinguish-
 able from missing ones (queryset-level scoping happens in the views).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -53,19 +54,13 @@ def _zone_of(club: Club) -> str:
 
 
 def _open_request(club: Club) -> RenewalRecord | None:
-    return club.renewal_records.filter(
-        status=RenewalRecord.Status.REQUESTED
-    ).first()
+    return club.renewal_records.filter(status=RenewalRecord.Status.REQUESTED).first()
 
 
 def _last_issued(
     club: Club, records: list[RenewalRecord] | None = None
 ) -> RenewalRecord | None:
-    pool = (
-        records
-        if records is not None
-        else list(club.renewal_records.all())
-    )
+    pool = records if records is not None else list(club.renewal_records.all())
     issued = [r for r in pool if r.status == RenewalRecord.Status.ISSUED]
     if not issued:
         return None
@@ -81,9 +76,8 @@ def due_date_for(
     """Renewal due date: last ISSUED renewal + 1y, else formation + 1y."""
     last = last if last is not None else _last_issued(club, records)
     base = (
-        (last.decided_at.date() if last and last.decided_at else None)
-        or club.created_at.date()
-    )
+        last.decided_at.date() if last and last.decided_at else None
+    ) or club.created_at.date()
     return _anniversary(base)
 
 
@@ -99,16 +93,34 @@ def state_payload(
     open_req = next(
         (r for r in pool if r.status == RenewalRecord.Status.REQUESTED), None
     )
+    inst_name = getattr(club.institution, "name", "") or club.name
+    state_obj = getattr(club.institution, "state", None)
+    state_name = getattr(state_obj, "name", "") or getattr(state_obj, "code", "")
+    zone_name = _zone_of(club)
+    is_overdue = days_left < 0
+    attention_type = "Overdue" if is_overdue else "Expiring Soon"
+    badge_label = (
+        f"{abs(days_left)} days overdue" if is_overdue else f"{days_left} days left"
+    )
+
     return {
         "club_code": club.code,
         "club_name": club.name,
-        "zone_code": _zone_of(club),
+        "institution_name": inst_name,
+        "state": state_name,
+        "zone": zone_name,
+        "zone_code": zone_name,
+        "registration_no": getattr(club, "registration_no", "") or "",
         "formation_date": club.created_at.date().isoformat(),
+        "date_of_approval": club.created_at.date().isoformat(),
         "last_renewal_date": (
             last.decided_at.date().isoformat() if last and last.decided_at else None
         ),
         "due_date": due.isoformat(),
+        "upcoming_renewal_date": due.isoformat(),
         "days_left": days_left,
+        "days_diff": days_left,
+        "days_overdue": abs(days_left) if is_overdue else 0,
         "attention": (
             "overdue"
             if days_left < 0
@@ -116,6 +128,8 @@ def state_payload(
             if days_left <= ATTENTION_WINDOW_DAYS
             else "ok"
         ),
+        "attention_type": attention_type,
+        "badge_label": badge_label,
         "open_request": record_payload(open_req) if open_req else None,
     }
 
@@ -173,9 +187,7 @@ def attention_for(user: Any) -> list[dict[str, Any]]:
     return rows
 
 
-def request_renewal(
-    user: Any, *, note: str = "", request: Any = None
-) -> RenewalRecord:
+def request_renewal(user: Any, *, note: str = "", request: Any = None) -> RenewalRecord:
     """Path A step 1: a club authority asks for renewal (one open at a time)."""
     # club_id first: a bare ``user.club`` raises DoesNotExist on a null FK.
     club = user.club if getattr(user, "club_id", None) else None

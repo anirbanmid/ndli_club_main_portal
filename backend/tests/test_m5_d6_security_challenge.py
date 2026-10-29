@@ -7,6 +7,7 @@ PLAN_0018_DUAL_LAYER.md sec.5:
   * wrong-domain re-auth rejected.
   * challenge token ONE-SHOT (replay rejected), domain-bound, expiring.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,10 +29,10 @@ from apps.accounts.security_challenge import (
 
 User = get_user_model()
 
-CENTRAL_PASSWORD = 'Central' + '-Adm-Pass-2026!'
-SUPER_PASSWORD = 'Super' + '-Ops-Pass-2026!'
-EMP_PASSWORD = 'Emp' + '-Pass-2026!'
-CHALLENGE_URL = '/api/v1/accounts/security-challenge/'
+CENTRAL_PASSWORD = "Central" + "-Adm-Pass-2026!"
+SUPER_PASSWORD = "Super" + "-Ops-Pass-2026!"
+EMP_PASSWORD = "Emp" + "-Pass-2026!"
+CHALLENGE_URL = "/api/v1/accounts/security-challenge/"
 
 
 class _SessionRequest:
@@ -51,21 +52,27 @@ class TurfSeparationTests(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.central = User.objects.create_user(
-            username='centraladm', email='central@example.test',
+            username="centraladm",
+            email="central@example.test",
             password=CENTRAL_PASSWORD,
-            category=Category.IIT_KGP_ADMIN, sub_role=SubRole.CENTRAL_ADMIN,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.CENTRAL_ADMIN,
             account_state=AccountState.ACTIVE,
         )
         cls.superops = User.objects.create_user(
-            username='superops', email='superops@example.test',
+            username="superops",
+            email="superops@example.test",
             password=SUPER_PASSWORD,
-            category=Category.IIT_KGP_ADMIN, sub_role=SubRole.SUPER_ADMIN_OPS,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.SUPER_ADMIN_OPS,
             account_state=AccountState.ACTIVE,
         )
         cls.emp = User.objects.create_user(
-            username='emp01', email='emp01@example.test',
+            username="emp01",
+            email="emp01@example.test",
             password=EMP_PASSWORD,
-            category=Category.IIT_KGP_ADMIN, sub_role=SubRole.REGIONAL_OFFICER,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.REGIONAL_OFFICER,
             account_state=AccountState.ACTIVE,
         )
 
@@ -95,90 +102,92 @@ class ChallengeLifecycleTests(TestCase):
     def test_token_is_one_shot(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_BUSINESS)
-        answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+        answer = request.session[SC_SESSION_KEY][challenge["token"]]["answer"]
         self.assertTrue(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
         self.assertFalse(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
 
     def test_wrong_answer_burns_the_challenge(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_BUSINESS)
-        answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+        answer = request.session[SC_SESSION_KEY][challenge["token"]]["answer"]
         self.assertFalse(
-            consume_challenge(request, challenge['token'], 'WRONG9', DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], "WRONG9", DOMAIN_BUSINESS)
         )
         self.assertFalse(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
 
     def test_case_mismatched_answer_rejected_and_burned(self) -> None:
         request = _SessionRequest()
         while True:
             challenge = issue_challenge(request, DOMAIN_BUSINESS)
-            answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+            answer = request.session[SC_SESSION_KEY][challenge["token"]]["answer"]
             if any(ch.isalpha() for ch in answer):
                 break
         self.assertFalse(
             consume_challenge(
-                request, challenge['token'], answer.lower(), DOMAIN_BUSINESS
+                request, challenge["token"], answer.lower(), DOMAIN_BUSINESS
             )
         )
         # One-shot: even trying the right answer now fails because the row is popped
         self.assertFalse(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
 
     def test_challenge_is_always_mixed_case(self) -> None:
         request = _SessionRequest()
         for _ in range(20):
             challenge = issue_challenge(request, DOMAIN_BUSINESS)
-            answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+            answer = request.session[SC_SESSION_KEY][challenge["token"]]["answer"]
             self.assertTrue(any(ch.isupper() for ch in answer))
             self.assertTrue(any(ch.islower() for ch in answer))
 
     def test_domain_bound_token_rejected_across_turfs(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_SERVER)
-        answer = request.session[SC_SESSION_KEY][challenge['token']]['answer']
+        answer = request.session[SC_SESSION_KEY][challenge["token"]]["answer"]
         self.assertFalse(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
 
     def test_expired_challenge_rejected(self) -> None:
         request = _SessionRequest()
         challenge = issue_challenge(request, DOMAIN_BUSINESS)
-        row = request.session[SC_SESSION_KEY][challenge['token']]
-        answer = row['answer']
-        row['expires'] = 0
+        row = request.session[SC_SESSION_KEY][challenge["token"]]
+        answer = row["answer"]
+        row["expires"] = 0
         self.assertFalse(
-            consume_challenge(request, challenge['token'], answer, DOMAIN_BUSINESS)
+            consume_challenge(request, challenge["token"], answer, DOMAIN_BUSINESS)
         )
 
     def test_unknown_token_rejected(self) -> None:
         self.assertFalse(
-            consume_challenge(_SessionRequest(), 'nope', '23456', DOMAIN_BUSINESS)
+            consume_challenge(_SessionRequest(), "nope", "23456", DOMAIN_BUSINESS)
         )
 
     def test_issue_endpoint_auth_and_domain_gated(self) -> None:
         client = APIClient()
-        anonymous = client.post(CHALLENGE_URL, {'domain': 'business'}, format='json')
+        anonymous = client.post(CHALLENGE_URL, {"domain": "business"}, format="json")
         self.assertIn(
             anonymous.status_code,
             (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN),
         )
         user = User.objects.create_user(
-            username='emp02', email='emp02@example.test',
+            username="emp02",
+            email="emp02@example.test",
             password=EMP_PASSWORD,
-            category=Category.IIT_KGP_ADMIN, sub_role=SubRole.REGIONAL_OFFICER,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.REGIONAL_OFFICER,
             account_state=AccountState.ACTIVE,
         )
         client.force_authenticate(user=user)
-        bad = client.post(CHALLENGE_URL, {'domain': 'nonsense'}, format='json')
+        bad = client.post(CHALLENGE_URL, {"domain": "nonsense"}, format="json")
         self.assertEqual(bad.status_code, status.HTTP_400_BAD_REQUEST)
-        good = client.post(CHALLENGE_URL, {'domain': 'business'}, format='json')
+        good = client.post(CHALLENGE_URL, {"domain": "business"}, format="json")
         self.assertEqual(good.status_code, status.HTTP_200_OK)
-        self.assertIn('draw', good.json())
-        self.assertIn('token', good.json())
+        self.assertIn("draw", good.json())
+        self.assertIn("token", good.json())

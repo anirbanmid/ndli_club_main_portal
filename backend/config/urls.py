@@ -5,6 +5,7 @@ single origin). OpenAPI schema and interactive docs are exposed under /api/;
 health endpoints are at /health/ and /health/ready/ for probes and the
 readiness gate (infra/nginx.conf, docker-compose healthchecks, CI smoke tests).
 """
+
 from django.contrib import admin
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView

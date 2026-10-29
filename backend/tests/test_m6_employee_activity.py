@@ -6,6 +6,7 @@ rule: club-approval log rows are delete-protected for employees and the
 protection is SERVER-enforced (whole request rejected, no partial deletes).
 AUTH-TURF: the business-admin override is the Central Admin house only.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -46,6 +47,7 @@ class ActivityLogEndpointTests(TestCase):
     emp2: ClassVar[Any]
     central: ClassVar[Any]
     superops: ClassVar[Any]
+
     @classmethod
     def setUpTestData(cls) -> None:
         cls.emp = _user("emp01", SubRole.REGIONAL_OFFICER)

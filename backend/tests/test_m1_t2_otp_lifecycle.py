@@ -4,6 +4,7 @@ Pinned: 6-digit · single-use · 10 min TTL · max 5 sends/hour/recipient ·
 5 verify attempts then a 15-minute lockout · stored hashed only ·
 **email channel only** (there is no SMS path in the identity layer).
 """
+
 from __future__ import annotations
 
 import datetime
@@ -61,9 +62,7 @@ class OtpIssueTests(TestCase):
         with override_settings(**LOC):
             row = services.send_email_otp(email="d@example.test")
         delta = row.expires_at - row.created_at
-        self.assertAlmostEqual(
-            delta.total_seconds(), conf.OTP_TTL_SECONDS, delta=2
-        )
+        self.assertAlmostEqual(delta.total_seconds(), conf.OTP_TTL_SECONDS, delta=2)
         self.assertEqual(conf.OTP_TTL_SECONDS, 600)
 
     def test_send_rate_limit_is_five_per_hour_per_recipient(self) -> None:
@@ -173,7 +172,8 @@ class OtpChannelIsEmailOnlyTests(TestCase):
                 calls.append(message.to)  # type: ignore[attr-defined]
 
         services.send_email_otp(
-            email="spy@example.test", provider=Spy()  # type: ignore[arg-type]
+            email="spy@example.test",
+            provider=Spy(),  # type: ignore[arg-type]
         )
         self.assertEqual(calls, ["spy@example.test"])
         self.assertEqual(len(mail.outbox), 0)

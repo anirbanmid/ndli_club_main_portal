@@ -5,6 +5,7 @@ files under ``data/samples/`` idempotently (safe to re-run), with a bounded,
 guarded ``--reset`` and a hard production guard (M2-A4 / P5). The loader
 itself — validation, natural keys, audit — lives in ``apps.domain.seed``.
 """
+
 from __future__ import annotations
 
 from typing import Any

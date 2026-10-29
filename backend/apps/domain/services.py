@@ -6,6 +6,7 @@ to an institution. Soft verification means an institution WITHOUT an AISHE
 code is never blocked — linking is additive, audited and reversible by the
 admin (the code itself is replaceable only through an explicit re-link).
 """
+
 from __future__ import annotations
 
 import re

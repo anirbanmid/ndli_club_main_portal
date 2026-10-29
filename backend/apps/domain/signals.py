@@ -4,6 +4,7 @@
 write to ``OfficerAssignment`` (or to a ``State``, whose zone mapping feeds
 the scope joins) bumps the cache namespace so staleness is never implicit.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -9,6 +9,7 @@ club" behaviour is structurally impossible here on purpose: clubs live and
 die through the governance lifecycle only, never through a log row (P3,
 no ticking bombs).
 """
+
 from __future__ import annotations
 
 import uuid

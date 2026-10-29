@@ -4,6 +4,7 @@ Mounted at ``/api/v1/onboarding/`` (single origin; PLAN_ACCESS_ARCHITECTURE §6)
 All routes are capability-token gated (X-Onboarding-Token) — the authorities
 have no accounts yet; each step is OTP-validated in place (W1/W2).
 """
+
 from django.urls import path
 
 from . import views

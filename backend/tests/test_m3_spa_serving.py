@@ -8,6 +8,7 @@ Pinned here:
   * path traversal is closed (P0); a missing frontend build fails LOUD (503);
   * GET/HEAD only.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -18,7 +19,7 @@ from django.test import override_settings
 
 from .support import M1PinTestCase as TestCase
 
-SHELL = "<html><body><div id=\"root\">{body}</div></body></html>"
+SHELL = '<html><body><div id="root">{body}</div></body></html>'
 
 
 def body_of(response) -> bytes:

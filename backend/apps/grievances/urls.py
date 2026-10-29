@@ -3,6 +3,7 @@
 Club-authority door (``CLUB_AUTHORITY_GATE``) over the caller's own-club
 tickets; out-of-scope IDs resolve to 404.
 """
+
 from django.urls import path
 
 from . import views

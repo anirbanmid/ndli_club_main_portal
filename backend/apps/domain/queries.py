@@ -6,6 +6,7 @@ no HTTP endpoints — the UI-defer rule). Every function is pinned by
 row count, full relation chains pre-fetched with ``select_related``, and page
 sizes bounded (no unbounded query at 110K, BRIEF_M2.md §3 / P2).
 """
+
 from __future__ import annotations
 
 from django.db.models import Count, Q, QuerySet
@@ -84,9 +85,7 @@ def roster_aggregates(club_code: str) -> dict[str, int]:
         members_total=Count("id"),
         members_active=Count("id", filter=Q(status=Membership.Status.ACTIVE)),
         alumni=Count("id", filter=Q(status=Membership.Status.ALUMNI)),
-        members_suspended=Count(
-            "id", filter=Q(status=Membership.Status.SUSPENDED)
-        ),
+        members_suspended=Count("id", filter=Q(status=Membership.Status.SUSPENDED)),
     )
     return {key: int(value or 0) for key, value in rows.items()}
 

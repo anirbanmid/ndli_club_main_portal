@@ -5,6 +5,7 @@
   with zero setup. If DATABASE_URL is set (e.g. the docker-compose Postgres),
   it is used instead.
 """
+
 import dj_database_url
 
 from .base import *  # noqa: F403 - settings module style

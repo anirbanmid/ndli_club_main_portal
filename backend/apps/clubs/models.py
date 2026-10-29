@@ -15,6 +15,7 @@ Scoping (``core.scoping``): every row answers for its club through the same
 ``Membership``-style scope keys, so the M1 policy layer scopes these tables
 without any per-view logic (I5).
 """
+
 from __future__ import annotations
 
 from typing import Any, ClassVar
@@ -45,7 +46,7 @@ class ClubShowcase(models.Model):
 
     #: Scoping registry (core.scoping): mirrors ``domain.Membership``.
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",
@@ -121,7 +122,7 @@ class CampusPasskey(models.Model):
     is_active = models.BooleanField(default=True)
 
     SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
-"state": "club__institution__state__code",
+        "state": "club__institution__state__code",
         "zone": "club__institution__state__zone__code",
         "institution": "club__institution__code",
         "club": "club__code",

@@ -6,6 +6,7 @@ Every row is chained to its predecessor via SHA-256 (``prev_hash`` /
 ``AuditMixin``); there is NO update or delete path — the model, manager
 and queryset all refuse mutation.
 """
+
 from __future__ import annotations
 
 import hashlib

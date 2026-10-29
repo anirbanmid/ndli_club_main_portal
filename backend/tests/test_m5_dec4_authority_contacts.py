@@ -15,6 +15,7 @@ is also a key of ``frontend/src/i18n/hi.json``.
 * **Submit backstop** — rows tampered BELOW the validator still cannot queue,
   and an intact draft still submits (201).
 """
+
 from __future__ import annotations
 
 import re
@@ -75,9 +76,7 @@ class IndianMobileNormalisationUnitTests(TestCase):
     """P4: ONE function decides accept/reject for upsert AND submit."""
 
     def test_plain_ten_digits_pass(self) -> None:
-        self.assertEqual(
-            services._normalize_indian_mobile("9876543210"), "9876543210"
-        )
+        self.assertEqual(services._normalize_indian_mobile("9876543210"), "9876543210")
 
     def test_plus91_and_separators_normalise(self) -> None:
         self.assertEqual(
@@ -366,9 +365,7 @@ class SubmitGateTests(TestCase):
         client.post(
             f"/api/v1/onboarding/drafts/{draft_id}/upload/",
             data={
-                "document": SimpleUploadedFile(
-                    "charter.pdf", PDF, "application/pdf"
-                )
+                "document": SimpleUploadedFile("charter.pdf", PDF, "application/pdf")
             },
             **headers,
         )
@@ -381,9 +378,7 @@ class SubmitGateTests(TestCase):
             **headers,
         )
 
-    def _refuses(
-        self, expected_detail: str, tamper: str, field: str = "phone"
-    ) -> None:
+    def _refuses(self, expected_detail: str, tamper: str, field: str = "phone") -> None:
         draft, headers = self._complete_draft(self.client)
         OnboardingAuthority.objects.filter(draft=draft).update(**{field: tamper})
         response = self._submit(self.client, draft, headers)

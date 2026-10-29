@@ -6,6 +6,7 @@ row, and it is idempotent at the membership level (``get_or_create``): a
 member added through any other path is reused, never duplicated, and the
 decision is always audited (M8 ethic: zero silent loss).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -72,9 +73,7 @@ def confirm_join(
         join_request.status = JoinRequest.Status.APPROVED
         join_request.decided_by = decided_by
         join_request.decided_at = timezone.now()
-        join_request.save(
-            update_fields=["status", "decided_by", "decided_at"]
-        )
+        join_request.save(update_fields=["status", "decided_by", "decided_at"])
     _audit(
         "club_join.confirmed",
         request,

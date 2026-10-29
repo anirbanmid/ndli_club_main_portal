@@ -2,6 +2,7 @@
 
 Mounted at ``/api/v1/public/`` (single origin; PLAN_ACCESS_ARCHITECTURE §6).
 """
+
 from django.urls import path
 
 from . import views

@@ -13,6 +13,7 @@ Thin adapters over ``grievances.services`` (the rules live there). Discipline
   (``decision``, ``reason``) — no mass-assignment of status/zone/reminder
   fields is possible, ever.
 """
+
 from __future__ import annotations
 
 from typing import Any

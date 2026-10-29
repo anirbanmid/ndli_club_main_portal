@@ -6,6 +6,7 @@ and, only on success, a **disclosure dict** limited to the six public fields
 APAAR ID are NEVER present — that absence is a named test (V2), not a
 comment.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

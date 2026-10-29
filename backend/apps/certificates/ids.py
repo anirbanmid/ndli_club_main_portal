@@ -9,6 +9,7 @@ Generation is collision-safe by construction: randomness is large (32**8
 space) and :func:`generate_unique_certificate_id` retries on the unique
 constraint instead of assuming the random draw was free.
 """
+
 from __future__ import annotations
 
 import secrets

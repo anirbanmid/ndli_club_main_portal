@@ -10,6 +10,7 @@ mutate anything (the future bounded auto-repair trigger point — BRIEF_M2.md
 
 ``clean`` means zero findings; notices are expected and informational.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -171,12 +172,12 @@ def run_checks(today: date | None = None) -> Report:
 
     # 5. Scope drift: a user whose soft zone key disagrees with the zone
     #    derived from its club (the P4 drift class, reported — never guessed).
-    for profile in User.objects.exclude(club_id="").exclude(
-        club_id__isnull=True
-    ):
-        club = Club.objects.select_related("institution__state__zone").filter(
-            code=profile.club_id
-        ).first()
+    for profile in User.objects.exclude(club_id="").exclude(club_id__isnull=True):
+        club = (
+            Club.objects.select_related("institution__state__zone")
+            .filter(code=profile.club_id)
+            .first()
+        )
         if club is None:
             continue  # already reported as an orphan scope code
         derived = club.institution.state.zone.code

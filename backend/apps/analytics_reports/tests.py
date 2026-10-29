@@ -9,6 +9,7 @@ Pinned here:
 * read-only contract on the rating derivation;
 * door discipline (unauthenticated / non-decider / non-GET).
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -57,6 +58,7 @@ def _make_user(username: str, *, category, sub_role, zone_code: str = ""):
 
 class DashboardFixture(TestCase):
     """Shared world: two zones, one club per zone, two officers + central."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     central: Any
     club_n1: Club
@@ -104,12 +106,16 @@ class DashboardFixture(TestCase):
             status=AuthorityAssignment.Status.ACTIVE,
         )
         cls.officer_n1 = _make_user(
-            "emp03", category=Category.IIT_KGP_ADMIN,
-            sub_role=SubRole.REGIONAL_OFFICER, zone_code="N1",
+            "emp03",
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.REGIONAL_OFFICER,
+            zone_code="N1",
         )
         cls.officer_w1 = _make_user(
-            "emp05", category=Category.IIT_KGP_ADMIN,
-            sub_role=SubRole.REGIONAL_OFFICER, zone_code="W1",
+            "emp05",
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.REGIONAL_OFFICER,
+            zone_code="W1",
         )
         cls.central = _make_user(
             "centraladm",
@@ -298,10 +304,10 @@ class OfficerRatingTests(DashboardFixture):
         self.assertEqual(stars_for(0.0, 0.0), 1)
 
     def test_cohort_ranking_is_relative(self):
-        self._sanctioned(self.officer_n1, club="A Club")          # 0.50
-        self._sanctioned(self.officer_n1, club="B Club")          # 0.50
-        self._sanctioned(self.officer_n1, club="C Club")          # 0.50 -> 1.50
-        self._sanctioned(self.officer_w1, club="W Club")          # 0.50
+        self._sanctioned(self.officer_n1, club="A Club")  # 0.50
+        self._sanctioned(self.officer_n1, club="B Club")  # 0.50
+        self._sanctioned(self.officer_n1, club="C Club")  # 0.50 -> 1.50
+        self._sanctioned(self.officer_w1, club="W Club")  # 0.50
         rows = evaluate_officers([self.officer_n1, self.officer_w1])
         self.assertEqual([r["officer"] for r in rows], ["emp03", "emp05"])
         self.assertEqual(rows[0]["rank"], 1)
@@ -329,9 +335,7 @@ class DashboardScopeTests(DashboardFixture):
             list(officers_in_scope(self.officer_n1, "W1")), [self.officer_n1]
         )
         self.assertEqual(officers_in_scope(self.central).count(), 2)
-        self.assertEqual(
-            list(officers_in_scope(self.central, "W1")), [self.officer_w1]
-        )
+        self.assertEqual(list(officers_in_scope(self.central, "W1")), [self.officer_w1])
 
 
 class DashboardAPITests(DashboardFixture):

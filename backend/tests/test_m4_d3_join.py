@@ -7,6 +7,7 @@
 * **Join flow** — OTP (M1 machinery) → pending roster request → club admin
   confirms in the roster view → exactly one membership.
 """
+
 from __future__ import annotations
 
 import base64
@@ -72,9 +73,7 @@ class JoinPinTestCase(TestCase):
         return codes[-1]
 
     def issue(self, club: Any = None) -> str:
-        return services.issue_passkey(
-            club=club or self.club, issued_by=self.admin
-        )
+        return services.issue_passkey(club=club or self.club, issued_by=self.admin)
 
     def join_body(self, **fields: Any) -> dict[str, Any]:
         body: dict[str, Any] = {"email": "student.one@example.test"}
@@ -145,9 +144,7 @@ class JoinTokenQrTests(JoinPinTestCase):
 
     def _join_url(self) -> str:
         self.client.force_login(self.admin)
-        response = self.client.get(
-            "/api/v1/clubs/dashboard/passkey/join-url/"
-        )
+        response = self.client.get("/api/v1/clubs/dashboard/passkey/join-url/")
         assert response.status_code == 200, response.content
         self.client.logout()
         return response.json()["join_url"]
@@ -179,22 +176,22 @@ class JoinTokenQrTests(JoinPinTestCase):
         token, _expires = join_tokens.issue_join_token(
             club_code=self.club.code, ttl_seconds=600
         )
-        raw = json.loads(
-            base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
-        )
+        raw = json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
         raw["club"] = self.other_club.code  # re-bind to another club
-        forged = base64.urlsafe_b64encode(
-            json.dumps(raw, separators=(",", ":"), sort_keys=True).encode()
-        ).decode().rstrip("=")
+        forged = (
+            base64.urlsafe_b64encode(
+                json.dumps(raw, separators=(",", ":"), sort_keys=True).encode()
+            )
+            .decode()
+            .rstrip("=")
+        )
         with self.assertRaises(JoinTokenError) as caught:
             join_tokens.parse_join_token(forged)
         self.assertEqual(caught.exception.code, "token_invalid")
 
     def test_qr_svg_renders_and_is_never_cached(self) -> None:
         self.client.force_login(self.admin)
-        response = self.client.get(
-            "/api/v1/clubs/dashboard/passkey/qr.svg"
-        )
+        response = self.client.get("/api/v1/clubs/dashboard/passkey/qr.svg")
         self.client.logout()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "image/svg+xml")
@@ -249,9 +246,7 @@ class JoinFlowTests(JoinPinTestCase):
         self.assertEqual(requested.status_code, 202)
         completed = self.client.post(
             "/api/v1/clubs/join/complete/",
-            data=self.join_body(
-                passkey=code, email=email, code=self.otp_for(email)
-            ),
+            data=self.join_body(passkey=code, email=email, code=self.otp_for(email)),
             content_type="application/json",
         )
         self.assertEqual(completed.status_code, 201, completed.content)
@@ -307,9 +302,7 @@ class JoinFlowTests(JoinPinTestCase):
         )
         again = self.client.post(
             "/api/v1/clubs/join/complete/",
-            data=self.join_body(
-                passkey=code, email=email, code=self.otp_for(email)
-            ),
+            data=self.join_body(passkey=code, email=email, code=self.otp_for(email)),
             content_type="application/json",
         )
         self.assertEqual(again.status_code, 409)
@@ -360,9 +353,7 @@ class JoinFlowTests(JoinPinTestCase):
         )
         completed = self.client.post(
             "/api/v1/clubs/join/complete/",
-            data=self.join_body(
-                passkey=code, email=email, code=self.otp_for(email)
-            ),
+            data=self.join_body(passkey=code, email=email, code=self.otp_for(email)),
             content_type="application/json",
         )
         self.assertEqual(completed.status_code, 201, completed.content)
@@ -388,9 +379,7 @@ class JoinFlowTests(JoinPinTestCase):
         )
         completed = self.client.post(
             "/api/v1/clubs/join/complete/",
-            data=self.join_body(
-                token=token, email=email, code=self.otp_for(email)
-            ),
+            data=self.join_body(token=token, email=email, code=self.otp_for(email)),
             content_type="application/json",
         )
         self.assertEqual(completed.status_code, 201, completed.content)
@@ -416,9 +405,7 @@ class JoinFlowTests(JoinPinTestCase):
         )
         response = self.client.post(
             "/api/v1/clubs/join/complete/",
-            data=self.join_body(
-                passkey=code, email=email, code=self.otp_for(email)
-            ),
+            data=self.join_body(passkey=code, email=email, code=self.otp_for(email)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)

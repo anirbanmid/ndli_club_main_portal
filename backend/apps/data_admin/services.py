@@ -32,6 +32,7 @@ client handover so they can get a clean/fresh product"):
     will fail the gate until the new models are classified as keep or wipe -
     so a handover can never leak data because someone forgot the wipe list.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -178,9 +179,7 @@ def unclassified_models() -> list[str]:
 def wipe_manifest() -> list[dict[str, Any]]:
     """The exact destroy list, as reviewable data (used by tests + the API)."""
     models = list(WIPE_MODELS)
-    return [
-        {"model": _label(m), "objects": m.objects.count()} for m in models
-    ]
+    return [{"model": _label(m), "objects": m.objects.count()} for m in models]
 
 
 def hard_reset_for_handover(*, actor_label: str = "") -> dict[str, Any]:

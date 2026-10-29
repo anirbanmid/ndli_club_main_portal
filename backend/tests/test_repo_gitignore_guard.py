@@ -11,6 +11,7 @@ Two independent checks, deliberately: the ignore rule (catches the rule being
 deleted) and the tracked-file listing (catches an already-forced add, which
 ``.gitignore`` alone does not undo).
 """
+
 from __future__ import annotations
 
 import shutil

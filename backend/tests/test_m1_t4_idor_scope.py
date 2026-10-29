@@ -12,6 +12,7 @@ Named pins (each one is a separate test so a regression names itself):
 M1 scoping operates on ``accounts.User`` rows (the scope keys live on the
 profile until M2 introduces the real FKs — ``docs/ASSUMPTIONS.md`` M1-A1).
 """
+
 from __future__ import annotations
 
 from apps.accounts.models import Category, SubRole, User
@@ -73,9 +74,7 @@ class CrossOfficerPins(TestCase):
             club_code="CLB1",
         )
         self.assertTrue(
-            scoping.scope_clubs(User.objects.all(), emp03)
-            .filter(pk=peer.pk)
-            .exists()
+            scoping.scope_clubs(User.objects.all(), emp03).filter(pk=peer.pk).exists()
         )
 
     def test_central_admin_sees_every_zone(self) -> None:
@@ -152,9 +151,7 @@ class StudentPins(TestCase):
             category=Category.STUDENT_MEMBER,
             sub_role=SubRole.STUDENT_MEMBER,
         )
-        self.assertFalse(
-            scoping.scope_governance(User.objects.all(), student).exists()
-        )
+        self.assertFalse(scoping.scope_governance(User.objects.all(), student).exists())
 
 
 class ClubAdminPins(TestCase):
@@ -196,9 +193,7 @@ class ClubAdminPins(TestCase):
             institution_code="IIT",
             club_code="CLBD",
         )
-        self.assertFalse(
-            scoping.scope_governance(User.objects.all(), admin_a).exists()
-        )
+        self.assertFalse(scoping.scope_governance(User.objects.all(), admin_a).exists())
 
 
 class ModuleIsolationPins(TestCase):

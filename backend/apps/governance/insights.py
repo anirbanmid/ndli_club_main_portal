@@ -11,6 +11,7 @@ Audience (old-project RBAC parity): CentralAdmin / SuperAdminOps only — the
 MCC is master control; EMPs get the operational desks, not the strategic
 report.
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -79,9 +80,7 @@ def _activity_mix() -> dict[str, Any]:
     activities master. The activities app carries no rows yet, so the mix
     stays empty (never fabricated) and the training rule below stays dormant.
     """
-    recent = AuditLog.objects.filter(
-        timestamp__gte=timezone.now() - timedelta(days=90)
-    )
+    recent = AuditLog.objects.filter(timestamp__gte=timezone.now() - timedelta(days=90))
     return {
         "audit_activity_by_category": dict(
             Counter(recent.values_list("category", flat=True))

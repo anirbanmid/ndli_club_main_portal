@@ -10,6 +10,7 @@ Named pins:
   directions);
 * the migration state matches the models exactly (no drift).
 """
+
 from __future__ import annotations
 
 from typing import Any, cast

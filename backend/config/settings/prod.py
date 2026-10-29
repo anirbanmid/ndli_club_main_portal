@@ -10,6 +10,7 @@ Hard requirements (the process refuses to start otherwise):
 Recommended (documented in .env.example): DJANGO_CSRF_TRUSTED_ORIGINS,
 REDIS_URL, MINIO_* with real credentials.
 """
+
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 

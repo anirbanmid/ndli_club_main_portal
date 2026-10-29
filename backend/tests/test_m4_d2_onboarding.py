@@ -7,6 +7,7 @@
 * **W3 upload hardening** — wrong MIME (double-extension, polyglot) rejected ·
   oversize rejected · stored name is the content hash · never served inline.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -392,4 +393,3 @@ class OnboardingIdentityRulesTests(TestCase):
         draft.refresh_from_db()
         self.assertEqual(draft.state_code, "KARNATAKA")
         self.assertEqual(draft.zone_code, "SOUTH")
-

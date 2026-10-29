@@ -43,6 +43,7 @@ Star banding is the old project's RELATIVE banding (``routes/metrics.py``):
 READ-ONLY BY CONTRACT: no function here writes to the database (pinned by
 ``apps.analytics_reports.tests.OfficerRatingTests.test_rating_is_read_only``).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -255,6 +256,65 @@ def stars_for(score: float, max_score: float) -> int:
     return 1
 
 
+OFFICER_METADATA: dict[str, dict[str, Any]] = {
+    "EMP01": {
+        "name": "Rohan Sharma (North Zone)",
+        "zone": "North",
+        "states": (
+            "Jammu & Kashmir, Ladakh, Uttarakhand, Himachal Pradesh, "
+            "Chandigarh, Punjab, Haryana, Delhi, Uttar Pradesh"
+        ),
+    },
+    "EMP02": {
+        "name": "Pooja Verma (Central Zone)",
+        "zone": "Central",
+        "states": "Madhya Pradesh, Chhattisgarh",
+    },
+    "EMP03": {
+        "name": "Amit Patel (West Zone)",
+        "zone": "West",
+        "states": (
+            "Rajasthan, Gujarat, Maharashtra, Goa, Daman and Diu, Dadar & Nagar Haveli"
+        ),
+    },
+    "EMP04": {
+        "name": "Debabrata D. Ghosh",
+        "zone": "East",
+        "states": "Bihar, Jharkhand, West Bengal, Odisha",
+    },
+    "EMP05": {
+        "name": "Mayanglambam Singh (North East Zone)",
+        "zone": "North East",
+        "states": (
+            "Sikkim, Assam, Arunachal Pradesh, Meghalaya, Manipur, "
+            "Tripura, Nagaland, Mizoram"
+        ),
+    },
+    "EMP06": {
+        "name": "K. Venkatesh (South Zone 1)",
+        "zone": "South",
+        "states": "Andhra Pradesh, Telangana, Karnataka",
+    },
+    "EMP07": {
+        "name": "Ananya Nair (South Zone 2)",
+        "zone": "South",
+        "states": (
+            "Tamil Nadu, Puducherry, Kerala, Andaman & Nicobar Island, Lakshadweep"
+        ),
+    },
+}
+
+CANONICAL_BASELINES: dict[str, BaselineBreakdown] = {
+    "EMP01": BaselineBreakdown(approvals=50, support=38, online_workshops=0),
+    "EMP02": BaselineBreakdown(approvals=9, support=41, online_workshops=4),
+    "EMP03": BaselineBreakdown(approvals=3, support=9, online_workshops=0),
+    "EMP04": BaselineBreakdown(approvals=3, support=2, online_workshops=0),
+    "EMP05": BaselineBreakdown(approvals=3, support=3, online_workshops=0),
+    "EMP06": BaselineBreakdown(approvals=1, support=1, online_workshops=0),
+    "EMP07": BaselineBreakdown(approvals=1, support=0, online_workshops=0),
+}
+
+
 def evaluate_officers(
     officers: Any,
     *,
@@ -273,9 +333,51 @@ def evaluate_officers(
         key = str(getattr(officer, "username", ""))
         base = (baselines or {}).get(key)
         rating = officer_rating(officer, baseline=base, year=year, month=month)
+
+        meta = OFFICER_METADATA.get(key.upper(), {})
+        full_name = (
+            getattr(officer, "get_full_name", lambda: "")() or meta.get("name") or key
+        )
+
+        zone_name = ""
+        try:
+            if hasattr(officer, "zone") and officer.zone:
+                zone_name = (
+                    getattr(officer.zone, "name", "")
+                    or getattr(officer.zone, "code", "")
+                    or ""
+                )
+        except Exception:
+            zone_name = ""
+        if not zone_name:
+            zone_name = meta.get("zone", "Other")
+
+        assigned_states = meta.get("states", "")
+        try:
+            from apps.domain.models import OfficerAssignment
+
+            assignments = list(
+                OfficerAssignment.objects.filter(officer=officer).select_related(
+                    "state"
+                )
+            )
+            if assignments:
+                assigned_states = ", ".join(
+                    a.state.name for a in assignments if hasattr(a, "state") and a.state
+                )
+        except Exception:
+            pass
+
         evaluations.append(
             {
                 "officer": key,
+                "emp_id": key,
+                "officer_name": full_name,
+                "full_name": full_name,
+                "name": full_name,
+                "zone": zone_name,
+                "assigned_jurisdiction": assigned_states,
+                "assigned_states": assigned_states,
                 "clubs_approved": rating.clubs_approved,
                 "tickets_closed": rating.tickets_closed,
                 "phone_calls": rating.phone_calls,
@@ -288,6 +390,7 @@ def evaluate_officers(
                     + rating.online_training
                 ),
                 "weighted_score": rating.score,
+                "score": rating.score,
                 "migrated_baseline": {
                     "approvals": rating.migrated_baseline.approvals,
                     "support": rating.migrated_baseline.support,

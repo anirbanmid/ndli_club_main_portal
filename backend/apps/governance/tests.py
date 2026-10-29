@@ -4,6 +4,7 @@ Covered: happy-path materialisation, signature verification via the ONE
 signer, idempotency, account provisioning/reuse, tier mapping, holder rule,
 state-machine flow, reject path, audit trail (P0), and the fail-fast aborts.
 """
+
 from __future__ import annotations
 
 import base64
@@ -46,6 +47,7 @@ from apps.onboarding.models import (
 
 class CharterMaterialisationTests(TestCase):
     """D2b: sanction -> Institution + Club + AuthorityAssignment + certificate."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     application: CharterApplication
     district: District
@@ -57,9 +59,7 @@ class CharterMaterialisationTests(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         cls.zone = Zone.objects.create(code="N1", name="North 1")
-        cls.state = State.objects.create(
-            code="UP", name="Uttar Pradesh", zone=cls.zone
-        )
+        cls.state = State.objects.create(code="UP", name="Uttar Pradesh", zone=cls.zone)
         cls.district = District.objects.create(
             state=cls.state, code="LDN", name="Lucknow"
         )
@@ -128,9 +128,7 @@ class CharterMaterialisationTests(TestCase):
 
     def test_sanction_materialises_club_and_certificate(self):
         self._sanction()
-        self.assertTrue(
-            Institution.objects.filter(name="IIT Kharagpur").exists()
-        )
+        self.assertTrue(Institution.objects.filter(name="IIT Kharagpur").exists())
         club = Club.objects.get(name="NDLI Club IITKGP")
         self.assertEqual(club.institution.state, self.state)
         self.assertEqual(AuthorityAssignment.objects.filter(club=club).count(), 4)
@@ -227,12 +225,8 @@ class CharterMaterialisationTests(TestCase):
 
     def test_audit_trail_written(self):
         self._sanction()
-        self.assertTrue(
-            AuditLog.objects.filter(action="charter.sanction").exists()
-        )
-        self.assertTrue(
-            AuditLog.objects.filter(action="charter.materialised").exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="charter.sanction").exists())
+        self.assertTrue(AuditLog.objects.filter(action="charter.materialised").exists())
 
     def test_unknown_state_aborts_clean(self):
         self.application.state_code = "XX-NOPE"
@@ -250,6 +244,7 @@ class CharterMaterialisationTests(TestCase):
 
 class CharterDeskAPITests(TestCase):
     """D2c adversarial pins: EMP03 ↛ EMP05 (cross-zone = 404, never data)."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     app_n1: Any
     app_n2: Any
@@ -276,7 +271,8 @@ class CharterDeskAPITests(TestCase):
         cls.emp03 = User.objects.create_user(
             username="emp03",
             email="emp03@example.test",
-            password=None,            category=Category.IIT_KGP_ADMIN,
+            password=None,
+            category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code=cls.zone_n1.code,
             account_state=AccountState.ACTIVE,
@@ -284,7 +280,8 @@ class CharterDeskAPITests(TestCase):
         cls.emp05 = User.objects.create_user(
             username="emp05",
             email="emp05@example.test",
-            password=None,            category=Category.IIT_KGP_ADMIN,
+            password=None,
+            category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             zone_code=cls.zone_n2.code,
             account_state=AccountState.ACTIVE,
@@ -292,14 +289,16 @@ class CharterDeskAPITests(TestCase):
         cls.central = User.objects.create_user(
             username="centraladm",
             email="centraladm@example.test",
-            password=None,            category=Category.IIT_KGP_ADMIN,
+            password=None,
+            category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.CENTRAL_ADMIN,
             account_state=AccountState.ACTIVE,
         )
         cls.club_admin = User.objects.create_user(
             username="clubadmin1",
             email="clubadmin1@example.test",
-            password=None,            category=Category.CLUB_ADMIN,
+            password=None,
+            category=Category.CLUB_ADMIN,
             sub_role=SubRole.CLUB_PRESIDENT,
             account_state=AccountState.ACTIVE,
         )
@@ -452,9 +451,7 @@ class CharterDeskAPITests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.app_n1.refresh_from_db()
-        self.assertEqual(
-            self.app_n1.status, CharterApplication.Status.UNDER_REVIEW
-        )
+        self.assertEqual(self.app_n1.status, CharterApplication.Status.UNDER_REVIEW)
 
     def test_decision_sanction_materialises_via_api(self):
         self._login(self.emp03)

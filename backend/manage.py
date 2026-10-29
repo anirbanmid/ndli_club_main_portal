@@ -4,6 +4,7 @@
 Development defaults to ``config.settings.dev`` (SQLite when no DATABASE_URL is
 set). Production deployments must set DJANGO_SETTINGS_MODULE=config.settings.prod.
 """
+
 import os
 import sys
 

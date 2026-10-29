@@ -12,6 +12,7 @@ Thin adapters over ``governance.services`` (the rules live there). Discipline
   public URLs); the decision endpoint reads exactly two fields from the body
   — no mass-assignment of status/sanction fields, ever.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -93,9 +94,7 @@ class CharterQueueView(APIView):
         paginator = PageNumberPagination()
         paginator.page_size = _PAGE_SIZE
         page = paginator.paginate_queryset(qs, request)
-        return paginator.get_paginated_response(
-            [_row_payload(a) for a in page or []]
-        )
+        return paginator.get_paginated_response([_row_payload(a) for a in page or []])
 
 
 class CharterDetailView(APIView):
@@ -156,9 +155,7 @@ class CharterUploadView(APIView):
         response = FileResponse(
             path.open("rb"), content_type=upload.mime_type or "application/octet-stream"
         )
-        response["Content-Disposition"] = (
-            f'attachment; filename="{upload.stored_name}"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="{upload.stored_name}"'
         return response
 
 

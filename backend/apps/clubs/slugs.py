@@ -17,6 +17,7 @@ The bias is fail-closed (P0): a false positive refuses a write with a clear
 error; a false negative would publish an impersonation slug. The checks run
 on the FINAL slug (suffix included) at write time — never only at derivation.
 """
+
 from __future__ import annotations
 
 import re

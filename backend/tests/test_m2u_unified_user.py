@@ -17,6 +17,7 @@ Named gates:
 * **U5**  capacity — the P2 index plan is present on the user table in the
   REAL schema.
 """
+
 from __future__ import annotations
 
 from typing import Any

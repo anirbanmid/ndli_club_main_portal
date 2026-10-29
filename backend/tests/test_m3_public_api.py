@@ -20,6 +20,7 @@ response body.
 PostgreSQL-only pins skip on other engines (M3-A5: SQLite is dropped for the
 trigram surface, not faked).
 """
+
 from __future__ import annotations
 
 import json

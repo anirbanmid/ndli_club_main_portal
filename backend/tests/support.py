@@ -3,6 +3,7 @@
 Everything here is offline and deterministic: no network, no real mail
 server (the locmem email backend captures messages in memory).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,6 +30,7 @@ class M1PinTestCase(TestCase):
     def tearDown(self) -> None:
         cache.clear()
         super().tearDown()
+
 
 #: A password that satisfies the M1 policy (>= 10 chars, not in the denylist).
 GOOD_PASSWORD = "zS8#kQ2mRw7p"
@@ -107,8 +109,6 @@ def make_user(
         phone=phone,
         alt_phone=alt_phone,
     )
-
-
 
 
 def ensure_state(state_code: str, zone_code: str = "") -> Any:

@@ -4,6 +4,7 @@ Workers are started with ``celery -A config worker``. Broker and result backend
 URLs come from the CELERY_BROKER_URL / CELERY_RESULT_BACKEND environment
 variables (see .env.example).
 """
+
 import os
 
 from celery import Celery

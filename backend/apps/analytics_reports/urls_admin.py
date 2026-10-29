@@ -4,6 +4,7 @@ Mounted at ``/admin/api/v1/dashboards/`` (admin door). Every route is behind
 ``DASHBOARD_GATE`` plus the service-level zone scoping: out-of-scope zones are
 indistinguishable from empty ones — 404/empty, never data.
 """
+
 from django.urls import path
 
 from . import views

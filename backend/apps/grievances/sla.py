@@ -8,6 +8,7 @@ dispatch reminders/escalations and how compliance windows are measured.
 Everything is driven by ``settings.GRIEVANCE_SLA`` — the one settings-backed
 store (P4). Nothing here writes to the database.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta

@@ -3,6 +3,7 @@
 The pins below mirror the previous project's ``db/issue_manager.py`` exactly;
 the 72h / 7d / 30d numbers come from ``settings.GRIEVANCE_SLA`` (P4 store).
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -48,6 +49,7 @@ def _make_user(username: str, *, category, sub_role, zone_code: str = ""):
 
 class GrievanceFixture(TestCase):
     """Shared world: two zones, one club per zone, one authority + one officer."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     central: Any
     club_n1: Club
@@ -210,6 +212,7 @@ class IntakeTests(GrievanceFixture):
 
 class ResolveLifecycleTests(GrievanceFixture):
     """The old issue_manager resolve semantics (72h/7d/30d streams)."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     admin_due_before: Any
     reminder_before: Any
@@ -294,9 +297,7 @@ class ResolveLifecycleTests(GrievanceFixture):
             decision="resolved",
             reason="done",
         )
-        self.assertTrue(
-            ticket.sla_events.filter(kind=SLAEvent.Kind.RESOLVED).exists()
-        )
+        self.assertTrue(ticket.sla_events.filter(kind=SLAEvent.Kind.RESOLVED).exists())
         self.assertTrue(
             AuditLog.objects.filter(
                 action="grievance.resolved", object_id=str(ticket.pk)
@@ -306,6 +307,7 @@ class ResolveLifecycleTests(GrievanceFixture):
 
 class ScopingTests(GrievanceFixture):
     """P0/P4: queryset-level zone scoping — cross-zone rows look missing."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     ticket_n1: Any
     ticket_w1: Any
@@ -350,6 +352,7 @@ class ScopingTests(GrievanceFixture):
 
 class SweepTests(GrievanceFixture):
     """P5 self-healing sweeps: breaches once per cycle, escalation latched."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     ticket: Any
 
@@ -438,6 +441,7 @@ from django.conf import settings  # noqa: E402
 
 class GrievanceAPITests(GrievanceFixture):
     """Adversarial pins for the grievances API (club side + admin dispatcher)."""
+
     # Fixture attributes created in setUpTestData/setUp (declared for mypy).
     president_w1: Any
     public: Any

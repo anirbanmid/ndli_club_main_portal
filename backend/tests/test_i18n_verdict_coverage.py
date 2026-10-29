@@ -18,6 +18,7 @@ This test closes that blind spot. It fails when:
 Rendering ``t(x)`` where ``x`` is absent from ``hi.json`` yields ``x`` unchanged
 — so "untranslated" here means "still English".
 """
+
 from __future__ import annotations
 
 import ast
@@ -61,8 +62,13 @@ DYNAMIC_VERDICTS: dict[str, list[str]] = {
 
 #: ``const X = { ... } as const;`` blocks in frontend/src/lib whose values are
 #: rendered to the user (verbatim verdicts, or labels behind a dynamic ``t()``).
-TS_VERDICT_BLOCKS = ("AUTH_VERDICTS", "JOIN_VERDICTS", "ONBOARDING_VERDICTS",
-                     "CSV_REASONS", "ROSTER_ERRORS")
+TS_VERDICT_BLOCKS = (
+    "AUTH_VERDICTS",
+    "JOIN_VERDICTS",
+    "ONBOARDING_VERDICTS",
+    "CSV_REASONS",
+    "ROSTER_ERRORS",
+)
 
 
 def _catalogue() -> dict[str, Any]:
@@ -190,9 +196,7 @@ class VerdictCatalogueCoverageTests(SimpleTestCase):
 
     def test_backend_verdicts_are_catalogued(self) -> None:
         missing = sorted(m for m in self.backend if m not in self.hi)
-        self.assertEqual(
-            missing, [], "OnboardingError messages with no hi.json key"
-        )
+        self.assertEqual(missing, [], "OnboardingError messages with no hi.json key")
 
     def test_every_unresolved_backend_verdict_is_registered(self) -> None:
         unknown = [src for src in self.unresolved if src not in DYNAMIC_VERDICTS]

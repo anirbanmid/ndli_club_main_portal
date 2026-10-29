@@ -7,6 +7,7 @@ Reuses the M1 email-OTP machinery (``accounts.services.send_email_otp`` /
 W3-hardened: extension + MIME + magic-byte agreement, size cap, content-hash
 storage names (never user filenames), downloads only as attachments.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -62,9 +63,7 @@ def _sha256_hex(raw: bytes) -> str:
 
 def _upload_root() -> Path:
     return Path(
-        getattr(
-            settings, "ONBOARDING_UPLOAD_ROOT", Path(settings.BASE_DIR) / "var"
-        )
+        getattr(settings, "ONBOARDING_UPLOAD_ROOT", Path(settings.BASE_DIR) / "var")
     )
 
 
@@ -218,15 +217,40 @@ def _resolve_zone_for_state(state_code: str) -> str:
         return state_zone_map[normalized]
 
     abbr_map = {
-        "AP": "ANDHRA_PRADESH", "AR": "ARUNACHAL_PRADESH", "AS": "ASSAM", "BR": "BIHAR",
-        "CG": "CHHATTISGARH", "CH": "CHANDIGARH", "DL": "DELHI", "GA": "GOA",
-        "GJ": "GUJARAT", "HP": "HIMACHAL_PRADESH", "HR": "HARYANA", "JH": "JHARKHAND",
-        "JK": "JAMMU_AND_KASHMIR", "KA": "KARNATAKA", "KL": "KERALA", "LA": "LADAKH",
-        "LD": "LAKSHADWEEP", "MH": "MAHARASHTRA", "ML": "MEGHALAYA", "MN": "MANIPUR",
-        "MP": "MADHYA_PRADESH", "MZ": "MIZORAM", "NL": "NAGALAND", "OD": "ODISHA",
-        "PB": "PUNJAB", "PY": "PUDUCHERRY", "RJ": "RAJASTHAN", "SK": "SIKKIM",
-        "TN": "TAMIL_NADU", "TR": "TRIPURA", "TS": "TELANGANA", "UK": "UTTARAKHAND",
-        "UP": "UTTAR_PRADESH", "WB": "WEST_BENGAL",
+        "AP": "ANDHRA_PRADESH",
+        "AR": "ARUNACHAL_PRADESH",
+        "AS": "ASSAM",
+        "BR": "BIHAR",
+        "CG": "CHHATTISGARH",
+        "CH": "CHANDIGARH",
+        "DL": "DELHI",
+        "GA": "GOA",
+        "GJ": "GUJARAT",
+        "HP": "HIMACHAL_PRADESH",
+        "HR": "HARYANA",
+        "JH": "JHARKHAND",
+        "JK": "JAMMU_AND_KASHMIR",
+        "KA": "KARNATAKA",
+        "KL": "KERALA",
+        "LA": "LADAKH",
+        "LD": "LAKSHADWEEP",
+        "MH": "MAHARASHTRA",
+        "ML": "MEGHALAYA",
+        "MN": "MANIPUR",
+        "MP": "MADHYA_PRADESH",
+        "MZ": "MIZORAM",
+        "NL": "NAGALAND",
+        "OD": "ODISHA",
+        "PB": "PUNJAB",
+        "PY": "PUDUCHERRY",
+        "RJ": "RAJASTHAN",
+        "SK": "SIKKIM",
+        "TN": "TAMIL_NADU",
+        "TR": "TRIPURA",
+        "TS": "TELANGANA",
+        "UK": "UTTARAKHAND",
+        "UP": "UTTAR_PRADESH",
+        "WB": "WEST_BENGAL",
     }
     if clean_state.upper() in abbr_map:
         target = abbr_map[clean_state.upper()]
@@ -295,10 +319,9 @@ def get_draft_by_token(raw_token: str) -> OnboardingDraft:
     """Resolve the resume capability; W1: expired drafts refuse to resume."""
     if not raw_token:
         raise OnboardingError("A resume token is required.", code="missing_token")
-    draft = (
-        OnboardingDraft.objects.filter(resume_token_hash=_sha256_hex(raw_token.encode()))
-        .first()
-    )
+    draft = OnboardingDraft.objects.filter(
+        resume_token_hash=_sha256_hex(raw_token.encode())
+    ).first()
     if draft is None:
         raise OnboardingError(
             "Draft not found.", code="draft_not_found", http_status=404
@@ -322,8 +345,8 @@ def rotate_resume_token(draft: OnboardingDraft) -> str:
     """Issue a fresh resume token (old one dies with the row update)."""
     raw_token = secrets.token_urlsafe(32)
     draft.resume_token_hash = _sha256_hex(raw_token.encode("utf-8"))
-    draft.resume_token_expires_at = (
-        timezone.now() + timedelta(hours=RESUME_TOKEN_TTL_HOURS)
+    draft.resume_token_expires_at = timezone.now() + timedelta(
+        hours=RESUME_TOKEN_TTL_HOURS
     )
     draft.save(
         update_fields=[
@@ -483,9 +506,7 @@ def store_combined_document(draft: OnboardingDraft, uploaded: Any) -> Onboarding
 
 def draft_is_complete(draft: OnboardingDraft) -> bool:
     """All four authority slots present, each OTP-passed, document stored."""
-    roles = {
-        a.role: a for a in OnboardingAuthority.objects.filter(draft=draft)
-    }
+    roles = {a.role: a for a in OnboardingAuthority.objects.filter(draft=draft)}
     if set(roles) != set(AuthorityRole.values):
         return False
     if any(a.otp_verified_at is None for a in roles.values()):

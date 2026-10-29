@@ -9,6 +9,7 @@ The version fingerprint changes whenever any contributing table changes, so
 a content change invalidates the cache immediately (V7) and the TTL is only
 a backstop — never stale-forever.
 """
+
 from __future__ import annotations
 
 from hashlib import sha256

@@ -23,6 +23,7 @@ Design laws:
   tier order PATRON > PRESIDENT > SECRETARY > EXECUTIVE. Flip the priority
   map below if the owner prefers another presentation.
 """
+
 from __future__ import annotations
 
 import secrets
@@ -221,9 +222,7 @@ def materialise_charter(
     )
 
     holder = None
-    for authority in sorted(
-        authorities, key=lambda a: _TIER_PRIORITY.get(a.role, 9)
-    ):
+    for authority in sorted(authorities, key=lambda a: _TIER_PRIORITY.get(a.role, 9)):
         user = _provision_user(
             authority, institution=institution, club=club, state=state
         )

@@ -12,6 +12,7 @@ Owner decisions 2026-10-21 (BRIEF_M4 §8): passkey code+QR · showcase Option B
 (public index; dashboard = credentialed admins only — W9) · bulk import
 sync-chunked · **authority uploads = ONE combined document (jpeg/pdf)**.
 """
+
 from __future__ import annotations
 
 import uuid

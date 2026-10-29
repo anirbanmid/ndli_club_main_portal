@@ -7,6 +7,7 @@ scoped by the M2 scope keys (``ObjectScope("clubs")`` turns cross-club IDs
 into 404, never data). Confirming is the ONLY path from a campus self-join
 to a ``domain.Membership`` row (D3).
 """
+
 from __future__ import annotations
 
 from rest_framework import status
@@ -28,9 +29,7 @@ STATUS_FILTERS = {choice.value for choice in JoinRequest.Status}
 
 
 def _error(exc: MemberError) -> Response:
-    return Response(
-        {"detail": exc.message, "code": exc.code}, status=exc.http_status
-    )
+    return Response({"detail": exc.message, "code": exc.code}, status=exc.http_status)
 
 
 def _join_request_or_404(request: Request, pk: int) -> JoinRequest:
@@ -126,6 +125,4 @@ class JoinRequestRejectView(APIView):
             )
         except MemberError as exc:
             return _error(exc)
-        return Response(
-            {"id": join_request.pk, "status": join_request.status}
-        )
+        return Response({"id": join_request.pk, "status": join_request.status})

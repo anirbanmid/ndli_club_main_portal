@@ -12,6 +12,7 @@ Pinned here:
     cannot arrive without a matrix entry;
   * no scattered ``if request.user…`` authorization in view modules.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -131,9 +132,9 @@ class CategoryGateMatrixTests(TestCase):
             for category in Category.values:
                 for sub_role in CATEGORY_SUB_ROLES[category]:
                     user = make_user(
-                        username=f"t3_{module}_{category}_{sub_role}".replace(
-                            "-", "_"
-                        )[:140],
+                        username=f"t3_{module}_{category}_{sub_role}".replace("-", "_")[
+                            :140
+                        ],
                         category=category,
                         sub_role=sub_role,
                     )
@@ -141,9 +142,7 @@ class CategoryGateMatrixTests(TestCase):
                     with self.subTest(module=module, category=category, role=sub_role):
                         expected = category in allowed
                         self.assertEqual(
-                            gate.has_permission(
-                                _request(user, mfa=True), None
-                            ),
+                            gate.has_permission(_request(user, mfa=True), None),
                             expected,
                             f"{category}/{sub_role} vs module {module!r}",
                         )

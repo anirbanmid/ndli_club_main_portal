@@ -19,6 +19,7 @@ the policy layer (``accounts.policies``) owns every access decision (I5).
 * Public payloads are PUBLIC-SAFE AGGREGATES ONLY (M4-A2, P0): zero student
   PII (names, emails, usernames) ever appears on a public path.
 """
+
 from __future__ import annotations
 
 import io
@@ -177,9 +178,7 @@ def _clean_sections(sections: Any) -> list[dict[str, str]]:
                 code="invalid_sections",
             )
         if len(heading) > SHOWCASE_HEADING_MAX or len(body) > SHOWCASE_BODY_MAX:
-            raise ClubError(
-                "A showcase section is too long.", code="section_too_long"
-            )
+            raise ClubError("A showcase section is too long.", code="section_too_long")
         cleaned.append({"heading": heading, "body": body})
     return cleaned
 
@@ -212,9 +211,7 @@ def upsert_showcase(
     if existing is None:
         taken = set(ClubShowcase.objects.values_list("slug", flat=True))
         try:
-            slug = slugs.derive_slug(
-                club.institution.name, club.name, taken=taken
-            )
+            slug = slugs.derive_slug(club.institution.name, club.name, taken=taken)
         except slugs.SlugBlockedError as exc:
             raise ClubError(exc.message, code="slug_blocked", http_status=409) from exc
         try:
@@ -282,9 +279,7 @@ def passkey_payload(club: Club) -> dict[str, Any] | None:
     return row.status_payload if row is not None else None
 
 
-def issue_passkey(
-    *, club: Club, issued_by: Any = None, request: Any = None
-) -> str:
+def issue_passkey(*, club: Club, issued_by: Any = None, request: Any = None) -> str:
     """Issue the club's first campus passkey; plaintext returned ONCE."""
     if CampusPasskey.objects.filter(club=club).exists():
         raise ClubError(
@@ -398,9 +393,7 @@ def resolve_passkey(code: str) -> CampusPasskey:
     if row is None or not verify_secret(normalized, row.code_hash):
         raise ClubError("That passkey is not valid.", code="passkey_invalid")
     if not row.is_active:
-        raise ClubError(
-            "That passkey is no longer active.", code="passkey_revoked"
-        )
+        raise ClubError("That passkey is no longer active.", code="passkey_revoked")
     if row.expires_at <= timezone.now():
         raise ClubError("That passkey has expired.", code="passkey_expired")
     return row
@@ -442,9 +435,7 @@ def resolve_credential(*, passkey: str = "", token: str = "") -> JoinCredential:
         return JoinCredential(club=club, source="qr")
     if passkey:
         return JoinCredential(club=resolve_passkey(passkey).club, source="passkey")
-    raise ClubError(
-        "A passkey or join link is required.", code="credential_missing"
-    )
+    raise ClubError("A passkey or join link is required.", code="credential_missing")
 
 
 def _throttle_club_attempt(credential: JoinCredential, request: Any) -> None:
@@ -452,9 +443,7 @@ def _throttle_club_attempt(credential: JoinCredential, request: Any) -> None:
     if request is None:
         return
     key = f"clubs:join:{client_ip(request)}:{credential.club.code}"
-    if not sliding_window_allow(
-        key, JOIN_ATTEMPT_LIMIT, JOIN_ATTEMPT_WINDOW_SECONDS
-    ):
+    if not sliding_window_allow(key, JOIN_ATTEMPT_LIMIT, JOIN_ATTEMPT_WINDOW_SECONDS):
         raise Throttled(detail="Too many join attempts. Try again later.")
 
 

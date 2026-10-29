@@ -21,6 +21,7 @@ load time (the HMAC tag is derived data and never lives in the fixture file —
 V3). Revocations are get_or_create only: seeding NEVER deletes or overwrites
 a revocation, because revocation is a human action, not fixture state.
 """
+
 from __future__ import annotations
 
 import json

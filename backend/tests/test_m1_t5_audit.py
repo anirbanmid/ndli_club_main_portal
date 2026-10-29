@@ -4,6 +4,7 @@ Pinned: every mutating action writes exactly ONE audit row · the SHA-256
 chain verifies · rows cannot be updated or deleted through any Django path ·
 tampering with a stored row breaks the chain and is detected.
 """
+
 from __future__ import annotations
 
 from django.db import connection

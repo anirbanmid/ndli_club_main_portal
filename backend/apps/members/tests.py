@@ -4,6 +4,7 @@ The database-level promises of ``JoinRequest``: one pending request per
 (user, club), and scope keys identical to ``domain.Membership`` so the M1
 policy layer scopes both tables the same way (I5).
 """
+
 from __future__ import annotations
 
 from django.db import IntegrityError, transaction

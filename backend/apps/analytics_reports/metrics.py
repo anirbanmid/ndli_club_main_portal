@@ -24,6 +24,7 @@ Zone scoping lives in :func:`visible_zone` — the ONE decision point (P0): a
 zone-bound officer can only ever see their own zone, whatever they ask for,
 and out-of-scope zones are indistinguishable from empty ones.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

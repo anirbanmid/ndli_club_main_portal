@@ -5,6 +5,7 @@ machine lives in ``services.review_charter``; the anchor row below records
 what a sanction materialised, so the D2b step (club materialisation +
 registration certificate) is idempotent and auditable.
 """
+
 from __future__ import annotations
 
 from django.db import models

@@ -4,6 +4,7 @@
 only (MCC = master control; EMPs get the operational desks). Full report
 payload from ``.insights.strategic_report`` (P4: one derivation place).
 """
+
 from __future__ import annotations
 
 from rest_framework import status
@@ -18,9 +19,7 @@ from apps.accounts.policies import CategoryGate
 from . import insights
 
 #: MCC-only (old-project RBAC: EMPs do not get the strategic report).
-INSIGHTS_GATE = CategoryGate(
-    "admin", {SubRole.CENTRAL_ADMIN, SubRole.SUPER_ADMIN_OPS}
-)
+INSIGHTS_GATE = CategoryGate("admin", {SubRole.CENTRAL_ADMIN, SubRole.SUPER_ADMIN_OPS})
 
 
 class StrategicReportView(APIView):

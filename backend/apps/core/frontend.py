@@ -22,6 +22,7 @@ root (containment check), no directory listings, no extension guessing for
 the SPA routes. SecurityHeadersMiddleware (outermost) stamps the standard
 headers on every response including these.
 """
+
 from __future__ import annotations
 
 import mimetypes

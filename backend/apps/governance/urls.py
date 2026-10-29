@@ -3,6 +3,7 @@
 Every route is behind ``CHARTER_GATE`` (admin module, decider sub-roles) and
 the service-level zone scoping; out-of-scope IDs resolve to 404.
 """
+
 from django.urls import path
 
 from . import views, views_insights, views_renewals

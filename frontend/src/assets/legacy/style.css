@@ -189,31 +189,15 @@
 /* ==========================================================================
    BASE RESET
    ========================================================================== */
-*, *::before, *::after {
+.app-shell,
+.app-shell *,
+.app-shell *::before,
+.app-shell *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
-html, body {
-  width: 100%;
-  max-width: 100%;
-  /* Round 2 F1: `overflow-x: hidden` turned body into a scroll container and
-     silently killed `position: sticky` on the navbar (all 4 portals). `clip`
-     keeps the horizontal clipping intent WITHOUT creating a scroll container,
-     so the sticky header sticks again. First line = fallback for browsers
-     without `clip` (Safari <16) — they keep the old behaviour. */
-  overflow-x: hidden;
-  overflow-x: clip;
-  margin: 0;
-  padding: 0;
-  scroll-behavior: smooth;
-}
-
-body {
+.app-shell {
   font-family: var(--font);
-  /* Direction C tinted canvas with the two soft radial glows (green top-right,
-     amber bottom-left — screens-c-landing recipe). */
   background-color: var(--bg-main);
   background-image:
     radial-gradient(900px 520px at 82% -8%, rgba(52, 201, 143, 0.22), transparent 62%),
@@ -221,12 +205,9 @@ body {
   background-attachment: fixed;
   color: var(--text-main);
   line-height: 1.6;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 15px;
 }
 
 /* Polish round: smooth scrolling is motion too — honour the motion contract.
@@ -874,7 +855,7 @@ body {
   margin-bottom: 0.65rem;
 }
 
-label {
+.app-shell label {
   display: block;
   font-size: 0.78rem;
   font-weight: 700;
@@ -888,12 +869,12 @@ label {
   color: var(--danger);
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-select,
-textarea {
+.app-shell input[type="text"],
+.app-shell input[type="email"],
+.app-shell input[type="password"],
+.app-shell input[type="date"],
+.app-shell select,
+.app-shell textarea {
   width: 100%;
   padding: 0.50rem 0.80rem;
   font-size: 0.85rem;
@@ -908,7 +889,7 @@ textarea {
 
 /* Round 2 F14: scoped OUT .ndli-asst-input — the Robu composer keeps its own
    documented border/glow language (assistant.css), not the global form rules. */
-input:focus, select:focus, textarea:focus:not(.ndli-asst-input) {
+.app-shell input:focus, .app-shell select:focus, .app-shell textarea:focus:not(.ndli-asst-input) {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(13, 119, 81, 0.18);
 }
@@ -921,21 +902,21 @@ input:focus, select:focus, textarea:focus:not(.ndli-asst-input) {
 }
 
 /* Round 7: placeholder legibility — AA-ish muted tone instead of default grey */
-input::placeholder,
-textarea::placeholder {
+.app-shell input::placeholder,
+.app-shell textarea::placeholder {
   color: var(--text-light);
   opacity: 1;
 }
 
 /* Polish round: hover affordance on editable fields (border only — no layout) */
-input:hover:not(:focus):not([readonly]):not(:disabled),
-select:hover:not(:focus),
-textarea:hover:not(:focus):not(.ndli-asst-input) { /* Round 2 F14: widget keeps --asst-border */
+.app-shell input:hover:not(:focus):not([readonly]):not(:disabled),
+.app-shell select:hover:not(:focus),
+.app-shell textarea:hover:not(:focus):not(.ndli-asst-input) { /* Round 2 F14: widget keeps --asst-border */
   border-color: #C6D9CF;
 }
 
 /* Polish round: disabled fields must read as disabled (was: looked enabled) */
-input:disabled, select:disabled, textarea:disabled {
+.app-shell input:disabled, .app-shell select:disabled, .app-shell textarea:disabled {
   background-color: var(--bg-muted);
   color: var(--text-muted);
   cursor: not-allowed;
@@ -943,14 +924,14 @@ input:disabled, select:disabled, textarea:disabled {
 }
 
 /* Polish round: browser autofill must not paint over the brand surface */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
+.app-shell input:-webkit-autofill,
+.app-shell input:-webkit-autofill:hover,
+.app-shell input:-webkit-autofill:focus {
   -webkit-text-fill-color: var(--text-main);
   box-shadow: 0 0 0 1000px var(--bg-input) inset;
 }
 
-input[readonly] {
+.app-shell input[readonly] {
   background-color: var(--c-tint-2);
   cursor: not-allowed;
   color: var(--text-muted);
@@ -1227,7 +1208,7 @@ input[readonly] {
   background: var(--text-light);
 }
 
-table {
+.app-shell table {
   width: 100%;
   /* separate + spacing 0 keeps hairline rows AND lets hover rows round off */
   border-collapse: separate;
@@ -1237,7 +1218,7 @@ table {
   font-variant-numeric: tabular-nums; /* Round 7: aligned digits in metric tables */
 }
 
-thead th {
+.app-shell thead th {
   background: #ffffff;
   color: var(--text-light);
   font-weight: 800;
@@ -1249,7 +1230,7 @@ thead th {
   letter-spacing: 0.14em;
 }
 
-tbody td {
+.app-shell tbody td {
   padding: 0.55rem 0.80rem;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
@@ -1257,15 +1238,15 @@ tbody td {
   transition: background var(--transition-fast);
 }
 
-tbody tr:last-child td { border-bottom: none; }
+.app-shell tbody tr:last-child td { border-bottom: none; }
 
 /* Direction C §3f: no zebra grid — hairline separators only */
-tbody tr:nth-child(even) { background-color: transparent; }
+.app-shell tbody tr:nth-child(even) { background-color: transparent; }
 
-tbody tr:hover { background-color: var(--c-tint-2); }
-tbody tr:hover td { background-color: var(--c-tint-2); }
-tbody tr:hover td:first-child { border-radius: 12px 0 0 12px; }
-tbody tr:hover td:last-child  { border-radius: 0 12px 12px 0; }
+.app-shell tbody tr:hover { background-color: var(--c-tint-2); }
+.app-shell tbody tr:hover td { background-color: var(--c-tint-2); }
+.app-shell tbody tr:hover td:first-child { border-radius: 12px 0 0 12px; }
+.app-shell tbody tr:hover td:last-child { border-radius: 0 12px 12px 0; }
 
 .club-name-link {
   color: var(--primary, #1A503E);
@@ -2213,8 +2194,7 @@ tbody tr:hover td:last-child  { border-radius: 0 12px 12px 0; }
    ========================================================================== */
 
 /* --- 1..3: variant B density + dot + sidebar (exact approved render) --- */
-html { font-size: 14.5px; }
-body { font-size: 14px; }
+.app-shell { font-size: 14px; }
 .hero-banner { padding: 1.8rem 2rem !important; margin-bottom: 1.15rem !important; }
 .hero-banner h2 { font-size: 2rem !important; }
 .hero-banner p { font-size: 0.98rem !important; }

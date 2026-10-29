@@ -304,9 +304,25 @@ export async function downloadOfficialCharterDoc(club: InstituteClub) {
       </div>
 
       <div class="sig-box">
-        <div class="sig-name">Prof. Partha P. Das</div>
-        <div class="sig-line"></div>
-        <div class="sig-title">Principal Investigator<br>National Digital Library of India</div>
+        ${(() => {
+          let name = 'Prof. Partha Pratim Chakrabarti';
+          let affil = 'Principal Investigator<br>National Digital Library of India';
+          let img = '';
+          try {
+            if (typeof localStorage !== 'undefined') {
+              const raw = localStorage.getItem('ndli_pi_settings');
+              if (raw) {
+                const s = JSON.parse(raw);
+                if (s.pi_name) name = s.pi_name;
+                if (s.pi_affiliation) affil = s.pi_affiliation.replace(/\n/g, '<br>');
+                if (s.signature_image_url) {
+                  img = `<img src="${s.signature_image_url}" alt="PI Signature" style="max-height: 44px; max-width: 150px; object-fit: contain; display: block; margin: 0 auto 4px auto;">`;
+                }
+              }
+            }
+          } catch {}
+          return `${img}<div class="sig-name">${name}</div><div class="sig-line"></div><div class="sig-title">${affil}</div>`;
+        })()}
       </div>
     </div>
 

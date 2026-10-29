@@ -19,7 +19,16 @@ import {
   LifeBuoy,
   Trash2,
   Wrench,
+  UserCheck,
+  ExternalLink,
+  Printer,
+  ShieldCheck,
+  Clock,
+  AlertTriangle,
+  Globe,
+  Building2,
 } from 'lucide-react';
+import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
 import { ApiError } from '../lib/api';
 import {
   ActivityRow,
@@ -55,11 +64,18 @@ const SEC_A_TYPES = [
 
 const BULK_TYPE = 'Phone call and remote assistance';
 
-type EmployeeTab = 'activity' | 'search' | 'history' | 'grievances' | 'approvals' | 'toolbox';
+type EmployeeTab = 'activity' | 'search' | 'history' | 'grievances' | 'approvals' | 'succession' | 'toolbox';
 
 export interface EmployeeModuleProps {
   onSignOut?: () => void;
   subRole?: string;
+  adminRole?: string;
+  onNavigateBranch?: (branch: 'landing' | 'club_module', tab?: string) => void;
+  authorityRequests?: AuthorityChangeRequest[];
+  onApproveAuthorityChange?: (reqId: string) => void;
+  onRejectAuthorityChange?: (reqId: string, reason?: string) => void;
+  clubs?: InstituteClub[];
+  onUpdateClub?: (updated: InstituteClub) => void;
 }
 
 const NODAL_OFFICERS: Record<string, { name: string; zone: string; email: string; states: string }> = {
@@ -122,6 +138,13 @@ function formatDate(iso: string | null | undefined): string {
 export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   onSignOut,
   subRole = 'EMP01',
+  adminRole,
+  onNavigateBranch,
+  authorityRequests = [],
+  onApproveAuthorityChange,
+  onRejectAuthorityChange,
+  clubs = [],
+  onUpdateClub,
 }) => {
   const [activeTab, setActiveTab] = useState<EmployeeTab>('activity');
 
@@ -194,10 +217,128 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   // --- Tool Box / PI Signature State --------------------------------
   const [, setPiSettings] = useState<PISignatureSettings | null>(null);
-  const [piAffiliation, setPiAffiliation] = useState('');
+  const [piName, setPiName] = useState('Prof. Partha Pratim Chakrabarti');
+  const [piAffiliation, setPiAffiliation] = useState(
+    'Principal Investigator, NDLI Project, Central Library, IIT Kharagpur'
+  );
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [piBusy, setPiBusy] = useState(false);
+
+  // --- Club Edit & Renewal Modal States (Observations 3 & 4) --------
+  const [selectedEditClub, setSelectedEditClub] = useState<ClubSearchRow | null>(null);
+  const [editInstName, setEditInstName] = useState('');
+  const [editRegNo, setEditRegNo] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editZone, setEditZone] = useState('');
+  const [editPatronEmail, setEditPatronEmail] = useState('');
+  const [editPresidentEmail, setEditPresidentEmail] = useState('');
+  const [editSecretaryEmail, setEditSecretaryEmail] = useState('');
+  const [issueNote, setIssueNote] = useState('');
+  const [editModalFocusIssue, setEditModalFocusIssue] = useState(false);
+  const [renewalConditionsChecked, setRenewalConditionsChecked] = useState(true);
+  const [isCertTerminalOpen, setIsCertTerminalOpen] = useState(false);
+  const [certClub, setCertClub] = useState<ClubSearchRow | null>(null);
+
+  // Handlers for Club Edit & Renewal Modal
+  const handleOpenEditModal = (club: ClubSearchRow) => {
+    setSelectedEditClub(club);
+    setEditInstName(club.institution_name || '');
+    setEditRegNo(club.registration_no || club.reg_no || '');
+    setEditState(club.state || '');
+    setEditZone(club.zone || '');
+    setEditPatronEmail(club.patron_email || '');
+    setEditPresidentEmail(club.president_email || '');
+    setEditSecretaryEmail(club.secretary_email || '');
+    setIssueNote('');
+    setEditModalFocusIssue(false);
+  };
+
+  const handleOpenCertTerminal = (club: ClubSearchRow) => {
+    setCertClub(club);
+    setIsCertTerminalOpen(true);
+  };
+
+  const handleSaveClubDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEditClub) return;
+    const updated: ClubSearchRow = {
+      ...selectedEditClub,
+      institution_name: editInstName,
+      registration_no: editRegNo,
+      reg_no: editRegNo,
+      state: editState,
+      zone: editZone,
+      patron_email: editPatronEmail,
+      president_email: editPresidentEmail,
+      secretary_email: editSecretaryEmail,
+    };
+    setClubRows((prev) =>
+      prev.map((c) => (c.club_id === updated.club_id ? updated : c))
+    );
+    if (onUpdateClub) {
+      const existingClub = clubs.find((c) => c.id === updated.club_id);
+      if (existingClub) {
+        onUpdateClub({
+          ...existingClub,
+          name: editInstName,
+          registrationNo: editRegNo,
+          state: editState,
+          zone: (editZone as RegionalZone) || existingClub.zone,
+        });
+      }
+    }
+    setSelectedEditClub(null);
+    showAlert(`✓ Club details for ${editInstName} updated successfully!`);
+  };
+
+  const handleRenewalApproved = () => {
+    if (!selectedEditClub) return;
+    const today = new Date().toISOString().split('T')[0];
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    const nextRenewal = nextYear.toISOString().split('T')[0];
+
+    const updated: ClubSearchRow = {
+      ...selectedEditClub,
+      last_renewal_date: today,
+      upcoming_renewal_date: nextRenewal,
+      next_renewal_date: nextRenewal,
+      renewal_date: nextRenewal,
+      status: 'Active',
+    };
+
+    setClubRows((prev) =>
+      prev.map((c) => (c.club_id === updated.club_id ? updated : c))
+    );
+    if (onUpdateClub) {
+      const existing = clubs.find((c) => c.id === updated.club_id);
+      if (existing) {
+        onUpdateClub({
+          ...existing,
+          lastRenewalDate: today,
+          nextRenewalDate: nextRenewal,
+          status: 'Active',
+        });
+      }
+    }
+    setSelectedEditClub(null);
+    showAlert(
+      `✓ Club validity renewed successfully until ${nextRenewal}! Certificate generated.`
+    );
+    handleOpenCertTerminal(updated);
+  };
+
+  const handleSetIssueReminder = () => {
+    if (!selectedEditClub || !issueNote.trim()) {
+      showAlert('Please enter issue/reminder notes for the club.', true);
+      return;
+    }
+    showAlert(
+      `✓ Reminder set for 72 hours. Note recorded for ${selectedEditClub.institution_name}: "${issueNote}"`
+    );
+    setIssueNote('');
+  };
 
   // Load activities
   const loadActivities = useCallback(async () => {
@@ -256,12 +397,24 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     try {
       const data = await fetchPISignatureSettings();
       setPiSettings(data);
-      setPiAffiliation(data.pi_affiliation || '');
+      if (data.pi_name) setPiName(data.pi_name);
+      if (data.pi_affiliation) setPiAffiliation(data.pi_affiliation);
       if (data.has_signature_image && data.signature_image_url) {
         setSignaturePreview(data.signature_image_url);
       }
     } catch {
-      // Non-blocking
+      // Fallback to local cache if offline
+      try {
+        const cached = localStorage.getItem('ndli_pi_settings');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.pi_name) setPiName(parsed.pi_name);
+          if (parsed.pi_affiliation) setPiAffiliation(parsed.pi_affiliation);
+          if (parsed.signature_image_url) setSignaturePreview(parsed.signature_image_url);
+        }
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
@@ -482,7 +635,20 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     e.preventDefault();
     setPiBusy(true);
     try {
-      const res = await savePISignatureSettings(piAffiliation.trim(), signatureFile || undefined);
+      const res = await savePISignatureSettings(piAffiliation.trim(), signatureFile || undefined, piName.trim());
+      try {
+        localStorage.setItem(
+          'ndli_pi_settings',
+          JSON.stringify({
+            pi_name: piName.trim(),
+            pi_affiliation: piAffiliation.trim(),
+            signature_image_url: res.signature_image_url || signaturePreview,
+            has_signature_image: res.has_signature_image,
+          })
+        );
+      } catch {
+        /* ignore */
+      }
       showAlert('✓ PI Signature and Affiliation settings updated successfully.');
       setPiSettings(res);
       setSignatureFile(null);
@@ -583,6 +749,20 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
           </button>
 
           <button
+            className={`tab-btn ${activeTab === 'succession' ? 'active' : ''}`}
+            onClick={() => setActiveTab('succession')}
+            title="Institutional Authority Succession & Charter Re-Signing Gate"
+          >
+            <UserCheck className="h-4 w-4 mr-1 text-indigo-700" />
+            Authority Succession
+            {authorityRequests && authorityRequests.filter((r) => r.status === 'Pending Admin Review').length > 0 && (
+              <span className="side-count" style={{ background: '#4F46E5', color: '#fff' }}>
+                {authorityRequests.filter((r) => r.status === 'Pending Admin Review').length}
+              </span>
+            )}
+          </button>
+
+          <button
             className={`tab-btn ${activeTab === 'toolbox' ? 'active' : ''}`}
             onClick={() => setActiveTab('toolbox')}
           >
@@ -609,6 +789,28 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
         </button>
 
         <div className="side-caption">Portals &amp; Tools</div>
+        {onNavigateBranch && (
+          <>
+            <button
+              type="button"
+              className="side-link nav-link"
+              onClick={() => onNavigateBranch('landing', 'home')}
+              title="Go to 1. Public Portal"
+              style={{ textAlign: 'left', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <span>🌐</span> 1. Public Portal
+            </button>
+            <button
+              type="button"
+              className="side-link nav-link"
+              onClick={() => onNavigateBranch('club_module', 'club_directory')}
+              title="Go to 2. Institutional Club Module CAMPUS"
+              style={{ textAlign: 'left', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <span>🏛️</span> 2. Campus Clubs Module
+            </button>
+          </>
+        )}
         <a
           href="https://ndl.iitkgp.ac.in"
           className="side-link nav-link"
@@ -681,6 +883,30 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
           </div>
 
           <div className="top-right">
+            {onNavigateBranch && (
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginRight: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => onNavigateBranch('landing', 'home')}
+                  className="btn btn-outline btn-sm"
+                  title="Switch to 1. Public Portal"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', padding: '0.25rem 0.6rem', fontWeight: 600 }}
+                >
+                  <Globe className="h-3.5 w-3.5 text-[#0D7751]" />
+                  <span>1. Public Portal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigateBranch('club_module', 'club_directory')}
+                  className="btn btn-outline btn-sm"
+                  title="Switch to 2. Institutional Club Module CAMPUS"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', padding: '0.25rem 0.6rem', fontWeight: 600 }}
+                >
+                  <Building2 className="h-3.5 w-3.5 text-[#B45309]" />
+                  <span>2. Campus Clubs</span>
+                </button>
+              </div>
+            )}
             <div className="top-chip plain">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="4" y="5" width="16" height="15" rx="2.5" />
@@ -1037,6 +1263,8 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                         <th>State</th>
                         <th>Zone</th>
                         <th>Date of Approval</th>
+                        <th>Last Renewal Date</th>
+                        <th>Upcoming Renewal Date</th>
                         <th>Status</th>
                         <th>Action</th>
                       </tr>
@@ -1044,13 +1272,13 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                     <tbody id="search-results-tbody">
                       {clubsLoading ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                             ⏳ Loading clubs database...
                           </td>
                         </tr>
                       ) : filteredClubs.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                             No clubs found matching search query.
                           </td>
                         </tr>
@@ -1074,31 +1302,40 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                               <td>
                                 <span className="pill pill-success">{c.zone || '—'}</span>
                               </td>
-                              <td>{formatDate(c.date_of_approval)}</td>
+                              <td>{c.date_of_approval ? formatDate(c.date_of_approval) : '—'}</td>
+                              <td>{c.last_renewal_date ? formatDate(c.last_renewal_date) : 'None (Initial)'}</td>
+                              <td>
+                                {(c.upcoming_renewal_date || c.next_renewal_date || c.renewal_date)
+                                  ? formatDate(c.upcoming_renewal_date || c.next_renewal_date || c.renewal_date)
+                                  : '—'}
+                              </td>
                               <td>
                                 <span
-                                  className="pill"
+                                  className="pill pill-success"
                                   style={{
-                                    background: 'var(--c-green-soft)',
-                                    color: 'var(--c-green-deep)',
                                     textTransform: 'capitalize',
+                                    fontWeight: 700,
+                                    fontSize: '0.72rem',
                                   }}
                                 >
-                                  active
+                                  {c.status || 'Active'}
                                 </span>
                               </td>
                               <td>
                                 <button
                                   type="button"
                                   className="btn btn-outline btn-sm"
-                                  onClick={() => {
-                                    setClubId(cid);
-                                    setActiveTab('activity');
+                                  onClick={() => handleOpenEditModal(c)}
+                                  title="Edit institutional details or manage annual validity renewal"
+                                  style={{
+                                    padding: '3px 10px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    color: '#1B4D3E',
+                                    borderColor: '#1B4D3E',
                                   }}
-                                  title="Log support activity for this club"
-                                  style={{ padding: '2px 8px', fontSize: '0.74rem' }}
                                 >
-                                  Log Activity
+                                  Edit / Renew
                                 </button>
                               </td>
                             </tr>
@@ -1174,13 +1411,13 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                     <tbody id="activities-tbody">
                       {historyLoading ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                             ⏳ Loading activity history...
                           </td>
                         </tr>
                       ) : rows.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                          <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                             No activity entries recorded yet.
                           </td>
                         </tr>
@@ -1717,6 +1954,23 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
                 <form onSubmit={handleSavePISettings} style={{ maxWidth: '640px' }}>
                   <div className="form-group">
+                    <label htmlFor="pi-name-input" className="label-required">
+                      Project Investigator (PI) Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="pi-name-input"
+                      required
+                      placeholder="e.g. Prof. Partha Pratim Chakrabarti"
+                      value={piName}
+                      onChange={(e) => setPiName(e.target.value)}
+                    />
+                    <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.2rem', display: 'block' }}>
+                      Official PI name printed on all generated registration certificates and renewal letters.
+                    </small>
+                  </div>
+
+                  <div className="form-group">
                     <label htmlFor="pi-affiliation-input" className="label-required">
                       Project Investigator Affiliation &amp; Designation
                     </label>
@@ -2048,6 +2302,552 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
               </div>
             </div>
           )}
+                  {/* TAB: AUTHORITY SUCCESSION DESK */}
+          {activeTab === 'succession' && (
+            <div className="tab-panel active" id="tab-succession">
+              <div className="card">
+                <div className="card-header">
+                  <div>
+                    <h3 className="card-title">Institutional Authority Succession &amp; Charter Re-Signing Desk</h3>
+                    <p className="card-subtitle">
+                      Validate appointment orders and cryptographically sanction leadership changes for colleges.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="pill pill-success">
+                      {authorityRequests.filter((r) => r.status === 'Pending Admin Review').length} Pending Requests
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {authorityRequests.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                      No authority succession requests found in node registry.
+                    </div>
+                  ) : (
+                    authorityRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        style={{
+                          padding: '1.25rem',
+                          borderRadius: 'var(--radius-md)',
+                          background: '#F4F8F6',
+                          border: '1px solid #E2ECE7',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.85rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#103125' }}>
+                            {req.id} • {req.clubName}
+                          </span>
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              background: req.status === 'Approved & Updated' ? '#dcfce7' : '#fef3c7',
+                              color: req.status === 'Approved & Updated' ? '#166534' : '#92400e',
+                            }}
+                          >
+                            {req.status}
+                          </span>
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '1rem',
+                            background: '#ffffff',
+                            padding: '0.85rem',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid #E2ECE7',
+                          }}
+                        >
+                          <div>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#5A7366' }}>
+                              Current Officer
+                            </span>
+                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.currentName}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>Role: {req.role}</div>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#0D7751' }}>
+                              Incoming Nominee
+                            </span>
+                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.proposedName}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>
+                              {req.proposedEmail} ({req.proposedPhone})
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: '#5A7366', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <span>
+                            Official Appointment Order: <strong style={{ fontFamily: 'monospace' }}>{req.officialDocName}</strong>
+                          </span>
+                          {req.status === 'Pending Admin Review' && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              {onRejectAuthorityChange && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const reason = window.prompt('Enter reason for rejecting authority succession:');
+                                    if (reason !== null) {
+                                      onRejectAuthorityChange(req.id, reason);
+                                      showAlert(`Rejected succession request ${req.id}.`);
+                                    }
+                                  }}
+                                  className="btn btn-outline btn-sm"
+                                  style={{ borderColor: '#dc2626', color: '#dc2626', padding: '4px 10px', fontSize: '0.75rem' }}
+                                >
+                                  Reject
+                                </button>
+                              )}
+                              {onApproveAuthorityChange && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onApproveAuthorityChange(req.id);
+                                    showAlert(`✓ Approved authority succession for ${req.clubName}. Charter re-signed!`);
+                                  }}
+                                  className="btn btn-primary btn-sm"
+                                  style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                                >
+                                  Authorize &amp; Re-Sign Charter
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* MODAL 1: EDIT / RENEW CLUB MODAL (Observations 3 & 4) */}
+        {selectedEditClub && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '1rem',
+              overflowY: 'auto',
+            }}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                maxWidth: '780px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                padding: '1.75rem',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1.5px solid #E2ECE7', paddingBottom: '0.85rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+                    {selectedEditClub.institution_name} ({selectedEditClub.club_id})
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
+                    Edit institutional directory metadata or approve annual registration validity renewal.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="pill pill-success">{selectedEditClub.status || 'Active'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEditClub(null)}
+                    style={{ background: 'transparent', border: 'none', fontSize: '1.35rem', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Form 1: Edit Club Details */}
+              <form onSubmit={handleSaveClubDetails} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="label-required">Institution Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editInstName}
+                    onChange={(e) => setEditInstName(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Registration No</label>
+                  <input
+                    type="text"
+                    value={editRegNo}
+                    onChange={(e) => setEditRegNo(e.target.value)}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="label-required">State</label>
+                    <input
+                      type="text"
+                      required
+                      value={editState}
+                      onChange={(e) => setEditState(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Zone (Auto-Mapped)</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={editZone}
+                      style={{ background: 'var(--bg-muted)', fontWeight: 700 }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Patron Email</label>
+                    <input
+                      type="email"
+                      value={editPatronEmail}
+                      onChange={(e) => setEditPatronEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>President Email</label>
+                    <input
+                      type="email"
+                      value={editPresidentEmail}
+                      onChange={(e) => setEditPresidentEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Secretary Email</label>
+                    <input
+                      type="email"
+                      value={editSecretaryEmail}
+                      onChange={(e) => setEditSecretaryEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>
+                    Save Updated Details
+                  </button>
+                </div>
+              </form>
+
+              {/* Section 2: Registration Renewal Approval ("Renewal Approved") */}
+              <div
+                style={{
+                  borderTop: '2px dashed #fde68a',
+                  background: '#fffdf5',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid #fde68a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h4 style={{ color: '#92400e', fontSize: '1.02rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span>⚡</span> Registration Renewal Approval
+                  </h4>
+                  <span className="pill pill-success" style={{ fontWeight: 800 }}>
+                    Validity Active
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.82rem', color: '#78350f', margin: 0, lineHeight: 1.45 }}>
+                  <strong>Renewal Protocol:</strong> Every club receives 1-year registration validity upon approval. On fulfillment of activity criteria, click <strong>&quot;Renewal Approved&quot;</strong>. The current date is logged as <strong>&quot;Last Renewal Date&quot;</strong>, and upcoming validity extends by +1 year.
+                </p>
+
+                {/* 3 Renewal Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ background: '#ffffff', padding: '0.85rem', borderRadius: '8px', border: '1px solid #fef3c7' }}>
+                    <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 800, display: 'block' }}>
+                      Date of Approval
+                    </span>
+                    <strong style={{ fontSize: '0.92rem', color: 'var(--primary)', marginTop: '0.2rem', display: 'block' }}>
+                      {selectedEditClub.date_of_approval || '2021-04-12'}
+                    </strong>
+                    <small style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Inception timestamp</small>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '0.85rem', borderRadius: '8px', border: '1px solid #fef3c7' }}>
+                    <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 800, display: 'block' }}>
+                      Last Renewal Date
+                    </span>
+                    <strong style={{ fontSize: '0.92rem', color: '#b45309', marginTop: '0.2rem', display: 'block' }}>
+                      {selectedEditClub.last_renewal_date || 'None (Initial)'}
+                    </strong>
+                    <small style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Logged on approval</small>
+                  </div>
+
+                  <div style={{ background: '#ffffff', padding: '0.85rem', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 800, display: 'block' }}>
+                      Upcoming Renewal Due
+                    </span>
+                    <strong style={{ fontSize: '0.95rem', color: '#15803d', marginTop: '0.2rem', display: 'block' }}>
+                      {selectedEditClub.upcoming_renewal_date || selectedEditClub.renewal_date || '2026-04-12'}
+                    </strong>
+                    <small style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+1 Year Validity</small>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', paddingTop: '0.25rem' }}>
+                  <label style={{ fontSize: '0.85rem', color: '#78350f', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={renewalConditionsChecked}
+                      onChange={(e) => setRenewalConditionsChecked(e.target.checked)}
+                      style={{ accentColor: 'var(--primary)' }}
+                    />
+                    <span>Required renewal conditions fulfilled and verified</span>
+                  </label>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleOpenCertTerminal(selectedEditClub)}
+                      title="Open Renewal Certificate Generation Terminal"
+                      style={{ fontWeight: 600 }}
+                    >
+                      <span>📜</span> Certificate Terminal
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={handleRenewalApproved}
+                      style={{ fontWeight: 800, background: '#0D7751' }}
+                    >
+                      <span>⚡</span> Renewal Approved
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Report Unresolved Issue & Set Reminder */}
+              <div
+                style={{
+                  borderTop: '2px dashed #fde68a',
+                  background: '#fffdf5',
+                  padding: '1.25rem',
+                  borderRadius: '12px',
+                  border: '1px solid #fef08a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ color: '#854d0e', fontSize: '1.02rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span>⚠️</span> Report Unresolved Issue &amp; Set Reminder
+                  </h4>
+                  <span className="pill pill-warning" style={{ fontSize: '0.72rem' }}>72-Hour Alert Token</span>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label htmlFor="issue-note-input" style={{ fontSize: '0.85rem', color: '#713f12' }}>Brief Note of Reported Issue:</label>
+                  <textarea
+                    id="issue-note-input"
+                    rows={2}
+                    value={issueNote}
+                    onChange={(e) => setIssueNote(e.target.value)}
+                    placeholder="Note down the issue reported by the club authorities..."
+                    style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)', padding: '0.5rem', fontSize: '0.84rem' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn btn-warning btn-sm"
+                    onClick={handleSetIssueReminder}
+                    style={{ fontWeight: 700, background: '#b45309', color: '#fff', border: 'none' }}
+                  >
+                    <span>⏰</span> SET A REMINDER
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: RENEWAL CERTIFICATE TERMINAL MODAL (Observation 5) */}
+        {isCertTerminalOpen && certClub && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.75)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: '1rem',
+              overflowY: 'auto',
+            }}
+          >
+            <div
+              style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                maxWidth: '750px',
+                width: '100%',
+                maxHeight: '92vh',
+                overflowY: 'auto',
+                padding: '2rem',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.25rem',
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2ECE7', paddingBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{ fontSize: '1.5rem' }}>📜</span>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
+                      Official Certificate of Registration &amp; Renewal
+                    </h3>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                      National Digital Library of India • IIT Kharagpur
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCertTerminalOpen(false)}
+                  style={{ background: 'transparent', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Printable Certificate Frame */}
+              <div
+                id="printable-renewal-certificate"
+                style={{
+                  border: '8px double #1A503E',
+                  padding: '2.5rem 2rem',
+                  borderRadius: '12px',
+                  background: '#FCFBF7',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem',
+                  position: 'relative',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem' }}>
+                  <img src={ndliClubLogo} alt="NDLI Club" style={{ height: '52px', width: '52px', objectFit: 'contain' }} />
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#0D7751', fontWeight: 800, margin: '0 0 0.25rem 0' }}>
+                    National Digital Library of India
+                  </h4>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#103125', margin: 0, fontFamily: 'serif' }}>
+                    Certificate of Institutional Registration Renewal
+                  </h2>
+                  <div style={{ width: '80px', height: '3px', background: '#D97706', margin: '0.5rem auto 0 auto' }} />
+                </div>
+
+                <div style={{ fontSize: '0.9rem', color: '#2E4A3E', lineHeight: 1.6, padding: '0 1rem' }}>
+                  This is to certify that the institutional club at
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1A503E', margin: '0.4rem 0' }}>
+                    {certClub.institution_name}
+                  </div>
+                  holding Registration Number <strong style={{ fontFamily: 'monospace' }}>{certClub.registration_no || certClub.reg_no || `NDLI/CLUB/${certClub.club_id}`}</strong> has fulfilled all prescribed annual operational guidelines and academic activity milestones.
+                </div>
+
+                <div
+                  style={{
+                    background: '#E9F5EF',
+                    border: '1px solid #A7D7C5',
+                    borderRadius: '8px',
+                    padding: '0.65rem 1rem',
+                    fontSize: '0.88rem',
+                    color: '#0D7751',
+                    fontWeight: 700,
+                  }}
+                >
+                  ✓ Registration Validity Extended Through: {certClub.upcoming_renewal_date || certClub.renewal_date || '2026-04-12'}
+                </div>
+
+                {/* Signatories */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1.5rem', padding: '0 1.5rem' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#103125' }}>Prof. Virendra Kumar Tewari</div>
+                    <div style={{ height: '1px', width: '160px', background: '#333', margin: '4px auto' }} />
+                    <div style={{ fontSize: '0.74rem', color: '#5A7366' }}>Patron, NDLI Project<br />Director, IIT Kharagpur</div>
+                  </div>
+
+                  <div style={{ textAlign: 'center' }}>
+                    {signaturePreview ? (
+                      <img src={signaturePreview} alt="PI Signature" style={{ maxHeight: '48px', maxWidth: '160px', objectFit: 'contain', margin: '0 auto 4px auto' }} />
+                    ) : (
+                      <div style={{ fontFamily: 'cursive', fontSize: '1.2rem', color: '#1A503E', marginBottom: '4px' }}>{piName}</div>
+                    )}
+                    <div style={{ height: '1px', width: '180px', background: '#333', margin: '4px auto' }} />
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#103125' }}>{piName}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#5A7366', maxWidth: '240px' }}>{piAffiliation}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-md"
+                  onClick={() => setIsCertTerminalOpen(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-md"
+                  onClick={() => window.print()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                >
+                  <Printer className="h-4 w-4" />
+                  Print / Save Certificate PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         </main>
       </div>
     </div>

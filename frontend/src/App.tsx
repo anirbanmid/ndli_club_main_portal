@@ -163,6 +163,15 @@ export function App({ ssrLocation }: AppProps = {}) {
     }));
   };
 
+  const handleRejectAuthorityChange = (reqId: string, reason?: string) => {
+    setAuthorityRequests(prev => prev.map(r => r.id === reqId ? {
+      ...r,
+      status: 'Rejected',
+      reason: reason || r.reason,
+      reviewedBy: 'IIT KGP Office',
+    } : r));
+  };
+
   const handleHealForensicRecord = (recordId: string) => {
     setForensicRecords(prev => prev.map(r => r.id === recordId ? { ...r, recoveryStatus: 'Auto-Healed' } : r));
   };
@@ -448,10 +457,21 @@ export function App({ ssrLocation }: AppProps = {}) {
             door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
           adminAuthed ? (
-            adminRole === 'regional_officer' ? (
+            adminRole === 'regional_officer' || adminRole === 'central_admin' ? (
               <EmployeeModule
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}
+                adminRole={adminRole}
+                onNavigateBranch={(branch, tab) => {
+                  setCurrentBranch(branch);
+                  if (tab) setCurrentTab(tab);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                authorityRequests={authorityRequests}
+                onApproveAuthorityChange={handleApproveAuthorityChange}
+                onRejectAuthorityChange={handleRejectAuthorityChange}
+                clubs={clubs}
+                onUpdateClub={(updated) => setClubs(prev => prev.map(c => c.id === updated.id ? updated : c))}
               />
             ) : adminRole === 'super_admin_ops' ? (
               <SuperAdminConsole

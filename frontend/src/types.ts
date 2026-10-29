@@ -45,6 +45,12 @@ export interface InstituteClub {
   authorities: ClubAuthority[];
   description?: string;
   websiteUrl?: string;
+  registrationNo?: string;
+  dateOfApproval?: string;
+  lastRenewalDate?: string;
+  nextRenewalDate?: string;
+  soloSessions?: number;
+  jointSessions?: number;
 }
 
 export interface StudentMember {

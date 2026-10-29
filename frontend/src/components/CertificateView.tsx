@@ -199,12 +199,33 @@ export const CertificateView: React.FC<CertificateViewProps> = ({
           </div>
 
           {/* Signatory 2 */}
-          <div className="text-center space-y-1">
-            <div className="font-serif italic text-base text-ink-800 font-bold">{t("Prof. Partha P. Das")}</div>
-            <div className="h-0.5 w-28 bg-ink-400 mx-auto"></div>
-            <div className="text-[11px] uppercase font-bold text-ink-600">{t("Principal Investigator")}</div>
-            <div className="text-[11px] text-ink-600">{t("National Digital Library of India")}</div>
-          </div>
+          {(() => {
+            let name = 'Prof. Partha Pratim Chakrabarti';
+            let affil = 'National Digital Library of India';
+            let sigUrl: string | null = null;
+            try {
+              if (typeof localStorage !== 'undefined') {
+                const raw = localStorage.getItem('ndli_pi_settings');
+                if (raw) {
+                  const s = JSON.parse(raw);
+                  if (s.pi_name) name = s.pi_name;
+                  if (s.pi_affiliation) affil = s.pi_affiliation;
+                  if (s.signature_image_url) sigUrl = s.signature_image_url;
+                }
+              }
+            } catch {}
+            return (
+              <div className="text-center space-y-1">
+                {sigUrl && (
+                  <img src={sigUrl} alt="PI Signature" className="h-8 max-w-28 object-contain mx-auto" />
+                )}
+                <div className="font-serif italic text-base text-ink-800 font-bold">{name}</div>
+                <div className="h-0.5 w-28 bg-ink-400 mx-auto"></div>
+                <div className="text-[11px] uppercase font-bold text-ink-600">{t("Principal Investigator")}</div>
+                <div className="text-[11px] text-ink-600">{affil}</div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Issue Date & Seal Notice */}

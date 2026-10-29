@@ -1,0 +1,188 @@
+================================================================================
+PART 1: DETAILED PROMPT FOR MIMO (TASK INSTRUCTION)
+================================================================================
+
+# TASK INSTRUCTION: Graft Previous Architecture into IIT KGP Administration & Employee Modules (With Super Admin & Full Feature Mapping)
+
+## 1. Executive Summary & Core Rules
+You must replace the current fragmented IIT KGP views by grafting the exact architecture, UI/UX, and workflows of the previous project (https://github.com/anirbanmid/ndli-club-management), augmented by the new architectural capabilities of this portal.
+
+### The 3 Governance Tiers (Never Conflate):
+1. SUPER ADMIN (super_admin_ops): Server infrastructure, deployment flags, runtime health, and local database backups.
+2. CENTRAL ADMIN (central_admin): Business leadership at IIT Kharagpur (equivalent to "Admin" in admin.html). National analytics, club approvals, employee account management, succession desk, legacy data healing, and master CSV exports.
+3. REGIONAL EMPLOYEE (regional_officer / EMP01-EMP07): Regional Zonal Officers (equivalent to employee.html). Daily member interactions, 1-row bulk calling, universal search, zonal grievance redressal, activity history, PI signature/affiliation management, and nodal CSV exports.
+
+UI Standard: All login gates across all modules must replicate the exact clean, accessible UI/UX of the previous project. Zero internal engineering jargon (e.g. SLA_BREACHES, CHARTER_QUEUE_DEPTH) on any dashboard.
+
+
+## 2. Detailed Tier Specifications
+
+### TIER 1: SUPER ADMIN CONSOLE (Server & DevOps Turf)
+* Access: super_admin_ops only (via Master Admin credentials).
+* Console Capabilities:
+  - Server & Environment Configuration: View deployment flags, worker health, database connection pool, and runtime telemetry.
+  - Local Server Backup & Storage Management (NO Google Drive / Twin GAS):
+    - Local server backup engine: Create on-demand database snapshots/exports written directly into local server storage (/backups/).
+    - Inspect backup history, storage size, and download server snapshot files.
+  - System Audit Trail: Real-time append-only security and operational audit log.
+  - Red-Zone Hard Reset Gate: Protected behind the triple-guard:
+    1. Confirmation phrase
+    2. Handover Master PIN
+    3. Dual-Layer mixed-case Canvas CAPTCHA + Master Admin password.
+
+
+### TIER 2: CENTRAL ADMIN CONSOLE (IIT KGP Central Administration Office)
+* Access: central_admin only. Matches templates/admin.html.
+* Note on Server Health: Server sync & storage health is strictly handled by Tier 1 and must NOT appear in Tier 2.
+* Navigation Sidebar:
+  - Performance Dashboard & Infographics: Top 5 operational KPI cards, Zone & Year filters, charts, State-Wise Breakdown table, and Officer Performance Matrix.
+  - AI Strategic Roadmap: Strategic expansion forecasts and state coverage planning.
+  - Employee Management: Add, edit, and block Regional Zonal Officers; manage zonal assignments.
+  - Charter Review & Club Approval Desk: Review institutional onboardings and 4-tier quorum files to sanction or reject clubs.
+  - Authority Succession Desk: Review and sanction institutional authority changes (President, Secretary, Patron, Executive Member).
+  - Forensic Migration Desk (Legacy Data Healing): Import historical clubs without altering active telemetry, and heal/repair legacy records (AISHE codes, pin codes, unmapped zones).
+  - Attention Shortcuts: Renewal Attention (<= 30 days) modal, 30-Day Escalations modal.
+  - Reports & Data Exports:
+    - User Manual (PDF)
+    - Create Report (PDF / DOC)
+    - Comprehensive Master CSV Export (MANDATORY REQUIREMENT):
+      Central Admin must be able to download the complete Master Clubs CSV containing:
+      Club ID, Registration Number, Institution Name, State, District, Operational Zone, AISHE Code, Pincode, Official Communication Phone, Official Communication Email, President Name & Contact, Secretary Name & Contact, Patron Name & Contact, Executive Member Name & Contact, Total Club Member Count, Solo Activities Performed, Joint Cross-Campus Activities (Inter-Club Shield), Approval Date, and Current Club Status (Active/Suspended/Expired).
+  - Top 5 Operational KPI Cards (ZERO JARGON):
+    1. Total NDLI Clubs: Live count across all 36 States & UTs.
+    2. Total Daily Support Logs: Aggregated count of real activities across all 6 zones (single logs + bulk call volumes).
+    3. Active Nodal Officers: Count of active zonal officers.
+    4. Renewal Attention: Clubs expiring in <= 30 days or expired.
+    5. 30-Day Escalations: Grievances/support tickets unresolved for 30+ days.
+  - Geographic & Temporal Filters: Filter by Zone (All 6 Zones, North, Central, West, East, North East, South) and Year (All, 2026, 2025, 2024).
+  - Data Tables & Visualizations:
+    - Club Status Distribution (Active, Suspended, Expired)
+    - Support Nature Distribution (Calls, Visits, Virtual, Troubleshooting)
+    - State-Wise Breakdown Table across all States & UTs
+    - Nodal Employee Performance Matrix & Rating
+  - STRICT RULE: Central Admin must NEVER have the employee daily activity entry form.
+
+
+### TIER 3: REGIONAL EMPLOYEE PORTAL (Regional Zonal Officer Workspace)
+* Access: Regional officers (EMP01 through EMP07). Matches templates/employee.html.
+* Workspace Desks / Tabs:
+
+1. Daily Activity:
+   - SEC A: Member Interactions Tracker:
+     Support types: Phone call and remote assistance, Member interactions, In-person institutional visit, Virtual meeting/demo, Event coordination, Technical troubleshooting, Other.
+     * Consolidated Bulk Call Facility (CRITICAL):
+       - Available exclusively for "Phone call and remote assistance" (1-100 calls).
+       - Entering count N (e.g. 5) must create ONE single consolidated record in Activity History labeled [Bulk Entry: 5 Calls].
+       - It must NEVER spam the history table with 5 duplicate rows.
+       - It increments the employee's call quota and dashboard total by N.
+   - EXCLUSIONS: Strictly omit "SEC B: Priority Club Approval" and "SEC C: New Club Details Entry" forms from Daily Activity.
+
+2. Universal Search:
+   - Instant search across clubs by ID, name, district, or state.
+   - Inspect club directory, contact information, and institutional details.
+   - Download Clubs CSV: Button to export the employee's regional club registry to CSV.
+
+3. Activity History & Deletion Rules:
+   - Tabular log of employee activities with timestamp, type, club code, notes, and actions.
+   - Club Approval History Integration: When an employee approves an institutional club, the system writes a permanent log entry into their Activity History (Support Type: Club Charter Approval).
+   - Deletion & Edit Permissions:
+     * Club Approval logs are DELETE-PROTECTED: Delete button is disabled/hidden in the UI and rejected with HTTP 403 on the API.
+     * Regular activities (Phone calls, Visits, Emails) are deletable/editable by the employee.
+     * Delete API Fix: POST /api/v1/activities/delete/ must auto-resolve emp_id from the authenticated employee session; frontend passes { "activity_ids": [...] } without failing with "emp_id and activity_ids are required".
+   - Download Activity Log CSV: Dedicated button for employees to export their own full activity log as CSV.
+
+4. Grievance Redressal & Tracking Desk (Added Functionality):
+   - Full-featured zonal grievance management desk:
+     * Lists all grievance and support tickets raised within the officer's assigned operational zone.
+     * Filter by status (Open, In Review, Resolved, Not Resolved) and priority.
+     * View ticket thread, complainant details, and issue category.
+     * Update resolution notes and transition status to Resolved.
+     * Monitor the 30-day escalation timer.
+
+5. Tool Box & PI Signature Settings (Parity with Previous Project):
+   - PI Digital Signature & Affiliation Management:
+     * UI provision for the officer to upload the official PI Digital Signature image (PNG/JPEG).
+     * UI provision to update the PI Affiliation & Designation text (e.g., "Prof. Partha Pratim Chakrabarti, Principal Investigator, NDLI Project, Central Library, IIT Kharagpur").
+     * Saved in server storage and dynamically rendered on generated certificates.
+
+
+### TIER 4: LOGIN GATES UI/UX PARITY
+* All login surfaces (Employee Sign-In, Central Admin Sign-In, Super Admin Gate) must replicate the exact UI/UX from the previous project:
+  - Centered branded modal/card with NDLI Club IIT Kharagpur header logo and official title.
+  - Inputs for User/Employee Code and Password.
+  - Unambiguous Mixed-Case Image CAPTCHA:
+    * Rendered in a dedicated captcha frame with a 1-click Refresh button.
+    * Alphabet: 23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz (excluding confusables 0/O/o, 1/I/l/i).
+    * Every code is guaranteed mixed-case (any(upper) and any(lower)).
+    * Strict case-sensitive verification.
+  - Accessible error feedback, Enter key submission, and responsive layout.
+
+
+## 3. Club Approval & Certification Protocols
+1. Registration Certificate:
+   - Onboarding occurs through the public portal; regional officers review the 4-tier quorum.
+   - Upon approval by the IIT KGP employee, the Registration Certificate is automatically minted.
+   - Instantly accessible at the Club Authority Dashboard for the institution to download and print.
+   - The approval event writes permanently to the employee's Activity History.
+2. Renewal Certificate Protocol:
+   - Retains the exact protocol from the previous project.
+   - Clubs expiring within <= 30 days trigger renewal review.
+   - Upon approval, an updated Renewal Certificate is generated with renewed validity dates and verified QR payload.
+
+
+## 4. Technical Checklist & Definition of Done
+1. [ ] Central Admin Cleanliness: Confirm Central Admin has NO employee activity entry form and NO server storage desk (handled by Super Admin).
+2. [ ] Consolidated Bulk Calls: Confirm logging 5 calls generates 1 single row in Activity History labeled [Bulk Entry: 5 Calls] and increments dashboard totals by 5.
+3. [ ] CSV Exports:
+   - Confirm Employee can export their activity_log.csv and clubs.csv.
+   - Confirm Central Admin can download the enriched Master Clubs CSV with all fields (authorities, member counts, solo & joint activities).
+4. [ ] Grievance Desk in Employee Portal: Confirm regional officers can inspect, track, and resolve zonal grievance tickets.
+5. [ ] PI Signature & Affiliation: Confirm employee can upload the PI signature and edit affiliation text under Tool Box, and that it updates certificates.
+6. [ ] Activity Delete Fix: Confirm activity deletion works without emp_id errors, and club approval logs remain strictly non-deletable.
+7. [ ] Zero Jargon: Confirm all KPI cards and charts use human-readable operational terms (Total NDLI Clubs, Total Daily Support Logs, Active Nodal Officers, Renewal Attention, 30-Day Escalations).
+8. [ ] Local Backups: Confirm backups write directly to local server storage with no Google Drive or GAS dependencies.
+9. [ ] Quality Gates: Backend pytest, ruff, and mypy pass with 0 errors; frontend npm run build passes cleanly.
+
+
+================================================================================
+PART 2: WORK ESTIMATION & ARCHITECTURE COMPLEXITY GUIDE
+================================================================================
+
+## 1. Executive Assessment
+Is this a huge task?
+NO. It is NOT a ground-up rewrite. It is a Medium-Sized, Highly Structured Refactoring & UI/UX Grafting Task.
+
+## 2. Why It Is Manageable
+1. Foundational Architecture Already Exists:
+   - The core backend models (Club, CharterApplication, GrievanceTicket, ActivityLog, User, SubRole, etc.) are already implemented and validated by 622 passing unit tests.
+   - Auth, session tokens, permissions, dual-layer challenge gates, and certificate issuance logic are fully working.
+2. Proven Reference Design (Zero Guesswork):
+   - The exact templates, color palettes, card designs, and JavaScript interaction patterns already exist in the previous project (ndli-club-management/templates/admin.html and employee.html).
+   - This removes the time-consuming process of UI ideation, layout prototyping, and trial-and-error design.
+
+## 3. Why MIMo Stumbled in the Previous Commit
+MIMo did not fail due to excessive complexity; it failed due to a lack of architectural boundaries:
+- It merged Central Admin and Employee forms into a single crowded view.
+- It used a naive loop creating N database rows for a single bulk call instead of recording a single consolidated entry with a count.
+- It exposed raw database column names (CHARTER_QUEUE_DEPTH, SLA_BREACHES) instead of calculating real human-readable operational business metrics.
+
+## 4. Slice-by-Slice Breakdown & Effort Estimates
+
+| Component / Task | Category | Est. Time | Description |
+| :--- | :--- | :--- | :--- |
+| 1. Backend: Bulk Call & Delete Fix | Backend Fix | 30-45 mins | Store bulk call as 1 record with count; auto-resolve user session on delete; prevent deletion of club approval logs. |
+| 2. Backend: Metrics & Activity Aggregation | Backend Fix | 30 mins | Update zone_dashboard to sum ActivityLog counts for "Total Daily Support Logs"; remove jargon. |
+| 3. Backend: Master CSV & Local Backup | Feature | 45 mins | Query enriched club fields (authorities, member count, solo/joint activities) for Master CSV; add local /backups/ file dump. |
+| 4. Frontend: Central Admin Dashboard | UI Grafting | 1.5 - 2 hrs | Implement admin.html layout: Top 5 KPI cards, Zone/Year filters, State breakdown table, Nodal employee performance matrix. |
+| 5. Frontend: Regional Employee Portal | UI Grafting | 1.5 - 2 hrs | Implement employee.html layout: SEC A (1-row bulk call), Universal Search, Activity History (approval row delete lock), Zonal Grievance Desk, PI signature & affiliation modal, CSV download buttons. |
+| 6. Frontend: Super Admin Console | UI Workspace | 1 hr | Specialized technical control plane for server flags, local backup controls, and Red-Zone hard reset gate. |
+
+TOTAL ESTIMATED TIME: 5 to 7 hours of focused engineering work.
+
+## 5. Recommended Execution Strategy for MIMo
+To avoid any regressions, instruct MIMo to execute sequentially in 3 discrete phases:
+- Phase 1: Backend API corrections (Activities bulk count, delete auto-resolution, real metrics aggregation, Master CSV).
+- Phase 2: Frontend Employee Portal (SEC A, 1-row bulk call, Zonal Grievance desk, PI Signature upload).
+- Phase 3: Frontend Central Admin & Super Admin separation (Grafting admin.html dashboard, removing employee forms from admin, dedicated server console).
+
+================================================================================

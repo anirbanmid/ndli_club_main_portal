@@ -254,10 +254,11 @@ class MasterClubsCSVView(APIView):
 
     def get(self, request: Request) -> HttpResponse:
         from apps.domain.models import Club
-        from apps.onboarding.models import CharterApplication
+        from apps.governance.models import CharterMaterialisation
 
         clubs = Club.objects.select_related(
-            "institution__state__zone"
+            "institution__state__zone",
+            "institution__district",
         ).prefetch_related(
             "authority_assignments__user",
             "memberships"
@@ -313,25 +314,31 @@ class MasterClubsCSVView(APIView):
             exec_m = auths.get("executive")
 
             comm_phone = ""
-            if pres and getattr(pres, "phone_number", None):
-                comm_phone = pres.phone_number
-            elif sec and getattr(sec, "phone_number", None):
-                comm_phone = sec.phone_number
+            if pres and getattr(pres, "phone", None):
+                comm_phone = pres.phone
+            elif sec and getattr(sec, "phone", None):
+                comm_phone = sec.phone
             comm_email = ""
             if pres and getattr(pres, "email", None):
                 comm_email = pres.email
             elif sec and getattr(sec, "email", None):
                 comm_email = sec.email
-            elif inst and getattr(inst, "contact_email", None):
-                comm_email = inst.contact_email
 
             member_count = c.memberships.count()
-            # Charter application for approval date / reg number
-            charter = CharterApplication.objects.filter(club_code=c.code).first()
+            # Charter materialisation for approval date / reg number
+            mat = (
+                CharterMaterialisation.objects.filter(club=c)
+                .select_related("certificate")
+                .first()
+            )
             reg_num = (
-                getattr(charter, "reg_number", "")
-                if charter
+                mat.certificate.certificate_id
+                if mat and getattr(mat, "certificate", None)
                 else f"NDLI/CLUB/{c.code}"
+            )
+
+            district_name = (
+                inst.district.name if inst and inst.district else ""
             )
 
             writer.writerow([
@@ -339,23 +346,23 @@ class MasterClubsCSVView(APIView):
                 reg_num,
                 inst.name if inst else c.name,
                 st.name if st else "",
-                inst.district if inst else "",
+                district_name,
                 zn.code if zn else "",
-                inst.aishe_code if inst else "",
-                inst.pincode if inst else "",
+                inst.aishe_code if inst and inst.aishe_code else "",
+                "",
                 comm_phone,
                 comm_email,
                 f"{pres.first_name} {pres.last_name}".strip() if pres else "",
-                getattr(pres, "phone_number", "") if pres else "",
+                getattr(pres, "phone", "") if pres else "",
                 pres.email if pres else "",
                 f"{sec.first_name} {sec.last_name}".strip() if sec else "",
-                getattr(sec, "phone_number", "") if sec else "",
+                getattr(sec, "phone", "") if sec else "",
                 sec.email if sec else "",
                 f"{pat.first_name} {pat.last_name}".strip() if pat else "",
-                getattr(pat, "phone_number", "") if pat else "",
+                getattr(pat, "phone", "") if pat else "",
                 pat.email if pat else "",
                 f"{exec_m.first_name} {exec_m.last_name}".strip() if exec_m else "",
-                getattr(exec_m, "phone_number", "") if exec_m else "",
+                getattr(exec_m, "phone", "") if exec_m else "",
                 exec_m.email if exec_m else "",
                 member_count,
                 0,  # Solo activities count

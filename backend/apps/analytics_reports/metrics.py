@@ -189,7 +189,8 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     act_qs = ActivityLog.objects.all()
     if zone:
         act_qs = act_qs.filter(employee__zone_id=zone)
-    total_activities = act_qs.aggregate(total=Sum(Coalesce("call_count", 1)))["total"] or 0
+    agg = act_qs.aggregate(total=Sum(Coalesce("call_count", 1)))
+    total_activities = agg["total"] or 0
 
     # 3. Active Nodal Officers
     off_qs = User.objects.filter(
@@ -208,7 +209,9 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
 
     # 5. 30-Day Escalations
     cutoff_30d = timezone.now() - timedelta(days=30)
-    escalations_30d = tickets.filter(status__in=_UNRESOLVED, created_at__lte=cutoff_30d).count()
+    escalations_30d = tickets.filter(
+        status__in=_UNRESOLVED, created_at__lte=cutoff_30d
+    ).count()
 
     return ZoneDashboard(
         zone_code=zone,

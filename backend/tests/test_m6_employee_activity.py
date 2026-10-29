@@ -45,6 +45,7 @@ class ActivityLogEndpointTests(TestCase):
     emp: ClassVar[Any]
     emp2: ClassVar[Any]
     central: ClassVar[Any]
+    superops: ClassVar[Any]
     @classmethod
     def setUpTestData(cls) -> None:
         cls.emp = _user("emp01", SubRole.REGIONAL_OFFICER)

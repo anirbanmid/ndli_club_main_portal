@@ -477,7 +477,7 @@ class PISignatureSettingsView(APIView):
 class PISignatureImageView(APIView):
     """GET /admin/api/v1/activities/pi-signature/ -- serve stored signature image."""
 
-    permission_classes = []
+    permission_classes: list[Any] = []
 
     def get(self, request: Request) -> HttpResponse:
         sig_file = SIGNATURES_DIR / "pi_signature.png"

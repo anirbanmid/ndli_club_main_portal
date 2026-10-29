@@ -275,8 +275,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
               type="text"
               id="lock-captcha-input"
               className="lock-input"
-              style={{ flex: 1, padding: '0.45rem 0.65rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' }}
-              placeholder="Enter Code"
+              style={{ flex: 1, padding: '0.45rem 0.65rem', fontWeight: 700, letterSpacing: '0.12em' }}
+              placeholder="Enter Code (case-sensitive)"
               maxLength={8}
               required
               autoComplete="off"

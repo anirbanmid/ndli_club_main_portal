@@ -11,6 +11,11 @@ urlpatterns = [
     path("delete/", views.ActivityDeleteView.as_view(), name="activity-delete"),
     path("export/", views.ActivityExportCSVView.as_view(), name="activity-export"),
     path(
+        "clubs/",
+        views.UniversalClubsListView.as_view(),
+        name="universal-clubs-list",
+    ),
+    path(
         "clubs-export/",
         views.EmployeeClubsExportCSVView.as_view(),
         name="employee-clubs-export",

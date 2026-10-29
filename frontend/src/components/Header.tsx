@@ -1,4 +1,5 @@
 import React from 'react';
+import ndliClubLogo from '../assets/img/ndli_club_logo.png';
 import { 
   Building2, 
   KeyRound, 
@@ -60,6 +61,7 @@ interface HeaderProps {
   setHighContrast: (val: boolean) => void;
   language: string;
   setLanguage: (code: string) => void;
+  onOpenLogin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -74,6 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   setHighContrast,
   language,
   setLanguage,
+  onOpenLogin,
 }) => {
 
   return (
@@ -153,7 +156,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Branding & Master Branch Bar */}
+      {/* Main Branding & Master Branch Bar - hidden when inside IIT KGP Admin Module */}
+      {currentBranch !== 'admin_module' && (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         {/* Brand identity */}
         <div className="flex items-center justify-between">
@@ -164,21 +168,21 @@ export const Header: React.FC<HeaderProps> = ({
             }}
             className="flex items-center space-x-3 cursor-pointer group"
           >
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#103125] via-[#1A503E] to-[#0D7751] flex items-center justify-center text-white shadow-md shadow-[#1A503E]/20 group-hover:scale-105 transition-transform">
-              <BookOpen className="h-6 w-6 text-amber-300" />
+            <div className="h-11 w-11 rounded-xl bg-white p-1 border border-[#0D7751]/20 flex items-center justify-center shadow-md shadow-[#1A503E]/10 group-hover:scale-105 transition-transform">
+              <img src={ndliClubLogo} alt="NDLI Club Logo" className="h-9 w-9 object-contain" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-xl font-extrabold tracking-tight text-[#103125] group-hover:text-[#1A503E] transition-colors">
                   {t("NDLI Club")}
-                                                  </span>
+                </span>
                 <span className="bg-[#E9F5EF] text-[#0D7751] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border border-[#0D7751]/30">
                   {t("National Portal")}
-                                                  </span>
+                </span>
               </div>
               <p className="text-xs text-[#5A7366] font-medium">
                 {t("National Digital Library of India • IIT Kharagpur")}
-                                            </p>
+              </p>
             </div>
           </div>
         </div>
@@ -225,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
               setCurrentTab('admin_overview');
             }}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
-              currentBranch === 'admin_module'
+              (currentBranch as string) === 'admin_module'
                 ? 'bg-[#1A503E] text-white shadow-sm'
                 : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
             }`}
@@ -239,8 +243,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden lg:flex items-center space-x-2.5">
           <button
             onClick={() => {
-              setCurrentBranch('landing');
-              setCurrentTab('login');
+              if (onOpenLogin) {
+                onOpenLogin();
+              } else {
+                setCurrentBranch('landing');
+                setCurrentTab('login');
+              }
             }}
             className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#E2ECE7] bg-white text-[#1A503E] shadow-xs hover:bg-[#F4F8F6] transition-all"
           >
@@ -256,6 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
+      )}
     </header>
   );
 };

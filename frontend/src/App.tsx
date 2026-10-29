@@ -54,6 +54,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   );
 
   const [currentBranch, setCurrentBranch] = useState<BranchType>('landing');
+  const [loginSourceBranch, setLoginSourceBranch] = useState<BranchType>('landing');
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -201,6 +202,12 @@ export function App({ ssrLocation }: AppProps = {}) {
         setHighContrast={setHighContrast}
         language={language}
         setLanguage={handleSetLanguage}
+        onOpenLogin={() => {
+          setLoginSourceBranch(currentBranch);
+          setCurrentBranch('landing');
+          setCurrentTab('login');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* Main Content Area */}
@@ -264,20 +271,39 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab(route.tab);
                 }}
                 onSignedIn={(session) => {
+                  if (session.category === 'iit_kgp_admin') {
+                    setAdminAuthed(true);
+                    setAdminRole(session.sub_role ?? '');
+                    setAuthenticatedClubId(null);
+                    if (loginSourceBranch === 'club_module') {
+                      setCurrentBranch('club_module');
+                      setCurrentTab('club_directory');
+                    } else {
+                      setCurrentBranch('admin_module');
+                      setCurrentTab('admin_overview');
+                    }
+                    return;
+                  }
                   const matchedClub = clubs.find(c => 
                     (session.club_code && c.id.toLowerCase().includes(session.club_code.toLowerCase())) ||
                     (session.institution_code && c.aisheCode.toLowerCase() === session.institution_code.toLowerCase())
-                  ) || clubs[0];
-                  setAuthenticatedClubId(matchedClub.id);
-                  setAuthenticatedAuthority({
-                    name: session.username || 'Authorized Officer',
-                    role: session.sub_role || 'President',
-                    email: session.email,
-                    clubId: matchedClub.id
-                  });
-                  setActiveClub(matchedClub);
-                  setCurrentBranch('club_module');
-                  setCurrentTab('club_dashboard');
+                  );
+                  if (matchedClub && session.category === 'club_admin') {
+                    setAuthenticatedClubId(matchedClub.id);
+                    setAuthenticatedAuthority({
+                      name: session.username || 'Authorized Officer',
+                      role: session.sub_role || 'President',
+                      email: session.email,
+                      clubId: matchedClub.id
+                    });
+                    setActiveClub(matchedClub);
+                    setCurrentBranch('club_module');
+                    setCurrentTab('club_dashboard');
+                  } else {
+                    setAuthenticatedClubId(null);
+                    setCurrentBranch('club_module');
+                    setCurrentTab('club_directory');
+                  }
                 }}
               />
             )}
@@ -348,6 +374,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab('club_dashboard');
                 }}
                 onAuthoritySignIn={() => {
+                  setLoginSourceBranch('club_module');
                   setCurrentBranch('landing');
                   setCurrentTab('login');
                 }}
@@ -384,6 +411,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                 isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
                 authenticatedAuthority={authenticatedAuthority}
                 onAuthoritySignIn={() => {
+                  setLoginSourceBranch('club_module');
                   setCurrentBranch('landing');
                   setCurrentTab('login');
                 }}

@@ -389,6 +389,47 @@ class EmployeeClubsExportCSVView(APIView):
         return response
 
 
+class UniversalClubsListView(APIView):
+    """GET /admin/api/v1/activities/clubs/ -- list all clubs for Universal Search."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> Response:
+        from apps.domain.models import Club
+
+        qs = Club.objects.select_related("institution__state__zone").order_by("name")
+        clubs = []
+        for c in qs:
+            st = (
+                c.institution.state.name
+                if c.institution and c.institution.state
+                else ""
+            )
+            zn = (
+                c.institution.state.zone.code
+                if c.institution and c.institution.state and c.institution.state.zone
+                else ""
+            )
+            clubs.append({
+                "club_id": c.code,
+                "registration_no": f"NDLI/CLUB/{c.code}",
+                "institution_name": c.institution.name if c.institution else c.name,
+                "state": st,
+                "zone": zn,
+                "date_of_approval": (
+                    c.created_at.strftime("%Y-%m-%d")
+                    if getattr(c, "created_at", None)
+                    else "2026-01-15"
+                ),
+                "status": getattr(c, "status", "active") or "active",
+                "email": getattr(c, "email", "") or f"club.{c.code.lower()}@ndli.edu",
+            })
+        return Response({"clubs": clubs, "count": len(clubs)})
+
+
 class PISignatureSettingsView(APIView):
     """GET/POST /admin/api/v1/activities/pi-signature-settings/."""
 

@@ -71,6 +71,7 @@ class ActivityLog(models.Model):
     club_code = models.CharField(max_length=64, blank=True)
     notes = models.TextField(blank=True)
     bulk_group = models.UUIDField(null=True, blank=True, db_index=True)
+    call_count = models.PositiveIntegerField(default=1)
 
     class Meta:
         ordering = ["-timestamp"]

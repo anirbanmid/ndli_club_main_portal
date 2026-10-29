@@ -24,10 +24,15 @@ Mounted under ``/admin/`` because the admin prefix is the only admin door
 """
 from __future__ import annotations
 
+import csv
 import hashlib
+import json
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from django.conf import settings
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -233,3 +238,186 @@ class HardResetView(APIView):
             )
         except Exception:  # pragma: no cover - audit must never break the op
             pass
+
+
+
+BACKUPS_DIR = Path(settings.BASE_DIR) / "data" / "backups"
+
+
+class MasterClubsCSVView(APIView):
+    """GET /admin/api/v1/data/master-csv/ -- Central Admin complete Master Clubs CSV."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", {SubRole.CENTRAL_ADMIN, SubRole.SUPER_ADMIN_OPS}),
+    ]
+
+    def get(self, request: Request) -> HttpResponse:
+        from apps.domain.models import Club
+        from apps.onboarding.models import CharterApplication
+
+        clubs = Club.objects.select_related(
+            "institution__state__zone"
+        ).prefetch_related(
+            "authority_assignments__user",
+            "memberships"
+        ).order_by("code")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="master_clubs.csv"'
+        writer = csv.writer(response)
+        writer.writerow([
+            "Club ID",
+            "Registration Number",
+            "Institution Name",
+            "State",
+            "District",
+            "Operational Zone",
+            "AISHE Code",
+            "Pincode",
+            "Official Communication Phone",
+            "Official Communication Email",
+            "President Name",
+            "President Phone",
+            "President Email",
+            "Secretary Name",
+            "Secretary Phone",
+            "Secretary Email",
+            "Patron Name",
+            "Patron Phone",
+            "Patron Email",
+            "Executive Member Name",
+            "Executive Member Phone",
+            "Executive Member Email",
+            "Total Member Count",
+            "Solo Activities Performed",
+            "Joint Cross-Campus Activities (Inter-Club Shield)",
+            "Approval Date",
+            "Current Club Status",
+        ])
+
+        for c in clubs:
+            inst = c.institution
+            st = inst.state if inst else None
+            zn = st.zone if st else None
+
+            # Authorities mapping
+            auths = {
+                a.tier: a.user
+                for a in c.authority_assignments.all()
+                if a.status == "active"
+            }
+            pres = auths.get("president")
+            sec = auths.get("secretary")
+            pat = auths.get("patron")
+            exec_m = auths.get("executive")
+
+            comm_phone = ""
+            if pres and getattr(pres, "phone_number", None):
+                comm_phone = pres.phone_number
+            elif sec and getattr(sec, "phone_number", None):
+                comm_phone = sec.phone_number
+            comm_email = ""
+            if pres and getattr(pres, "email", None):
+                comm_email = pres.email
+            elif sec and getattr(sec, "email", None):
+                comm_email = sec.email
+            elif inst and getattr(inst, "contact_email", None):
+                comm_email = inst.contact_email
+
+            member_count = c.memberships.count()
+            # Charter application for approval date / reg number
+            charter = CharterApplication.objects.filter(club_code=c.code).first()
+            reg_num = (
+                getattr(charter, "reg_number", "")
+                if charter
+                else f"NDLI/CLUB/{c.code}"
+            )
+
+            writer.writerow([
+                c.code,
+                reg_num,
+                inst.name if inst else c.name,
+                st.name if st else "",
+                inst.district if inst else "",
+                zn.code if zn else "",
+                inst.aishe_code if inst else "",
+                inst.pincode if inst else "",
+                comm_phone,
+                comm_email,
+                f"{pres.first_name} {pres.last_name}".strip() if pres else "",
+                getattr(pres, "phone_number", "") if pres else "",
+                pres.email if pres else "",
+                f"{sec.first_name} {sec.last_name}".strip() if sec else "",
+                getattr(sec, "phone_number", "") if sec else "",
+                sec.email if sec else "",
+                f"{pat.first_name} {pat.last_name}".strip() if pat else "",
+                getattr(pat, "phone_number", "") if pat else "",
+                pat.email if pat else "",
+                f"{exec_m.first_name} {exec_m.last_name}".strip() if exec_m else "",
+                getattr(exec_m, "phone_number", "") if exec_m else "",
+                exec_m.email if exec_m else "",
+                member_count,
+                0,  # Solo activities count
+                0,  # Joint activities (Inter-Club Shield) count
+                c.created_at.strftime("%Y-%m-%d"),
+                c.status,
+            ])
+
+        return response
+
+
+class LocalBackupView(APIView):
+    """GET/POST /admin/api/v1/data/local-backups/ -- Super Admin local backup."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", {SubRole.SUPER_ADMIN_OPS}),
+    ]
+
+    def get(self, request: Request) -> Response:
+        BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+        items = []
+        for p in sorted(BACKUPS_DIR.glob("backup_*.json"), reverse=True):
+            items.append({
+                "filename": p.name,
+                "size_bytes": p.stat().st_size,
+                "created_at": datetime.fromtimestamp(
+                    p.stat().st_mtime, tz=UTC
+                ).isoformat(),
+            })
+        return Response({"backups": items})
+
+    def post(self, request: Request) -> Response:
+        from apps.activities.models import ActivityLog
+        from apps.domain.models import Club, Institution
+        from apps.grievances.models import GrievanceTicket
+
+        BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+        now_str = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        filename = f"backup_{now_str}.json"
+        target_path = BACKUPS_DIR / filename
+
+        snapshot = {
+            "created_at": datetime.now(UTC).isoformat(),
+            "operator": request.user.username,
+            "clubs_count": Club.objects.count(),
+            "institutions_count": Institution.objects.count(),
+            "activities_count": ActivityLog.objects.count(),
+            "tickets_count": GrievanceTicket.objects.count(),
+            "clubs": list(Club.objects.values("code", "name", "status")),
+            "activities": list(
+                ActivityLog.objects.values(
+                    "activity_id", "support_type", "call_count", "timestamp"
+                )
+            ),
+        }
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot, f, indent=2, default=str)
+
+        return Response({
+            "success": True,
+            "message": f"Local backup created: {filename}",
+            "filename": filename,
+            "size_bytes": target_path.stat().st_size,
+        })

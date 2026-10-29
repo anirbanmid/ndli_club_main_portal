@@ -1,8 +1,4 @@
-"""Activities routes -- M6 D8 employee-module parity (PLAN_0018 section 6).
-
-Mounted at ``/api/v1/activities/``. Authenticated employee surface
-(self-or-Central-Admin scoping is enforced in the views, W9 style).
-"""
+"""URL routing for the activities surface."""
 from django.urls import path
 
 from . import views
@@ -13,4 +9,20 @@ urlpatterns = [
     path("", views.ActivityLogListView.as_view(), name="activity-list"),
     path("log/", views.ActivityLogCreateView.as_view(), name="activity-log"),
     path("delete/", views.ActivityDeleteView.as_view(), name="activity-delete"),
+    path("export/", views.ActivityExportCSVView.as_view(), name="activity-export"),
+    path(
+        "clubs-export/",
+        views.EmployeeClubsExportCSVView.as_view(),
+        name="employee-clubs-export",
+    ),
+    path(
+        "pi-signature-settings/",
+        views.PISignatureSettingsView.as_view(),
+        name="pi-signature-settings",
+    ),
+    path(
+        "pi-signature/",
+        views.PISignatureImageView.as_view(),
+        name="pi-signature-image",
+    ),
 ]

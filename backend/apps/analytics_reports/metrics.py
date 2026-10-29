@@ -103,6 +103,11 @@ class ZoneDashboard:
     sla_compliance_pct: float
     charter_queue_depth: int
     audit_events: int
+    total_clubs: int = 0
+    total_activities: int = 0
+    active_officers: int = 0
+    renewal_attention: int = 0
+    escalations_30d: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -115,6 +120,11 @@ class ZoneDashboard:
             "sla_compliance_pct": self.sla_compliance_pct,
             "charter_queue_depth": self.charter_queue_depth,
             "audit_events": self.audit_events,
+            "total_clubs": self.total_clubs,
+            "total_activities": self.total_activities,
+            "active_officers": self.active_officers,
+            "renewal_attention": self.renewal_attention,
+            "escalations_30d": self.escalations_30d,
         }
 
 
@@ -155,8 +165,51 @@ def sla_compliance_pct(zone: str | None = None) -> float:
 
 def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     """Derive the whole dashboard in one place (P4)."""
+    from datetime import timedelta
+
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+    from django.utils import timezone
+
+    from apps.accounts.models import Category, SubRole, User
+    from apps.activities.models import ActivityLog
+    from apps.domain.models import Club
+    from apps.governance.models import RenewalRecord
+
     tickets = _tickets(zone)
     events = _sla_events(zone)
+
+    # 1. Total NDLI Clubs
+    club_qs = Club.objects.all()
+    if zone:
+        club_qs = club_qs.filter(institution__state__zone__code=zone)
+    total_clubs = club_qs.count()
+
+    # 2. Total Daily Support Logs (real-time sum of call_count)
+    act_qs = ActivityLog.objects.all()
+    if zone:
+        act_qs = act_qs.filter(employee__zone_id=zone)
+    total_activities = act_qs.aggregate(total=Sum(Coalesce("call_count", 1)))["total"] or 0
+
+    # 3. Active Nodal Officers
+    off_qs = User.objects.filter(
+        category=Category.IIT_KGP_ADMIN,
+        sub_role=SubRole.REGIONAL_OFFICER,
+    ).exclude(account_state="blocked")
+    if zone:
+        off_qs = off_qs.filter(zone_id=zone)
+    active_officers = off_qs.count()
+
+    # 4. Renewal Attention (clubs requiring renewal attention)
+    ren_qs = RenewalRecord.objects.filter(status="open")
+    if zone:
+        ren_qs = ren_qs.filter(club__institution__state__zone__code=zone)
+    renewal_attention = ren_qs.count()
+
+    # 5. 30-Day Escalations
+    cutoff_30d = timezone.now() - timedelta(days=30)
+    escalations_30d = tickets.filter(status__in=_UNRESOLVED, created_at__lte=cutoff_30d).count()
+
     return ZoneDashboard(
         zone_code=zone,
         open_tickets=tickets.filter(status=GrievanceTicket.Status.OPEN).count(),
@@ -171,6 +224,11 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         .filter(status__in=_QUEUED_STATUSES)
         .count(),
         audit_events=_audit_rows(zone).count(),
+        total_clubs=total_clubs,
+        total_activities=total_activities,
+        active_officers=active_officers,
+        renewal_attention=renewal_attention,
+        escalations_30d=escalations_30d,
     )
 
 

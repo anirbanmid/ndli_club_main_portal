@@ -103,6 +103,11 @@ export interface AuditRow {
 
 export interface ZoneDashboard {
   zone_code: string;
+  total_clubs: number;
+  total_activities: number;
+  active_officers: number;
+  renewal_attention: number;
+  escalations_30d: number;
   recent_audit: AuditRow[];
   [key: string]: unknown;
 }
@@ -478,4 +483,32 @@ export function saveEmployeeDuty(
   removed: string[];
 }> {
   return put(`/employees/${officerId}/duty/`, { states });
+}
+
+// ---------------------------------------------------------------------------
+// Local Backups & Master CSV Export (Tier 1 & Tier 2)
+// ---------------------------------------------------------------------------
+
+export function getMasterClubsExportUrl(): string {
+  return new URL(ADMIN_API_BASE + '/data/master-csv/', window.location.origin).toString();
+}
+
+export interface LocalBackupItem {
+  filename: string;
+  size_bytes: number;
+  created_at: string;
+  path: string;
+}
+
+export function fetchLocalBackups(): Promise<{ backups: LocalBackupItem[] }> {
+  return get<{ backups: LocalBackupItem[] }>('/data/local-backups/');
+}
+
+export function createLocalBackup(notes?: string): Promise<{
+  success: boolean;
+  filename: string;
+  size_bytes: number;
+  path: string;
+}> {
+  return post('/data/local-backups/', { notes });
 }

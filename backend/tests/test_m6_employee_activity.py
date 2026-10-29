@@ -50,6 +50,7 @@ class ActivityLogEndpointTests(TestCase):
         cls.emp = _user("emp01", SubRole.REGIONAL_OFFICER)
         cls.emp2 = _user("emp02", SubRole.REGIONAL_OFFICER)
         cls.central = _user("centraladm", SubRole.CENTRAL_ADMIN)
+        cls.superops = _user("superops", SubRole.SUPER_ADMIN_OPS)
 
     def setUp(self) -> None:
         self.client = APIClient()
@@ -94,10 +95,12 @@ class ActivityLogEndpointTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(ActivityLog.objects.count(), 6)
-        first = ActivityLog.objects.first()
-        assert first is not None
-        self.assertIsNotNone(first.bulk_group)
+        self.assertEqual(ActivityLog.objects.count(), 2)
+        bulk_row = ActivityLog.objects.filter(
+            support_type=SupportType.PHONE_CALL
+        ).first()
+        assert bulk_row is not None
+        self.assertEqual(bulk_row.call_count, 5)
 
     def test_bulk_capped_at_100(self) -> None:
         self._auth(self.emp)
@@ -192,6 +195,18 @@ class ActivityLogEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ActivityLog.objects.count(), 0)
 
+    def test_employee_deletes_without_explicit_emp_id(self) -> None:
+        row = ActivityLog.objects.create(
+            employee=self.emp, support_type=SupportType.OS_TICKET
+        )
+        self._auth(self.emp)
+        response = self.client.post(
+            DELETE_URL,
+            {"activity_ids": [str(row.activity_id)]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ActivityLog.objects.count(), 0)
+
     def test_bulk_entry_deletes_in_full(self) -> None:
         group_id = uuid.uuid4()
         rows = [
@@ -237,3 +252,59 @@ class ActivityLogEndpointTests(TestCase):
     def test_unauthenticated_rejected(self) -> None:
         response = self.client.get(LIST_URL)
         self.assertIn(response.status_code, (401, 403))
+
+    def test_activity_export_csv(self) -> None:
+        ActivityLog.objects.create(
+            employee=self.emp,
+            support_type=SupportType.PHONE_CALL,
+            notes="Call with college principal",
+            call_count=3,
+        )
+        self._auth(self.emp)
+        response = self.client.get("/admin/api/v1/activities/export/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        self.assertIn("Call with college principal", response.content.decode("utf-8"))
+        self.assertIn("3", response.content.decode("utf-8"))
+
+    def test_clubs_export_csv(self) -> None:
+        self._auth(self.emp)
+        response = self.client.get("/admin/api/v1/activities/clubs-export/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+
+    def test_pi_signature_settings(self) -> None:
+        self._auth(self.emp)
+        post_res = self.client.post(
+            "/admin/api/v1/activities/pi-signature-settings/",
+            {"pi_affiliation": "Prof. CSE, IIT Kharagpur"},
+        )
+        self.assertEqual(post_res.status_code, 200)
+        self.assertTrue(post_res.json()["success"])
+
+        get_res = self.client.get("/admin/api/v1/activities/pi-signature-settings/")
+        self.assertEqual(get_res.status_code, 200)
+        self.assertEqual(get_res.json()["pi_affiliation"], "Prof. CSE, IIT Kharagpur")
+
+    def test_master_clubs_csv(self) -> None:
+        self._auth(self.central)
+        response = self.client.get("/admin/api/v1/data/master-csv/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/csv", response["Content-Type"])
+        header_line = response.content.decode("utf-8").splitlines()[0]
+        self.assertIn("Club ID", header_line)
+        self.assertIn("Solo Activities", header_line)
+        self.assertIn("Joint Cross-Campus Activities (Inter-Club Shield)", header_line)
+
+    def test_local_backups(self) -> None:
+        self._auth(self.superops)
+        create_res = self.client.post(
+            "/admin/api/v1/data/local-backups/",
+            {"notes": "Test DevOps Backup"},
+        )
+        self.assertEqual(create_res.status_code, 200)
+        self.assertTrue(create_res.json()["success"])
+
+        list_res = self.client.get("/admin/api/v1/data/local-backups/")
+        self.assertEqual(list_res.status_code, 200)
+        self.assertTrue(len(list_res.json()["backups"]) >= 1)

@@ -23,6 +23,7 @@ export interface ActivityRow {
   club_id: string;
   notes: string;
   is_approval_log: boolean;
+  call_count?: number;
 }
 
 export interface ActivityList {
@@ -127,4 +128,55 @@ export function fetchClubRows(): Promise<ClubSearchRow[]> {
   return request<{ clubs?: ClubSearchRow[]; results?: ClubSearchRow[] }>(
     '/api/v1/clubs/showcase/',
   ).then((body) => body.clubs ?? body.results ?? []);
+}
+
+export function getActivityExportUrl(empId?: string): string {
+  const url = new URL(BASE + '/export/', window.location.origin);
+  if (empId) url.searchParams.set('emp_id', empId);
+  return url.toString();
+}
+
+export function getClubsExportUrl(): string {
+  return new URL(BASE + '/clubs-export/', window.location.origin).toString();
+}
+
+export interface PISignatureSettings {
+  pi_affiliation: string;
+  has_signature_image: boolean;
+  signature_image_url: string | null;
+}
+
+export async function fetchPISignatureSettings(): Promise<PISignatureSettings> {
+  return request<PISignatureSettings>(BASE + '/pi-signature-settings/');
+}
+
+export async function savePISignatureSettings(
+  affiliation: string,
+  signatureFile?: File,
+): Promise<{ success: boolean; message: string } & PISignatureSettings> {
+  const formData = new FormData();
+  formData.append('pi_affiliation', affiliation);
+  if (signatureFile) {
+    formData.append('signature_image', signatureFile);
+  }
+  const url = new URL(BASE + '/pi-signature-settings/', window.location.origin);
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      ...csrfHeader(),
+    },
+    body: formData,
+  });
+  if (!response.ok) {
+    let detail = 'Failed to save PI signature settings';
+    try {
+      const data = await response.json();
+      detail = data.error || data.detail || detail;
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError('server', detail, response.status);
+  }
+  return response.json();
 }

@@ -7,6 +7,8 @@ import { HomeView } from './components/HomeView';
 import { PublicClubProfileView } from './components/PublicClubProfileView';
 import { ClubModuleView } from './components/ClubModuleView';
 import { AdminModuleView } from './components/AdminModuleView';
+import { EmployeeModule } from './components/EmployeeModule';
+import { SuperAdminConsole } from './components/SuperAdminConsole';
 import { fetchSession } from './lib/adminApi';
 import { signOut } from './lib/authApi';
 
@@ -68,7 +70,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   const probeAdminSession = () => {
     fetchSession()
       .then((s) => {
-        if (s.category === 'iit_kgp_admin') {
+        if (s && s.category === 'iit_kgp_admin') {
           setAdminAuthed(true);
           setAdminRole(s.sub_role ?? '');
           setAdminGateError(null);
@@ -418,14 +420,26 @@ export function App({ ssrLocation }: AppProps = {}) {
             door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
           adminAuthed ? (
-            <AdminModuleView
-              authorityRequests={authorityRequests}
-              forensicRecords={forensicRecords}
-              onApproveAuthorityChange={handleApproveAuthorityChange}
-              onHealForensicRecord={handleHealForensicRecord}
-              onSignOut={() => void handleAdminSignOut()}
-              subRole={adminRole}
-            />
+            adminRole === 'regional_officer' ? (
+              <EmployeeModule
+                onSignOut={() => void handleAdminSignOut()}
+                subRole={adminRole}
+              />
+            ) : adminRole === 'super_admin_ops' ? (
+              <SuperAdminConsole
+                onSignOut={() => void handleAdminSignOut()}
+                subRole={adminRole}
+              />
+            ) : (
+              <AdminModuleView
+                authorityRequests={authorityRequests}
+                forensicRecords={forensicRecords}
+                onApproveAuthorityChange={handleApproveAuthorityChange}
+                onHealForensicRecord={handleHealForensicRecord}
+                onSignOut={() => void handleAdminSignOut()}
+                subRole={adminRole}
+              />
+            )
           ) : (
             <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">
               <div className="p-4 rounded-2xl bg-[#103125] text-white space-y-1">
@@ -452,7 +466,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                 onSignedIn={async () => {
                   try {
                     const s = await fetchSession();
-                    if (s.category === 'iit_kgp_admin') {
+                    if (s && s.category === 'iit_kgp_admin') {
                       setAdminAuthed(true);
                       setAdminRole(s.sub_role ?? '');
                       setAdminGateError(null);

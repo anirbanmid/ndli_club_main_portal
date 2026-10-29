@@ -37,7 +37,6 @@ import { ApiError } from '../lib/api';
 import { AuthorityChangeRequest, ForensicQuarantineRecord } from '../types';
 import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
-import { EmployeeModule } from './EmployeeModule';
 import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
 import { DashboardsPanel } from './AdminDashboardsPanel';
 import {
@@ -136,7 +135,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const canSeeEmployee =
     subRole === 'central_admin' || subRole === 'regional_officer'; // business turf (AUTH-TURF: never SUPEROPS)
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'approvals' | 'employee' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'dashboards' | 'zones' | 'system'>('approvals');
+  const [adminTab, setAdminTab] = useState<'dashboards' | 'approvals' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones'>('dashboards');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -331,6 +330,36 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         {/* Navigation Desks */}
         <div className="tab-scroll flex items-center space-x-1 overflow-x-auto w-full sm:w-auto">
           <button
+            onClick={() => setAdminTab('dashboards')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'dashboards' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{t("Performance Dashboard")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('insights')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'insights' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            <span>{t("AI Strategic Roadmap")}</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('zones')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              adminTab === 'zones' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <Landmark className="h-4 w-4" />
+            <span>{t("Employee Management")}</span>
+          </button>
+
+          <button
             onClick={() => setAdminTab('approvals')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
               adminTab === 'approvals' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
@@ -360,40 +389,6 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Authority Succession")} ({authorityRequests.length})</span>
           </button>
 
-          {canSeeEmployee && (
-          <button
-            onClick={() => setAdminTab('employee')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'employee' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-            }`}
-          >
-            <span>{t("Employee Module")}</span>
-          </button>
-          )}
-
-          {canSeeRedZone && (
-          <button
-            onClick={() => setAdminTab('migration')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'migration' ? 'bg-[#B45309] text-white shadow-xs' : 'text-[#B45309] hover:bg-amber-50'
-            }`}
-          >
-            <Database className="h-4 w-4" />
-            <span>{t("Forensic Migration Desk")}</span>
-            <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">{t("Legacy Data Healing")}</span>
-          </button>
-          )}
-
-          <button
-            onClick={() => setAdminTab('zones')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'zones' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-            }`}
-          >
-            <Landmark className="h-4 w-4" />
-            <span>{t("7 Regional Officers")}</span>
-          </button>
-
           <button
             onClick={() => setAdminTab('renewals')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
@@ -404,39 +399,16 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Renewal Desk")}</span>
           </button>
 
-          {canSeeMcc && (
           <button
-            onClick={() => setAdminTab('insights')}
+            onClick={() => setAdminTab('migration')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'insights' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              adminTab === 'migration' ? 'bg-[#B45309] text-white shadow-xs' : 'text-[#B45309] hover:bg-amber-50'
             }`}
           >
-            <Users className="h-4 w-4" />
-            <span>{t("MCC Insights")}</span>
+            <Database className="h-4 w-4" />
+            <span>{t("Forensic Migration Desk")}</span>
+            <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">{t("Legacy Data Healing")}</span>
           </button>
-          )}
-
-          <button
-            onClick={() => setAdminTab('dashboards')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'dashboards' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-            }`}
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>{t("Dashboards")}</span>
-          </button>
-
-          {canSeeRedZone && (
-          <button
-            onClick={() => setAdminTab('system')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'system' ? 'bg-rose-700 text-white shadow-xs' : 'text-rose-700 hover:bg-rose-50'
-            }`}
-          >
-            <AlertTriangle className="h-4 w-4" />
-            <span>{t("System")}</span>
-          </button>
-          )}
         </div>
 
         {/* Regional Zone Filter */}
@@ -456,9 +428,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       </div>
 
       {/* DESK 1: Charter Review & Sanction Desk (REAL — apps.governance) */}
-      {adminTab === 'employee' && canSeeEmployee && (
-        <EmployeeModule subRole={subRole} />
-      )}
+
 
       {adminTab === 'approvals' && (
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
@@ -913,8 +883,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       {/* DESK 9: Zone dashboards (REAL — D4 endpoints) */}
       {adminTab === 'dashboards' && <DashboardsPanel zoneCode={zoneCode} />}
 
-      {/* DESK 8: Red Zone guarded hard reset (REAL — D5 stage 3 backend) */}
-      {adminTab === 'system' && canSeeRedZone && <RedZoneReset />}
+      
 
       {/* DESK 5: The 6 Zonal Regions / 7 Regional Officers (REAL since slice 1) */}
       {adminTab === 'zones' && (

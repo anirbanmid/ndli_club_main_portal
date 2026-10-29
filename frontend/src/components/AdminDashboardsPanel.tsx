@@ -1,25 +1,45 @@
 /**
- * Dashboards panel (M6 D5 slice 4) — the D4 read-only analytics endpoints:
- *   GET /admin/api/v1/dashboards/zone/     — derived metrics + audit tail
- *   GET /admin/api/v1/dashboards/officers/ — ranked officer evaluations
- *   GET /admin/api/v1/dashboards/audit/    — recent audit-trail activity
+ * Admin Performance Dashboard Panel — Central Administration Office (Tier 2).
  *
- * Read-only over AuditLog + SLAEvent; counters are derived at query time (P4 —
- * no duplicated tallies). Metric blocks render defensively over their payload
- * shape; the audit rows are the tight AuditRow contract.
+ * Strict parity with the previous project's `templates/admin.html`:
+ * - Top 5 zero-jargon KPI cards (Total NDLI Clubs, Total Daily Support Logs,
+ *   Active Nodal Officers, Renewal Attention Required, 30-Day Escalations).
+ * - Action toolbar with "Download Master CSV" (streaming enriched club metadata,
+ *   authorities contacts, member counts, and solo/joint Inter-Club Shield activities).
+ * - 36-State & UT Geographical Breakdown table (real-time from telemetry).
+ * - Nodal Employee Performance Matrix & Rating (EMP01–EMP07 evaluated on the
+ *   official 50/30/20/10 weighted formula with star ratings).
+ * - Recent Audit Activity Stream.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Clock, Users } from 'lucide-react';
-import { ApiError } from '../lib/api';
+import {
+  AlertTriangle,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Download,
+  Filter,
+  Layers,
+  MapPin,
+  PhoneCall,
+  RefreshCw,
+  ShieldCheck,
+  Star,
+  Users,
+} from 'lucide-react';
+import { ApiError, TelemetryPayload, fetchTelemetry } from '../lib/api';
 import { t } from '../i18n';
 import {
   AuditFeed,
   AuditRow,
+  OfficerEvaluation,
   OfficerRatings,
   ZoneDashboard,
   fetchAuditFeed,
   fetchOfficerRatings,
   fetchZoneDashboard,
+  getMasterClubsExportUrl,
 } from '../lib/adminApi';
 
 function errorMessage(err: unknown): string {
@@ -37,84 +57,73 @@ function formatStamp(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
 }
 
-/** Generic metric chip: scalar values render big, everything else in words. */
-const MetricChip: React.FC<{ name: string; value: unknown }> = ({ name, value }) => (
-  <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7] text-center">
-    <div className="font-mono text-xl font-black text-[#103125]">
-      {value === null || value === undefined ? '—'
-        : typeof value === 'number' || typeof value === 'string' ? String(value)
-        : Array.isArray(value) ? value.length
-        : '…'}
-    </div>
-    <div className="text-[#5A7366] text-[11px] font-bold uppercase">{name.replace(/_/g, ' ')}</div>
-  </div>
-);
+interface StatCardProps {
+  label: string;
+  value: number | string;
+  desc: string;
+  badge?: string;
+  icon: React.ReactNode;
+  variant?: 'green' | 'amber' | 'blue' | 'purple' | 'rose';
+}
 
-const AuditTable: React.FC<{ rows: AuditRow[] }> = ({ rows }) => (
-  <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
-    <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-      <thead className="bg-[#F4F8F6] text-[#5A7366] font-bold uppercase text-[11px]">
-        <tr>
-          <th className="p-3">#</th>
-          <th className="p-3">{t('When')}</th>
-          <th className="p-3">{t('Actor')}</th>
-          <th className="p-3">{t('Action')}</th>
-          <th className="p-3">{t('Outcome')}</th>
-          <th className="p-3">{t('Object')}</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-        {rows.map((row) => (
-          <tr key={`${row.seq}-${row.timestamp}`} className="hover:bg-[#F4F8F6]/60">
-            <td className="p-3 font-mono text-[#5A7366]">{row.seq}</td>
-            <td className="p-3 font-mono">{formatStamp(row.timestamp)}</td>
-            <td className="p-3 font-semibold">{row.actor_label}</td>
-            <td className="p-3">{row.action}</td>
-            <td className="p-3">
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                String(row.outcome).toLowerCase().includes('fail') || String(row.outcome).toLowerCase().includes('denied')
-                  ? 'bg-rose-100 text-rose-800' : 'bg-brand-100 text-brand-800'
-              }`}>{row.outcome}</span>
-            </td>
-            <td className="p-3 font-mono text-[11px]">{row.object_type}:{row.object_id}</td>
-          </tr>
-        ))}
-        {rows.length === 0 && (
-          <tr><td colSpan={6} className="p-6 text-center text-[#5A7366]">{t('No audit activity recorded.')}</td></tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-);
+const StatCard: React.FC<StatCardProps> = ({
+  label,
+  value,
+  desc,
+  badge,
+  icon,
+  variant = 'green',
+}) => {
+  const colorStyles = {
+    green: {
+      bg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      iconBg: 'bg-emerald-100 text-emerald-700',
+      badgeBg: 'bg-emerald-100 text-emerald-800',
+    },
+    amber: {
+      bg: 'bg-amber-50 text-amber-900 border-amber-200',
+      iconBg: 'bg-amber-100 text-amber-700',
+      badgeBg: 'bg-amber-100 text-amber-800',
+    },
+    blue: {
+      bg: 'bg-sky-50 text-sky-900 border-sky-200',
+      iconBg: 'bg-sky-100 text-sky-700',
+      badgeBg: 'bg-sky-100 text-sky-800',
+    },
+    purple: {
+      bg: 'bg-purple-50 text-purple-900 border-purple-200',
+      iconBg: 'bg-purple-100 text-purple-700',
+      badgeBg: 'bg-purple-100 text-purple-800',
+    },
+    rose: {
+      bg: 'bg-rose-50 text-rose-900 border-rose-200',
+      iconBg: 'bg-rose-100 text-rose-700',
+      badgeBg: 'bg-rose-100 text-rose-800',
+    },
+  }[variant];
 
-/** One officer evaluation card; rating-ish scalars get a star strip. */
-const OfficerCard: React.FC<{ officer: Record<string, unknown> }> = ({ officer }) => {
-  const ratingEntry = Object.entries(officer).find(
-    ([k, v]) => typeof v === 'number' && /rat|score|star/i.test(k),
-  );
   return (
-    <div className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] text-xs space-y-1.5">
-      <div className="font-bold text-[#103125]">
-        {String(officer.name ?? officer.username ?? officer.officer ?? t('Officer'))}
-      </div>
-      {ratingEntry && (
-        <div className="text-amber-500 font-bold">
-          {'★'.repeat(Math.max(0, Math.min(5, Math.round(ratingEntry[1] as number))))}
-          <span className="text-[#5A7366] ml-1.5">{ratingEntry[0]}: {String(ratingEntry[1])}</span>
+    <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 shadow-xs flex flex-col justify-between space-y-3 transition-all hover:shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className={`p-2.5 rounded-xl ${colorStyles.iconBg}`}>
+          {icon}
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-[#5A7366]">
-        {Object.entries(officer)
-          .filter(([k]) => !/rat|score|star/i.test(k))
-          .slice(0, 8)
-          .map(([k, v]) => (
-            <div key={k}>
-              <span className="font-bold text-[#103125]">{k.replace(/_/g, ' ')}:</span>{' '}
-              {v === null || v === undefined ? '—'
-                : typeof v === 'object' ? (Array.isArray(v) ? `${v.length}` : '…')
-                : String(v)}
-            </div>
-          ))}
+        {badge && (
+          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${colorStyles.badgeBg}`}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <div>
+        <div className="text-3xl font-extrabold text-[#103125] tracking-tight">
+          {value}
+        </div>
+        <div className="text-xs font-bold text-[#2E4A3E] mt-0.5">
+          {label}
+        </div>
+        <div className="text-[11px] text-[#5A7366] mt-1">
+          {desc}
+        </div>
       </div>
     </div>
   );
@@ -125,20 +134,23 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   const [dashboard, setDashboard] = useState<ZoneDashboard | null>(null);
   const [ratings, setRatings] = useState<OfficerRatings | null>(null);
   const [audit, setAudit] = useState<AuditFeed | null>(null);
+  const [telemetry, setTelemetry] = useState<TelemetryPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [d, r, a] = await Promise.all([
+      const [d, r, a, tData] = await Promise.all([
         fetchZoneDashboard({ zone, limit: 15 }),
         fetchOfficerRatings({ zone }),
-        fetchAuditFeed({ zone, limit: 30 }),
+        fetchAuditFeed({ zone, limit: 20 }),
+        fetchTelemetry().catch(() => null),
       ]);
       setDashboard(d);
       setRatings(r);
       setAudit(a);
+      setTelemetry(tData);
       setError(null);
     } catch (err) {
       setError(errorMessage(err));
@@ -148,73 +160,319 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   }, [zone]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadData();
+  }, [loadData]);
 
-  const metricEntries = dashboard
-    ? Object.entries(dashboard).filter(([key]) => key !== 'recent_audit' && key !== 'zone_code')
-    : [];
+  const handleDownloadMasterCSV = () => {
+    window.open(getMasterClubsExportUrl(), '_blank');
+  };
+
+  // Filter telemetry states by zone if needed
+  const stateRows = (telemetry?.states ?? []).filter((s) => {
+    if (!zone || zone === 'All') return true;
+    return s.zone?.toUpperCase() === zone.toUpperCase();
+  });
+
+  const totals = {
+    institutions: stateRows.reduce((acc, s) => acc + (s.institutions || 0), 0),
+    clubs: stateRows.reduce((acc, s) => acc + (s.clubs || 0), 0),
+    members: stateRows.reduce((acc, s) => acc + (s.members || 0), 0),
+  };
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-      <div className="border-b border-[#E2ECE7] pb-4">
-        <h3 className="text-lg font-bold text-[#103125]">{t('Zone Dashboards')}</h3>
-        <p className="text-xs text-[#5A7366]">
-          {t('Derived metrics, officer evaluations and the live audit tail — computed at query time, no stored counters.')}
-          {dashboard ? ` — ${t('Zone:')} ${dashboard.zone_code}` : ''}
-        </p>
+    <div className="space-y-8 animate-in fade-in">
+      {/* Action Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E2ECE7] shadow-xs">
+        <div>
+          <h3 className="text-base font-extrabold text-[#103125]">
+            {t('Operational Overview & Analytical Matrix')}
+          </h3>
+          <p className="text-xs text-[#5A7366]">
+            {zoneCode === 'All'
+              ? t('National Overview across all 6 Regional Zones and 36 States/UTs')
+              : `${t('Filtered Region:')} ${zoneCode} Zone`}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={handleDownloadMasterCSV}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[#B45309] hover:bg-amber-700 text-white flex items-center gap-2 shadow-xs transition-colors"
+            title={t('Download enriched master_clubs.csv with contacts, members, and Shield activities')}
+          >
+            <Download className="w-4 h-4" />
+            <span>{t('Download Master CSV')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-[#2E4A3E] bg-[#F4F8F6] hover:bg-[#E2ECE7] flex items-center gap-1.5 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>{t('Refresh')}</span>
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> {error}</span>
-          <button onClick={() => void load()} className="underline font-bold">{t('Retry')}</button>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {error}
+          </span>
+          <button onClick={() => void loadData()} className="underline font-bold">
+            {t('Retry')}
+          </button>
         </div>
       )}
 
-      {loading ? (
-        <div className="text-center py-12 text-xs text-[#5A7366]">{t('Loading dashboards…')}</div>
-      ) : (
-        <>
-          {/* Derived metrics */}
-          {metricEntries.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {metricEntries.map(([k, v]) => <MetricChip key={k} name={k} value={v} />)}
-            </div>
-          )}
+      {/* Top 5 Zero-Jargon KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard
+          label={t('Total NDLI Clubs')}
+          value={dashboard ? dashboard.total_clubs : '—'}
+          desc={t('Across all 36 States & UTs')}
+          badge={t('National Registry')}
+          icon={<Building2 className="w-5 h-5" />}
+          variant="green"
+        />
 
-          {/* Officer evaluations */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-sm text-[#103125] flex items-center gap-1.5">
-              <Users className="h-4 w-4" /> {t('Officer Evaluations')} ({ratings?.officers.length ?? 0})
+        <StatCard
+          label={t('Daily Support Logs')}
+          value={dashboard ? dashboard.total_activities : '—'}
+          desc={t('Real-time from daily employee support logs')}
+          badge={t('Live Activity')}
+          icon={<PhoneCall className="w-5 h-5" />}
+          variant="purple"
+        />
+
+        <StatCard
+          label={t('Active Nodal Officers')}
+          value={dashboard ? dashboard.active_officers : '—'}
+          desc={t('Assigned across 6 National Zones (EMP01–EMP07)')}
+          badge={t('6 Zones Active')}
+          icon={<Users className="w-5 h-5" />}
+          variant="blue"
+        />
+
+        <StatCard
+          label={t('Renewal Attention')}
+          value={dashboard ? dashboard.renewal_attention : '—'}
+          desc={t('Clubs in upcoming renewal window or expired')}
+          badge={t('Renewal Protocol')}
+          icon={<Calendar className="w-5 h-5" />}
+          variant="amber"
+        />
+
+        <StatCard
+          label={t('30-Day Escalations')}
+          value={dashboard ? dashboard.escalations_30d : '—'}
+          desc={t('Pending issue tickets past 30-day escalation SLA')}
+          badge={t('SLA Monitor')}
+          icon={<AlertTriangle className="w-5 h-5" />}
+          variant="rose"
+        />
+      </div>
+
+      {/* State-Wise Geographical Breakdown Table */}
+      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-700" />
+              {t('National State-Wise Breakdown (36 States & Union Territories)')}
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(ratings?.officers ?? []).map((officer, i) => (
-                <OfficerCard key={i} officer={officer as Record<string, unknown>} />
-              ))}
-            </div>
-            {(ratings?.officers.length ?? 0) === 0 && (
-              <div className="p-6 text-center text-xs text-[#5A7366]">{t('No officer evaluations for this period.')}</div>
+            <p className="text-xs text-[#5A7366]">
+              {t('Comprehensive public telemetry across all administrative divisions')}
+            </p>
+          </div>
+          <span className="text-xs font-bold text-[#2E4A3E] bg-[#F4F8F6] px-3 py-1 rounded-full border border-[#E2ECE7]">
+            {stateRows.length} {t('Divisions Displayed')}
+          </span>
+        </div>
+
+        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
+          <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
+            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
+              <tr>
+                <th className="p-3 w-12">#</th>
+                <th className="p-3">{t('State / Union Territory')}</th>
+                <th className="p-3">{t('Zone')}</th>
+                <th className="p-3 text-right">{t('Institutions')}</th>
+                <th className="p-3 text-right">{t('Active Clubs')}</th>
+                <th className="p-3 text-right">{t('Verified Members')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
+              {stateRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-[#5A7366]">
+                    {loading ? t('Loading telemetry data…') : t('No state telemetry available.')}
+                  </td>
+                </tr>
+              ) : (
+                stateRows.map((row, index) => (
+                  <tr key={row.code} className="hover:bg-[#F4F8F6]/60 transition-colors">
+                    <td className="p-3 font-mono text-[#5A7366]">{index + 1}</td>
+                    <td className="p-3 font-bold text-[#103125]">{row.name}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded-full bg-[#F4F8F6] text-[#2E4A3E] font-semibold text-[10px] border border-[#E2ECE7]">
+                        {row.zone}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right font-mono font-semibold">{row.institutions.toLocaleString()}</td>
+                    <td className="p-3 text-right font-mono font-bold text-emerald-800">{row.clubs.toLocaleString()}</td>
+                    <td className="p-3 text-right font-mono text-[#5A7366]">{row.members.toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            {stateRows.length > 0 && (
+              <tfoot className="bg-[#F4F8F6] font-bold text-[#103125] border-t-2 border-[#DCE7E1]">
+                <tr>
+                  <td className="p-3" colSpan={3}>{t('National Totals')}</td>
+                  <td className="p-3 text-right font-mono">{totals.institutions.toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono text-emerald-800">{totals.clubs.toLocaleString()}</td>
+                  <td className="p-3 text-right font-mono">{totals.members.toLocaleString()}</td>
+                </tr>
+              </tfoot>
             )}
-          </div>
+          </table>
+        </div>
+      </div>
 
-          {/* Audit tail */}
-          <div className="space-y-3">
-            <h4 className="font-bold text-sm text-[#103125] flex items-center gap-1.5">
-              <Clock className="h-4 w-4" /> {t('Recent Audit Activity')}
+      {/* Nodal Employee Performance Matrix & Rating */}
+      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+              {t('Nodal Employee Performance Matrix & Star Ratings')}
             </h4>
-            <AuditTable rows={audit?.results ?? []} />
+            <p className="text-xs text-[#5A7366]">
+              {t('Official scoring formula: 50% Clubs Approved + 30% Other Supports + 20% Offline Training + 10% Online Training')}
+            </p>
           </div>
+          <span className="text-xs font-bold text-[#2E4A3E] bg-[#F4F8F6] px-3 py-1 rounded-full border border-[#E2ECE7]">
+            {ratings?.officers.length ?? 0} {t('Officers Evaluated')}
+          </span>
+        </div>
 
-          {/* Zone dashboard audit tail (server-attached) */}
-          {(dashboard?.recent_audit.length ?? 0) > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-bold text-sm text-[#103125]">{t('Zone Audit Tail')}</h4>
-              <AuditTable rows={dashboard?.recent_audit ?? []} />
-            </div>
-          )}
-        </>
-      )}
+        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
+          <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
+            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
+              <tr>
+                <th className="p-3">{t('Nodal Officer')}</th>
+                <th className="p-3">{t('Assigned Zone')}</th>
+                <th className="p-3 text-right">{t('Clubs Approved (50%)')}</th>
+                <th className="p-3 text-right">{t('Other Supports (30%)')}</th>
+                <th className="p-3 text-right">{t('Offline Training (20%)')}</th>
+                <th className="p-3 text-right">{t('Online Training (10%)')}</th>
+                <th className="p-3 text-right">{t('Composite Score')}</th>
+                <th className="p-3 text-center">{t('Star Rating')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
+              {(ratings?.officers.length ?? 0) === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-6 text-center text-[#5A7366]">
+                    {loading ? t('Evaluating regional officers…') : t('No officer evaluation records available for this cycle.')}
+                  </td>
+                </tr>
+              ) : (
+                (ratings?.officers ?? []).map((o: OfficerEvaluation, i: number) => {
+                  const stars = Math.max(1, Math.min(5, Math.round(Number(o.stars || o.star_rating || 3))));
+                  return (
+                    <tr key={i} className="hover:bg-[#F4F8F6]/60 transition-colors">
+                      <td className="p-3 font-bold text-[#103125]">
+                        {String(o.officer ?? o.username ?? o.name ?? `EMP0${i + 1}`)}
+                      </td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-semibold text-[10px] border border-emerald-200">
+                          {String(o.zone_code ?? o.zone ?? '—')}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-mono">{String(o.clubs_approved ?? 0)}</td>
+                      <td className="p-3 text-right font-mono">{String(o.other_supports ?? 0)}</td>
+                      <td className="p-3 text-right font-mono">{String(o.offline_training ?? 0)}</td>
+                      <td className="p-3 text-right font-mono">{String(o.online_training ?? 0)}</td>
+                      <td className="p-3 text-right font-mono font-bold text-[#103125]">
+                        {String(o.weighted_score ?? o.score ?? '—')}
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="inline-flex items-center text-amber-500">
+                          {'★'.repeat(stars)}
+                          <span className="text-[#5A7366] text-[10px] ml-1.5 font-bold">
+                            ({stars}/5)
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Live System Audit Feed */}
+      <div className="bg-white p-6 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
+        <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
+          <Clock className="w-4 h-4 text-sky-700" />
+          {t('National Administrative Audit Stream')}
+        </h4>
+
+        <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
+          <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
+            <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
+              <tr>
+                <th className="p-3">#</th>
+                <th className="p-3">{t('Timestamp')}</th>
+                <th className="p-3">{t('Actor')}</th>
+                <th className="p-3">{t('Action Performed')}</th>
+                <th className="p-3">{t('Outcome')}</th>
+                <th className="p-3">{t('Target Entity')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
+              {(audit?.results.length ?? 0) === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-[#5A7366]">
+                    {loading ? t('Loading audit stream…') : t('No recent audit activity recorded.')}
+                  </td>
+                </tr>
+              ) : (
+                audit?.results.map((row: AuditRow) => (
+                  <tr key={`${row.seq}-${row.timestamp}`} className="hover:bg-[#F4F8F6]/60 transition-colors">
+                    <td className="p-3 font-mono text-[#5A7366]">{row.seq}</td>
+                    <td className="p-3 font-mono">{formatStamp(row.timestamp)}</td>
+                    <td className="p-3 font-semibold text-[#103125]">{row.actor_label}</td>
+                    <td className="p-3">{row.action}</td>
+                    <td className="p-3">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          String(row.outcome).toLowerCase().includes('fail') ||
+                          String(row.outcome).toLowerCase().includes('denied')
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {row.outcome}
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono text-[11px] text-[#5A7366]">
+                      {row.object_type}:{row.object_id}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

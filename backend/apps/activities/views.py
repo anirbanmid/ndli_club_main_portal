@@ -14,17 +14,23 @@ admin override is the Central Admin house only -- the Master Admin
 """
 from __future__ import annotations
 
+import base64
+import csv
+import json
 import uuid
+from pathlib import Path
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import AccountState
+from apps.accounts.models import AccountState, SubRole
 from apps.accounts.policies import (
     BUSINESS_ADMIN_SUB_ROLES,
     CategoryGate,
@@ -72,6 +78,7 @@ def _serialize(row: Any) -> dict[str, Any]:
         "priority_flag": row.priority_flag,
         "club_id": row.club_code,
         "notes": row.notes,
+        "call_count": getattr(row, "call_count", 1),
         "is_approval_log": row.support_type in APPROVAL_LOG_TYPES,
     }
 
@@ -165,16 +172,14 @@ class ActivityLogCreateView(APIView):
             count = 1
 
         bulk_group = uuid.uuid4() if count > 1 else None
-        created = [
-            ActivityLog.objects.create(
-                employee=target,
-                support_type=support_type,
-                notes=notes,
-                club_code=club_code,
-                bulk_group=bulk_group,
-            )
-            for _ in range(count)
-        ]
+        log_entry = ActivityLog.objects.create(
+            employee=target,
+            support_type=support_type,
+            notes=notes,
+            club_code=club_code,
+            bulk_group=bulk_group,
+            call_count=count,
+        )
         message = (
             f"{count} Phone call & remote assistance entries "
             "recorded in bulk successfully."
@@ -186,7 +191,7 @@ class ActivityLogCreateView(APIView):
                 "success": True,
                 "message": message,
                 "count": count,
-                "activity": _serialize(created[0]),
+                "activity": _serialize(log_entry),
             }
         )
 
@@ -208,6 +213,10 @@ class ActivityDeleteView(APIView):
     @transaction.atomic
     def post(self, request: Request) -> Response:
         emp_id = str(request.data.get("emp_id", "") or "").strip()
+        auth_user = getattr(request, 'user', None)
+        username = getattr(auth_user, 'username', '')
+        if not emp_id and username:
+            emp_id = request.user.username
         if hasattr(request.data, "getlist"):
             raw_ids = request.data.getlist("activity_ids")
         else:
@@ -288,3 +297,191 @@ class ActivityDeleteView(APIView):
                 "not_found": not_found,
             }
         )
+
+
+
+SIGNATURES_DIR = Path(settings.BASE_DIR) / "data" / "signatures"
+SETTINGS_FILE = SIGNATURES_DIR / "signature_settings.json"
+
+
+class ActivityExportCSVView(APIView):
+    """GET /admin/api/v1/activities/export/ -- download employee activity_log.csv."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> HttpResponse:
+        emp_id = str(request.query_params.get("emp_id", "") or "").strip()
+        if not emp_id:
+            emp_id = request.user.username
+        try:
+            target = resolve_activity_target(request, emp_id)
+        except (PermissionError, LookupError):
+            target = request.user
+
+        rows = ActivityLog.objects.filter(employee=target).order_by("-timestamp")
+        response = HttpResponse(content_type="text/csv")
+        fn = f"activity_log_{target.username}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{fn}"'
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "activity_id", "timestamp", "support_type", "call_count",
+            "priority_flag", "club_code", "notes"
+        ])
+        for r in rows:
+            writer.writerow([
+                str(r.activity_id),
+                r.timestamp.isoformat(),
+                r.support_type,
+                getattr(r, "call_count", 1),
+                "1" if r.priority_flag else "0",
+                r.club_code,
+                r.notes,
+            ])
+        return response
+
+
+class EmployeeClubsExportCSVView(APIView):
+    """GET /admin/api/v1/activities/clubs-export/ -- download assigned clubs.csv."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> HttpResponse:
+        from apps.domain.models import Club
+        qs = Club.objects.select_related("institution__state__zone")
+        is_ro = request.user.sub_role == SubRole.REGIONAL_OFFICER
+        zone_id = getattr(request.user, "zone_id", None)
+        if is_ro and zone_id:
+            qs = qs.filter(institution__state__zone__code=request.user.zone_id)
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="clubs.csv"'
+        writer = csv.writer(response)
+        writer.writerow([
+            "club_id", "name", "state", "district", "zone", "status", "created_at"
+        ])
+        for c in qs.order_by("name"):
+            writer.writerow([
+                c.code,
+                c.name,
+                (
+                    c.institution.state.name
+                    if c.institution and c.institution.state
+                    else ""
+                ),
+                c.institution.district if c.institution else "",
+                (
+                    c.institution.state.zone.code
+                    if c.institution
+                    and c.institution.state
+                    and c.institution.state.zone
+                    else ""
+                ),
+                c.status,
+                c.created_at.isoformat(),
+            ])
+        return response
+
+
+class PISignatureSettingsView(APIView):
+    """GET/POST /admin/api/v1/activities/pi-signature-settings/."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> Response:
+        SIGNATURES_DIR.mkdir(parents=True, exist_ok=True)
+        sig_file = SIGNATURES_DIR / "pi_signature.png"
+        has_sig = sig_file.exists()
+        defaults = {
+            "pi_name": "Prof. Partha Pratim Chakrabarti",
+            "pi_affiliation": (
+                "Principal Investigator, NDLI Project, Central Library, IIT Kharagpur"
+            ),
+            "has_signature": has_sig,
+            "signature_url": (
+                "/admin/api/v1/activities/pi-signature/" if has_sig else None
+            ),
+        }
+        if SETTINGS_FILE.exists():
+            try:
+                with open(SETTINGS_FILE, encoding="utf-8") as f:
+                    saved = json.load(f)
+                    defaults.update(saved)
+                    defaults["has_signature"] = has_sig
+                    sig_url = (
+                        "/admin/api/v1/activities/pi-signature/" if has_sig else None
+                    )
+                    defaults["signature_url"] = sig_url
+            except Exception:
+                pass
+        return Response({"success": True, "settings": defaults, **defaults})
+
+    def post(self, request: Request) -> Response:
+        SIGNATURES_DIR.mkdir(parents=True, exist_ok=True)
+        data = request.data
+        pi_name = (
+            str(data.get("pi_name", "")).strip()
+            or "Prof. Partha Pratim Chakrabarti"
+        )
+        pi_affiliation = (
+            str(data.get("pi_affiliation", "")).strip()
+            or "Principal Investigator, NDLI Project, Central Library, IIT Kharagpur"
+        )
+
+        sig_img_b64 = data.get("signature_data")
+        sig_file = SIGNATURES_DIR / "pi_signature.png"
+        if sig_img_b64 and isinstance(sig_img_b64, str):
+            if "," in sig_img_b64:
+                sig_img_b64 = sig_img_b64.split(",", 1)[1]
+            try:
+                img_bytes = base64.b64decode(sig_img_b64)
+                with open(sig_file, "wb") as f:
+                    f.write(img_bytes)
+            except Exception as e:
+                return Response(
+                    {"detail": f"Failed to save signature: {e}"}, status=400
+                )
+        elif request.FILES.get("signature_file"):
+            uploaded = request.FILES["signature_file"]
+            with open(sig_file, "wb") as f:
+                for chunk in uploaded.chunks():
+                    f.write(chunk)
+
+        saved_settings = {
+            "pi_name": pi_name,
+            "pi_affiliation": pi_affiliation,
+        }
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(saved_settings, f, indent=2)
+
+        return Response({
+            "success": True,
+            "message": "PI Signature & Affiliation updated successfully.",
+            "settings": {
+                **saved_settings,
+                "has_signature": sig_file.exists(),
+                "signature_url": "/admin/api/v1/activities/pi-signature/",
+            }
+        })
+
+
+class PISignatureImageView(APIView):
+    """GET /admin/api/v1/activities/pi-signature/ -- serve stored signature image."""
+
+    permission_classes = []
+
+    def get(self, request: Request) -> HttpResponse:
+        sig_file = SIGNATURES_DIR / "pi_signature.png"
+        if not sig_file.exists():
+            return HttpResponse(status=404)
+        with open(sig_file, "rb") as f:
+            return HttpResponse(f.read(), content_type="image/png")

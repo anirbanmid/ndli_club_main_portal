@@ -5,10 +5,12 @@ Mounted at ``/admin/api/v1/data/`` in ``config/urls.py`` - before
 """
 from django.urls import path
 
-from .views import HardResetView
+from . import views
 
 app_name = "data_admin"
 
 urlpatterns = [
-    path("hard-reset/", HardResetView.as_view(), name="hard-reset"),
+    path("hard-reset/", views.HardResetView.as_view(), name="hard-reset"),
+    path("master-csv/", views.MasterClubsCSVView.as_view(), name="master-csv"),
+    path("local-backups/", views.LocalBackupView.as_view(), name="local-backups"),
 ]

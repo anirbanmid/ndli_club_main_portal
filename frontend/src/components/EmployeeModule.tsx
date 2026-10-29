@@ -353,9 +353,9 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   const handlePrintCert = () => {
     if (!certCanvasRef.current) return;
-    const ok = printCertificateOnPage(certCanvasRef.current);
+    const ok = printCertificate(certCanvasRef.current);
     if (!ok) {
-      printCertificate(certCanvasRef.current);
+      printCertificateOnPage(certCanvasRef.current);
     }
   };
 

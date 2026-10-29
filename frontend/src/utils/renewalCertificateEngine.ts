@@ -539,14 +539,8 @@ export async function downloadCertificatePDF(canvas: HTMLCanvasElement, filename
 }
 
 /**
- * On-page A4 print engine (zero blank pages)
- */
-/**
  * On-page A4 print engine (zero blank pages).
- * R54 hardened:
- * - Uses high-res data URL img tag inside dedicated print root (avoids canvas context drop on print spooling).
- * - 30-second guard timer so dialog is not wiped prematurely.
- * - Single-page A4 portrait styling.
+ * Synchronous pixel-clone route without DOM relocation or premature timer drops.
  */
 export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
   if (!canvas || typeof document === 'undefined' || !document.body) return false;
@@ -570,10 +564,10 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
       }
       @media print {
         html, body {
-          width: 210mm !important;
-          height: 297mm !important;
+          width: 100% !important;
+          height: 100% !important;
           min-height: 0 !important;
-          max-height: 297mm !important;
+          max-height: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #ffffff !important;
@@ -583,10 +577,11 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
           print-color-adjust: exact !important;
         }
         body.printing-certificate {
-          width: 210mm !important;
-          height: 297mm !important;
+          width: 100% !important;
+          height: 100% !important;
           line-height: 0 !important;
           font-size: 0 !important;
+          overflow: hidden !important;
         }
         body.printing-certificate > *:not(#${PRINT_ROOT_ID}) {
           display: none !important;
@@ -598,8 +593,8 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
           position: absolute !important;
           top: 0 !important;
           left: 0 !important;
-          width: 210mm !important;
-          height: 297mm !important;
+          width: 100% !important;
+          height: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #ffffff !important;
@@ -608,19 +603,22 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
           page-break-before: avoid !important;
           page-break-after: avoid !important;
           page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          overflow: hidden !important;
         }
-        #${PRINT_ROOT_ID} img,
         #${PRINT_ROOT_ID} canvas {
           display: block !important;
-          width: 210mm !important;
-          height: 297mm !important;
+          width: 100% !important;
+          height: 100% !important;
           max-width: 100% !important;
           max-height: 100% !important;
-          object-fit: fill !important;
-          margin: 0 !important;
+          object-fit: contain !important;
+          margin: 0 auto !important;
           padding: 0 !important;
           border: 0 !important;
           background: #ffffff !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
       }
     `;
@@ -636,12 +634,15 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
 
   printRoot.innerHTML = '';
 
-  // Render high-res JPEG image element into print root (standard cross-browser print fidelity)
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.98);
-  const printImg = document.createElement('img');
-  printImg.src = dataUrl;
-  printImg.alt = 'NDLI Club Renewal Certificate';
-  printRoot.appendChild(printImg);
+  // Synchronous pixel-clone of the canvas to avoid GPU context drop or async image decode lag
+  const printCanvas = document.createElement('canvas');
+  printCanvas.width = canvas.width;
+  printCanvas.height = canvas.height;
+  const ctx = printCanvas.getContext('2d');
+  if (ctx) {
+    ctx.drawImage(canvas, 0, 0);
+  }
+  printRoot.appendChild(printCanvas);
 
   let done = false;
   let printMql: MediaQueryList | null = null;
@@ -691,7 +692,11 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
 }
 
 /**
- * Popup window route — secondary fallback matching legacy certificate_engine.js
+ * Dedicated Print Window Engine (A4 Portrait, exactly 1 sheet, zero blank pages).
+ * Primary high-fidelity route faithfully ported from legacy project:
+ * - Pre-loads and decodes high-res JPEG data URL before triggering window.print()
+ * - Isolated document avoids conflicting web app CSS rules and multi-sheet page breaks
+ * - Includes visible on-screen print & close action toolbar with Acrobat-style dark backdrop
  */
 export function printCertificate(canvas: HTMLCanvasElement): boolean {
   if (!canvas || typeof window === 'undefined') return false;
@@ -702,38 +707,147 @@ export function printCertificate(canvas: HTMLCanvasElement): boolean {
   }
   printWindow.document.write(`
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
-      <title>Print NDLI Club Renewal Certificate</title>
+      <meta charset="utf-8">
+      <title>NDLI Club Official Renewal Certificate</title>
       <style>
-        @page { size: A4 portrait; margin: 0; }
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        * {
+          box-sizing: border-box;
+        }
         html, body {
-          margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff;
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+          background: #334155;
+          overflow: auto;
         }
         body {
-          display: flex; justify-content: center; align-items: center;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
         }
         .print-actions {
-          position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10;
+          position: fixed;
+          top: 16px;
+          right: 16px;
+          display: flex;
+          gap: 10px;
+          z-index: 10000;
+          background: rgba(15, 23, 42, 0.9);
+          backdrop-filter: blur(8px);
+          padding: 8px 14px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
         .print-actions button {
-          padding: 8px 16px; font-size: 14px; font-weight: bold; cursor: pointer;
-          background: #00695c; color: #ffffff; border: none; border-radius: 6px;
+          padding: 9px 18px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          border: none;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
-        img {
-          width: 210mm; height: 297mm; display: block; object-fit: contain; margin: 0 auto;
+        .btn-print {
+          background: #0D7751;
+          color: #ffffff;
+        }
+        .btn-print:hover {
+          background: #095439;
+        }
+        .btn-close {
+          background: #475569;
+          color: #f1f5f9;
+        }
+        .btn-close:hover {
+          background: #1e293b;
+        }
+        .cert-container {
+          width: 210mm;
+          height: 297mm;
+          max-width: 96vw;
+          max-height: 96vh;
+          margin: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #ffffff;
+          box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+        }
+        img#cert-render {
+          width: 100%;
+          height: 100%;
+          display: block;
+          object-fit: contain;
+          margin: 0;
+          padding: 0;
         }
         @media print {
-          .print-actions { display: none !important; }
+          html, body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            overflow: hidden !important;
+          }
+          .print-actions {
+            display: none !important;
+          }
+          .cert-container {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          img#cert-render {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            object-fit: contain !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
         }
       </style>
     </head>
     <body>
       <div class="print-actions">
-        <button onclick="window.print()">Print Certificate</button>
-        <button onclick="window.close()" style="background: #64748b;">Close</button>
+        <button class="btn-print" onclick="window.print()">🖨️ Print Certificate</button>
+        <button class="btn-close" onclick="window.close()">✕ Close</button>
       </div>
-      <img src="${dataUrl}" alt="NDLI Club Renewal Certificate" />
+      <div class="cert-container">
+        <img id="cert-render" src="${dataUrl}" alt="NDLI Club Renewal Certificate" />
+      </div>
+      <script>
+        const img = document.getElementById('cert-render');
+        const trigger = () => {
+          setTimeout(() => {
+            window.focus();
+            window.print();
+          }, 350);
+        };
+        if (img.complete) {
+          trigger();
+        } else {
+          img.onload = trigger;
+        }
+      </script>
     </body>
     </html>
   `);

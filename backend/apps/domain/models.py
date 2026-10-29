@@ -217,6 +217,23 @@ class Club(models.Model):
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )
+    registration_no = models.CharField(max_length=64, blank=True, default="")
+    date_of_approval = models.DateField(null=True, blank=True)
+    last_renewal_date = models.DateField(null=True, blank=True)
+    upcoming_renewal_date = models.DateField(null=True, blank=True)
+    member_count = models.PositiveIntegerField(default=1000)
+    solo_activities = models.PositiveIntegerField(default=0)
+    joint_activities = models.PositiveIntegerField(default=0)
+    patron_name = models.CharField(max_length=128, blank=True, default="")
+    patron_email = models.EmailField(blank=True, default="")
+    patron_phone = models.CharField(max_length=32, blank=True, default="")
+    president_name = models.CharField(max_length=128, blank=True, default="")
+    president_email = models.EmailField(blank=True, default="")
+    president_phone = models.CharField(max_length=32, blank=True, default="")
+    secretary_name = models.CharField(max_length=128, blank=True, default="")
+    secretary_email = models.EmailField(blank=True, default="")
+    secretary_phone = models.CharField(max_length=32, blank=True, default="")
+    is_sample = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -231,6 +248,7 @@ class Club(models.Model):
         ordering = ["code"]
         indexes = [
             models.Index(fields=["institution"], name="club_institution_idx"),
+            models.Index(fields=["is_sample"], name="club_is_sample_idx"),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - repr helper

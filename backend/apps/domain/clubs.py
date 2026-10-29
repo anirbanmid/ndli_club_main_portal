@@ -882,19 +882,16 @@ CANONICAL_INSTITUTIONAL_CLUBS: list[dict[str, Any]] = [
 
 
 def get_all_canonical_clubs() -> list[dict[str, Any]]:
-    """Return the unified canonical single source list of all clubs.
+    """Return the unified canonical single source list of all institutional clubs.
 
-    Combines canonical institutional clubs and database seeded clubs,
-    retaining dates, latest persisted renewals, and complete authority info.
+    Retains dates, latest persisted renewals, and complete authority info.
     Both camelCase and snake_case properties are included for universal
     client compatibility.
     """
-    from apps.domain.models import Club
-
     seen_ids: set[str] = set()
     unified: list[dict[str, Any]] = []
 
-    # 1. Canonical Institutional Clubs
+    # Canonical Institutional Clubs
     for c_data in CANONICAL_INSTITUTIONAL_CLUBS:
         cid = str(c_data["id"])
         seen_ids.add(cid.upper())
@@ -909,101 +906,5 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         entry["renewal_date"] = upcoming_ren
         entry["status"] = "Active"
         unified.append(entry)
-
-    # 2. Database Clubs (Club.objects)
-    qs = Club.objects.select_related(
-        "institution__state__zone", "institution__district"
-    ).order_by("name")
-    for c in qs:
-        c_code_upper = c.code.upper()
-        if c_code_upper in seen_ids:
-            continue
-        seen_ids.add(c_code_upper)
-
-        inst = c.institution
-        st = inst.state.name if inst and inst.state else ""
-        zn = inst.state.zone.name if inst and inst.state and inst.state.zone else ""
-        dist = inst.district.name if inst and inst.district else ""
-        clean_zone = zn.replace(" Zone", "").strip() or "East"
-        doa, last_ren, upcoming_ren = get_club_dates(
-            c.code, getattr(c, "created_at", None)
-        )
-
-        club_name = inst.name if inst else c.name
-        club_dict: dict[str, Any] = {
-            "id": c.code,
-            "club_id": c.code,
-            "aisheCode": getattr(inst, "aishe_code", "") or f"AISHE-{c.code}",
-            "name": club_name,
-            "institution_name": club_name,
-            "state": st,
-            "district": dist or f"{st} Central",
-            "zone": clean_zone,
-            "category": "Autonomous Institute",
-            "passkey": f"{c.code}-NDL-001",
-            "status": getattr(c, "status", "Active") or "Active",
-            "memberCount": 1800,
-            "member_count": 1800,
-            "eventsConducted": 15,
-            "soloSessions": 11,
-            "jointSessions": 4,
-            "solo_activities": 11,
-            "joint_activities": 4,
-            "establishedDate": doa,
-            "dateOfApproval": doa,
-            "date_of_approval": doa,
-            "lastRenewalDate": last_ren or "None (Initial)",
-            "last_renewal_date": last_ren or "None (Initial)",
-            "nextRenewalDate": upcoming_ren,
-            "upcoming_renewal_date": upcoming_ren,
-            "renewal_date": upcoming_ren,
-            "registrationNo": f"NDLI/CLUB/{c.code}",
-            "registration_no": f"NDLI/CLUB/{c.code}",
-            "reg_no": f"NDLI/CLUB/{c.code}",
-            "websiteUrl": "https://www.sample.ac.in",
-            "email": getattr(c, "email", "") or f"club.{c.code.lower()}@ndli.edu",
-            "description": f"Official NDLI Club chapter at {club_name}.",
-            "authorities": [
-                {
-                    "role": "Patron",
-                    "name": "Prof. Patron Head",
-                    "designation": "Director",
-                    "email": f"director@{c.code.lower()}.example.edu",
-                    "phone": "+91 9811000011",
-                    "verified": True,
-                },
-                {
-                    "role": "President",
-                    "name": "Dr. Club President",
-                    "designation": "Head Librarian",
-                    "email": f"librarian@{c.code.lower()}.example.edu",
-                    "phone": "+91 9811000012",
-                    "verified": True,
-                },
-                {
-                    "role": "Secretary",
-                    "name": "Prof. Secretary Lead",
-                    "designation": "Faculty Lead",
-                    "email": f"secretary@{c.code.lower()}.example.edu",
-                    "phone": "+91 9811000013",
-                    "verified": True,
-                },
-                {
-                    "role": "Executive Member",
-                    "name": "Student Rep",
-                    "designation": "Student Rep",
-                    "email": f"student@{c.code.lower()}.example.edu",
-                    "phone": "+91 9811000014",
-                    "verified": True,
-                },
-            ],
-            "patron_name": "Prof. Patron Head",
-            "patron_email": f"director@{c.code.lower()}.example.edu",
-            "president_name": "Dr. Club President",
-            "president_email": f"librarian@{c.code.lower()}.example.edu",
-            "secretary_name": "Prof. Secretary Lead",
-            "secretary_email": f"secretary@{c.code.lower()}.example.edu",
-        }
-        unified.append(club_dict)
 
     return unified

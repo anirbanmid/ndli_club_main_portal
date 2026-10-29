@@ -152,7 +152,7 @@ class VerifyCertificateView(APIView):
         self, certificate_id: str, request: Request
     ) -> dict[str, Any] | None:
         """Resolve institutional club registration / renewal certificates."""
-        from apps.activities.views import get_club_dates
+        from apps.domain.clubs import get_club_dates
         from apps.domain.models import Club
 
         raw_id = certificate_id.strip()

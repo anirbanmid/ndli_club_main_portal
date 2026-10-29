@@ -42,7 +42,6 @@ from apps.accounts.policies import (
 from apps.domain.clubs import (
     MASTER_CLUB_DATES,
     get_all_canonical_clubs,
-    get_club_dates,
     save_persisted_renewal,
 )
 
@@ -383,43 +382,30 @@ class EmployeeClubsExportCSVView(APIView):
                 "joint_activities_count",
             ]
         )
-        for c in qs.order_by("name"):
-            st = (
-                c.institution.state.name
-                if c.institution and c.institution.state
-                else ""
-            )
-            dist = c.institution.district if c.institution else ""
-            zn = (
-                c.institution.state.zone.code
-                if c.institution and c.institution.state and c.institution.state.zone
-                else ""
-            )
-            doa, last_ren, upcoming_ren = get_club_dates(
-                c.code, getattr(c, "created_at", None)
-            )
+        clubs = get_all_canonical_clubs()
+        for c in clubs:
             writer.writerow(
                 [
-                    c.code,
-                    f"NDLI/CLUB/{c.code}",
-                    c.institution.name if c.institution else c.name,
-                    st,
-                    dist,
-                    zn,
-                    c.status,
-                    doa,
-                    last_ren,
-                    upcoming_ren,
-                    "Prof. Patron Head",
-                    f"patron@{c.code.lower()}.edu",
-                    "Dr. Club President",
-                    f"president@{c.code.lower()}.edu",
-                    "Prof. Secretary Lead",
-                    f"secretary@{c.code.lower()}.edu",
+                    c["club_id"],
+                    c.get("registration_no") or c.get("registrationNo", ""),
+                    c.get("institution_name") or c.get("name", ""),
+                    c.get("state", ""),
+                    c.get("district", ""),
+                    c.get("zone", ""),
+                    c.get("status", "Active"),
+                    c.get("date_of_approval", ""),
+                    c.get("last_renewal_date", ""),
+                    c.get("upcoming_renewal_date", ""),
+                    c.get("patron_name", "Prof. Patron Head"),
+                    c.get("patron_email", ""),
+                    c.get("president_name", "Dr. Club President"),
+                    c.get("president_email", ""),
+                    c.get("secretary_name", "Prof. Secretary Lead"),
+                    c.get("secretary_email", ""),
                     "+91 9434000000",
-                    "3840",
-                    "35",
-                    "7",
+                    str(c.get("member_count", 3840)),
+                    str(c.get("solo_activities", 35)),
+                    str(c.get("joint_activities", 7)),
                 ]
             )
         return response

@@ -301,7 +301,48 @@ class ActivityDeleteView(APIView):
 
 
 
+RENEWALS_STORE_FILE = Path(settings.BASE_DIR) / "data" / "club_renewals.json"
+
+
+def load_persisted_renewals() -> dict[str, dict[str, str]]:
+    """Load persisted renewal records from disk."""
+    if not RENEWALS_STORE_FILE.exists():
+        return {}
+    try:
+        with open(RENEWALS_STORE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_persisted_renewal(club_id: str, last_ren: str, upcoming_ren: str) -> None:
+    """Persist club renewal dates atomically to disk."""
+    renewals = load_persisted_renewals()
+    renewals[club_id] = {
+        "last_renewal_date": last_ren,
+        "upcoming_renewal_date": upcoming_ren,
+    }
+    RENEWALS_STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = RENEWALS_STORE_FILE.with_suffix(".tmp")
+    with open(temp_file, "w", encoding="utf-8") as f:
+        json.dump(renewals, f, indent=2)
+    temp_file.replace(RENEWALS_STORE_FILE)
+
+
 MASTER_CLUB_DATES: dict[str, tuple[str, str, str]] = {
+    # 10 seeded dummy clubs in domain model
+    "CLB-DU-CULT": ("2021-04-12", "2025-04-12", "2026-04-12"),
+    "CLB-DU-TECH": ("2021-05-10", "2025-05-10", "2026-05-10"),
+    "CLB-AS-CULT": ("2021-08-15", "2025-08-15", "2026-08-15"),
+    "CLB-KA-TECH": ("2021-09-01", "2025-09-01", "2026-09-01"),
+    "CLB-MH-TECH": ("2021-10-10", "2025-10-10", "2026-10-10"),
+    "CLB-MP-TECH": ("2021-11-15", "2025-11-15", "2026-11-15"),
+    "CLB-TG-CULT": ("2020-11-05", "2025-11-05", "2026-11-05"),
+    "CLB-TN-TECH": ("2021-12-01", "2025-12-01", "2026-12-01"),
+    "CLB-UP-LIT": ("2022-01-15", "2025-01-15", "2026-01-15"),
+    "CLB-WB-LIT": ("2022-02-20", "2025-02-20", "2026-02-20"),
+    # Standard dummy club codes
     "CLUB-IITKGP-001": ("2021-04-12", "2025-04-12", "2026-04-12"),
     "CLUB-IITD-002": ("2021-05-10", "2025-05-10", "2026-05-10"),
     "CLUB-IITB-003": ("2021-08-15", "2025-08-15", "2026-08-15"),
@@ -317,6 +358,14 @@ MASTER_CLUB_DATES: dict[str, tuple[str, str, str]] = {
 
 def get_club_dates(code: str, created_at: Any) -> tuple[str, str, str]:
     """Return (date_of_approval, last_renewal_date, upcoming_renewal_date)."""
+    renewals = load_persisted_renewals()
+    if code in renewals:
+        r = renewals[code]
+        last_r = r.get("last_renewal_date", "")
+        upcoming_r = r.get("upcoming_renewal_date", "")
+        doa = MASTER_CLUB_DATES.get(code, ("2021-04-12", "", ""))[0]
+        return doa, last_r, upcoming_r
+
     if code in MASTER_CLUB_DATES:
         return MASTER_CLUB_DATES[code]
     c_date = created_at.date() if created_at else None
@@ -672,6 +721,12 @@ class ClubRenewView(APIView):
         now_utc = datetime.now(UTC)
         today = now_utc.strftime("%Y-%m-%d")
         next_year = (now_utc + timedelta(days=365)).strftime("%Y-%m-%d")
+
+        # Persist renewal immediately to disk and in-memory cache
+        save_persisted_renewal(club_id, today, next_year)
+        doa = MASTER_CLUB_DATES.get(club_id, ("2021-04-12", "", ""))[0]
+        MASTER_CLUB_DATES[club_id] = (doa, today, next_year)
+
         return Response({
             "success": True,
             "message": f"Club {club_id} registration successfully renewed.",

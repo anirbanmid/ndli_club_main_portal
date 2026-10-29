@@ -50,6 +50,7 @@ import {
   downloadCertificateJPG,
   downloadCertificatePDF,
   formatFormalDate,
+  printCertificate,
   printCertificateOnPage,
   renderRenewalCertificate,
 } from '../utils/renewalCertificateEngine';
@@ -352,7 +353,10 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   const handlePrintCert = () => {
     if (!certCanvasRef.current) return;
-    printCertificateOnPage(certCanvasRef.current);
+    const ok = printCertificateOnPage(certCanvasRef.current);
+    if (!ok) {
+      printCertificate(certCanvasRef.current);
+    }
   };
 
 
@@ -472,6 +476,21 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
         /* proceed with local state update */
       }
 
+      // Persist to localStorage for immediate client-side persistence across reloads
+      try {
+        const stored = JSON.parse(localStorage.getItem('ndli_club_renewals') || '{}');
+        stored[securityClub.club_id || ''] = {
+          last_renewal_date: today,
+          upcoming_renewal_date: nextRenewal,
+          next_renewal_date: nextRenewal,
+          renewal_date: nextRenewal,
+          status: 'Active',
+        };
+        localStorage.setItem('ndli_club_renewals', JSON.stringify(stored));
+      } catch {
+        /* ignore storage quota/disabled */
+      }
+
       const updated: ClubSearchRow = {
         ...securityClub,
         last_renewal_date: today,
@@ -543,7 +562,28 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     setClubsLoading(true);
     try {
       const data = await fetchClubRows();
-      setClubRows(data);
+      let stored: Record<string, { last_renewal_date?: string; upcoming_renewal_date?: string; renewal_date?: string }> = {};
+      try {
+        stored = JSON.parse(localStorage.getItem('ndli_club_renewals') || '{}');
+      } catch {
+        stored = {};
+      }
+      const merged = data.map((c) => {
+        const cid = c.club_id || '';
+        const ren = cid ? stored[cid] : undefined;
+        if (ren && ren.last_renewal_date) {
+          return {
+            ...c,
+            last_renewal_date: ren.last_renewal_date,
+            upcoming_renewal_date: ren.upcoming_renewal_date || c.upcoming_renewal_date,
+            next_renewal_date: ren.upcoming_renewal_date || c.next_renewal_date,
+            renewal_date: ren.renewal_date || ren.upcoming_renewal_date || c.renewal_date,
+            status: 'Active',
+          };
+        }
+        return c;
+      });
+      setClubRows(merged);
     } catch {
       showAlert('Unable to load clubs directory.', true);
     } finally {

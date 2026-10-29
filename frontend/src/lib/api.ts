@@ -122,8 +122,15 @@ async function getJson<T>(path: string, params: Record<string, string | number |
 }
 
 /** GET /api/v1/public/verify/?id= — one verdict, six fields, nothing else. */
-export function verifyCertificate(id: string): Promise<VerifyVerdict> {
-  return getJson<VerifyVerdict>('/verify/', { id });
+export function verifyCertificate(
+  id: string,
+  extraParams?: { reg_no?: string; club_id?: string },
+): Promise<VerifyVerdict> {
+  return getJson<VerifyVerdict>('/verify/', {
+    id,
+    reg_no: extraParams?.reg_no,
+    club_id: extraParams?.club_id,
+  });
 }
 
 /** GET /api/v1/public/telemetry/ — State/UT breakdown (chart + table source). */

@@ -541,7 +541,16 @@ export async function downloadCertificatePDF(canvas: HTMLCanvasElement, filename
 /**
  * On-page A4 print engine (zero blank pages)
  */
-export function printCertificateOnPage(canvas: HTMLCanvasElement): void {
+/**
+ * On-page A4 print engine (zero blank pages).
+ * R54 hardened:
+ * - Uses high-res data URL img tag inside dedicated print root (avoids canvas context drop on print spooling).
+ * - 30-second guard timer so dialog is not wiped prematurely.
+ * - Single-page A4 portrait styling.
+ */
+export function printCertificateOnPage(canvas: HTMLCanvasElement): boolean {
+  if (!canvas || typeof document === 'undefined' || !document.body) return false;
+
   const PRINT_STYLE_ID = 'ndli-certificate-print-style';
   const PRINT_ROOT_ID = 'certificate-print-root';
 
@@ -563,38 +572,55 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): void {
         html, body {
           width: 210mm !important;
           height: 297mm !important;
+          min-height: 0 !important;
+          max-height: 297mm !important;
           margin: 0 !important;
           padding: 0 !important;
           background: #ffffff !important;
           overflow: hidden !important;
+          display: block !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
+        body.printing-certificate {
+          width: 210mm !important;
+          height: 297mm !important;
+          line-height: 0 !important;
+          font-size: 0 !important;
+        }
         body.printing-certificate > *:not(#${PRINT_ROOT_ID}) {
           display: none !important;
+          visibility: hidden !important;
         }
         body.printing-certificate #${PRINT_ROOT_ID} {
           display: block !important;
-          position: fixed !important;
+          visibility: visible !important;
+          position: absolute !important;
           top: 0 !important;
           left: 0 !important;
           width: 210mm !important;
           height: 297mm !important;
           margin: 0 !important;
           padding: 0 !important;
-          z-index: 99999999 !important;
           background: #ffffff !important;
+          line-height: 0 !important;
+          font-size: 0 !important;
           page-break-before: avoid !important;
           page-break-after: avoid !important;
           page-break-inside: avoid !important;
         }
+        #${PRINT_ROOT_ID} img,
         #${PRINT_ROOT_ID} canvas {
           display: block !important;
           width: 210mm !important;
           height: 297mm !important;
+          max-width: 100% !important;
+          max-height: 100% !important;
           object-fit: fill !important;
           margin: 0 !important;
           padding: 0 !important;
+          border: 0 !important;
+          background: #ffffff !important;
         }
       }
     `;
@@ -609,27 +635,108 @@ export function printCertificateOnPage(canvas: HTMLCanvasElement): void {
   }
 
   printRoot.innerHTML = '';
-  const printCanvas = document.createElement('canvas');
-  printCanvas.width = canvas.width;
-  printCanvas.height = canvas.height;
-  const pCtx = printCanvas.getContext('2d');
-  if (pCtx) {
-    pCtx.drawImage(canvas, 0, 0);
-  }
-  printRoot.appendChild(printCanvas);
 
-  document.body.classList.add('printing-certificate');
+  // Render high-res JPEG image element into print root (standard cross-browser print fidelity)
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.98);
+  const printImg = document.createElement('img');
+  printImg.src = dataUrl;
+  printImg.alt = 'NDLI Club Renewal Certificate';
+  printRoot.appendChild(printImg);
 
-  const cleanup = () => {
-    document.body.classList.remove('printing-certificate');
-    if (printRoot) printRoot.innerHTML = '';
-    window.removeEventListener('afterprint', cleanup);
+  let done = false;
+  let printMql: MediaQueryList | null = null;
+  const onPrintMediaChange = (e: MediaQueryListEvent) => {
+    if (!e.matches) cleanup();
   };
 
-  window.addEventListener('afterprint', cleanup, { once: true });
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    document.body.classList.remove('printing-certificate');
+    window.removeEventListener('afterprint', cleanup);
+    if (printMql) {
+      try {
+        printMql.removeEventListener('change', onPrintMediaChange);
+      } catch {
+        /* old webviews */
+      }
+    }
+    if (printRoot && printRoot.parentNode) {
+      printRoot.parentNode.removeChild(printRoot);
+    }
+  };
 
-  setTimeout(() => {
+  if (typeof window.matchMedia === 'function') {
+    try {
+      printMql = window.matchMedia('print');
+      printMql.addEventListener('change', onPrintMediaChange);
+    } catch {
+      printMql = null;
+    }
+  }
+
+  window.addEventListener('afterprint', cleanup);
+  document.body.classList.add('printing-certificate');
+
+  let ok = true;
+  try {
     window.print();
-    setTimeout(cleanup, 2000);
-  }, 100);
+  } catch {
+    ok = false;
+  }
+
+  // 30-second guard timer (R54 hardened: prevents premature dialog destruction)
+  setTimeout(cleanup, 30000);
+  return ok;
+}
+
+/**
+ * Popup window route — secondary fallback matching legacy certificate_engine.js
+ */
+export function printCertificate(canvas: HTMLCanvasElement): boolean {
+  if (!canvas || typeof window === 'undefined') return false;
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.98);
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    return false;
+  }
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Print NDLI Club Renewal Certificate</title>
+      <style>
+        @page { size: A4 portrait; margin: 0; }
+        html, body {
+          margin: 0; padding: 0; width: 100%; height: 100%; background: #ffffff;
+        }
+        body {
+          display: flex; justify-content: center; align-items: center;
+        }
+        .print-actions {
+          position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; z-index: 10;
+        }
+        .print-actions button {
+          padding: 8px 16px; font-size: 14px; font-weight: bold; cursor: pointer;
+          background: #00695c; color: #ffffff; border: none; border-radius: 6px;
+        }
+        img {
+          width: 210mm; height: 297mm; display: block; object-fit: contain; margin: 0 auto;
+        }
+        @media print {
+          .print-actions { display: none !important; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="print-actions">
+        <button onclick="window.print()">Print Certificate</button>
+        <button onclick="window.close()" style="background: #64748b;">Close</button>
+      </div>
+      <img src="${dataUrl}" alt="NDLI Club Renewal Certificate" />
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  return true;
 }

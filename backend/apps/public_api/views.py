@@ -147,6 +147,81 @@ class VerifyCertificateView(APIView):
     authentication_classes: list = []
     permission_classes = [CategoryGate("public")]
 
+    def _resolve_institutional_certificate(
+        self, certificate_id: str, request: Request
+    ) -> dict[str, Any] | None:
+        """Resolve institutional club registration / renewal certificates."""
+        from apps.activities.views import get_club_dates
+        from apps.domain.models import Club
+
+        raw_id = certificate_id.strip()
+        reg_no = str(request.query_params.get("reg_no", "")).strip()
+        club_id = str(request.query_params.get("club_id", "")).strip()
+
+        target_club: Club | None = None
+
+        if club_id:
+            target_club = Club.objects.select_related(
+                "institution__state__zone"
+            ).filter(code__iexact=club_id).first()
+
+        if target_club is None and reg_no:
+            clean_reg = reg_no.replace("NDLI/CLUB/", "").strip()
+            target_club = Club.objects.select_related(
+                "institution__state__zone"
+            ).filter(code__iexact=clean_reg).first()
+
+        if target_club is None and raw_id.upper().startswith("NDLI-REN-"):
+            body = raw_id[len("NDLI-REN-"):].strip()
+            for c in Club.objects.select_related("institution__state__zone").all():
+                c_code = c.code.upper()
+                c_clean = c_code.replace("-", "")
+                if (
+                    body.upper().startswith(f"{c_code}-")
+                    or body.upper() == c_code
+                    or c_clean in body.upper()
+                ):
+                    target_club = c
+                    break
+
+        if target_club is None and "NDLI/CLUB/" in raw_id.upper():
+            clean_code = raw_id.upper().replace("NDLI/CLUB/", "").strip()
+            target_club = Club.objects.select_related(
+                "institution__state__zone"
+            ).filter(code__iexact=clean_code).first()
+
+        if target_club is None:
+            target_club = Club.objects.select_related(
+                "institution__state__zone"
+            ).filter(code__iexact=raw_id).first()
+
+        if target_club is None:
+            return None
+
+        doa, last_ren, _upcoming = get_club_dates(
+            target_club.code, getattr(target_club, "created_at", None)
+        )
+        effective_date = (
+            last_ren
+            if (last_ren and "None" not in last_ren and "-" in last_ren)
+            else doa
+        )
+        inst_name = (
+            target_club.institution.name
+            if target_club.institution
+            else target_club.name
+        )
+
+        disclosure = {
+            "name": inst_name,
+            "club": target_club.name,
+            "institution": inst_name,
+            "event_title": "Annual Institutional Registration Renewal",
+            "date": effective_date,
+            "status": cert_services.STATUS_VALID,
+        }
+        return {key: disclosure[key] for key in PUBLIC_KEYS}
+
     def get(self, request: Request) -> Response:
         limited = _throttled("verify", VERIFY_LIMIT, request)
         if limited is not None:
@@ -157,7 +232,26 @@ class VerifyCertificateView(APIView):
                 {"detail": "missing certificate id"}, status=status.HTTP_400_BAD_REQUEST
             )
         certificate_id = certificate_id.strip()
+
+        # Check for Institutional Registration / Renewal Certificates (e.g. NDLI-REN-*)
+        if (
+            certificate_id.upper().startswith("NDLI-REN-")
+            or "NDLI/CLUB/" in certificate_id.upper()
+            or request.query_params.get("reg_no")
+            or request.query_params.get("club_id")
+        ):
+            inst_disclosure = self._resolve_institutional_certificate(
+                certificate_id, request
+            )
+            if inst_disclosure is not None:
+                return _cached(request, inst_disclosure, 60)
+
         if not is_valid_certificate_id(certificate_id):
+            inst_disclosure = self._resolve_institutional_certificate(
+                certificate_id, request
+            )
+            if inst_disclosure is not None:
+                return _cached(request, inst_disclosure, 60)
             return _cached(request, _invalid_verdict(), 60)
         result = cert_services.verify_certificate(certificate_id)
         if result.disclosure is None:

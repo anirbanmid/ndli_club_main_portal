@@ -354,20 +354,9 @@ export async function renderRenewalCertificate(
   // Positioned directly under Registration Details block:
   // centerX = 1840, centerY = 2560, targetSize = 240
   // -------------------------------------------------------------
-  let originUrl = 'https://anirbanmid.pythonanywhere.com';
+  let originUrl = '';
   if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname || '';
-    if (
-      hostname &&
-      hostname !== 'localhost' &&
-      hostname !== '127.0.0.1' &&
-      hostname !== '0.0.0.0' &&
-      hostname !== '::1' &&
-      hostname !== '[::1]' &&
-      !hostname.startsWith('127.')
-    ) {
-      originUrl = window.location.origin;
-    }
+    originUrl = window.location.origin;
   }
 
   const verificationUrl = `${originUrl}/verify?tab=verify&certId=${encodeURIComponent(

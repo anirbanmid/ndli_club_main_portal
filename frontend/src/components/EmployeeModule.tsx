@@ -51,8 +51,6 @@ import {
   downloadCertificateJPG,
   downloadCertificatePDF,
   formatFormalDate,
-  printCertificate,
-  printCertificateOnPage,
   renderRenewalCertificate,
 } from '../utils/renewalCertificateEngine';
 import {
@@ -350,14 +348,6 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     if (!certCanvasRef.current || !certClub) return;
     const cid = certClub.club_id || 'CLUB';
     await downloadCertificatePDF(certCanvasRef.current, `NDLI_Renewal_Certificate_${cid}.pdf`);
-  };
-
-  const handlePrintCert = () => {
-    if (!certCanvasRef.current) return;
-    const ok = printCertificate(certCanvasRef.current);
-    if (!ok) {
-      printCertificateOnPage(certCanvasRef.current);
-    }
   };
 
 
@@ -3479,14 +3469,6 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       style={{ width: '100%', fontWeight: 700, padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
                       <span>📄</span> Download High-Resolution PDF (A4)
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-accent"
-                      onClick={handlePrintCert}
-                      style={{ width: '100%', fontWeight: 700, padding: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#0D7751', color: '#fff' }}
-                    >
-                      <span>🖨️</span> Print Certificate (A4 Portrait)
                     </button>
                   </div>
                 </div>

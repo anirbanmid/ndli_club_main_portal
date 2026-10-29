@@ -492,7 +492,7 @@ export function App({ ssrLocation }: AppProps = {}) {
             door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
           adminAuthed ? (
-            adminRole === 'regional_officer' || adminRole === 'central_admin' ? (
+            adminRole === 'regional_officer' ? (
               <EmployeeModule
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}

@@ -441,46 +441,30 @@ export function App({ ssrLocation }: AppProps = {}) {
               />
             )
           ) : (
-            <div className="max-w-md mx-auto px-4 sm:px-6 py-10 space-y-4">
-              <div className="p-4 rounded-2xl bg-[#103125] text-white space-y-1">
-                <div className="text-[11px] font-black uppercase tracking-wider text-amber-300">
-                  IIT KHARAGPUR NODAL COMMAND
-                </div>
-                <h2 className="text-lg font-extrabold">Administrator sign-in required</h2>
-                <p className="text-xs text-brand-200/90">
-                  The IIT KGP Admin Module is locked behind a real admin session
-                  (EMP01–EMP07, CENTRALADM or SUPEROPS).
-                </p>
-              </div>
-              {adminGateError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
-                  {adminGateError}
-                </div>
-              )}
-              <LoginView
-                initialNext={''}
-                onNavigate={(route) => {
-                  setVerifyInitialCertId(route.certId);
-                  setCurrentTab(route.tab);
-                }}
-                onSignedIn={async () => {
-                  try {
-                    const s = await fetchSession();
-                    if (s && s.category === 'iit_kgp_admin') {
-                      setAdminAuthed(true);
-                      setAdminRole(s.sub_role ?? '');
-                      setAdminGateError(null);
-                      return;
-                    }
-                    setAdminGateError(
-                      'This account is not an IIT KGP administrator. Use an EMP01–EMP07 / CENTRALADM / SUPEROPS admin login.',
-                    );
-                  } catch {
-                    setAdminGateError('Sign-in did not open an admin session. Please try again.');
+            <LoginView
+              initialNext={''}
+              fullViewport={true}
+              onNavigate={(route) => {
+                setVerifyInitialCertId(route.certId);
+                setCurrentTab(route.tab);
+              }}
+              onSignedIn={async () => {
+                try {
+                  const s = await fetchSession();
+                  if (s && s.category === 'iit_kgp_admin') {
+                    setAdminAuthed(true);
+                    setAdminRole(s.sub_role ?? '');
+                    setAdminGateError(null);
+                    return;
                   }
-                }}
-              />
-            </div>
+                  setAdminGateError(
+                    'This account is not an IIT KGP administrator. Use an EMP01–EMP07 / CENTRALADM / SUPEROPS admin login.',
+                  );
+                } catch {
+                  setAdminGateError('Sign-in did not open an admin session. Please try again.');
+                }
+              }}
+            />
           )
         )}
       </main>

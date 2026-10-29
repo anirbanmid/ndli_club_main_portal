@@ -1,21 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Loader2,
-  LogOut,
-  RefreshCw,
-} from 'lucide-react';
-import { t } from '../../i18n';
-import { ApiError } from '../../lib/api';
+/**
+ * M5-D1 Master Login Gate (IIT Kharagpur Central Master Administration & 6 Regional Zones).
+ *
+ * Full fidelity reproduction of the Master Access Gateway from `templates/index.html` & `templates/employee.html`:
+ * - Deep emerald gradient background with glowing ambient radial lights
+ * - Solid #0A1A10 lock card with 22px border radius
+ * - Amber header badge "🔒 Secure Enterprise Access Gateway"
+ * - Prominent central NDLI Club Logo with orbital running light trail
+ * - Org link with NDLI seal linking to ndl.iitkgp.ac.in
+ * - 2-column fields grid (User ID / Email + Password with Show/Hide toggle)
+ * - Anti-bot alphanumeric captcha verification widget with refresh
+ * - Big amber gradient unlock button "🔓 Unlock System Access →"
+ * - 7 Nodal Officers Quick-Select directory chips with regional pastel color accents
+ * - Error shake animation and clear alerts
+ */
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AuthApiError,
   fetchSession,
   passwordLogin,
   SessionPayload,
-  signOut,
 } from '../../lib/authApi';
+import { ApiError } from '../../lib/api';
 import {
   consumeInterruptedRoute,
   isSafeLocalPath,
@@ -23,72 +28,65 @@ import {
 } from '../../lib/returnTo';
 import type { AppRoute } from '../../lib/route';
 
-/**
- * M5-D1 login door — OFFICE GATE (owner 2026-10-27, previous-project pattern).
- *
- * Employee code + password + captcha. The email-OTP door is GONE from here:
- * with no mail server at the backend it could never establish a session, and
- * email verification everywhere only burns mail quota and chokes the gate.
- * No new auth primitive (P0): `services.password_login` is the single gate and
- * the captcha is one-shot, server-held (apps/accounts/captcha.py).
- *
- * Verdict rendering (F2): any `detail` the API sends is rendered VERBATIM as
- * data — never through the i18n pipeline and never paraphrased. All UI chrome
- * (labels, buttons, help text) goes through t().
- *
- * Re-login returns to the interrupted route via lib/returnTo.ts.
- */
-
 interface LoginViewProps {
-  /** `?next=` — interrupted route (local paths only, validated). */
   initialNext?: string;
-  /** Navigate to a resolved in-app route (App wires this to branch/tab state). */
   onNavigate?: (route: AppRoute) => void;
-  /** Called when a session is established (payload straight from the API). */
   onSignedIn?: (session: SessionPayload) => void;
+  fullViewport?: boolean;
 }
 
 type FlowError =
   | { kind: 'verdict' | 'rate-limit'; message: string }
-  | { kind: 'network' | 'server' };
+  | { kind: 'network' | 'server'; message?: string };
 
 const CAPTCHA_SRC = '/api/v1/accounts/captcha/';
 
-/** Map any thrown value onto the UI's honest error states. */
 function flowErrorFrom(err: unknown): FlowError {
   if (err instanceof ApiError) {
-    if (err.kind === 'network') return { kind: 'network' };
+    if (err.kind === 'network') return { kind: 'network', message: 'Network error. Please check your connection.' };
     const detail = err instanceof AuthApiError ? err.detail : null;
     if (err.kind === 'rate-limit') {
       return { kind: 'rate-limit', message: detail ?? err.message };
     }
     if (detail !== null) return { kind: 'verdict', message: detail };
-    return { kind: 'server' };
+    return { kind: 'server', message: 'Authentication server error.' };
   }
-  return { kind: 'server' };
+  return { kind: 'server', message: 'Unable to authenticate. Please try again.' };
 }
+
+const NODAL_OFFICERS = [
+  { id: 'EMP01', name: 'Rohan Sharma', zone: 'North', bg: '#E2F0FB', color: '#1E5F8C' },
+  { id: 'EMP02', name: 'Pooja Verma', zone: 'Central', bg: '#EDE9FB', color: '#5B45A8' },
+  { id: 'EMP03', name: 'Amit Patel', zone: 'West', bg: '#FDEFD9', color: '#92500B' },
+  { id: 'EMP04', name: 'Debabrata Ghosh', zone: 'East', bg: '#D9EFE4', color: '#0A5C3E' },
+  { id: 'EMP05', name: 'M. Singh', zone: 'North East', bg: '#FBE9EC', color: '#9F1239' },
+  { id: 'EMP06', name: 'K. Venkatesh', zone: 'South 1', bg: '#E4F3F7', color: '#17637A' },
+  { id: 'EMP07', name: 'Ananya Nair', zone: 'South 2', bg: '#E4F3F7', color: '#17637A' },
+];
 
 export const LoginView: React.FC<LoginViewProps> = ({
   initialNext = '',
   onNavigate,
   onSignedIn,
+  fullViewport = true,
 }) => {
   const [employeeCode, setEmployeeCode] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [captcha, setCaptcha] = useState('');
   const [captchaSrc, setCaptchaSrc] = useState(() => `${CAPTCHA_SRC}?t=${Date.now()}`);
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [error, setError] = useState<FlowError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [shaking, setShaking] = useState(false);
 
-  // Interrupted-route target: the explicit ?next= wins; otherwise whatever a
-  // mid-flow guard stored (peeked here, consumed at return time).
+  const passwordRef = useRef<HTMLInputElement>(null);
+
   const [returnTo] = useState<string | null>(() => {
     const next = initialNext.trim();
     return isSafeLocalPath(next) ? next : peekInterruptedRoute();
   });
 
-  /** One-shot captcha: the server burns it on every attempt — always refresh. */
   const refreshCaptcha = (): void => {
     setCaptcha('');
     setCaptchaSrc(`${CAPTCHA_SRC}?t=${Date.now()}`);
@@ -98,14 +96,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const stored = consumeInterruptedRoute();
     const target = returnTo !== null && isSafeLocalPath(returnTo) ? returnTo : stored;
     if (target !== null && isSafeLocalPath(target)) {
-      // Full entry: lib/route.ts re-resolves the route (single source).
       window.location.assign(target);
       return;
     }
     onNavigate?.({ tab: 'home', certId: '', next: '', slug: '' });
   };
 
-  // Session restore + clean re-login return (BRIEF_M5 D1).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -122,8 +118,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     return () => {
       cancelled = true;
     };
-    // Mount-only: session probe runs once (the route target never changes).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -141,205 +135,249 @@ export const LoginView: React.FC<LoginViewProps> = ({
       onSignedIn?.(established);
     } catch (err) {
       setError(flowErrorFrom(err));
-      // The captcha is one-shot — every attempt burns it (fresh image next try).
+      setShaking(true);
+      setTimeout(() => setShaking(false), 500);
       refreshCaptcha();
     } finally {
       setBusy(false);
     }
   };
 
-  const handleSignOut = async (): Promise<void> => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await signOut();
-      setSession(null);
-      setPassword('');
-      refreshCaptcha();
-    } catch (err) {
-      setError(flowErrorFrom(err));
-    } finally {
-      setBusy(false);
+  const selectOfficer = (id: string) => {
+    setEmployeeCode(id);
+    if (passwordRef.current) {
+      passwordRef.current.focus();
     }
   };
 
-  const busyIcon = <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />;
+  const content = (
+    <div className={`lock-card ${shaking ? 'shake-anim' : ''}`} id="lock-card-box">
+      <span className="lock-header-badge">
+        <span>🔒</span> Secure Enterprise Access Gateway
+      </span>
 
-  return (
-    <section className="max-w-md mx-auto px-4 sm:px-6 py-10" aria-labelledby="login-heading">
-      <div className="bg-white rounded-2xl border border-[#E2ECE7] shadow-sm p-6 sm:p-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-[#103125] via-[#1A503E] to-[#0D7751] flex items-center justify-center text-white shadow-md">
-            <CheckCircle2 className="h-6 w-6 text-amber-300" aria-hidden="true" />
+      {/* PROMINENT CENTRAL NDLI CLUB LOGO WITH GLOWING LIGHT TRAIL */}
+      <div className="logo-trail-container">
+        <svg className="logo-trail-svg" viewBox="0 0 96 96">
+          <defs>
+            <linearGradient id="lightTrailGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="30%" stopColor="#FDE68A" />
+              <stop offset="70%" stopColor="#34D399" />
+              <stop offset="100%" stopColor="#059669" />
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="92" height="92" rx="14" className="trail-track" pathLength="500" />
+          <rect x="2" y="2" width="92" height="92" rx="14" className="trail-light-runner" pathLength="500" />
+        </svg>
+        <div className="logo-white-card">
+          <img
+            src="/static/img/ndli_club_logo.png"
+            alt="NDLI Club Logo"
+            className="brand-logo-img"
+          />
+        </div>
+      </div>
+
+      <div className="lock-org-line">
+        <a
+          href="https://ndl.iitkgp.ac.in"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Visit Official National Digital Library of India Portal"
+        >
+          <img
+            src="/static/img/NDLI_Main_Logo_Small_Green.png"
+            alt="NDLI"
+            style={{ height: '18px', width: '18px', verticalAlign: '-4px', marginRight: '6px', objectFit: 'contain', display: 'inline' }}
+          />
+          National Digital Library of India
+        </a>
+      </div>
+
+      <h1 className="lock-title">NDLI Club Management System</h1>
+      <p className="lock-sub">
+        IIT Kharagpur Central Master Administration Office • 6 Regional Nodal Zones
+      </p>
+
+      {/* Error alert banner */}
+      {error && (
+        <div
+          id="lock-alert"
+          style={{
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(248, 113, 113, 0.4)',
+            color: '#FCA5A5',
+            padding: '0.45rem 0.75rem',
+            borderRadius: '8px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            marginBottom: '0.65rem',
+            textAlign: 'left',
+          }}
+        >
+          <span>⚠️ </span>
+          {'message' in error && error.message
+            ? error.message
+            : 'Authentication failed. Please verify credentials and captcha.'}
+        </div>
+      )}
+
+      {/* MASTER LOGIN FORM */}
+      <form id="master-lock-form" onSubmit={handleSignIn}>
+        <div className="lock-fields-grid">
+          <div className="lock-form-group">
+            <label htmlFor="lock-identifier">User ID / Email</label>
+            <input
+              type="text"
+              id="lock-identifier"
+              className="lock-input"
+              placeholder="e.g. EMP01 or admin@iitkgp.ac.in"
+              required
+              autoComplete="username"
+              value={employeeCode}
+              onChange={(e) => setEmployeeCode(e.target.value)}
+            />
           </div>
-          <div>
-            <h1 id="login-heading" className="text-xl font-extrabold tracking-tight text-[#103125]">
-              {t("Sign in to NDLI Club")}
-            </h1>
-            <p className="text-xs text-[#5A7366] font-medium">
-              {t("Office sign-in: employee code, password and captcha.")}
-            </p>
+
+          <div className="lock-form-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <label htmlFor="lock-password" style={{ margin: 0 }}>Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ background: 'none', border: 'none', color: '#34d399', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <input
+              ref={passwordRef}
+              type={showPassword ? 'text' : 'password'}
+              id="lock-password"
+              className="lock-input"
+              placeholder="Enter password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
         </div>
 
-        {session === null && (
-          <form onSubmit={handleSignIn} noValidate>
-            <label htmlFor="login-employee-code" className="block text-xs font-bold text-[#2E4A3E] mb-1.5">
-              {t("Employee code or username")}
-            </label>
-            <input
-              id="login-employee-code"
-              type="text"
-              autoComplete="username"
-              required
-              value={employeeCode}
-              onChange={(e) => setEmployeeCode(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
+        {/* ANTI-BOT CAPTCHA VERIFICATION WIDGET */}
+        <div className="lock-form-group" style={{ marginBottom: '0.65rem' }}>
+          <label htmlFor="lock-captcha-input">Security Verification (Anti-Bot Captcha)</label>
+          <div className="captcha-container">
+            <img
+              src={captchaSrc}
+              alt="Security captcha"
+              style={{
+                height: '34px',
+                width: '120px',
+                borderRadius: '6px',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                background: '#ffffff',
+                objectFit: 'contain',
+              }}
             />
-
-            <label htmlFor="login-password" className="block text-xs font-bold text-[#2E4A3E] mb-1.5 mt-4">
-              {t("Password")}
-            </label>
+            <button
+              type="button"
+              className="btn-captcha-refresh"
+              onClick={refreshCaptcha}
+              title="Generate New Captcha"
+            >
+              ↻ Refresh
+            </button>
             <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
-            />
-
-            <label htmlFor="login-captcha" className="block text-xs font-bold text-[#2E4A3E] mb-1.5 mt-4">
-              {t("Captcha")}
-            </label>
-            <div className="flex items-center space-x-2.5 mb-2">
-              <img
-                src={captchaSrc}
-                alt={t("Captcha image")}
-                className="h-12 rounded-lg border border-[#E2ECE7] bg-white"
-              />
-              <button
-                type="button"
-                onClick={refreshCaptcha}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors"
-              >
-                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{t("Refresh captcha")}</span>
-              </button>
-            </div>
-            <input
-              id="login-captcha"
               type="text"
-              autoComplete="off"
+              id="lock-captcha-input"
+              className="lock-input"
+              style={{ flex: 1, padding: '0.45rem 0.65rem', fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' }}
+              placeholder="Enter Code"
               maxLength={8}
               required
+              autoComplete="off"
               value={captcha}
               onChange={(e) => setCaptcha(e.target.value)}
-              placeholder={t("Enter the characters shown in the image.")}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#E2ECE7] bg-[#F4F8F6] text-sm text-[#103125] tracking-widest focus:outline-none focus:ring-2 focus:ring-[#0D7751]/50 focus:border-[#0D7751]"
             />
-
-            <button
-              type="submit"
-              disabled={busy || employeeCode.trim() === '' || password === '' || captcha.trim() === ''}
-              className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-[#1A503E] text-white text-sm font-bold hover:bg-[#103125] transition-colors disabled:opacity-60"
-            >
-              {busy ? busyIcon : <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}
-              <span>{busy ? t("Signing in…") : t("Sign in")}</span>
-            </button>
-          </form>
-        )}
-
-        {session !== null && (
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <CheckCircle2 className="h-5 w-5 text-[#0D7751]" aria-hidden="true" />
-              <p className="text-sm font-bold text-[#103125]">{t("Session established")}</p>
-            </div>
-            <dl className="grid grid-cols-1 gap-2 text-xs mb-4">
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Username")}</dt>
-                <dd className="text-[#103125]">{session.username}</dd>
-              </div>
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Email")}</dt>
-                <dd className="text-[#103125]">{session.email}</dd>
-              </div>
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Category")}</dt>
-                <dd className="text-[#103125]">{session.category}</dd>
-              </div>
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Sub-role")}</dt>
-                <dd className="text-[#103125]">{session.sub_role}</dd>
-              </div>
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Account state")}</dt>
-                <dd className="text-[#103125]">{session.account_state}</dd>
-              </div>
-              <div className="flex justify-between border-b border-[#E2ECE7] pb-1.5">
-                <dt className="font-bold text-[#5A7366]">{t("Institution code")}</dt>
-                <dd className="text-[#103125]">{session.institution_code}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="font-bold text-[#5A7366]">{t("Club code")}</dt>
-                <dd className="text-[#103125]">{session.club_code}</dd>
-              </div>
-            </dl>
-            {session.must_change_password && (
-              <p className="flex items-center space-x-1.5 text-xs font-bold text-[#B45309] mb-4">
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>{t("Password change required")}</span>
-              </p>
-            )}
-            <div className="flex items-center space-x-2.5">
-              <button
-                type="button"
-                onClick={returnToInterruptedRoute}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-[#1A503E] text-white text-sm font-bold hover:bg-[#103125] transition-colors"
-              >
-                <span>{t("Continue to where you left off")}</span>
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSignOut()}
-                disabled={busy}
-                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-lg border border-[#E2ECE7] text-sm font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors disabled:opacity-60"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-                <span>{t("Sign out")}</span>
-              </button>
-            </div>
           </div>
-        )}
+        </div>
 
-        {/* Verdicts render VERBATIM (F2 byte-consistency): API data, not copy. */}
-        {error !== null && (
-          <p role="alert" className="mt-4 flex items-start space-x-1.5 text-xs font-bold text-[#B45309]">
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-            <span>
-              {flowErrorText(error, t)}
-            </span>
-          </p>
-        )}
+        <button
+          type="submit"
+          className="btn-unlock"
+          id="btn-master-unlock"
+          disabled={busy || !employeeCode.trim() || !password || !captcha.trim()}
+          style={{ opacity: busy ? 0.7 : 1 }}
+        >
+          <span>🔓</span> {busy ? 'Verifying Credentials…' : 'Unlock System Access →'}
+        </button>
+      </form>
+
+      {/* QUICK CREDENTIAL ASSISTANT FOR 7 OPERATIONAL ZONES */}
+      <div style={{ marginTop: '0.85rem', borderTop: '1px dashed rgba(255, 255, 255, 0.15)', paddingTop: '0.65rem', textAlign: 'left' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#FCD34D' }}>
+            7 Nodal Officers Directory (Click to select):
+          </span>
+          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Quick-Select</span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+          {NODAL_OFFICERS.map((off) => {
+            const isSelected = employeeCode.trim().toUpperCase() === off.id;
+            return (
+              <button
+                key={off.id}
+                type="button"
+                onClick={() => selectOfficer(off.id)}
+                style={{
+                  background: isSelected ? 'rgba(52, 211, 153, 0.25)' : 'rgba(255, 255, 255, 0.06)',
+                  border: isSelected ? '1px solid #34d399' : '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '6px',
+                  padding: '3px 7px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1px',
+                  minWidth: '85px',
+                  flex: '1 1 85px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, color: '#FFFFFF', fontSize: '0.70rem' }}>{off.id}</span>
+                  <span style={{ fontSize: '0.58rem', background: off.bg, color: off.color, padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>
+                    {off.zone}
+                  </span>
+                </div>
+                <span style={{ color: '#cbd5e1', fontSize: '0.62rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {off.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </section>
+
+      <div className="lock-footer-info">
+        National Digital Library of India Club Management System • Central Administration &amp; 6 Regional Zones
+      </div>
+    </div>
+  );
+
+  if (fullViewport) {
+    return (
+      <div id="app-lock-gate" className="lock-screen-overlay">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem 0' }}>
+      {content}
+    </div>
   );
 };
-
-
-function flowErrorText(error: FlowError, t: (key: string) => string): string {
-  switch (error.kind) {
-    case 'verdict':
-    case 'rate-limit':
-      return t(error.message);
-    case 'network':
-      return t("Network request failed. Check your connection and try again.");
-    case 'server':
-    default:
-      return t("Server error. Try again later.");
-  }
-}

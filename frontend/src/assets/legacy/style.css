@@ -1,0 +1,2815 @@
+/* ==========================================================================
+   NDLI CLUB MANAGEMENT AND EMPLOYEE ACTIVITY TRACKING SYSTEM
+   "Direction C — Soft Modern SaaS" design language — v3.1
+   Brand Palette: #103125 | #1A503E | #0D7751 (identity kept)
+   Complement: Amber #D97706 | Sky #38BDF8 | Cream #FAFAF8
+   Soft surfaces: tinted canvas #F4F8F6, white cards, hairline #E2ECE7,
+   wide green-tinted diffusion, pills everywhere, generous radii.
+   Developer & Architect: Dr. Anirban Mukherjee
+   ========================================================================== */
+
+/* Google fonts imported locally via fonts.css */
+
+/* ==========================================================================
+   DESIGN TOKENS
+   ========================================================================== */
+:root {
+  /* --- Direction C canonical pastel set (spec §1) --- */
+  --c-bg:       #F4F8F6;
+  --c-card:     #FFFFFF;
+  --c-tint:     #E9F5EF;
+  --c-tint-2:   #F0F8F4;
+  --c-ink:      #17332A;
+  --c-ink-2:    #2E4A3E;
+  --c-muted:    #5F7B6E;
+  --c-faint:    #8AA598;
+  --c-line:     #E2ECE7;
+  --c-green:      #0D7751;
+  --c-green-soft: #D9EFE4;
+  --c-green-deep: #0A5C3E;
+  --c-amber:      #D97706;
+  --c-amber-soft: #FDEFD9;
+  --c-amber-ink:  #92500B;
+  --c-red:        #BE123C;
+  --c-red-soft:   #FDE7EA;
+  --c-red-ink:    #9F1239;
+  --c-sky-soft:   #E2F0FB;
+  --c-sky-ink:    #1E5F8C;
+  --c-lav-soft:   #EDE9FB;
+  --c-lav-ink:    #5B45A8;
+  /* NOTE (theme_css): --c-faint #8AA598 is the canonical §1 value but is only
+     2.65:1 on white — HARD RULE §0.8 (AA) wins for TEXT, so faint-styled
+     labels use --text-light / --text-muted instead. --c-faint stays declared
+     verbatim for decorative, non-text uses. */
+
+  /* --- Brand Green Palette --- */
+  --primary-dark:   #103125;
+  --primary:        #1A503E;
+  --primary-light:  #0D7751;
+  --primary-subtle: #E9F5EF; /* Direction C: c-tint */
+
+  /* --- Amber Accent (CTA & Highlights) --- */
+  --amber:          #D97706;
+  --amber-light:    #FEF3C7;
+  --amber-bright:   #F59E0B;
+  --amber-glow:     rgba(217, 119, 6, 0.22);
+
+  /* Round 2: portal inline styles reference var(--accent); the design
+     language treats the complement (amber) as the accent colour.
+     (Was undefined — 6 declarations silently fell back to nothing.) */
+  --accent:         #D97706;
+
+  /* --- Sky Info Accent --- */
+  --sky:            #38BDF8;
+  --sky-dark:       #0369A1; /* Round 3 (item 3): was #0284C7 (3.57:1 behind .pill-info labels — AA fail); only consumer is .pill-info */
+  --sky-light:      #E2F0FB; /* Direction C: c-sky-soft */
+
+  /* --- Emerald Accent --- */
+  --emerald:        #10B981;
+  --emerald-light:  #D9EFE4; /* Direction C: c-green-soft */
+
+  /* --- Status Colors --- */
+  --success:        #0D7751;
+  --success-light:  #D9EFE4; /* Direction C: c-green-soft */
+  --success-border: #A4DDC7;
+  --warning:        #B45309;
+  --warning-light:  #FDEFD9; /* Direction C: c-amber-soft */
+  --warning-border: #F3D9B2;
+  --danger:         #BE123C;
+  --danger-light:   #FDE7EA; /* Direction C: c-red-soft */
+  --danger-border:  #F6C9D2;
+
+  /* --- Surfaces & Canvas (tinted canvas + light glass) --- */
+  --bg-main:        #F4F8F6;
+  --bg-card:        #FFFFFF;
+  --bg-muted:       #E9F5EF;
+  --bg-input:       #FFFFFF;
+  /* R48 design polish: SOLID surface (was rgba white + blur = glass tell). */
+  --surface-glass:  #FFFFFF;
+  /* Direction C: name kept (templates may reference it); value re-based to the
+     c-ink glass tone — dark glass is reserved for tiny accents only (brand
+     tiles / gradient badges), never full-bleed chrome. */
+  --surface-dark-glass: rgba(23, 51, 42, 0.82);
+
+  /* --- Gradients --- */
+  /* Direction C LIGHT CHROME: the nav/section gradient is now a light tinted
+     ramp (white → canvas → tint). Every consumer (.navbar, .hero-banner and
+     the index.html inline hero) turns light with this one re-tune. */
+  --gradient-nav:     linear-gradient(135deg, #ffffff 0%, #f4f8f6 55%, #eaf6ef 100%);
+  --gradient-accent:  linear-gradient(135deg, #159B6B 0%, #0D7751 100%);
+  /* Round 3 (F4 decision — darken the LIGHT stops, keep the amber identity):
+     the old stops (#B45309/#D97706/#F59E0B) gave white labels 5.02/3.19/2.15:1.
+     New stops are all white-AA at every point: 7.12 / 5.08 / 5.02:1,
+     hues 25.8 / 30.2 / 26.0 deg (target 25-40deg — recognisably amber).
+     FROZEN: do not brighten back. */
+  --gradient-amber:   linear-gradient(135deg, #8F4208 0%, #A85A0B 55%, #B45309 100%);
+  /* Direction C: dark ramp reserved for TINY accents (brand mark tiles, small
+     gradient badges) — never page/section chrome. */
+  --gradient-dark:    linear-gradient(145deg, #071912 0%, #103125 50%, #1A503E 100%);
+  --gradient-card:    linear-gradient(180deg, #ffffff 0%, #f7fbf9 100%);
+  --gradient-badge:   linear-gradient(135deg, #0D7751 0%, #1A503E 100%);
+
+  /* --- Typography --- */
+  --font:         'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* --- Geometry (Direction C: radii scaled up) --- */
+  --radius-xs:    6px;
+  --radius-sm:    11px;
+  --radius:       14px;
+  --radius-lg:    18px;
+  --radius-xl:    20px;
+  --radius-2xl:   28px;
+  --radius-pill:  9999px;
+  --radius-modal: 22px;
+
+  /* --- Shadows (soft, wide, green-tinted diffusion — never harsh) --- */
+  --shadow-xs:    0 2px 8px rgba(16, 49, 37, 0.04);
+  --shadow-sm:    0 4px 14px rgba(16, 49, 37, 0.06);
+  --shadow:       0 12px 32px rgba(16, 49, 37, 0.08);
+  --shadow-lg:    0 22px 48px rgba(16, 49, 37, 0.12);
+  --shadow-xl:    0 30px 64px -12px rgba(16, 49, 37, 0.18);
+  --shadow-glow:  0 0 0 3px rgba(13, 119, 81, 0.20);
+  --shadow-amber: 0 6px 20px rgba(217, 119, 6, 0.30);
+
+  /* --- Z-Index Ladder (r3-phase2: single source of truth for stacking) ---
+     Every modal/overlay z-index in the four portals maps onto one of these
+     rungs (values preserved 1:1 from the previous hard-coded numbers, so
+     visual stacking is unchanged). Ladder, low → high:
+       5 sticky table heads < 200 navbar < 1000 modal-base (edit-modal,
+       renewal-attention-modal) < 1100 club-details < 1150 list modals <
+       1200 issue modals < 1250 security-confirmation modals < 1260
+       destructive-confirm modals < 1300 certificate terminal < 2500 admin
+       re-auth login < 10050 UI.toast < 10060 UI progress bar < 999999 UI
+       error-boundary banner. UI.toast intentionally outranks every modal.
+     NOTE: `#renewal-attention-modal { z-index: 1000 }` /
+     `#club-details-modal { z-index: 1100 }` below (and the matching inline
+     styles in admin.html) keep their literal numbers — template/CSS test
+     locks assert those exact strings. */
+  --z-sticky-head:   5;
+  --z-navbar:        200;
+  --z-modal-base:    1000;
+  --z-modal-details: 1100;
+  --z-modal-list:    1150;
+  --z-modal-issue:   1200;
+  --z-modal-security: 1250;
+  --z-modal-confirm: 1260;
+  --z-modal-terminal: 1300;
+  --z-modal-top:     2500;
+  --z-toast:         10050;
+  --z-progress:      10060;
+  --z-error-banner:  999999;
+
+  /* --- Transitions --- */
+  --transition-fast:   0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition:        0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 0.40s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-slow:   0.55s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- Text --- */
+  --text-main:    #17332A; /* Direction C: c-ink */
+  --text-muted:   #4E6358;
+  --text-light:   #647B70;  /* Round 7: was #7C9388 (3.3:1 on white — failed AA at micro sizes); now 4.6:1 */
+  --text-inverse: #FFFFFF;
+
+  /* --- Type ramp (polish P6) — shared micro/mid steps so label families
+     stop living on one-off sizes (0.66 / 0.67 / 0.68 / 0.70 / 0.73 …). --- */
+  --text-xs:      0.70rem;
+  --text-sm:      0.75rem;
+  --text-md:      0.82rem;
+  --text-lg:      1.00rem;
+  --text-xl:      1.70rem; /* Direction C: KPI values 26–30px (spec §3c) */
+
+  /* --- Borders (hairline) --- */
+  --border:        #E2ECE7;
+  --border-subtle: #EDF4F0;
+  --border-focus:  #0D7751;
+}
+
+/* ==========================================================================
+   BASE RESET
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  /* Round 2 F1: `overflow-x: hidden` turned body into a scroll container and
+     silently killed `position: sticky` on the navbar (all 4 portals). `clip`
+     keeps the horizontal clipping intent WITHOUT creating a scroll container,
+     so the sticky header sticks again. First line = fallback for browsers
+     without `clip` (Safari <16) — they keep the old behaviour. */
+  overflow-x: hidden;
+  overflow-x: clip;
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font);
+  /* Direction C tinted canvas with the two soft radial glows (green top-right,
+     amber bottom-left — screens-c-landing recipe). */
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(900px 520px at 82% -8%, rgba(52, 201, 143, 0.22), transparent 62%),
+    radial-gradient(700px 480px at -6% 108%, rgba(242, 179, 77, 0.20), transparent 60%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 15px;
+}
+
+/* Polish round: smooth scrolling is motion too — honour the motion contract.
+   Round 2 F7/F8: style.css's own entrance animations (viewSlideUp / tabReveal /
+   modalSpring / rippleAnim) were outside the ui.css §10 swap list — transform
+   and spring motion leaked through the fade-only contract. Swap them to the
+   shared fade (keyframes ship in ui.css), clamp .reveal-card to opacity, and
+   stop the width-animated fills under reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html, body { scroll-behavior: auto; }
+  .view-fade-in, .tab-panel.active, .modal-content, .btn .ripple {
+    animation-name: uiFadeOnly !important;
+  }
+  .reveal-card { transition-property: opacity !important; transform: none !important; }
+  .bar-fill, .gauge-segment { transition: none !important; }
+}
+
+/* Polish round: brand-tinted text selection */
+::selection {
+  background: rgba(13, 119, 81, 0.18);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   PAGE TRANSITION & SCROLL REVEAL ANIMATIONS
+   ========================================================================== */
+.view-fade-in {
+  animation: viewSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes viewSlideUp {
+  from { opacity: 0.5; transform: translateY(8px); }
+  to   { opacity: 1;   transform: translateY(0);   }
+}
+
+/* Scroll-reveal: cards animate in when they enter viewport */
+.reveal-card {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.50s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.50s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-card.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered children reveal */
+.reveal-card:nth-child(1) { transition-delay: 0.00s; }
+.reveal-card:nth-child(2) { transition-delay: 0.06s; }
+.reveal-card:nth-child(3) { transition-delay: 0.12s; }
+.reveal-card:nth-child(4) { transition-delay: 0.18s; }
+.reveal-card:nth-child(5) { transition-delay: 0.22s; }
+
+/* Ripple effect for buttons */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(16, 49, 37, 0.10);
+  transform: scale(0);
+  animation: rippleAnim 0.55s linear;
+  pointer-events: none;
+}
+
+/* Ripple on the gradient tiers reads white (they are dark-filled) */
+.btn-primary .ripple,
+.btn-accent .ripple,
+.btn-amber .ripple,
+.btn-success .ripple {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+@keyframes rippleAnim {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ==========================================================================
+   NAVBAR — Direction C LIGHT CHROME: glassy white sticky header, pill links
+   ========================================================================== */
+.navbar {
+  background: var(--surface-glass);
+  color: var(--text-main);
+  padding: 0.55rem 1.5rem;
+  box-shadow: 0 8px 24px rgba(16, 49, 37, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-navbar);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-container {
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* Brand */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  color: var(--text-main);
+  flex-shrink: 0;
+}
+
+.brand-logo-card {
+  background: rgba(255, 255, 255, 0.96);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-xs), 0 0 0 1px var(--border);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.brand:hover .brand-logo-card {
+  transform: scale(1.04);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--border);
+}
+
+.brand-logo-img {
+  height: 28px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-text h1 {
+  font-size: 0.93rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--c-ink);
+}
+
+.brand-text p {
+  font-size: 0.67rem;
+  color: var(--text-light);
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Nav Links — pill shaped */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 900px) {
+  .nav-links { flex-wrap: nowrap; }
+}
+
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 0.32rem 0.72rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.77rem;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--border);
+  transition: background var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast),
+              transform var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+
+.nav-link:hover {
+  background: var(--c-tint-2);
+  border-color: var(--c-line);
+  color: var(--text-main);
+  transform: translateY(-1px);
+}
+
+.nav-link.active {
+  background: var(--c-green-soft);
+  border-color: transparent;
+  color: var(--c-green-deep);
+}
+
+/* Complementary Highlight Buttons: Admin Office / Employee Login (Warm Amber) & Main Portal (Sky Blue) */
+/* Round 3 (F4): amber chip gradients darkened to the passing ramp
+   (white labels: 7.12/5.08/5.02:1 at every stop; was 5.02/3.19/2.15:1).
+   Direction C: these stay DARK — they are small gradient accent chips. */
+/* Direction C fidelity: soft pastel pills (deep-ink labels — AA 5.5:1+ on the
+   pastel fills; the saturated gradient chips read as "button soup" vs mockup). */
+.nav-link.nav-link-admin,
+.nav-link.nav-link-employee,
+.nav-link.nav-link-login {
+  background: var(--c-amber-soft, #FDEFD9) !important;
+  color: var(--c-amber-ink, #92500B) !important;
+  font-weight: 800 !important;
+  border: 1px solid var(--warning-border, #F3D9B2) !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.14) !important;
+  text-shadow: none;
+}
+.nav-link.nav-link-admin:hover,
+.nav-link.nav-link-employee:hover,
+.nav-link.nav-link-login:hover {
+  background: #F7E3C3 !important;
+  border-color: #E9C48F !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.22) !important;
+  transform: translateY(-1px);
+}
+
+/* Direction C fidelity: sky twin of the pastel nav pills (ink-on-pastel 5.4:1). */
+.nav-link.nav-link-portal {
+  background: var(--c-sky-soft, #E2F0FB) !important;
+  color: var(--c-sky-ink, #1E5F8C) !important;
+  font-weight: 800 !important;
+  border: 1px solid #BFDCEF !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.16) !important;
+  text-shadow: none;
+}
+.nav-link.nav-link-portal:hover {
+  background: #D3E7F7 !important;
+  border-color: #A7CFEA !important;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.24) !important;
+  transform: translateY(-1px);
+}
+
+
+.nav-live-clock-compact {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.71rem !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  line-height: 1.2 !important;
+  gap: 0.3rem !important;
+  border-radius: var(--radius-pill) !important;
+}
+
+/* Badges in nav — small solid brand accent (allowed dark accent) */
+.badge-tag {
+  background: var(--primary-light);
+  color: #ffffff;
+  font-size: var(--text-xs); /* P6: was 0.68rem */
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.developer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--c-tint-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.developer-badge strong {
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+/* ==========================================================================
+   LAYOUT CONTAINER
+   ========================================================================== */
+.container {
+  max-width: 1600px;
+  margin: 1.25rem auto;
+  padding: 0 1.9rem;
+  flex: 1;
+  width: 100%;
+}
+
+/* ==========================================================================
+   HERO BANNER — Direction C LIGHT: tinted surface, soft glows,
+   gradient-text headline accent
+   ========================================================================== */
+.hero-banner {
+  background: var(--gradient-nav);
+  color: var(--text-main);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.6rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -8%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(52, 201, 143, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  bottom: -60%;
+  left: 20%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(242, 179, 77, 0.14) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-banner h2 {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.3rem;
+  line-height: 1.15;
+  /* R48: solid ink — gradient text was an AI-uniform tell. */
+  color: var(--c-green-deep);
+}
+
+.hero-banner p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 850px;
+  line-height: 1.5;
+}
+
+/* Drive Status Badge — soft green pill */
+.drive-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--c-green-soft);
+  border: 1px solid var(--c-line);
+  padding: 0.28rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--c-green-deep);
+  margin-top: 0.65rem;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #34D399;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+  animation: pulseAnim 2.2s ease-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseAnim {
+  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.70); }
+  70%  { transform: scale(1);    box-shadow: 0 0 0 7px rgba(52, 211, 153, 0);  }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);   }
+}
+
+/* ==========================================================================
+   CARDS — Multi-Level Elevation System (Direction C: floaty white cards)
+   ========================================================================== */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 1.55rem 1.8rem;
+  margin-bottom: 1.15rem;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.05rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-title {
+  font-size: 1.28rem;
+  font-weight: 800;
+  color: var(--c-ink);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  letter-spacing: -0.022em;
+}
+
+.card-subtitle {
+  font-size: var(--text-sm); /* P6: was 0.77rem */
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  font-weight: 500;
+}
+
+/* Portal Cards (on main index page) */
+.portal-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem 2rem;
+  box-shadow: var(--shadow-sm);
+  /* Round 2 F9: was --transition-spring (overshoot easing) — springs are
+     contractually reserved for modals/FABs, and hover-lift is a plain ease. */
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.portal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 60%, rgba(13, 119, 81, 0.03) 100%);
+  pointer-events: none;
+}
+
+.portal-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(13, 119, 81, 0.25);
+}
+
+/* Direction C: soft pastel-tinted portal cards (side-promo recipe) instead of
+   thick accent top-borders — semantics ride the pastel fills. */
+.admin-master-card {
+  border-top: 3px solid var(--warning-border, #F3D9B2);
+  background: linear-gradient(150deg, #FDF4E4 0%, #ffffff 55%);
+}
+
+.employee-node-card {
+  border-top: 3px solid #BFE6D3;
+  background: linear-gradient(150deg, #EAF6EF 0%, #ffffff 55%);
+}
+
+/* ==========================================================================
+   KPI STAT CARDS — Direction C: white, radius 20, soft shadow + hover-lift
+   ========================================================================== */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.15rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.15rem; }
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+.kpi-row {
+  display: grid;
+  /* 190px matches the live admin override (admin.html) — harmonised, not restyled */
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.15rem;
+  margin-bottom: 1.15rem;
+}
+
+/* Direction C fidelity: KPI cards = shadow-lifted white cards (no thick colored
+   side-borders — semantics ride the pastel .stat-icon tiles + corner glows). */
+.stat-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.05rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  box-shadow: var(--shadow);
+  border-left: 1px solid var(--border);
+  /* Round 2 F9: was --transition-spring (overshoot easing) — see .portal-card */
+  transition: transform var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 60px; height: 60px;
+  background: radial-gradient(circle at top right, rgba(13, 119, 81, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Semantic variants: pastel corner-glow only (border edges unified hairline). */
+.stat-card.accent  { border-left-color: var(--border); }
+.stat-card.accent::after { background: radial-gradient(circle at top right, rgba(13, 119, 81, 0.10) 0%, transparent 70%); }
+.stat-card.success { border-left-color: var(--border); }
+.stat-card.success::after { background: radial-gradient(circle at top right, rgba(23, 162, 115, 0.12) 0%, transparent 70%); }
+.stat-card.warning { border-left-color: var(--border); }
+.stat-card.warning::after { background: radial-gradient(circle at top right, rgba(217, 119, 6, 0.12) 0%, transparent 70%); }
+.stat-card.danger  { border-left-color: var(--border); cursor: pointer; }
+.stat-card.danger::after { background: radial-gradient(circle at top right, rgba(190, 18, 60, 0.10) 0%, transparent 70%); }
+.stat-card.danger:hover  { border-color: var(--danger-border); background: #FFF4F6; }
+
+.stat-label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-light);
+  font-weight: 800;
+}
+
+.stat-value {
+  font-size: 1.88rem; /* Direction C fidelity: display-scale KPI numbers */
+  font-weight: 900;
+  color: var(--primary-dark);
+  line-height: 1.1;
+  letter-spacing: -0.028em;
+  font-variant-numeric: tabular-nums; /* count-up digits stay column-still */
+}
+
+.stat-desc {
+  font-size: var(--text-sm); /* P6: was 0.70rem */
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   KPI SOFT ICON TILES (Direction C spec §3c) — .stat-icon + tone recipes.
+   Template markup carries identical inline values (self-sufficient rendering);
+   these class recipes are the canonical source and cover future tiles.
+   ========================================================================== */
+.stat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
+.stat-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ic-green     { background: var(--c-green-soft); }
+.ic-green svg { stroke: var(--c-green-deep); }
+.ic-sky       { background: var(--c-sky-soft); }
+.ic-sky svg   { stroke: var(--c-sky-ink); }
+.ic-amber     { background: var(--c-amber-soft); }
+.ic-amber svg { stroke: var(--c-amber-ink); }
+.ic-red       { background: var(--c-red-soft); }
+.ic-red svg   { stroke: var(--c-red-ink); }
+.ic-lav       { background: var(--c-lav-soft); }
+.ic-lav svg   { stroke: var(--c-lav-ink); }
+
+/* ==========================================================================
+   AI CARD — Direction C LIGHT GLASS surface (small gradient badge accent)
+   ========================================================================== */
+.ai-card {
+  background: linear-gradient(160deg, #ffffff 0%, #f4faf7 100%);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-modal);
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-card::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -10%;
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(52, 201, 143, 0.14) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ai-card::after {
+  content: "AI DECISION ENGINE";
+  position: absolute;
+  top: 1.1rem;
+  right: 1.4rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.10em;
+  font-weight: 800;
+  color: #ffffff;
+  background: var(--gradient-badge);
+  padding: 0.20rem 0.60rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(13, 119, 81, 0.30);
+  box-shadow: 0 4px 12px rgba(13, 119, 81, 0.22);
+}
+
+.ai-rec-box {
+  background: var(--c-tint-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.90rem 1.05rem;
+  margin-bottom: 0.65rem;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.ai-rec-box:hover {
+  background: var(--c-green-soft);
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   FORMS — Clean Focus States & Elevated Labels (Direction C: soft inputs)
+   ========================================================================== */
+.form-group {
+  margin-bottom: 0.65rem;
+}
+
+label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--c-ink-2);
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.01em;
+}
+
+.label-required::after {
+  content: " *";
+  color: var(--danger);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.50rem 0.80rem;
+  font-size: 0.85rem;
+  font-family: var(--font);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+/* Round 2 F14: scoped OUT .ndli-asst-input — the Robu composer keeps its own
+   documented border/glow language (assistant.css), not the global form rules. */
+input:focus, select:focus, textarea:focus:not(.ndli-asst-input) {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(13, 119, 81, 0.18);
+}
+
+/* Round 7: keyboard-focus safety net. Elements styled with .ui-focusable
+   (ui.css) keep their own ring — that rule is more specific and wins. */
+:focus-visible {
+  outline: 2px solid var(--primary-light, #0D7751);
+  outline-offset: 2px;
+}
+
+/* Round 7: placeholder legibility — AA-ish muted tone instead of default grey */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-light);
+  opacity: 1;
+}
+
+/* Polish round: hover affordance on editable fields (border only — no layout) */
+input:hover:not(:focus):not([readonly]):not(:disabled),
+select:hover:not(:focus),
+textarea:hover:not(:focus):not(.ndli-asst-input) { /* Round 2 F14: widget keeps --asst-border */
+  border-color: #C6D9CF;
+}
+
+/* Polish round: disabled fields must read as disabled (was: looked enabled) */
+input:disabled, select:disabled, textarea:disabled {
+  background-color: var(--bg-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+}
+
+/* Polish round: browser autofill must not paint over the brand surface */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-main);
+  box-shadow: 0 0 0 1000px var(--bg-input) inset;
+}
+
+input[readonly] {
+  background-color: var(--c-tint-2);
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.field-error {
+  border-color: var(--danger) !important;
+  background-color: var(--danger-light) !important;
+  box-shadow: 0 0 0 3px rgba(190, 18, 60, 0.10) !important;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 0.73rem;
+  margin-top: 0.22rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ==========================================================================
+   BUTTONS — Direction C: white default + hover-lift, gradient primaries
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.52rem 1.15rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  font-family: var(--font);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform var(--transition-fast),
+              box-shadow var(--transition-fast),
+              filter var(--transition-fast),
+              background var(--transition-fast);
+  text-decoration: none;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-card);
+  color: var(--c-ink-2);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Direction C default hover-lift */
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: #C9DED4;
+}
+
+/* UI/UX leftovers R33 — P1 REAL two-tier CTA hierarchy. (An earlier polish note
+   claimed two tiers, but btn-primary and btn-accent rendered the IDENTICAL
+   gradient + shadow — the audit's "two names, one look" complaint stood.)
+   btn-primary = solid deep-green commit/submit tier; btn-accent keeps the
+   brighter --gradient-accent highlight tier; btn-amber stays the hero CTA. */
+.btn-primary {
+  background: var(--primary-dark);
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(13, 119, 81, 0.26);
+  border-color: transparent;
+}
+
+.btn-primary:hover {
+  background: var(--primary);
+  filter: none;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(13, 119, 81, 0.32);
+  border-color: transparent;
+}
+
+.btn-accent {
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(13, 119, 81, 0.26);
+  border-color: transparent;
+}
+
+.btn-accent:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(13, 119, 81, 0.32);
+  border-color: transparent;
+}
+
+.btn-amber {
+  background: var(--gradient-amber);
+  color: #ffffff;
+  box-shadow: var(--shadow-amber);
+  border-color: transparent;
+}
+
+.btn-amber:hover {
+  /* Round 3: was brightness(1.08) — pushed the lightest stop to 4.41:1 (AA fail
+     on hover). 1.05 keeps the lift and holds 4.63:1. */
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(217, 119, 6, 0.40);
+  border-color: transparent;
+}
+
+.btn-success {
+  background: var(--gradient-accent);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(13, 119, 81, 0.24);
+  border-color: transparent;
+}
+
+.btn-success:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  border-color: transparent;
+}
+
+/* Direction C §3e: danger is SOFT — pastel red slab, red ink label */
+.btn-danger {
+  background-color: var(--danger-light);
+  color: var(--c-red-ink);
+  border: 1px solid var(--danger-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-danger:hover {
+  background-color: #FBDCE2;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Round 2: semantic warning tier (referenced by live markup — employee.html
+   issue-resolution / report-issue CTAs — but never defined, so those buttons
+   painted as transparent ghost labels). Solid --warning rather than the amber
+   gradient: white label stays AA (5.02:1) at every pixel; shape/hover follow
+   the .btn-success / .btn-danger precedent. */
+.btn-warning {
+  background-color: var(--warning);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(180, 83, 9, 0.22);
+}
+
+.btn-warning:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  border-color: transparent;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--border);
+  color: var(--text-main);
+}
+
+.btn-outline:hover {
+  background-color: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+
+.btn-ghost {
+  background: var(--c-tint-2);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: var(--c-green-soft);
+  color: var(--c-green-deep);
+}
+
+.btn-sm {
+  padding: 0.48rem 1.15rem;
+  font-size: 0.84rem;
+  border-radius: var(--radius-pill);
+}
+
+/* Round 2: mid size — referenced by live markup (btn-md on 4 CTAs) but never
+   defined; states the default tier explicitly so the ladder sm/md/lg is real. */
+.btn-md {
+  padding: 0.52rem 1.15rem;
+  font-size: 0.84rem;
+  border-radius: var(--radius-pill);
+}
+
+.btn-lg {
+  padding: 0.70rem 1.60rem;
+  font-size: 0.92rem;
+  border-radius: var(--radius-pill);
+}
+
+.btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Polish round: disabled buttons must read as inert (was: looked enabled) */
+.btn:disabled,
+.btn[disabled],
+.btn:disabled:hover,
+.btn[disabled]:hover,
+.btn:disabled:active,
+.btn[disabled]:active {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   TABLES — Direction C: hairline rows, tiny uppercase headers, hover tint
+   ========================================================================== */
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-xs);
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+}
+
+.table-scroll-container {
+  max-height: 290px;
+  overflow-y: auto;
+  position: relative;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #ffffff;
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 0.75rem;
+}
+
+.table-scroll-container thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky-head);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Polish round: slim tinted scrollbars on scrollable table boxes — matches the
+   Robu log precedent in assistant.css instead of the UA's dark default. */
+.table-responsive,
+.table-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.table-responsive::-webkit-scrollbar,
+.table-scroll-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track,
+.table-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-responsive::-webkit-scrollbar-thumb,
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-light);
+}
+
+table {
+  width: 100%;
+  /* separate + spacing 0 keeps hairline rows AND lets hover rows round off */
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: var(--text-md); /* P6: same 0.82rem, now on the ramp */
+  font-variant-numeric: tabular-nums; /* Round 7: aligned digits in metric tables */
+}
+
+thead th {
+  background: #ffffff;
+  color: var(--text-light);
+  font-weight: 800;
+  padding: 0.55rem 0.80rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+tbody td {
+  padding: 0.55rem 0.80rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  vertical-align: middle;
+  transition: background var(--transition-fast);
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+/* Direction C §3f: no zebra grid — hairline separators only */
+tbody tr:nth-child(even) { background-color: transparent; }
+
+tbody tr:hover { background-color: var(--c-tint-2); }
+tbody tr:hover td { background-color: var(--c-tint-2); }
+tbody tr:hover td:first-child { border-radius: 12px 0 0 12px; }
+tbody tr:hover td:last-child  { border-radius: 0 12px 12px 0; }
+
+.club-name-link {
+  color: var(--primary, #1A503E);
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline;
+  transition: color var(--transition-fast, 0.15s ease), text-decoration var(--transition-fast, 0.15s ease);
+}
+.club-name-link:hover,
+.club-name-link:focus {
+  color: var(--primary-light, #0D7751);
+  text-decoration: underline;
+}
+.club-name-link:focus-visible {
+  outline: 2px solid var(--primary-light, #0D7751);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ==========================================================================
+   PILLS & BADGES — Direction C: soft pastel chips (status pills get a dot)
+   ========================================================================== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.20rem 0.60rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs); /* P6: same 0.70rem, now on the ramp */
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.pill-primary  { background: var(--c-green-soft); color: var(--c-green-deep); border: 1px solid transparent; }
+.pill-success  { background: var(--c-green-soft); color: var(--c-green-deep); border: 1px solid transparent; }
+.pill-warning  { background: var(--c-amber-soft); color: var(--c-amber-ink); border: 1px solid transparent; }
+.pill-danger   { background: var(--c-red-soft); color: var(--c-red-ink); border: 1px solid transparent; }
+.pill-priority { background: var(--c-amber-soft); color: var(--c-amber-ink); border: 1px solid transparent; }
+.pill-info     { background: var(--c-sky-soft); color: var(--c-sky-ink); border: 1px solid transparent; }
+/* Round 2 F10: these two variants are referenced by live markup
+   (admin.html pillClass "pill-accent" / class="pill pill-outline") but were
+   never defined — the badges rendered as un-bound floating text. */
+.pill-accent   { background: var(--primary-subtle); color: var(--primary); border: 1px solid transparent; }
+.pill-outline  { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+
+/* Direction C §3g: semantic status pills carry a small status dot */
+.pill-success::before,
+.pill-warning::before,
+.pill-danger::before {
+  content: "";
+  width: 5.5px;
+  height: 5.5px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  flex: 0 0 auto;
+}
+.pill-success::before { background: #17A273; }
+.pill-warning::before { background: var(--amber); }
+.pill-danger::before  { background: var(--danger); }
+
+/* ==========================================================================
+   ALERTS & NOTIFICATIONS — soft pastel slabs
+   ========================================================================== */
+.alert {
+  padding: 0.70rem 1.05rem;
+  border-radius: var(--radius);
+  margin-bottom: 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.alert-success { background: var(--success-light); color: var(--c-green-deep); border: 1px solid var(--success-border); border-left: 3px solid #17A273; }
+.alert-danger  { background: var(--danger-light); color: var(--c-red-ink); border: 1px solid var(--danger-border); border-left: 3px solid var(--danger); }
+.alert-info    { background: var(--sky-light); color: var(--sky-dark); border: 1px solid #BAE6FD; border-left: 3px solid var(--sky); }
+.alert-warning { background: var(--warning-light); color: var(--c-amber-ink); border: 1px solid var(--warning-border); border-left: 3px solid var(--amber-bright); }
+
+/* ==========================================================================
+   TABS — Pill tab strip (filled deep-green active tab, page-wide)
+   ========================================================================== */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.20rem;
+  margin-bottom: 0.85rem;
+  overflow-x: auto;
+  padding: 0.25rem;
+  background: var(--c-tint-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  width: fit-content;
+  max-width: 100%;
+  /* hide scrollbar but keep scroll */
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar { display: none; }
+
+/* Polish P5: scroll affordance. The hidden scrollbar left no cue that the
+   strip scrolls on narrow screens. ui.js toggles these classes from the
+   scroll position; the mask fades the clipped edge instead of hiding it. */
+.tabs.ui-scroll-right {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent 100%);
+}
+
+.tabs.ui-scroll-left {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent 100%);
+}
+
+.tabs.ui-scroll-left.ui-scroll-right {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.40rem 0.95rem;
+  font-size: 0.80rem;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast),
+              background var(--transition-fast),
+              transform var(--transition-fast);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.tab-btn:hover {
+  color: var(--primary);
+  background: rgba(255, 255, 255, 0.80);
+}
+
+.tab-btn.active {
+  background: var(--c-green-deep);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(10, 92, 62, 0.25);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+  animation: tabReveal 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   BAR CHARTS & INFOGRAPHICS
+   ========================================================================== */
+.bar-chart-row { margin-bottom: 0.85rem; }
+
+.bar-chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.30rem;
+  color: var(--c-ink-2);
+}
+
+.bar-track {
+  width: 100%;
+  height: 8px;
+  background: var(--c-tint);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--gradient-accent);
+  border-radius: var(--radius-pill);
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bar-fill.accent  { background: linear-gradient(90deg, #159B6B, #34C98F); }
+.bar-fill.success { background: linear-gradient(90deg, #0D7751, #1A503E); }
+
+/* ==========================================================================
+   MODALS — Spring Pop Animation & SOFT blurred overlay
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: rgba(16, 49, 37, 0.28);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal-base);
+  padding: 1rem;
+  box-sizing: border-box;
+  opacity: 0;
+  visibility: hidden;
+  /* Round 3 (F5 decision — accept instant close + delete dead code): the old
+     `transition: opacity 0.22s ease, visibility 0.22s ease;` never animated.
+     Every open/close path flips display (none <-> flex) in the same frame and
+     display changes suppress transitions (verified: all 15 template close fns
+     end at display:none). The opacity/visibility base pair stays — template
+     open paths explicitly defend against it. */
+}
+
+.modal-overlay.active,
+.modal-overlay.open,
+.modal.active,
+.modal.open {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.modal { display: none; }
+
+#renewal-attention-modal { z-index: 1000; }
+#club-details-modal { z-index: 1100 !important; }
+
+.modal-content {
+  background: #ffffff;
+  border-radius: var(--radius-modal);
+  border: 1px solid var(--border);
+  /* Polish P2: elevation from the token scale (was an ad-hoc 0.45-alpha
+     shadow); the white halo ring is separation, not elevation, and stays. */
+  box-shadow: var(--shadow-xl), 0 0 0 1px rgba(255, 255, 255, 0.5);
+  max-width: 680px;
+  width: 96%;
+  max-height: 92vh;
+  max-height: 92dvh; /* Round 2 F15: dynamic viewport — keeps modals clear of mobile keyboards */
+  overflow-y: auto;
+  padding: 1.5rem 1.8rem;
+  position: relative;
+  animation: modalSpring 0.40s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.modal-content.modal-lg { max-width: 1000px; }
+
+@keyframes modalSpring {
+  from { opacity: 0; transform: scale(0.88) translateY(20px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+.modal-close {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  background: var(--c-tint-2);
+  border: 1px solid var(--border);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background var(--transition-fast),
+              color var(--transition-fast),
+              transform var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--danger-light);
+  color: var(--c-red-ink);
+  border-color: var(--danger-border);
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* ==========================================================================
+   LIVE CLOCK BADGE — soft sky pill
+   ========================================================================== */
+.live-clock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--c-sky-soft);
+  border: 1px solid var(--border);
+  padding: 0.30rem 0.70rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--c-sky-ink);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   FOOTER — Direction C whisper: quiet light strip, faint small text
+   ========================================================================== */
+.system-footer {
+  background: #FFFFFF;
+  color: var(--text-muted);
+  padding: 1.35rem 1.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+  box-shadow: 0 -4px 20px rgba(16, 49, 37, 0.04);
+}
+
+.footer-container {
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.90rem;
+}
+
+.footer-logo-card {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  box-shadow: var(--shadow-xs), 0 0 0 1px var(--border);
+}
+
+.footer-logo-img { height: 28px; width: auto; object-fit: contain; }
+
+.footer-meta .footer-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+}
+
+.footer-meta .footer-sub {
+  font-size: 0.72rem;
+  color: var(--text-light); /* Round 7: was 0.52 alpha (~4.7:1) — now ~5.8:1 on the dark footer */
+  margin-top: 0.12rem;
+}
+
+.footer-credit-box {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--border);
+  padding: 0.22rem 0.65rem;
+  border-radius: var(--radius-sm);
+  text-align: right;
+  opacity: 0.85;
+  transition: opacity var(--transition-fast);
+}
+
+.footer-credit-box:hover { opacity: 1; }
+
+.footer-credit-box .dev-role {
+  font-size: 0.57rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-light);
+  display: block;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.footer-credit-box .dev-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+
+/* ==========================================================================
+   INFOGRAPHIC CARDS — Elevated Data Visualisation Surfaces
+   ========================================================================== */
+.infographic-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.45rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  /* R51v2: hug the header (user smoke: "huge blank space on top" of the line
+     graph). In a stretched grid row, space-between injected the extra height
+     BETWEEN header and chart; flex-start keeps the chart under its title and
+     leaves any residual whitespace at the card bottom instead. */
+  justify-content: flex-start;
+  transition: transform var(--transition), box-shadow var(--transition);
+  margin-bottom: 1rem;
+}
+
+.infographic-card:hover { box-shadow: var(--shadow); }
+
+/* Support Activity Split Grid */
+.support-split-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.80rem;
+  margin-top: 0.80rem;
+}
+
+.support-type-tile {
+  background: var(--c-tint-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 0.80rem 1.0rem;
+  border-left: 4px solid var(--primary);
+  /* Polish P2: motion contract — explicit properties, no `transition: all` */
+  transition: background-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              transform var(--transition-fast);
+}
+
+.support-type-tile:hover {
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+}
+
+.support-type-tile.accent  { border-left-color: var(--primary-light); }
+.support-type-tile.info    { border-left-color: var(--sky); }
+.support-type-tile.warning { border-left-color: var(--amber); }
+
+.tile-icon   { font-size: 1.1rem; margin-bottom: 0.25rem; }
+.tile-title  { font-size: 0.78rem; font-weight: 800; color: var(--text-main); line-height: 1.2; }
+
+.tile-value-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0.38rem 0 0.28rem 0;
+}
+
+.tile-count { font-size: 1.40rem; font-weight: 900; color: var(--primary-dark); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tile-pct   { font-size: var(--text-sm); font-weight: 700; color: var(--text-muted); } /* P6: was 0.73rem */
+
+/* Retention & Renewal Gauge */
+.retention-gauge-wrapper  { margin-top: 0.80rem; }
+
+.stacked-gauge-bar {
+  height: 16px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.07);
+  margin-bottom: 0.60rem;
+}
+
+.gauge-segment { height: 100%; transition: width 0.7s ease; position: relative; }
+.gauge-segment.active   { background: linear-gradient(90deg, #159B6B, #34C98F); }
+.gauge-segment.expiring { background: linear-gradient(90deg, #E9A23B, #F2B34D); }
+.gauge-segment.overdue  { background: linear-gradient(90deg, #BE123C, #E4566F); }
+
+.retention-legend-row {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Pie & Donut SVG */
+.retention-pie-svg  { display: block; }
+
+/* Round 3 hygiene (chart-mark cursor rules): chart marks are tooltip-only
+   (native <title>), never clickable. The hover highlight is inspection
+   feedback; cursor: default pins the mark as non-clickable. */
+.pie-slice { transition: opacity 0.20s ease, filter 0.20s ease; cursor: default; }
+.pie-slice:hover { opacity: 0.85; filter: brightness(1.12); }
+
+.pill-highlight-amber {
+  background: var(--warning-light);
+  color: var(--c-amber-ink);
+  border: 1px solid var(--warning-border);
+  font-weight: 700;
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              transform var(--transition-fast); /* Polish P2: no `transition: all` */
+}
+
+.pill-highlight-amber:hover {
+  background: var(--warning-border);
+  color: var(--c-amber-ink);
+  transform: translateY(-1px);
+}
+
+.badge-amber {
+  background: var(--gradient-amber);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Donut Chart Container */
+.donut-chart-container {
+  display: flex;
+  align-items: center;
+  /* R51: center the donut+legend as one group (was space-around -- the legend
+     rows stretched across the whole card and read as a floating gap). */
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+  margin-top: 0.80rem;
+}
+
+.donut-svg-wrapper {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.donut-center-text {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-center-number {
+  font-size: 1.40rem;
+  font-weight: 900;
+  color: var(--primary-dark);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-center-label {
+  font-size: var(--text-xs); /* P6: was 0.66rem */
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-top: 0.12rem;
+  letter-spacing: 0.04em;
+}
+
+.donut-legend-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  font-size: 0.78rem;
+  /* R51v2: compact legend WITHOUT forcing a wrap (user smoke 2026-10-14: the
+     donut jumped on top of the zone list). `flex: 0 1 300px` made the item's
+     hypothetical size 300px, so any card under ~468px wrapped the pair into a
+     vertical stack (measured: wrapped at a 479px container). Basis 220px keeps
+     the pair side-by-side from ~390px up; max-width 300px still caps the old
+     455px stretched-rows gap; min-width keeps the pairs readable. */
+  flex: 1 1 220px;
+  min-width: 150px;
+  max-width: 300px;
+}
+
+.donut-legend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.22rem 0.48rem;
+  border-radius: var(--radius-xs);
+  transition: background var(--transition-fast);
+  cursor: default; /* Round 3: legend rows are not links — hover tint is highlight, not a click cue */
+}
+
+.donut-legend-item:hover { background: var(--c-tint-2); }
+
+.donut-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.38rem;
+}
+
+/* Trajectory Area Chart */
+.trajectory-svg-container {
+  width: 100%;
+  height: 185px;
+  margin-top: 0.55rem;
+}
+
+/* ==========================================================================
+   FILTER BAR
+   ========================================================================== */
+.filter-bar {
+  display: flex;
+  gap: 0.80rem;
+  align-items: center;
+  flex-wrap: wrap;
+  background: #ffffff;
+  padding: 0.70rem 1.0rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin-bottom: 0.90rem;
+  box-shadow: var(--shadow-xs);
+}
+
+/* ==========================================================================
+   CHART CONTAINER
+   ========================================================================== */
+.chart-container {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 1.55rem 1.8rem;
+  box-shadow: var(--shadow-xs);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 992px) {
+  .container { padding: 0 1rem; }
+  .navbar    { padding: 0.55rem 1rem; }
+}
+
+@media (max-width: 840px) {
+  .nav-container   { flex-direction: column; align-items: flex-start; }
+  .nav-links       { width: 100%; justify-content: flex-start; }
+  .footer-container { flex-direction: column; align-items: flex-start; }
+  .footer-credit-box { text-align: left; width: 100%; }
+  /* Polish P4: tablet intermediate step (was: forced 1 column for everything
+     below 840px). auto-fit keeps 1 column whenever the container is genuinely
+     narrow, while modal-sized containers keep their desktop column count at
+     tablet widths (the old viewport-based rule collapsed them). .grid-3/.grid-4
+     are mostly form grids + dense matrices — they still collapse to 1. */
+  .grid-2  { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .kpi-row { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .tabs            { width: 100%; }
+  .modal-content   { padding: 1.15rem 1.15rem; }
+}
+
+@media (max-width: 520px) {
+  body             { font-size: 14px; }
+  .hero-banner     { padding: 1rem 1.1rem; }
+  .card            { padding: 0.95rem 1.05rem; }
+  .stat-card       { padding: 0.75rem 0.90rem; }
+
+  /* ---- R49: small-display shell fixes ----
+     The topbar flex row could not shrink below ~420px, so the whole page
+     overflowed horizontally at 390px and clipped the tab titles, the date
+     chip and the avatar on the right edge. Wrap instead of overflow.
+     R51v2 (user smoke 2026-10-14: "top bar overlapping with the KPI card"): 
+     the bare .app-topbar selector LOST the cascade to the later base rule
+     (height: 70px; flex: 0 0 70px -- equal specificity, later wins), so the
+     wrapped rows could not grow the box and .top-right spilled over the first
+     KPI card (measured ~91px overlap). The .app-shell descendant selector
+     (0,2,0) now beats the base (0,1,0) regardless of source order --
+     specificity-proof, pinned (same disease as the nav-toggle hide). */
+  .app-shell .app-topbar {
+    height: auto; flex: 0 0 auto;
+    flex-wrap: wrap; row-gap: 8px;
+    padding: 8px 12px;
+  }
+  .app-search { flex: 1 1 100%; min-width: 0; }
+  .app-search input { min-width: 0; }
+  .app-search .kbd { display: none; }   /* keyboard hint is desktop-only */
+  .top-right { flex-wrap: wrap; gap: 8px; min-width: 0; }
+  /* the fixed assistant FAB must never pin a footer link under it */
+  .system-footer { padding-bottom: 4.5rem; }
+}
+
+/* ==========================================================================
+   R19 SHELL — Sample-C structural chrome (fixed sidebar + topbar) for the
+   admin & employee portals. Geometry copied from the chosen mockup
+   (r16_design_samples/screens-c-dashboard.html: sidebar 252px, topbar 70px,
+   nav-item 10.5/14 r13, promo card r18). Scoped under .app-shell so the
+   index/verify pages keep their own nav untouched.
+   ========================================================================== */
+.app-shell { display: flex; align-items: flex-start; min-height: 100vh; }
+
+/* ---- SIDEBAR ---- */
+.app-sidebar {
+  width: 252px;
+  flex: 0 0 252px;
+  align-self: stretch;
+  background: var(--c-card);
+  border-right: 1px solid var(--c-line);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px 18px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.app-sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 8px 20px;
+  text-decoration: none;
+}
+.app-sidebar .brand .brand-logo-card {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  border-radius: 13px; padding: 5px;
+  background: linear-gradient(140deg, #34C98F, #0D7751);
+  box-shadow: 0 8px 18px rgba(13, 119, 81, 0.28);
+  display: flex; align-items: center; justify-content: center;
+}
+.app-sidebar .brand .brand-logo-img { width: 100%; height: 100%; object-fit: contain; }
+.app-sidebar .brand .brand-text h1 {
+  font-size: 14.5px; font-weight: 800; letter-spacing: -0.012em; margin: 0;
+  color: var(--c-ink); line-height: 1.25;
+}
+.app-sidebar .brand .brand-text p {
+  font-size: 10px; color: var(--c-faint); letter-spacing: 0.10em;
+  text-transform: uppercase; margin: 2px 0 0; font-weight: 700;
+}
+
+.side-caption {
+  font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--c-faint); font-weight: 800;
+  /* R49: uniform section rhythm (was 12px/8px — uneven against the 3px
+     row gaps of both the .tabs group and the .side-link rows). */
+  padding: 14px 14px 7px;
+}
+
+/* Sidebar restyle of the existing tab strip (same elements/roles — the
+   .tab-btn buttons stay the tab widgets, only the presentation changes). */
+.app-sidebar .tabs {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.app-sidebar .tabs::-webkit-scrollbar { display: none; }
+.app-sidebar .tabs.ui-scroll-right,
+.app-sidebar .tabs.ui-scroll-left,
+.app-sidebar .tabs.ui-scroll-left.ui-scroll-right {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.app-sidebar .tab-btn {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%;
+  text-align: left;
+  padding: 10.5px 14px;
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-muted);
+  margin: 0;
+  white-space: normal;
+}
+.app-sidebar .tab-btn svg { width: 16.5px; height: 16.5px; flex: 0 0 16.5px; }
+.app-sidebar .tab-btn:hover { background: var(--c-tint-2); color: var(--c-ink); }
+.app-sidebar .tab-btn.active { background: var(--c-green-soft); color: var(--c-green-deep); }
+
+/* Non-tab sidebar rows (portals, tools, attention items) */
+.side-link {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10.5px 14px; border-radius: 13px;
+  color: var(--c-muted); font-size: 13px; font-weight: 700;
+  cursor: pointer; margin-bottom: 3px; border: none; background: transparent;
+  width: 100%; text-align: left; text-decoration: none; font-family: var(--font);
+  transition: background .16s, color .16s;
+}
+.side-link svg { width: 16.5px; height: 16.5px; flex: 0 0 16.5px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+.side-link:hover { background: var(--c-tint-2); color: var(--c-ink); }
+.side-link .side-count {
+  margin-left: auto; font-size: 10px; font-weight: 800;
+  padding: 2.5px 8px; border-radius: 999px;
+  background: var(--c-red-soft); color: var(--c-red-ink);
+}
+.side-link .side-count:empty,
+.side-link .side-count[data-empty="1"] { display: none; }
+
+.side-spacer { margin-top: auto; }
+
+.side-promo {
+  margin-top: 14px; border-radius: 18px; padding: 16px;
+  background: linear-gradient(150deg, #EAF6EF, #FDF4E4);
+  border: 1px solid var(--c-line);
+}
+.side-promo .k { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--c-green-deep); font-weight: 800; }
+.side-promo .v { font-size: 13px; font-weight: 800; color: var(--c-ink); margin: 6px 0 4px; letter-spacing: -0.01em; }
+.side-promo .d { font-size: 10.5px; color: var(--c-muted); line-height: 1.6; }
+.side-promo .side-promo-actions { display: flex; flex-direction: column; gap: 7px; margin-top: 11px; }
+.side-promo .btn { justify-content: center; width: 100%; }
+
+/* ---- MAIN COLUMN + TOPBAR ---- */
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; }
+
+.app-topbar {
+  height: 70px; flex: 0 0 70px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 26px;
+  background: var(--c-card);
+  border-bottom: 1px solid var(--c-line);
+  position: sticky; top: 0;
+  z-index: var(--z-sticky-head);
+}
+
+.app-search {
+  flex: 0 1 340px;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--c-bg); border: 1px solid var(--c-line);
+  border-radius: 14px; padding: 0 15px;
+  color: var(--c-faint); font-size: 12.5px; font-weight: 600;
+}
+.app-search svg { width: 15px; height: 15px; stroke: var(--c-faint); fill: none; stroke-width: 2; flex: 0 0 15px; }
+.app-search input {
+  flex: 1; min-width: 0; border: none; background: transparent; outline: none;
+  padding: 11px 0; font: inherit; color: var(--c-ink);
+}
+.app-search input::placeholder { color: var(--c-faint); }
+.app-search .kbd {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em; color: var(--c-faint);
+  border: 1px solid var(--c-line); border-radius: 7px; padding: 2.5px 7px; background: #fff;
+}
+
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 11px; }
+
+.top-chip {
+  display: flex; align-items: center; gap: 7px; padding: 9px 14px;
+  border-radius: 999px; background: var(--c-green-soft); color: var(--c-green-deep);
+  font-size: 11.5px; font-weight: 800; cursor: pointer;
+  border: 1px solid transparent; transition: all .16s; white-space: nowrap;
+}
+.top-chip:hover { border-color: #BFE6D3; }
+.top-chip.plain { background: var(--c-bg); color: var(--c-muted); border: 1px solid var(--c-line); cursor: default; }
+.top-chip svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.icon-btn {
+  width: 39px; height: 39px; border-radius: 13px;
+  background: var(--c-bg); border: 1px solid var(--c-line);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; transition: background .16s;
+  padding: 0;
+}
+.icon-btn:hover { background: var(--c-tint); }
+.icon-btn svg { width: 16.5px; height: 16.5px; stroke: var(--c-muted); fill: none; stroke-width: 1.9; }
+.icon-btn .dot {
+  position: absolute; top: 9px; right: 10px; width: 7.5px; height: 7.5px;
+  border-radius: 50%; background: var(--c-amber); border: 2px solid var(--c-bg);
+}
+.icon-btn .side-count { position: absolute; top: -5px; right: -5px; margin: 0; }
+
+.avatar {
+  width: 38px; height: 38px; border-radius: 13px;
+  background: linear-gradient(140deg, #F2B34D, #D97706);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800; color: #fff; flex: 0 0 38px;
+  box-shadow: 0 8px 16px rgba(217, 119, 6, 0.25);
+}
+.top-user { display: flex; align-items: center; gap: 10px; padding-left: 12px; }
+.top-user .nm { font-size: 12.5px; font-weight: 800; letter-spacing: -0.01em; color: var(--c-ink); }
+.top-user .rl { font-size: 10px; color: var(--c-faint); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Content column follows the mockup's generous padding */
+.app-main .container {
+  max-width: none;
+  margin: 0 auto;
+  padding: 16px 26px 12px;
+}
+
+/* Print: chrome disappears, content remains (report/cert print routes) */
+@media print {
+  .app-sidebar, .app-topbar { display: none !important; }
+  .app-shell { display: block; }
+  .app-main .container { padding: 0; }
+}
+
+/* Narrow screens: the rail becomes an off-canvas drawer behind the topbar's
+   menu button. R51 (user report 2026-10-14): the old top scroll-strip stacked
+   ABOVE the sticky topbar -- 145px of chrome over the KPI cards, and the two
+   panels overlapped while scrolling. User order: "the side panel should be
+   placed within a clickable menu button in mobile". */
+@media (max-width: 980px) {
+  .app-shell { flex-direction: column; }
+  .app-sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(300px, 84vw);
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    z-index: 60;
+    background: #E2EFE8;
+    box-shadow: 0 12px 40px rgba(16, 49, 37, 0.22);
+  }
+  .app-shell.nav-open .app-sidebar { transform: translateX(0); }
+  .nav-scrim:not([hidden]) {
+    position: fixed; inset: 0; z-index: 55;
+    background: rgba(16, 49, 37, 0.45);
+  }
+  .nav-toggle { display: inline-flex; }
+  .app-topbar { padding: 0 14px; }
+  .app-search { flex: 1 1 auto; min-width: 0; }
+  .app-search input { min-width: 0; }
+  /* R50 root cause: the stacked shell left .app-main width-auto (= fit-content
+     -> min-content) because .app-shell has align-items: flex-start. On the admin
+     dashboard the KPI grids' min-content was 822px at a 390px viewport, so the
+     whole page overflowed and every card/table squeezed. Stretch it. */
+  .app-main { align-self: stretch; min-width: 0; }
+}
+
+/* ==========================================================================
+   R20 POLISH (2026-10-07) — user-approved variant B (DECISIVE) + 3 UI fixes
+   1. global density pass (variant B: base 14.5px / body 14px)
+   2. bell dot: bigger + red + soft ring
+   3. sidebar: light green tint
+   4. fix A — "Lock Admin" chip was white-on-light (invisible) in the topbar
+   5. fix B — "Create Report" split dropdown (PDF / DOC) replaces 2 long buttons
+   6. fix C — compact in-table row actions (Edit / Block / Unblock / Open UI)
+   ========================================================================== */
+
+/* --- 1..3: variant B density + dot + sidebar (exact approved render) --- */
+html { font-size: 14.5px; }
+body { font-size: 14px; }
+.hero-banner { padding: 1.8rem 2rem !important; margin-bottom: 1.15rem !important; }
+.hero-banner h2 { font-size: 2rem !important; }
+.hero-banner p { font-size: 0.98rem !important; }
+.stat-card { padding: 0.65rem 0.85rem; }
+.icon-btn .dot { width: 11px; height: 11px; top: 7px; right: 8px; background: #EF4444; border: 2px solid var(--c-bg); box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.22); }
+.app-sidebar { background: #E2EFE8; border-right: 1px solid #CCDFD5; }
+
+/* --- fix A: readable Lock Admin chip on the light topbar --- */
+.btn-lock {
+  background: var(--c-red-soft);
+  border: 1px solid #F3B9C4;
+  color: var(--c-red-ink);
+  font-weight: 700;
+}
+.btn-lock:hover {
+  background: #FBDCE2;
+  border-color: var(--c-red);
+  color: var(--c-red-ink);
+}
+
+/* --- fix B: Create Report dropdown --- */
+.report-menu-wrap { position: relative; display: inline-flex; }
+.report-caret { font-size: 0.68em; opacity: 0.75; margin-left: 2px; }
+.report-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 138px;
+  padding: 5px;
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(16, 49, 37, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.report-menu[hidden] { display: none; }
+.report-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.report-menu-item:hover,
+.report-menu-item:focus-visible {
+  background: var(--c-tint);
+  border-color: var(--c-green-soft);
+  color: var(--c-green-deep);
+  outline: none;
+}
+
+/* --- fix C: compact row actions inside dense tables --- */
+.btn-rowact {
+  padding: 0.26rem 0.62rem;
+  font-size: 0.76rem;
+  border-radius: 9px;
+  gap: 0.28rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.btn-rowact:hover { transform: none; box-shadow: none; }
+.btn-rowact:disabled { cursor: not-allowed; transform: none; }
+.btn-rowact.btn-outline { border-color: var(--c-line); color: var(--c-ink-2); }
+.btn-rowact.btn-outline:hover {
+  background: var(--c-tint);
+  border-color: var(--c-green);
+  color: var(--c-green-deep);
+}
+.btn-rowact.btn-danger { background: var(--c-red-soft); border: 1px solid #F3B9C4; color: var(--c-red-ink); }
+.btn-rowact.btn-danger:hover { background: #FBDCE2; border-color: var(--c-red); color: var(--c-red-ink); }
+.btn-rowact.btn-success { background: var(--c-green-soft); border: 1px solid var(--success-border); color: var(--c-green-deep); }
+.btn-rowact.btn-success:hover { background: #CBE9DA; border-color: var(--c-green); color: var(--c-green-deep); }
+
+/* ==========================================================================
+   R21 DASHBOARD POLISH v2 — BOLD MODERN PASS (2026-10-08, second iteration).
+   User feedback on v1: "I don't notice any noticeable changes in KPIs and
+   infographics including charts and graphs... those should have more modern
+   looks." Design language now: tinted gradient card surfaces, saturated
+   gradient icon chips with white glyphs, floating accent pills, gradient
+   chart strokes with smooth curves, mini progress bars in legends.
+   NOTE: .stat-icon tiles carry inline 36px sizes and pastel fills in
+   templates/admin.html, so the chip overrides below set !important on purpose
+   (markup stays self-sufficient, CSS is canonical).
+   ========================================================================== */
+
+/* --- KPI cards: tinted gradient surface + accent pill + tone halo --- */
+.stat-card {
+  border-radius: 20px;
+  border: 1px solid #E2EDE7;
+  background: linear-gradient(135deg, #FFFFFF 0%, #E9F6EE 100%);
+  box-shadow: 0 1px 2px rgba(16, 49, 37, 0.05), 0 16px 32px -18px rgba(16, 49, 37, 0.24);
+  padding: 1.15rem 1.3rem 1.15rem;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 1.05rem;
+  right: 1.15rem;
+  width: 46px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0D7751 0%, #43CFA0 100%);
+  box-shadow: 0 2px 6px rgba(13, 119, 81, 0.35);
+  pointer-events: none;
+}
+.stat-card::after {
+  width: 170px;
+  height: 170px;
+  background: radial-gradient(circle at top right, rgba(13, 119, 81, 0.12) 0%, transparent 68%);
+}
+.stat-card.accent {
+  background: linear-gradient(135deg, #FFFFFF 0%, #E7F0FB 100%);
+}
+.stat-card.accent::before  { background: linear-gradient(90deg, #1E5F8C 0%, #55A9DC 100%); box-shadow: 0 2px 6px rgba(30, 95, 140, 0.35); }
+.stat-card.accent::after   { background: radial-gradient(circle at top right, rgba(30, 95, 140, 0.13) 0%, transparent 68%); }
+.stat-card.success {
+  background: linear-gradient(135deg, #FFFFFF 0%, #E2F7EE 100%);
+}
+.stat-card.success::before { background: linear-gradient(90deg, #17A273 0%, #5AD9AC 100%); box-shadow: 0 2px 6px rgba(23, 162, 115, 0.35); }
+.stat-card.success::after  { background: radial-gradient(circle at top right, rgba(23, 162, 115, 0.15) 0%, transparent 68%); }
+.stat-card.warning {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FDF2E3 100%);
+}
+.stat-card.warning::before { background: linear-gradient(90deg, #D97706 0%, #F2B255 100%); box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35); }
+.stat-card.warning::after  { background: radial-gradient(circle at top right, rgba(217, 119, 6, 0.14) 0%, transparent 68%); }
+.stat-card.danger {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FDEBF0 100%);
+  cursor: pointer;
+}
+.stat-card.danger::before  { background: linear-gradient(90deg, #BE123C 0%, #EC6A80 100%); box-shadow: 0 2px 6px rgba(190, 18, 60, 0.35); }
+.stat-card.danger::after   { background: radial-gradient(circle at top right, rgba(190, 18, 60, 0.12) 0%, transparent 68%); }
+.stat-card:hover {
+  border-color: #CFE2D7;
+  box-shadow: 0 2px 4px rgba(16, 49, 37, 0.06), 0 26px 48px -20px rgba(16, 49, 37, 0.32);
+}
+.stat-card.danger:hover { border-color: var(--danger-border); background: linear-gradient(135deg, #FFFFFF 0%, #FDE4EB 100%); }
+
+/* --- KPI icon chips: saturated gradient tiles + white glyphs
+       (override the inline 36px pastel tiles) --- */
+.stat-icon {
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 15px !important;
+  margin-bottom: 10px !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(16, 49, 37, 0.45);
+}
+.stat-icon svg { width: 22px !important; height: 22px !important; stroke: #ffffff !important; }
+.stat-icon.ic-green {
+  background: linear-gradient(135deg, #0D7751 0%, #3BCB98 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(13, 119, 81, 0.55);
+}
+.stat-icon.ic-sky {
+  background: linear-gradient(135deg, #1E5F8C 0%, #55A9DC 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(30, 95, 140, 0.55);
+}
+.stat-icon.ic-amber {
+  background: linear-gradient(135deg, #D97706 0%, #F2B255 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(217, 119, 6, 0.55);
+}
+.stat-icon.ic-red {
+  background: linear-gradient(135deg, #BE123C 0%, #EC6A80 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(190, 18, 60, 0.55);
+}
+.stat-icon.ic-lav {
+  background: linear-gradient(135deg, #6D4FC4 0%, #A78BFA 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 20px -10px rgba(109, 79, 196, 0.55);
+}
+
+/* --- KPI type hierarchy: bigger values, urgency-tinted numbers --- */
+.stat-label { font-size: var(--text-xs); letter-spacing: 0.12em; color: var(--text-muted); }
+.stat-value {
+  font-size: 1.62rem;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: #0B3B2A;
+}
+.stat-card.warning .stat-value { color: #B45309; }
+.stat-card.danger  .stat-value { color: #BE123C; }
+.stat-desc  { font-size: var(--text-md); }
+
+/* --- infographic cards: tinted gradient chrome + gradient titles --- */
+.infographic-card {
+  border-radius: 20px;
+  border: 1px solid #E2EDE7;
+  background: linear-gradient(165deg, #FFFFFF 0%, #F3FAF6 55%, #ECF6F0 100%);
+  box-shadow: 0 1px 2px rgba(16, 49, 37, 0.05), 0 16px 32px -18px rgba(16, 49, 37, 0.24);
+}
+.infographic-card:hover { box-shadow: 0 2px 4px rgba(16, 49, 37, 0.06), 0 26px 48px -20px rgba(16, 49, 37, 0.30); }
+.infographic-card .card-header {
+  border-bottom: 1px solid #E7F1EB;
+  padding-bottom: 0.9rem;
+  /* R51: the pill ("Growth Curve" etc.) floated at the vertical middle of a
+     two-line title -- align it with the title's first line instead. */
+  align-items: flex-start;
+}
+.infographic-card .card-title {
+  font-size: 0.84rem;
+  letter-spacing: -0.012em;
+  /* R48: solid ink — gradient text was an AI-uniform tell. */
+  color: var(--primary-dark);
+}
+.infographic-card .card-subtitle { font-size: var(--text-md); }
+.donut-chart-container,
+.trajectory-svg-container {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F2F9F5 100%);
+  border: 1px solid #E3EFE8;
+  border-radius: 16px;
+  padding: 1.15rem;
+  box-shadow: inset 0 1px 2px rgba(16, 49, 37, 0.05);
+}
+
+/* --- donut: bold centre number, gradient segments glow, legend mini bars --- */
+.donut-svg { filter: drop-shadow(0 6px 14px rgba(16, 49, 37, 0.14)); }
+.donut-center-number {
+  font-size: 2.35rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
+}
+.donut-center-label {
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+.donut-legend-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #E7F1EB;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+.donut-legend-item:hover { background: var(--c-tint); border-color: var(--c-green-soft); }
+.donut-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+.legend-mini-bar {
+  flex: 0 0 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: #EDF3F0;
+  margin-top: 7px;
+  overflow: hidden;
+}
+.legend-mini-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* --- trajectory: glow around the smooth gradient line --- */
+.trajectory-svg-container svg {
+  filter: drop-shadow(0 4px 10px rgba(16, 49, 37, 0.08));
+}
+
+/* --- support tiles: tinted gradients + saturated chips + gradient bars --- */
+.support-type-tile {
+  border-radius: 16px;
+  border: 1px solid #E7EFEA;
+  background: linear-gradient(165deg, #FFFFFF 0%, #F6FBF8 100%);
+  box-shadow: 0 1px 2px rgba(16, 49, 37, 0.04), 0 12px 24px -16px rgba(16, 49, 37, 0.25);
+}
+.support-type-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 36px -18px rgba(16, 49, 37, 0.32);
+}
+.support-type-tile .tile-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0D7751 0%, #3BCB98 100%);
+  box-shadow: 0 8px 16px -8px rgba(13, 119, 81, 0.55);
+  font-size: 1.05rem;
+}
+.support-type-tile.accent  .tile-icon { background: linear-gradient(135deg, #6D4FC4 0%, #A78BFA 100%); box-shadow: 0 8px 16px -8px rgba(109, 79, 196, 0.55); }
+.support-type-tile.info    .tile-icon { background: linear-gradient(135deg, #1E5F8C 0%, #55A9DC 100%); box-shadow: 0 8px 16px -8px rgba(30, 95, 140, 0.55); }
+.support-type-tile.warning .tile-icon { background: linear-gradient(135deg, #D97706 0%, #F2B255 100%); box-shadow: 0 8px 16px -8px rgba(217, 119, 6, 0.55); }
+.tile-count { font-size: 1.55rem; }
+.tile-pct {
+  background: var(--c-tint);
+  color: var(--c-green-deep);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+/* --- bars + gauge: gradient fills, segmented pill gauge --- */
+.bar-track {
+  background: #EDF3F0;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(16, 49, 37, 0.06);
+}
+.bar-fill {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0D7751 0%, #43CFA0 100%);
+}
+.bar-fill.accent { background: linear-gradient(90deg, #0D7751 0%, #43CFA0 100%); }
+.bar-fill.success { background: linear-gradient(90deg, #17A273 0%, #5AD9AC 100%); }
+.support-type-tile.accent  .bar-fill { background: linear-gradient(90deg, #6D4FC4 0%, #A78BFA 100%); }
+.support-type-tile.info    .bar-fill { background: linear-gradient(90deg, #1E5F8C 0%, #55A9DC 100%); }
+.support-type-tile.warning .bar-fill { background: linear-gradient(90deg, #D97706 0%, #F2B255 100%); }
+.stacked-gauge-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: #EDF3F0;
+  overflow: hidden;
+  display: flex;
+  gap: 3px;
+  box-shadow: inset 0 1px 2px rgba(16, 49, 37, 0.08);
+}
+.gauge-segment { height: 100%; border-radius: 999px; transition: width 0.7s ease; position: relative; }
+.gauge-segment.active   { background: linear-gradient(90deg, #0D7751, #5AD9AC); }
+.gauge-segment.expiring { background: linear-gradient(90deg, #D97706, #F7C46B); }
+.gauge-segment.overdue  { background: linear-gradient(90deg, #BE123C, #EC6A80); }
+.retention-legend-row { gap: 0.75rem; }
+
+/* --- R21v3: Activity Distribution Matrix (share ribbon + heat rows) --- */
+.activity-ribbon-wrap { margin-bottom: 1rem; }
+.activity-ribbon {
+  display: flex;
+  gap: 3px;
+  height: 30px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 18px -12px rgba(16, 49, 37, 0.35);
+}
+.ribbon-seg {
+  position: relative;
+  min-width: 4px;
+  transition: flex-basis 0.5s ease, filter 0.15s ease;
+}
+.ribbon-seg:hover { filter: brightness(1.12); }
+.ribbon-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.activity-ribbon-caption {
+  margin-top: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.activity-matrix { display: flex; flex-direction: column; gap: 6px; }
+.activity-row {
+  display: grid;
+  grid-template-columns: 2.3fr 1fr 1fr 0.75fr 0.95fr;
+  gap: 8px;
+  align-items: center;
+}
+.activity-head {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+.activity-officer { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.activity-rank {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: var(--c-green-deep);
+  background: var(--c-tint);
+  border-radius: 8px;
+  padding: 2px 7px;
+}
+.activity-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.zone-chip {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 1px 7px;
+  vertical-align: 1px;
+}
+.activity-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--primary-dark);
+  font-variant-numeric: tabular-nums;
+}
+.cell-mini-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  overflow: hidden;
+}
+.cell-mini-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0D7751, #43CFA0);
+}
+.cell-mini-fill.sky { background: linear-gradient(90deg, #1E5F8C, #55A9DC); }
+.activity-share { text-align: center; }
+.share-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0D7751, #2FA97B);
+  border-radius: 999px;
+  padding: 3px 10px;
+  box-shadow: 0 4px 10px -6px rgba(13, 119, 81, 0.6);
+}
+.recency-chip {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.recency-fresh   { background: #E2F7EE; color: #0D7751; }
+.recency-warm    { background: #FDF2E3; color: #B45309; }
+.recency-stale   { background: #FDEBF0; color: #BE123C; }
+.recency-unknown { background: #EDF3F0; color: #647B70; }
+
+/* ==========================================================================
+   R32 (2026-10-10, cosmetic — user report: "Counts/Numbers on KPI Counters,
+   1st row of the ADMIN portal, are not aligned"). Measured in the DOM before
+   this fix: value baselines sat at y=176/176/176/202/236 in the top row — the
+   big numbers jumped across the card. Three root causes, all fixed here:
+   (1) label rows grew 1-3 lines depending on wrap, pushing numbers down at
+       different offsets -> uniform 3-line label band (min-height: 48px);
+   (2) the "View List" pills in label rows wrapped to 2 lines in narrow
+       columns -> white-space: nowrap;
+   (3) one card's value carried an inline margin-top -> zeroed.
+   Scoped to .kpi-row (admin dashboard) so no other portal's cards change.
+   The template's inline styles beat plain rules — hence the targeted
+   !important overrides (verified in-browser: all values land on one baseline).
+   ========================================================================== */
+.kpi-row .stat-card > .stat-label,
+.kpi-row .stat-card > div:not(.stat-icon) > .stat-label {
+  display: block;
+  min-height: 48px; /* reserve 3 label lines -> numbers share one baseline */
+  margin: 0 !important;
+}
+.kpi-row .stat-card > div:not(.stat-icon) {
+  align-items: flex-start !important;
+  margin: 0 !important;
+}
+.kpi-row .stat-card > div:not(.stat-icon) > span:not(.stat-label) {
+  white-space: nowrap; /* "View List" style pills must never wrap */
+}
+.kpi-row .stat-card > .stat-value {
+  margin-top: 0 !important;
+}
+
+/* ==========================================================================
+   R50: dashboard small-display fixes (2026-10-13) — the authenticated
+   dashboards at laptop (<=1400px) and phone (<=520px) widths. Every rule here
+   is inside a max-width media block: desktop >1400px stays pixel-identical.
+   The root-cause overflow fix lives in the <=980px stacked-shell block above.
+   ========================================================================== */
+@media (max-width: 1400px) {
+  /* JS-rendered alert banners (inline-styled flex rows) squeezed their text and
+     stacked the button label vertically at phone widths — let them wrap, keep
+     the action button label on one line, and let text blocks shrink. */
+  .escalation-kpi-stack,
+  .employee-reminders-kpi-stack {
+    flex-wrap: wrap !important;
+    gap: 0.75rem 1rem !important;
+  }
+  .escalation-kpi-stack > div,
+  .employee-reminders-kpi-stack > div { min-width: 0; }
+  .escalation-kpi-stack .btn,
+  .employee-reminders-kpi-stack .btn { white-space: nowrap; }
+
+  /* Analytics toolbar: the action-button cluster (margin-left: auto inline)
+     wrapped to its own line at laptop width and floated mid-bar — give it a
+     full-width line that starts at the left edge like the filters above it. */
+  .filter-bar { row-gap: 0.75rem; }
+  .filter-bar > div:last-child {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  /* Wide analytical matrices scroll inside .table-responsive instead of
+     crushing their headers into 3-line wraps on narrow screens. */
+  #state-breakdown-table { min-width: 680px; }
+  #employee-performance-table { min-width: 920px; }
+  #state-breakdown-table th, #state-breakdown-table td,
+  #employee-performance-table th, #employee-performance-table td {
+    vertical-align: middle;
+  }
+
+  /* Micro-type floors (measured 9.5px quota line / 8.3px credit line). */
+  #quota-legacy-line { font-size: 11px !important; }
+  .footer-credit-box .dev-role { font-size: 0.72rem; }
+}
+
+@media (max-width: 520px) {
+  /* The IST clock badge wrapped to 3 lines on phones ("PM" dropped below the
+     time): it is an inline-flex of 4 rendered segments — wrap BETWEEN segments
+     (flex lines), never inside one (each span keeps white-space: nowrap). */
+  #live-clock {
+    flex-wrap: wrap !important;
+    row-gap: 4px;
+    white-space: normal !important;
+    font-size: 0.78rem !important;
+    justify-content: center;
+  }
+  #live-clock span { white-space: nowrap; }
+
+  /* Topbar user cluster (avatar + name + Lock Admin) was 400px wide and could
+     not shrink -> the page kept a small horizontal overflow. Wrap + ellipsis. */
+  .top-user {
+    flex-wrap: wrap;
+    min-width: 0;
+    padding-left: 0;
+  }
+  .top-user .nm {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Activity Distribution Matrix: the 5-column rows have a ~400px min-content
+     (nowrap share/recency chips) -> scroll the matrix like the tables instead
+     of letting the page overflow. */
+  .activity-matrix { overflow-x: auto; }
+  .activity-row { min-width: 480px; }
+
+  /* SEC B action buttons: balanced two-line wrap instead of orphaning
+     "(historical dates) ->" onto a second line. */
+  #btn-open-sec-c-import,
+  #btn-open-sec-c,
+  #btn-open-bulk-import {
+    text-wrap: balance;
+    line-height: 1.4;
+  }
+}
+
+/* ==========================================================================
+   R51: mobile nav drawer + chart polish (2026-10-14)
+   The drawer geometry itself lives in the <=980px block above (user order:
+   the side panel goes behind a clickable menu button on mobile). These are
+   the additive base rules. NOTE: the desktop hide is a min-width media rule,
+   NOT a bare `display: none` -- a bare rule at file end would override the
+   <=980 `display: inline-flex` (same cascade trap as R49's .app-search).
+   Chart polish (donut legend compactness, pill alignment) is in the chart
+   recipes above.
+   ========================================================================== */
+@media (min-width: 981px) {
+  .nav-toggle { display: none; }
+}
+.nav-scrim[hidden] { display: none; }

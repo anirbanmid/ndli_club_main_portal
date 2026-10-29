@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "./assets/fonts/fonts.css";
+@import "./assets/legacy/style.css";
+@import "./assets/legacy/ui.css";
+@import "./assets/legacy/lock_gate.css";
 
 /* --- S5 brand system: tints, tones & complementary ------------------------
    Brand = institutional deep green (NDLI). Ink = green-tinted neutrals.

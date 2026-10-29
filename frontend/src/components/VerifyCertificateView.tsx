@@ -112,69 +112,57 @@ export const VerifyCertificateView: React.FC<VerifyCertificateViewProps> = ({
   const statusText = (status: VerifyVerdict['status']): string =>
     status === 'valid' ? t('Valid') : status === 'revoked' ? t('Revoked') : t('Unverified');
 
-  const renderFields = (v: VerifyVerdict) => {
-    const isInstitutional =
-      v.event_title?.toLowerCase().includes('renewal') ||
-      v.event_title?.toLowerCase().includes('registration') ||
-      submittedId.startsWith('NDLI-REN-');
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            {isInstitutional ? <Building2 className="h-3.5 w-3.5 text-brand-600" /> : <User className="h-3.5 w-3.5 text-brand-600" />}
-            <span>{isInstitutional ? t('Institution / Recipient') : t('Recipient Name')}</span>
-          </div>
-          <div className="text-sm font-bold text-ink-900">{v.institution || v.name}</div>
+  const renderFields = (v: VerifyVerdict) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <User className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Recipient Name')}</span>
         </div>
-
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            <Award className="h-3.5 w-3.5 text-brand-600" />
-            <span>{isInstitutional ? t('NDLI Club Unit') : t('Club')}</span>
-          </div>
-          <div className="text-sm font-bold text-ink-900">{v.club}</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            <Building2 className="h-3.5 w-3.5 text-brand-600" />
-            <span>{isInstitutional ? t('Issuing Body') : t('Institution')}</span>
-          </div>
-          <div className="text-sm font-bold text-ink-900">
-            {isInstitutional ? 'National Digital Library of India (IIT Kharagpur)' : v.institution}
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            <Calendar className="h-3.5 w-3.5 text-brand-600" />
-            <span>{isInstitutional ? t('Effective Renewal Date') : t('Date')}</span>
-          </div>
-          <div className="text-sm font-bold text-ink-900">{formatDate(v.date)}</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            <Award className="h-3.5 w-3.5 text-brand-600" />
-            <span>{isInstitutional ? t('Credential Scope') : t('Event')}</span>
-          </div>
-          <div className="text-sm font-bold text-brand-800">{v.event_title}</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
-          <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
-            <Hash className="h-3.5 w-3.5 text-brand-600" />
-            <span>{t('Status')}</span>
-          </div>
-          <div className="text-sm font-bold text-emerald-700 flex items-center space-x-1">
-            <CheckCircle2 className="h-4 w-4 inline text-emerald-600 mr-1" />
-            <span>{statusText(v.status)}</span>
-          </div>
-        </div>
+        <div className="text-sm font-bold text-ink-900">{v.name}</div>
       </div>
-    );
-  };
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Award className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Club')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.club}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Building2 className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Institution')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.institution}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Calendar className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Date')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{formatDate(v.date)}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Award className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Event')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{v.event_title}</div>
+      </div>
+
+      <div className="p-4 rounded-xl bg-ink-50 border border-ink-200 space-y-1">
+        <div className="flex items-center space-x-1.5 text-ink-600 font-semibold uppercase">
+          <Hash className="h-3.5 w-3.5 text-brand-600" />
+          <span>{t('Status')}</span>
+        </div>
+        <div className="text-sm font-bold text-ink-900">{statusText(v.status)}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">

@@ -250,6 +250,21 @@ def materialise_charter(
         certificate=certificate,
     )
 
+    from apps.domain.integrity import LedgerIntegrityEngine
+
+    acting_user = getattr(request, "user", None) if request else None
+    target_officer = (
+        acting_user
+        if getattr(acting_user, "sub_role", None) == SubRole.REGIONAL_OFFICER
+        else None
+    )
+    LedgerIntegrityEngine.ensure_club_approval_log(
+        club,
+        officer=target_officer,
+        timestamp=formation_date,
+        strict_gate=False,
+    )
+
     audit_services.record(
         action="charter.materialised",
         outcome="success",

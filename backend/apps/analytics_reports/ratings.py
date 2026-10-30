@@ -182,14 +182,17 @@ def phone_calls_for(
         year,
         month,
     ).count()
-    act_calls = _in_period(
-        ActivityLog.objects.filter(
-            employee=officer, support_type=SupportType.PHONE_CALL
-        ),
-        "timestamp",
-        year,
-        month,
-    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    act_calls = (
+        _in_period(
+            ActivityLog.objects.filter(
+                employee=officer, support_type=SupportType.PHONE_CALL
+            ),
+            "timestamp",
+            year,
+            month,
+        ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"]
+        or 0
+    )
     return audit_count + act_calls
 
 
@@ -473,9 +476,7 @@ def evaluate_officers(
         # Zone difficulty multipliers:
         # North / North-East: Club Approval x1.40; Other Supports, Offline, Online x1.25
         # Other zones: all x1.00
-        z_clean = (
-            zone_name.upper().replace("-", " ").replace("_", " ").strip()
-        )
+        z_clean = zone_name.upper().replace("-", " ").replace("_", " ").strip()
         is_nne = z_clean in [
             "NORTH",
             "NORTH EAST",
@@ -534,18 +535,10 @@ def evaluate_officers(
     max_o = max((e["adj_online_training"] for e in evaluations), default=0.0)
 
     for e in evaluations:
-        score_a = (
-            (e["adj_clubs_approved"] / max_a * 100.0) if max_a > 0 else 0.0
-        )
-        score_s = (
-            (e["adj_other_supports"] / max_s * 100.0) if max_s > 0 else 0.0
-        )
-        score_f = (
-            (e["adj_offline_training"] / max_f * 100.0) if max_f > 0 else 0.0
-        )
-        score_o = (
-            (e["adj_online_training"] / max_o * 100.0) if max_o > 0 else 0.0
-        )
+        score_a = (e["adj_clubs_approved"] / max_a * 100.0) if max_a > 0 else 0.0
+        score_s = (e["adj_other_supports"] / max_s * 100.0) if max_s > 0 else 0.0
+        score_f = (e["adj_offline_training"] / max_f * 100.0) if max_f > 0 else 0.0
+        score_o = (e["adj_online_training"] / max_o * 100.0) if max_o > 0 else 0.0
 
         total = (
             (NORM_WEIGHT_CLUBS_APPROVED * score_a)

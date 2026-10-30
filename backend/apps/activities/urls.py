@@ -41,4 +41,9 @@ urlpatterns = [
         views.ClubRenewView.as_view(),
         name="club-renew",
     ),
+    path(
+        "integrity/",
+        views.LedgerIntegrityView.as_view(),
+        name="ledger-integrity",
+    ),
 ]

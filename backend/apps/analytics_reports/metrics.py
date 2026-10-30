@@ -189,25 +189,38 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
 
     # 2. Total Daily Support Logs (real-time sum of call_count) & Breakdown
     from apps.activities.models import SupportType
+
     act_qs = ActivityLog.objects.all()
     if zone:
         act_qs = act_qs.filter(employee__zone_id=zone)
 
-    phone_remote = act_qs.filter(
-        support_type=SupportType.PHONE_CALL
-    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    phone_remote = (
+        act_qs.filter(support_type=SupportType.PHONE_CALL).aggregate(
+            n=Sum(Coalesce("call_count", 1))
+        )["n"]
+        or 0
+    )
 
-    os_tickets = act_qs.filter(
-        support_type=SupportType.OS_TICKET
-    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    os_tickets = (
+        act_qs.filter(support_type=SupportType.OS_TICKET).aggregate(
+            n=Sum(Coalesce("call_count", 1))
+        )["n"]
+        or 0
+    )
 
-    online_training = act_qs.filter(
-        support_type=SupportType.ONLINE_TRAINING
-    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    online_training = (
+        act_qs.filter(support_type=SupportType.ONLINE_TRAINING).aggregate(
+            n=Sum(Coalesce("call_count", 1))
+        )["n"]
+        or 0
+    )
 
-    offline_training = act_qs.filter(
-        support_type=SupportType.OFFLINE_TRAINING
-    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    offline_training = (
+        act_qs.filter(support_type=SupportType.OFFLINE_TRAINING).aggregate(
+            n=Sum(Coalesce("call_count", 1))
+        )["n"]
+        or 0
+    )
 
     support_breakdown = {
         "phone_remote": phone_remote,
@@ -231,10 +244,10 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
 
     # 4. Renewal Attention (clubs requiring renewal attention)
     from apps.governance.renewals import ATTENTION_WINDOW_DAYS, due_date_for
+
     today = timezone.localdate()
     renewal_attention = sum(
-        1 for c in club_qs
-        if (due_date_for(c) - today).days <= ATTENTION_WINDOW_DAYS
+        1 for c in club_qs if (due_date_for(c) - today).days <= ATTENTION_WINDOW_DAYS
     )
 
     # 5. 30-Day Escalations

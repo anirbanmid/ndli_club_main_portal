@@ -106,6 +106,12 @@ class ActivityLogListView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except LookupError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Pre-flight SSOT self-healing check: ensure assigned clubs recorded
+        from apps.domain.integrity import LedgerIntegrityEngine
+
+        LedgerIntegrityEngine.audit_and_heal()
+
         rows = ActivityLog.objects.filter(employee=target).select_related("employee")
         return Response(
             {"count": rows.count(), "activities": [_serialize(r) for r in rows]}
@@ -603,3 +609,18 @@ class ClubRenewView(APIView):
                 },
             }
         )
+
+
+class LedgerIntegrityView(APIView):
+    """GET /admin/api/v1/activities/integrity/ -- SSOT Ledger audit and auto-repair."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> Response:
+        from apps.domain.integrity import LedgerIntegrityEngine
+
+        report = LedgerIntegrityEngine.audit_and_heal()
+        return Response(report.to_dict(), status=status.HTTP_200_OK)

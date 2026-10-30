@@ -131,9 +131,7 @@ def state_payload(
             last.decided_at.date().isoformat()
             if last and last.decided_at
             else (
-                club.last_renewal_date.isoformat()
-                if club.last_renewal_date
-                else None
+                club.last_renewal_date.isoformat() if club.last_renewal_date else None
             )
         ),
         "due_date": due.isoformat(),

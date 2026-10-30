@@ -530,3 +530,18 @@ export async function renewClubRegistration(
     }
   );
 }
+
+
+export interface LedgerIntegrityReport {
+  healthy: boolean;
+  status: string;
+  total_clubs_audited: number;
+  healed_approvals_count: number;
+  unresolved_deviations_count: number;
+  details: string[];
+  timestamp: string;
+}
+
+export function fetchLedgerIntegrity(): Promise<LedgerIntegrityReport> {
+  return request<LedgerIntegrityReport>(BASE + '/integrity/');
+}

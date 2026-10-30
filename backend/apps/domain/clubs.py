@@ -924,6 +924,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         from datetime import date
 
         from django.utils import timezone
+
         today = timezone.localdate()
         computed_status = "Active"
         try:

@@ -330,6 +330,7 @@ class OfficerRatingTests(DashboardFixture):
             NORM_WEIGHT_OTHER_SUPPORTS,
             compute_stars,
         )
+
         total = (
             NORM_WEIGHT_CLUBS_APPROVED * 84.0
             + NORM_WEIGHT_OTHER_SUPPORTS * 93.75

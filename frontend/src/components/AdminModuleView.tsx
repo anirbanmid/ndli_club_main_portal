@@ -50,6 +50,7 @@ import {
   fetchCharter,
   fetchCharterQueue,
   fetchGrievanceQueue,
+  fetchRenewalAttention,
   resolveGrievance,
   sweepGrievances,
   changeAdminPassword,
@@ -206,6 +207,18 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
     }
   }, []);
 
+  const [renewalAttentionCount, setRenewalAttentionCount] = useState<number>(0);
+
+  const loadRenewalAttention = useCallback(async () => {
+    try {
+      const payload = await fetchRenewalAttention();
+      const count = payload.total_attention_count ?? (Array.isArray(payload.results) ? payload.results.length : 0);
+      setRenewalAttentionCount(count);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const loadGrievances = useCallback(async () => {
     setGrievancesLoading(true);
     try {
@@ -222,7 +235,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   useEffect(() => {
     void loadCharters();
     void loadGrievances();
-  }, [loadCharters, loadGrievances]);
+    void loadRenewalAttention();
+  }, [loadCharters, loadGrievances, loadRenewalAttention]);
 
   const toggleCharter = async (id: string) => {
     if (expandedCharter === id) {
@@ -317,30 +331,64 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const adminNotifications: NotificationItem[] = useMemo(() => {
     const list: NotificationItem[] = [];
 
-    if (filteredCharters.length > 0) {
+    if (renewalAttentionCount > 0) {
       list.push({
-        id: 'admin-chart-1',
-        type: 'approval',
-        title: `${filteredCharters.length} Club Charter(s) in Queue`,
-        description: 'New college club registration applications pending final administrative sanction.',
-        timestamp: 'Action Needed',
+        id: `admin-renew-${renewalAttentionCount}`,
+        type: 'renewal',
+        title: `${renewalAttentionCount} Club Validity Renewal(s) Due`,
+        description: 'Campus clubs due or overdue for annual validity extension.',
+        timestamp: 'Renewal Desk',
         read: false,
-        actionTab: 'charters',
+        actionTab: 'renewals',
       });
     }
     if (openGrievances.length > 0) {
       list.push({
-        id: 'admin-griev-1',
+        id: `admin-griev-${openGrievances.length}`,
         type: 'reminder',
         title: `${openGrievances.length} Active Support Ticket(s)`,
         description: 'Unresolved grievance and technical issues pending resolution across zones.',
-        timestamp: 'Active Attention',
+        timestamp: 'Grievance Desk',
         read: false,
-        actionTab: 'grievances',
+        actionTab: 'tickets',
+      });
+    }
+    if (filteredCharters.length > 0) {
+      list.push({
+        id: `admin-chart-${filteredCharters.length}`,
+        type: 'approval',
+        title: `${filteredCharters.length} Open Club Request(s)`,
+        description: 'New campus club applications logged for regional officer review.',
+        timestamp: 'Renewal Desk',
+        read: false,
+        actionTab: 'renewals',
       });
     }
     return list;
-  }, [authorityRequests, filteredCharters, openGrievances]);
+  }, [filteredCharters, openGrievances, renewalAttentionCount]);
+
+  const handleAdminNavigateTab = (tab: string) => {
+    let targetTab: 'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones' = 'dashboards';
+    if (tab === 'tickets' || tab === 'grievances' || tab === 'support') {
+      targetTab = 'tickets';
+    } else if (tab === 'renewals' || tab === 'charters' || tab === 'clubs' || tab === 'requests') {
+      targetTab = 'renewals';
+    } else if (tab === 'zones' || tab === 'employees' || tab === 'officers' || tab === 'ro') {
+      targetTab = 'zones';
+    } else if (tab === 'insights' || tab === 'ai' || tab === 'mcc') {
+      targetTab = 'insights';
+    } else if (tab === 'dashboards' || tab === 'performance') {
+      targetTab = 'dashboards';
+    }
+    setAdminTab(targetTab);
+
+    setTimeout(() => {
+      const el = document.getElementById('admin-desks-container') || document.querySelector('.tab-scroll');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+  };
 
 
   return (
@@ -369,8 +417,9 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <NotificationBell
             notifications={adminNotifications}
+            storageKey="ndli_admin_read_notifications"
             variant="dark"
-            onNavigateTab={(tab) => setAdminTab(tab as any)}
+            onNavigateTab={handleAdminNavigateTab}
           />
           <button
             type="button"
@@ -416,7 +465,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       {/* Zone Selector & Navigation Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 rounded-2xl border border-[#E2ECE7] shadow-xs">
         {/* Navigation Desks */}
-        <div className="tab-scroll flex items-center space-x-1 overflow-x-auto w-full sm:w-auto">
+        <div id="admin-desks-container" className="tab-scroll flex items-center space-x-1 overflow-x-auto w-full sm:w-auto">
           <button
             onClick={() => setAdminTab('dashboards')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${

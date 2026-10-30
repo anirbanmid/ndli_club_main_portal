@@ -1263,7 +1263,21 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
             <NotificationBell
               notifications={employeeNotifications}
-              onNavigateTab={(tab) => setActiveTab(tab as EmployeeTab)}
+              storageKey={`ndli_emp_read_notifications_${currentEmpId}`}
+              onNavigateTab={(tab) => {
+                const validTabs: EmployeeTab[] = [
+                  'activity',
+                  'search',
+                  'history',
+                  'grievances',
+                  'approvals',
+                  'succession',
+                  'toolbox',
+                ];
+                if (validTabs.includes(tab as EmployeeTab)) {
+                  setActiveTab(tab as EmployeeTab);
+                }
+              }}
             />
 
             <div

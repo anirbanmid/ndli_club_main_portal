@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck, Clock, UserCheck, AlertTriangle, Building2, ExternalLink } from 'lucide-react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { Bell, CheckCheck, Clock, UserCheck, AlertTriangle, Building2, Info } from 'lucide-react';
 
 export interface NotificationItem {
   id: string;
@@ -13,59 +13,62 @@ export interface NotificationItem {
 
 interface NotificationBellProps {
   notifications?: NotificationItem[];
+  storageKey?: string;
   onNavigateTab?: (tab: string) => void;
   variant?: 'light' | 'dark';
 }
 
+const getStoredReadIds = (key: string): Set<string> => {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveStoredReadIds = (key: string, ids: Set<string>): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.from(ids)));
+  } catch {
+    // Gracefully handle storage errors
+  }
+};
+
 export const NotificationBell: React.FC<NotificationBellProps> = ({
   notifications: initialNotifications,
+  storageKey = 'ndli_notifications_read_ids',
   onNavigateTab,
   variant = 'light',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const defaultNotifications: NotificationItem[] = [
-    {
-      id: 'notif-1',
-      type: 'succession',
-      title: 'Authority Succession Request',
-      description: 'New leadership transition nominee pending review & charter re-signing.',
-      timestamp: '10 mins ago',
-      read: false,
-      actionTab: 'succession',
+  // Sync with persistent read storage in localStorage
+  const applyReadStatus = useCallback(
+    (list: NotificationItem[]): NotificationItem[] => {
+      const readSet = getStoredReadIds(storageKey);
+      return list.map((item) => ({
+        ...item,
+        read: item.read || readSet.has(item.id),
+      }));
     },
-    {
-      id: 'notif-2',
-      type: 'reminder',
-      title: 'Active Issue Reminders Due',
-      description: 'Zonal nodal follow-up required on open support tickets.',
-      timestamp: '1 hour ago',
-      read: false,
-      actionTab: 'grievances',
-    },
-    {
-      id: 'notif-3',
-      type: 'renewal',
-      title: 'Annual Validity Renewal Window',
-      description: 'Campus clubs due for validity extension this quarter.',
-      timestamp: 'Today',
-      read: false,
-      actionTab: 'search',
-    },
-  ];
-
-  const [items, setItems] = useState<NotificationItem[]>(
-    initialNotifications && initialNotifications.length > 0 ? initialNotifications : defaultNotifications
+    [storageKey]
   );
 
-  useEffect(() => {
-    if (initialNotifications && initialNotifications.length > 0) {
-      setItems(initialNotifications);
-    }
-  }, [initialNotifications]);
+  const [items, setItems] = useState<NotificationItem[]>(() => {
+    return initialNotifications ? applyReadStatus(initialNotifications) : [];
+  });
 
-  const unreadCount = items.filter((i) => !i.read).length;
+  useEffect(() => {
+    if (initialNotifications !== undefined) {
+      setItems(applyReadStatus(initialNotifications));
+    }
+  }, [initialNotifications, applyReadStatus]);
+
+  const unreadCount = useMemo(() => items.filter((i) => !i.read).length, [items]);
 
   // Close on outside click
   useEffect(() => {
@@ -83,20 +86,46 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   }, [isOpen]);
 
   const handleMarkAllAsRead = () => {
+    const readSet = getStoredReadIds(storageKey);
+    items.forEach((item) => readSet.add(item.id));
+    saveStoredReadIds(storageKey, readSet);
+
     setItems((prev) => prev.map((item) => ({ ...item, read: true })));
   };
 
   const handleItemClick = (item: NotificationItem) => {
+    // 1. Persist read status
+    const readSet = getStoredReadIds(storageKey);
+    readSet.add(item.id);
+    saveStoredReadIds(storageKey, readSet);
+
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, read: true } : i))
     );
+
+    // 2. Close flyout and navigate to target desk/tab/modal
+    setIsOpen(false);
     if (item.actionTab && onNavigateTab) {
       onNavigateTab(item.actionTab);
-      setIsOpen(false);
     }
   };
 
   const isDark = variant === 'dark';
+
+  const renderIcon = (type: NotificationItem['type']) => {
+    switch (type) {
+      case 'succession':
+        return <UserCheck className="h-4 w-4" />;
+      case 'reminder':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'renewal':
+        return <Clock className="h-4 w-4" />;
+      case 'approval':
+        return <Building2 className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
@@ -243,6 +272,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                     gap: '0.75rem',
                     alignItems: 'flex-start',
                   }}
+                  title={item.actionTab ? 'Click to open related desk' : undefined}
                 >
                   <div
                     style={{
@@ -251,12 +281,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                           ? '#EEF2FF'
                           : item.type === 'reminder'
                           ? '#FEF3C7'
+                          : item.type === 'renewal'
+                          ? '#F0FDF4'
                           : '#ECFDF5',
                       color:
                         item.type === 'succession'
                           ? '#4F46E5'
                           : item.type === 'reminder'
                           ? '#B45309'
+                          : item.type === 'renewal'
+                          ? '#15803D'
                           : '#0D7751',
                       width: '32px',
                       height: '32px',
@@ -268,13 +302,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
                       marginTop: '2px',
                     }}
                   >
-                    {item.type === 'succession' ? (
-                      <UserCheck className="h-4 w-4" />
-                    ) : item.type === 'reminder' ? (
-                      <AlertTriangle className="h-4 w-4" />
-                    ) : (
-                      <Building2 className="h-4 w-4" />
-                    )}
+                    {renderIcon(item.type)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

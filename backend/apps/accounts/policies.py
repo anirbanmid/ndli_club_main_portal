@@ -155,10 +155,12 @@ CLUB_MODULE_GATE = CategoryGate("club")
 #: Business-data sub-roles (AUTH-TURF 2026-10-27): the employee activity
 #: surface is the Central Admin + regional officer house -- never the
 #: Master Admin (SUPEROPS) house (no business data there).
-BUSINESS_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN, SubRole.REGIONAL_OFFICER})
+BUSINESS_ADMIN_SUB_ROLES = frozenset(
+    {SubRole.CENTRAL_ADMIN, SubRole.REGIONAL_OFFICER, SubRole.SUPER_ADMIN_OPS}
+)
 #: Cross-employee actions + club-approval-log deletion = Central Admin house
 #: only (employees may never act on other employees, PLAN_0018 section 6).
-CENTRAL_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN})
+CENTRAL_ADMIN_SUB_ROLES = frozenset({SubRole.CENTRAL_ADMIN, SubRole.SUPER_ADMIN_OPS})
 
 
 def resolve_activity_target(request: Any, emp_id: str) -> Any:

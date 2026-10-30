@@ -685,14 +685,27 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
     for (const r of rows) {
       const countVal = Number(r.call_count || 1);
-      if (r.is_approval_log || r.support_type.toLowerCase().includes('approval')) {
+      const st = (r.support_type || '').toLowerCase();
+      if (r.is_approval_log || st.includes('approval')) {
         countedClubs += 1;
-      } else if (r.support_type.toLowerCase().includes('online')) {
-        countedOnline += 1;
-      } else if (r.support_type.toLowerCase().includes('offline')) {
-        countedOffline += 1;
+      } else if (st.includes('online')) {
+        countedOnline += countVal;
+      } else if (st.includes('offline')) {
+        countedOffline += countVal;
       } else {
         countedSupport += countVal;
+      }
+    }
+
+    // SSOT fallback for canonical clubs assigned in officer jurisdiction if activity ledger has not recorded approval yet
+    if (countedClubs === 0 && clubRows.length > 0) {
+      const assignedStates = (currentOfficer?.states || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+      const jurisdictionalClubs = clubRows.filter(c => {
+        const cState = (c.state || '').toLowerCase().trim();
+        return assignedStates.some(s => s === cState || cState.includes(s) || s.includes(cState));
+      }).length;
+      if (jurisdictionalClubs > 0) {
+        countedClubs = jurisdictionalClubs;
       }
     }
 
@@ -702,7 +715,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       offline: countedOffline,
       support: countedSupport,
     };
-  }, [rows]);
+  }, [rows, clubRows, currentOfficer]);
 
   // Submit SEC A support log
   const handleSecASubmit = async (e: React.FormEvent) => {

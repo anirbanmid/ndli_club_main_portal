@@ -64,6 +64,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminRole, setAdminRole] = useState('');
   const [adminUsername, setAdminUsername] = useState('');
+  const [sessionChecking, setSessionChecking] = useState(true);
   const handleAdminSignOut = async (): Promise<void> => {
     try {
       await signOut();
@@ -86,8 +87,15 @@ export function App({ ssrLocation }: AppProps = {}) {
       })
       .catch(() => {
         /* not signed in — the gate stays */
+      })
+      .finally(() => {
+        setSessionChecking(false);
       });
   };
+
+  useEffect(() => {
+    probeAdminSession();
+  }, []);
   const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
 
   // Application Data States
@@ -496,7 +504,12 @@ export function App({ ssrLocation }: AppProps = {}) {
             Without a real iit_kgp_admin session this branch renders the sign-in
             door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
-          adminAuthed ? (
+          sessionChecking ? (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4">
+              <div className="w-8 h-8 border-4 border-[#0D7751] border-t-transparent rounded-full animate-spin" />
+              <div className="text-sm font-semibold text-[#103125]">Verifying administrator session…</div>
+            </div>
+          ) : adminAuthed ? (
             initialRoute.tab === 'employee' ? (
               <EmployeeModule
                 onSignOut={() => void handleAdminSignOut()}

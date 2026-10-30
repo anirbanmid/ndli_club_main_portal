@@ -266,7 +266,11 @@ export const EmployeeDutyPanel: React.FC<{
   };
 
   const handleLaunchNode = (emp: EmployeeDutyRow) => {
-    window.open(`/employee/${encodeURIComponent(emp.username)}`, '_blank');
+    if (onLaunchEmployeeNode) {
+      onLaunchEmployeeNode(emp.username);
+    } else {
+      window.open(`/employee/${encodeURIComponent(emp.username)}`, '_blank');
+    }
   };
 
   return (

@@ -51,6 +51,7 @@ from .models import (
     BULK_SUPPORT_TYPE,
     SEC_A_SUPPORT_TYPES,
     ActivityLog,
+    SupportType,
 )
 
 _NO_SELF = "You may only manage your own activity log."
@@ -85,7 +86,7 @@ def _serialize(row: Any) -> dict[str, Any]:
         "club_id": row.club_code,
         "notes": row.notes,
         "call_count": getattr(row, "call_count", 1),
-        "is_approval_log": row.support_type in APPROVAL_LOG_TYPES,
+        "is_approval_log": row.support_type == SupportType.CLUB_APPROVAL,
     }
 
 

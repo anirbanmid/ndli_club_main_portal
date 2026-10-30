@@ -112,7 +112,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const existing = await fetchSession();
         if (cancelled || existing === null) return;
         onSignedIn?.(existing);
-        returnToInterruptedRoute();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/employee')) {
+          returnToInterruptedRoute();
+        }
       } catch (err) {
         if (!cancelled) setError(flowErrorFrom(err));
       }

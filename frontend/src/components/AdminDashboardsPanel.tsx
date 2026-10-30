@@ -73,7 +73,9 @@ import {
   ZoneDashboard,
   fetchAdminClubs,
   fetchAdminTotpSetup,
+  fetchGrievanceQueue,
   fetchOfficerRatings,
+  resolveGrievance,
   fetchRenewalAttention,
   fetchZoneDashboard,
   getMasterClubsExportUrl,
@@ -200,6 +202,23 @@ const StatCard: React.FC<StatCardProps> = ({
   );
 };
 
+function normalizeZoneName(zone?: string | null): string {
+  if (!zone) return 'Central';
+  const clean = zone.trim().toUpperCase().replace(/[-_]/g, ' ');
+  if (clean === 'NORTH EAST' || clean === 'NORTHEAST') return 'North East';
+  if (clean === 'NORTH') return 'North';
+  if (clean === 'SOUTH') return 'South';
+  if (clean === 'EAST') return 'East';
+  if (clean === 'WEST') return 'West';
+  if (clean === 'CENTRAL') return 'Central';
+  if (clean.includes('NORTH') && clean.includes('EAST')) return 'North East';
+  if (clean.includes('NORTH')) return 'North';
+  if (clean.includes('SOUTH')) return 'South';
+  if (clean.includes('EAST')) return 'East';
+  if (clean.includes('WEST')) return 'West';
+  return 'Central';
+}
+
 export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) => {
   // Filter bar states
   const [selectedZoneScope, setSelectedZoneScope] = useState<string>(zoneCode === 'All' ? 'ALL' : zoneCode);
@@ -217,6 +236,26 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   const [renewalAttention, setRenewalAttention] = useState<RenewalAttention | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // 30-Day Escalations modal state
+  const [isEscalationsModalOpen, setIsEscalationsModalOpen] = useState(false);
+  const [escalationsList, setEscalationsList] = useState<any[]>([]);
+  const [escalationsLoading, setEscalationsLoading] = useState(false);
+  const [escalationsSearchQuery, setEscalationsSearchQuery] = useState('');
+  const [selectedEscalatedIssue, setSelectedEscalatedIssue] = useState<any | null>(null);
+
+  const openEscalationsModal = async () => {
+    setIsEscalationsModalOpen(true);
+    setEscalationsLoading(true);
+    try {
+      const q = await fetchGrievanceQueue();
+      setEscalationsList(q.results || []);
+    } catch {
+      // fallback
+    } finally {
+      setEscalationsLoading(false);
+    }
+  };
 
   // Renewal Attention Modal state
   const [isAttentionModalOpen, setIsAttentionModalOpen] = useState(false);
@@ -486,7 +525,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   const stateRows = useMemo(() => {
     const list = telemetry?.states ?? [];
     if (!effectiveZone || effectiveZone === 'ALL') return list;
-    return list.filter((s) => s.zone?.toUpperCase() === effectiveZone.toUpperCase());
+    return list.filter((s) => normalizeZoneName(s.zone).toUpperCase() === normalizeZoneName(effectiveZone).toUpperCase());
   }, [telemetry?.states, effectiveZone]);
 
   const stateTotals = useMemo(() => {
@@ -530,7 +569,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       South: 0,
     };
     (telemetry?.states ?? []).forEach((st) => {
-      const z = st.zone || 'Central';
+      const z = normalizeZoneName(st.zone);
       if (map[z] !== undefined) {
         map[z] += st.clubs || 0;
       }
@@ -551,8 +590,23 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
     return { zone: topZ, count: maxC, share };
   }, [zoneClubCounts, totalClubs]);
 
-  // SEC A Support activities split from officers
+  // SEC A Support activities split from single source of truth
   const supportSplit = useMemo(() => {
+    const bk = dashboard?.support_type_breakdown;
+    if (bk && (bk.phone_remote || bk.os_tickets || bk.online_training || bk.offline_training)) {
+      const phone = Number(bk.phone_remote || 0);
+      const tickets = Number(bk.os_tickets || 0);
+      const online = Number(bk.online_training || 0);
+      const offline = Number(bk.offline_training || 0);
+      const sum = phone + tickets + online + offline || 1;
+      return {
+        phoneCalls: { count: phone, pct: Math.round((phone / sum) * 100) },
+        ticketsClosed: { count: tickets, pct: Math.round((tickets / sum) * 100) },
+        onlineTraining: { count: online, pct: Math.round((online / sum) * 100) },
+        offlineTraining: { count: offline, pct: Math.round((offline / sum) * 100) },
+        total: sum,
+      };
+    }
     const offs = ratings?.officers ?? [];
     let phoneCalls = 0;
     let ticketsClosed = 0;
@@ -574,7 +628,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       offlineTraining: { count: offlineTraining, pct: Math.round((offlineTraining / sum) * 100) },
       total: sum,
     };
-  }, [ratings?.officers]);
+  }, [dashboard?.support_type_breakdown, ratings?.officers]);
 
   // Filtered attention clubs
   const attentionRows = useMemo(() => {
@@ -760,6 +814,8 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           badge={t('SLA Monitor')}
           icon={<AlertTriangle className="w-5 h-5" />}
           variant="rose"
+          clickable={true}
+          onClick={openEscalationsModal}
         />
       </div>
 
@@ -2398,6 +2454,222 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL 6: 30-DAY UNRESOLVED ESCALATIONS MODAL (FULL PARITY)
+          ===================================================================== */}
+      {isEscalationsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-rose-900 to-rose-700 text-white p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl shadow-xs">
+                  🚨
+                </div>
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">
+                    30-Day Unresolved Escalations Desk
+                  </h3>
+                  <p className="text-xs text-rose-200 mt-0.5">
+                    Critical regional club issues unresolved for 30+ days requiring administrative review and SLA disposition.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEscalationsModalOpen(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filter / Search Bar */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-96">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={escalationsSearchQuery}
+                  onChange={(e) => setEscalationsSearchQuery(e.target.value)}
+                  placeholder="Search by Club ID, Institution, Officer, or Issue..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-rose-500 bg-white"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-600">
+                  Total Escalations:
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200">
+                  {escalationsList.filter((i) => i.is_admin_escalated || i.status !== 'resolved').length} Critical
+                </span>
+              </div>
+            </div>
+
+            {/* Content Table / Empty State */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {escalationsLoading ? (
+                <div className="py-16 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-6 h-6 animate-spin text-rose-600" />
+                  <span>Loading escalated regional issues from SSOT...</span>
+                </div>
+              ) : escalationsList.filter((i) => i.is_admin_escalated || i.status !== 'resolved').length === 0 ? (
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 text-3xl flex items-center justify-center mx-auto border-2 border-emerald-200">
+                    ✓
+                  </div>
+                  <h4 className="text-base font-extrabold text-slate-900">
+                    All Clear — Zero Unresolved Escalations
+                  </h4>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    All regional club issues across all 6 zones have been resolved or are within their normal 30-day resolution timeline. No emergency administrative intervention required.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-left text-xs divide-y divide-slate-200">
+                    <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px]">
+                      <tr>
+                        <th className="p-3">Issue ID</th>
+                        <th className="p-3">Club ID</th>
+                        <th className="p-3">Subject &amp; Issue Note</th>
+                        <th className="p-3">Assigned Zone</th>
+                        <th className="p-3 text-center">Unresolved Duration</th>
+                        <th className="p-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-800">
+                      {escalationsList
+                        .filter((i) => i.is_admin_escalated || i.status !== 'resolved')
+                        .filter((i) => {
+                          if (!escalationsSearchQuery.trim()) return true;
+                          const q = escalationsSearchQuery.toLowerCase().trim();
+                          return (
+                            (i.id || '').toLowerCase().includes(q) ||
+                            (i.club_id || '').toLowerCase().includes(q) ||
+                            (i.subject || '').toLowerCase().includes(q) ||
+                            (i.description || '').toLowerCase().includes(q)
+                          );
+                        })
+                        .map((issue) => (
+                          <tr key={issue.id} className="hover:bg-rose-50/40 transition-colors">
+                            <td className="p-3 font-mono font-bold text-rose-800 text-[11px]">
+                              {issue.id.slice(0, 8)}...
+                            </td>
+                            <td className="p-3 font-mono font-bold text-slate-900">
+                              {issue.club_id}
+                            </td>
+                            <td className="p-3 max-w-xs">
+                              <div className="font-extrabold text-slate-900">{issue.subject}</div>
+                              <div className="text-[11px] text-slate-500 truncate mt-0.5">{issue.description}</div>
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px]">
+                                {issue.zone || 'Central'} Zone
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 font-extrabold text-[10px]">
+                                30+ Days Overdue
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEscalatedIssue(issue)}
+                                className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+                              >
+                                Review &amp; Decide ↗
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsEscalationsModalOpen(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-800 transition-colors"
+              >
+                Close Escalations Desk
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal for Selected Escalation */}
+      {selectedEscalatedIssue && (
+        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <span className="text-base">🚨</span>
+                <span>Review Escalated Regional Grievance</span>
+              </h4>
+              <button onClick={() => setSelectedEscalatedIssue(null)} className="text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-700">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 font-mono text-[11px]">
+                <div><span className="text-slate-500">Ticket ID:</span> <strong>{selectedEscalatedIssue.id}</strong></div>
+                <div><span className="text-slate-500">Club ID:</span> <strong>{selectedEscalatedIssue.club_id}</strong></div>
+                <div><span className="text-slate-500">Status:</span> <strong className="text-rose-700">{selectedEscalatedIssue.status}</strong></div>
+                <div><span className="text-slate-500">Reported:</span> {new Date(selectedEscalatedIssue.created_at).toLocaleDateString()}</div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Subject:</label>
+                <div className="p-2.5 rounded-xl bg-slate-100 font-bold text-slate-900">
+                  {selectedEscalatedIssue.subject}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Issue Description:</label>
+                <div className="p-3 rounded-xl bg-slate-100 text-slate-800 leading-relaxed">
+                  {selectedEscalatedIssue.description}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await resolveGrievance(selectedEscalatedIssue.id, { decision: 'resolved', reason: 'Resolved by Central Admin' });
+                      alert('Issue marked as resolved.');
+                      setSelectedEscalatedIssue(null);
+                      await openEscalationsModal();
+                    } catch (err: any) {
+                      alert(err?.message || 'Resolution failed');
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-[#0D7751] text-white hover:bg-[#0a5e40] transition-colors"
+                >
+                  ✓ Mark as Resolved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedEscalatedIssue(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

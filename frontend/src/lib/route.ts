@@ -67,5 +67,18 @@ export function resolveRoute(loc: {
   if (path === '/join' || tabParam === 'join') {
     return { tab: 'join', certId: '', next: '', slug: '' };
   }
+  if (path === '/employee' || path.startsWith('/employee/') || tabParam === 'employee' || params.get('branch') === 'employee') {
+    const parts = path.split('/').filter(Boolean);
+    let empSlug = (params.get('emp') || '').trim().toUpperCase();
+    if (!empSlug && parts.length >= 2 && parts[0].toLowerCase() === 'employee' && parts[1].toLowerCase() !== 'login') {
+      empSlug = decodeURIComponent(parts[1]).trim().toUpperCase();
+    }
+    return {
+      tab: 'employee',
+      certId: '',
+      next: '',
+      slug: empSlug || 'EMP01',
+    };
+  }
   return { tab: 'home', certId: '', next: '', slug: '' };
 }

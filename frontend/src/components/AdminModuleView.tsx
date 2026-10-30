@@ -174,7 +174,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const canSeeEmployee =
     subRole === 'central_admin' || subRole === 'regional_officer'; // business turf (AUTH-TURF: never SUPEROPS)
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'dashboards' | 'tickets' | 'renewals' | 'succession' | 'migration' | 'insights' | 'zones'>('dashboards');
+  const [adminTab, setAdminTab] = useState<'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones'>('dashboards');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -316,20 +316,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
 
   const adminNotifications: NotificationItem[] = useMemo(() => {
     const list: NotificationItem[] = [];
-    const pendingSuccession = (authorityRequests || []).filter(
-      (r) => r.status === 'Pending Admin Review'
-    );
-    if (pendingSuccession.length > 0) {
-      list.push({
-        id: 'admin-succ-1',
-        type: 'succession',
-        title: `${pendingSuccession.length} Authority Succession Request(s)`,
-        description: 'Institutional leadership transition requests require verification & re-signing.',
-        timestamp: 'Pending Review',
-        read: false,
-        actionTab: 'succession',
-      });
-    }
+
     if (filteredCharters.length > 0) {
       list.push({
         id: 'admin-chart-1',
@@ -470,15 +457,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Grievance Desk")} ({filteredGrievances.filter((g) => g.status !== 'resolved').length})</span>
           </button>
 
-          <button
-            onClick={() => setAdminTab('succession')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'succession' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-            }`}
-          >
-            <Lock className="h-4 w-4" />
-            <span>{t("Authority Succession")} ({authorityRequests.length})</span>
-          </button>
+
 
           <button
             onClick={() => setAdminTab('renewals')}
@@ -490,16 +469,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Renewal Desk")}</span>
           </button>
 
-          <button
-            onClick={() => setAdminTab('migration')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'migration' ? 'bg-[#B45309] text-white shadow-xs' : 'text-[#B45309] hover:bg-amber-50'
-            }`}
-          >
-            <Database className="h-4 w-4" />
-            <span>{t("Forensic Migration Desk")}</span>
-            <span className="bg-white text-[#B45309] text-[11px] px-1 rounded font-black">{t("Legacy Data Healing")}</span>
-          </button>
+
         </div>
 
         {/* Regional Zone Filter */}
@@ -634,161 +604,6 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
               )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* DESK 3: Authority Succession — DEMO SHOWCASE (no backend yet: M2-A3) */}
-      {adminTab === 'succession' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {t("[REVIEW ONLY] Demo data — the live Authority Succession desk arrives with milestone M2-A3.")}
-          </div>
-          <div className="border-b border-[#E2ECE7] pb-4">
-            <h3 className="text-lg font-bold text-[#103125]">
-              {t("Institutional Authority Succession & Charter Re-Signing Gate")}
-            </h3>
-            <p className="text-xs text-[#5A7366]">
-              {t("Validate appointment orders and cryptographically sanction leadership changes for colleges.")}
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {authorityRequests.map(req => (
-              <div key={req.id} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-3 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="font-mono font-bold text-[#103125]">{req.id} • {req.clubName}</span>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                    req.status === 'Approved & Updated' ? 'bg-brand-100 text-brand-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {t(req.status)}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-[#E2ECE7]">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase text-[#5A7366]">{t("Current Officer")}</span>
-                    <div className="font-bold text-[#103125]">{t(req.currentName)}</div>
-                    <div className="text-[11px] text-[#5A7366]">{t("Role:")} {t(req.role)}</div>
-                  </div>
-                  <div>
-                    <span className="text-[11px] font-bold uppercase text-[#0D7751]">{t("Incoming Nominee")}</span>
-                    <div className="font-bold text-[#103125]">{t(req.proposedName)}</div>
-                    <div className="text-[11px] text-[#5A7366]">{req.proposedEmail} ({req.proposedPhone})</div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center text-[11px] text-[#5A7366]">
-                  <span>{t("Uploaded Order:")} <strong className="font-mono">{req.officialDocName}</strong></span>
-                  {req.status === 'Pending Admin Review' && (
-                    <button
-                      onClick={() => onApproveAuthorityChange(req.id)}
-                      className="px-4 py-1.5 rounded-lg bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs"
-                    >
-                      {t("Authorize & Re-Sign Charter")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* DESK 4: Forensic Migration — DEMO SHOWCASE (out of M6 per C7) */}
-      {adminTab === 'migration' && canSeeRedZone && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {t("[REVIEW ONLY] Showcase sample — the live Quarantine & Healing desk is out of M6 scope (owner decision C7; M6.1 candidate).")}
-          </div>
-          <div className="border-b border-[#E2ECE7] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full mb-1">
-                <Database className="h-3.5 w-3.5 text-amber-700" />
-                <span>{t("Legacy Database Recovery & Reconciliation Pipeline")}</span>
-              </div>
-              <h3 className="text-xl font-bold text-[#103125]">
-                {t("Forensic Migration & Recovery of Legacy Data")}
-              </h3>
-              <p className="text-xs text-[#5A7366] mt-0.5">
-                {t("Automated schema reverse-engineering, entity inference against AISHE master, and reconciliation-accounted healing.")}
-              </p>
-            </div>
-
-            <div className="text-right">
-              <span className="text-2xl font-black text-[#0D7751]">{forensicRecords.length ? Math.round(forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length / forensicRecords.length * 100) : 0}%</span>
-              <span className="block text-[11px] font-bold uppercase text-[#5A7366]">{t("Auto-Healing Rate (Sample)")}</span>
-            </div>
-          </div>
-
-          {/* Migration Pipeline Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-center">
-            <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-[#103125]">{forensicRecords.length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Legacy Records Scanned")}</div>
-            </div>
-            <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-brand-700">{forensicRecords.filter(r => r.recoveryStatus === 'Auto-Healed').length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Reconstructed & Healed")}</div>
-            </div>
-            <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-[#B45309]">{forensicRecords.filter(r => r.recoveryStatus === 'Needs Review').length}</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Quarantined for Review")}</div>
-            </div>
-            <div className="p-3 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7]">
-              <div className="font-mono text-xl font-black text-[#0D7751]">—</div>
-              <div className="text-[#5A7366] text-[11px] font-bold uppercase">{t("Past Certs Re-Anchored (live count at M8)")}</div>
-            </div>
-          </div>
-
-          {/* Quarantined Records Inspection Table */}
-          <div className="space-y-3 pt-2">
-            <h4 className="font-bold text-sm text-[#103125]">{t("Isolated Anomaly Quarantine Table:")}</h4>
-            <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
-              <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
-                <thead className="bg-[#F4F8F6] text-[#5A7366] font-bold uppercase text-[11px]">
-                  <tr>
-                    <th className="p-3">{t("Legacy ID")}</th>
-                    <th className="p-3">{t("Raw Ingested Name")}</th>
-                    <th className="p-3">{t("Detected Anomaly")}</th>
-                    <th className="p-3">{t("Inferred AISHE")}</th>
-                    <th className="p-3">{t("Status")}</th>
-                    <th className="p-3 text-right">{t("Action")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-                  {forensicRecords.map(rec => (
-                    <tr key={rec.id} className="hover:bg-[#F4F8F6]/60">
-                      <td className="p-3 font-mono font-bold text-[#103125]">{rec.legacyId}</td>
-                      <td className="p-3 font-semibold text-rose-900">{rec.rawInstituteName}</td>
-                      <td className="p-3 text-[#5A7366] max-w-xs">{rec.anomalyDetected}</td>
-                      <td className="p-3 font-mono text-brand-800 font-bold">{rec.healedAisheCode}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                          rec.recoveryStatus === 'Auto-Healed' ? 'bg-brand-100 text-brand-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {t(rec.recoveryStatus)}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right">
-                        {rec.recoveryStatus !== 'Auto-Healed' ? (
-                          <button
-                            onClick={() => onHealForensicRecord(rec.id)}
-                            className="px-3 py-1 rounded bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs"
-                          >
-                            {t("Heal & Commit")}
-                          </button>
-                        ) : (
-                          <span className="text-brand-700 font-bold">{t("✓ Committed")}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 

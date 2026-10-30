@@ -128,49 +128,96 @@ def clubs_approved_for(
 def tickets_closed_for(
     officer: Any, *, year: int | None = None, month: int | None = None
 ) -> int:
-    """Tickets this officer closed (``SLAEvent`` kind=resolved)."""
-    return _in_period(
+    """Tickets this officer closed (SLAEvent resolved + ActivityLog OS_TICKET)."""
+    from apps.activities.models import ActivityLog, SupportType
+
+    sla_count = _in_period(
         SLAEvent.objects.filter(kind=SLAEvent.Kind.RESOLVED, actor=officer),
         "occurred_at",
         year,
         month,
     ).count()
+    act_count = _in_period(
+        ActivityLog.objects.filter(
+            employee=officer, support_type=SupportType.OS_TICKET
+        ),
+        "timestamp",
+        year,
+        month,
+    ).count()
+    return sla_count + act_count
 
 
 def phone_calls_for(
     officer: Any, *, year: int | None = None, month: int | None = None
 ) -> int:
-    """Phone/remote-assistance calls logged for this officer (``AuditLog``)."""
-    return _in_period(
+    """Phone/remote-assistance calls for officer (AuditLog + ActivityLog)."""
+    from django.db.models import Sum
+    from django.db.models.functions import Coalesce
+
+    from apps.activities.models import ActivityLog, SupportType
+
+    audit_count = _in_period(
         AuditLog.objects.filter(action=PHONE_CALL_ACTION, actor_id=officer.pk),
         "timestamp",
         year,
         month,
     ).count()
+    act_calls = _in_period(
+        ActivityLog.objects.filter(
+            employee=officer, support_type=SupportType.PHONE_CALL
+        ),
+        "timestamp",
+        year,
+        month,
+    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+    return audit_count + act_calls
 
 
 def offline_training_for(
     officer: Any, *, year: int | None = None, month: int | None = None
 ) -> int:
-    """Offline training sessions logged for this officer (``AuditLog``)."""
-    return _in_period(
+    """Offline training sessions for officer (AuditLog + ActivityLog)."""
+    from apps.activities.models import ActivityLog, SupportType
+
+    audit_count = _in_period(
         AuditLog.objects.filter(action=OFFLINE_TRAINING_ACTION, actor_id=officer.pk),
         "timestamp",
         year,
         month,
     ).count()
+    act_count = _in_period(
+        ActivityLog.objects.filter(
+            employee=officer, support_type=SupportType.OFFLINE_TRAINING
+        ),
+        "timestamp",
+        year,
+        month,
+    ).count()
+    return audit_count + act_count
 
 
 def online_training_for(
     officer: Any, *, year: int | None = None, month: int | None = None
 ) -> int:
-    """Online workshops logged for this officer (``AuditLog``)."""
-    return _in_period(
+    """Online workshops logged for this officer (``AuditLog`` + ``ActivityLog``)."""
+    from apps.activities.models import ActivityLog, SupportType
+
+    audit_count = _in_period(
         AuditLog.objects.filter(action=ONLINE_TRAINING_ACTION, actor_id=officer.pk),
         "timestamp",
         year,
         month,
     ).count()
+    act_count = _in_period(
+        ActivityLog.objects.filter(
+            employee=officer, support_type=SupportType.ONLINE_TRAINING
+        ),
+        "timestamp",
+        year,
+        month,
+    ).count()
+    return audit_count + act_count
 
 
 def migrated_baseline_for(officer: Any) -> BaselineBreakdown:
@@ -328,10 +375,13 @@ def evaluate_officers(
     desc (old line 509); ranks are 1..n in that order; stars are banded
     RELATIVELY against the cohort's ``max_score`` (old lines 512-524).
     """
+    active_baselines = CANONICAL_BASELINES if baselines is None else baselines
     evaluations: list[dict[str, Any]] = []
     for officer in officers:
         key = str(getattr(officer, "username", ""))
-        base = (baselines or {}).get(key)
+        if not key.upper().startswith("EMP") or key.upper() not in CANONICAL_BASELINES:
+            continue
+        base = active_baselines.get(key)
         rating = officer_rating(officer, baseline=base, year=year, month=month)
 
         meta = OFFICER_METADATA.get(key.upper(), {})
@@ -406,6 +456,9 @@ def evaluate_officers(
     max_score = max((e["weighted_score"] for e in evaluations), default=0.0)
     for index, evaluation in enumerate(evaluations, start=1):
         evaluation["rank"] = index
-        evaluation["stars"] = stars_for(evaluation["weighted_score"], max_score)
+        stars = stars_for(evaluation["weighted_score"], max_score)
+        evaluation["stars"] = stars
+        evaluation["stars_display"] = "★" * stars + "☆" * (5 - stars)
+        evaluation["rating_label"] = f"{stars}.0 / 5.0"
         evaluation["max_score"] = max_score
     return evaluations

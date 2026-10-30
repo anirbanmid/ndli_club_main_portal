@@ -921,6 +921,23 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             str(c.upcoming_renewal_date) if c.upcoming_renewal_date else "2026-04-12"
         )
 
+        from datetime import date
+
+        from django.utils import timezone
+        today = timezone.localdate()
+        computed_status = "Active"
+        try:
+            u_date = date.fromisoformat(upcoming_ren)
+            diff_days = (u_date - today).days
+            if diff_days < 0:
+                computed_status = "Overdue"
+            elif diff_days <= 30:
+                computed_status = "Expiring Soon"
+            else:
+                computed_status = "Active"
+        except Exception:
+            computed_status = "Active"
+
         patron_n = c.patron_name or "Prof. Patron Head"
         patron_e = c.patron_email or f"director@{c.code.lower()}.ac.in"
         patron_p = c.patron_phone or "+91 9811000011"
@@ -946,7 +963,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             "zone": clean_zone,
             "category": "University" if is_univ else "Autonomous Institute",
             "passkey": f"{c.code}-NDL-001",
-            "status": "Active",
+            "status": computed_status,
             "memberCount": c.member_count or 2000,
             "member_count": c.member_count or 2000,
             "eventsConducted": (c.solo_activities or 0) + (c.joint_activities or 0),

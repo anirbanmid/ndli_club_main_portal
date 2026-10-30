@@ -80,6 +80,8 @@ export interface EmployeeModuleProps {
   onSignOut?: () => void;
   subRole?: string;
   adminRole?: string;
+  empId?: string;
+  viewOnly?: boolean;
   onNavigateBranch?: (branch: 'landing' | 'club_module', tab?: string) => void;
   authorityRequests?: AuthorityChangeRequest[];
   onApproveAuthorityChange?: (reqId: string) => void;
@@ -149,6 +151,8 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   onSignOut,
   subRole = 'EMP01',
   adminRole,
+  empId,
+  viewOnly = false,
   onNavigateBranch,
   authorityRequests = [],
   onApproveAuthorityChange,
@@ -160,9 +164,12 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   // Resolved identity
   const currentEmpId = useMemo(() => {
+    if (empId && empId.toUpperCase().startsWith('EMP')) {
+      return empId.toUpperCase();
+    }
     const raw = (subRole || 'EMP01').toUpperCase();
     return raw.startsWith('EMP') ? raw : 'EMP01';
-  }, [subRole]);
+  }, [empId, subRole]);
 
   const currentOfficer = useMemo(() => {
     return NODAL_OFFICERS[currentEmpId] || NODAL_OFFICERS.EMP01;
@@ -1260,6 +1267,65 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
         {/* Container */}
         <main className="container" style={{ padding: '1.25rem 1.75rem', flex: 1 }}>
+          {viewOnly && (
+            <div
+              style={{
+                background: '#fffbeb',
+                border: '2px solid #f59e0b',
+                borderLeft: '6px solid #d97706',
+                borderRadius: '12px',
+                padding: '0.85rem 1.25rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+                boxShadow: '0 2px 8px rgba(217, 119, 6, 0.1)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '1.4rem' }}>👁️</span>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <strong style={{ color: '#92400e', fontSize: '0.92rem' }}>
+                      Preview Mode (Admin View-Only)
+                    </strong>
+                    <span
+                      style={{
+                        background: '#fef3c7',
+                        color: '#92400e',
+                        border: '1px solid #fcd34d',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        padding: '1px 8px',
+                        borderRadius: '999px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {currentEmpId} Node Interface
+                    </span>
+                  </div>
+                  <p style={{ color: '#b45309', fontSize: '0.78rem', margin: '0.2rem 0 0 0', lineHeight: 1.35 }}>
+                    Viewing Regional Officer Node for <strong>{currentOfficer.name}</strong> ({currentOfficer.zone} Zone). All operational write actions are restricted until authenticated with {currentEmpId} credentials.
+                  </p>
+                </div>
+              </div>
+              <span
+                style={{
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  border: '1px solid #f59e0b',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '4px 10px',
+                  borderRadius: '8px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                View-Only Mode
+              </span>
+            </div>
+          )}
           {/* Active Officer Banner */}
           <div className="officer-banner">
             <div className="officer-details" style={{ flex: 1, minWidth: '260px' }}>
@@ -1604,7 +1670,13 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                               </td>
                               <td>
                                 <span
-                                  className="pill pill-success"
+                                  className={
+                                    c.status === 'Overdue'
+                                      ? 'pill pill-danger'
+                                      : c.status === 'Expiring Soon'
+                                        ? 'pill pill-warning'
+                                        : 'pill pill-success'
+                                  }
                                   style={{
                                     textTransform: 'capitalize',
                                     fontWeight: 700,

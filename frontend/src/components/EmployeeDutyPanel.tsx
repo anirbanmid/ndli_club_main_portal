@@ -266,11 +266,7 @@ export const EmployeeDutyPanel: React.FC<{
   };
 
   const handleLaunchNode = (emp: EmployeeDutyRow) => {
-    if (onLaunchEmployeeNode) {
-      onLaunchEmployeeNode(emp.username);
-    } else {
-      window.open(`/?branch=employee&emp=${encodeURIComponent(emp.username)}`, '_blank');
-    }
+    window.open(`/employee/${encodeURIComponent(emp.username)}`, '_blank');
   };
 
   return (

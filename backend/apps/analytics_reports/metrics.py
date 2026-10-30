@@ -27,7 +27,7 @@ and out-of-scope zones are indistinguishable from empty ones.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from apps.accounts.models import Category, SubRole
@@ -109,6 +109,7 @@ class ZoneDashboard:
     active_officers: int = 0
     renewal_attention: int = 0
     escalations_30d: int = 0
+    support_type_breakdown: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -126,6 +127,7 @@ class ZoneDashboard:
             "active_officers": self.active_officers,
             "renewal_attention": self.renewal_attention,
             "escalations_30d": self.escalations_30d,
+            "support_type_breakdown": self.support_type_breakdown,
         }
 
 
@@ -175,7 +177,6 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     from apps.accounts.models import Category, SubRole, User
     from apps.activities.models import ActivityLog
     from apps.domain.models import Club
-    from apps.governance.models import RenewalRecord
 
     tickets = _tickets(zone)
     events = _sla_events(zone)
@@ -186,10 +187,34 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         club_qs = club_qs.filter(institution__state__zone__code=zone)
     total_clubs = club_qs.count()
 
-    # 2. Total Daily Support Logs (real-time sum of call_count)
+    # 2. Total Daily Support Logs (real-time sum of call_count) & Breakdown
+    from apps.activities.models import SupportType
     act_qs = ActivityLog.objects.all()
     if zone:
         act_qs = act_qs.filter(employee__zone_id=zone)
+
+    phone_remote = act_qs.filter(
+        support_type=SupportType.PHONE_CALL
+    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+
+    os_tickets = act_qs.filter(
+        support_type=SupportType.OS_TICKET
+    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+
+    online_training = act_qs.filter(
+        support_type=SupportType.ONLINE_TRAINING
+    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+
+    offline_training = act_qs.filter(
+        support_type=SupportType.OFFLINE_TRAINING
+    ).aggregate(n=Sum(Coalesce("call_count", 1)))["n"] or 0
+
+    support_breakdown = {
+        "phone_remote": phone_remote,
+        "os_tickets": os_tickets,
+        "online_training": online_training,
+        "offline_training": offline_training,
+    }
     agg = act_qs.aggregate(total=Sum(Coalesce("call_count", 1)))
     total_activities = agg["total"] or 0
 
@@ -203,10 +228,12 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     active_officers = off_qs.count()
 
     # 4. Renewal Attention (clubs requiring renewal attention)
-    ren_qs = RenewalRecord.objects.filter(status="open")
-    if zone:
-        ren_qs = ren_qs.filter(club__institution__state__zone__code=zone)
-    renewal_attention = ren_qs.count()
+    from apps.governance.renewals import ATTENTION_WINDOW_DAYS, due_date_for
+    today = timezone.localdate()
+    renewal_attention = sum(
+        1 for c in club_qs
+        if (due_date_for(c) - today).days <= ATTENTION_WINDOW_DAYS
+    )
 
     # 5. 30-Day Escalations
     cutoff_30d = timezone.now() - timedelta(days=30)
@@ -233,6 +260,7 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         active_officers=active_officers,
         renewal_attention=renewal_attention,
         escalations_30d=escalations_30d,
+        support_type_breakdown=support_breakdown,
     )
 
 

@@ -108,6 +108,12 @@ export interface ZoneDashboard {
   active_officers: number;
   renewal_attention: number;
   escalations_30d: number;
+  support_type_breakdown?: {
+    phone_remote?: number;
+    os_tickets?: number;
+    online_training?: number;
+    offline_training?: number;
+  };
   recent_audit: AuditRow[];
   [key: string]: unknown;
 }

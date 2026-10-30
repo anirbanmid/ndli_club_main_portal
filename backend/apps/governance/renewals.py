@@ -73,11 +73,17 @@ def due_date_for(
     last: RenewalRecord | None = None,
     records: list[RenewalRecord] | None = None,
 ) -> date:
-    """Renewal due date: last ISSUED renewal + 1y, else formation + 1y."""
+    """Renewal due date: last issued + 1y, upcoming date, or formation + 1y."""
     last = last if last is not None else _last_issued(club, records)
-    base = (
-        last.decided_at.date() if last and last.decided_at else None
-    ) or club.created_at.date()
+    if last and last.decided_at:
+        return _anniversary(last.decided_at.date())
+    if club.upcoming_renewal_date:
+        return club.upcoming_renewal_date
+    if club.last_renewal_date:
+        return _anniversary(club.last_renewal_date)
+    if club.date_of_approval:
+        return _anniversary(club.date_of_approval)
+    base = club.created_at.date() if club.created_at else timezone.localdate()
     return _anniversary(base)
 
 
@@ -111,10 +117,24 @@ def state_payload(
         "zone": zone_name,
         "zone_code": zone_name,
         "registration_no": getattr(club, "registration_no", "") or "",
-        "formation_date": club.created_at.date().isoformat(),
-        "date_of_approval": club.created_at.date().isoformat(),
+        "formation_date": (
+            club.date_of_approval.isoformat()
+            if club.date_of_approval
+            else club.created_at.date().isoformat()
+        ),
+        "date_of_approval": (
+            club.date_of_approval.isoformat()
+            if club.date_of_approval
+            else club.created_at.date().isoformat()
+        ),
         "last_renewal_date": (
-            last.decided_at.date().isoformat() if last and last.decided_at else None
+            last.decided_at.date().isoformat()
+            if last and last.decided_at
+            else (
+                club.last_renewal_date.isoformat()
+                if club.last_renewal_date
+                else None
+            )
         ),
         "due_date": due.isoformat(),
         "upcoming_renewal_date": due.isoformat(),
@@ -172,8 +192,10 @@ def _default_holder(club: Club) -> Any | None:
 def attention_for(user: Any) -> list[dict[str, Any]]:
     """The caller's renewal-attention queue (zone-scoped for officers)."""
     ensure_decider(user)
-    qs = Club.objects.select_related("institution__state").prefetch_related(
-        "renewal_records"
+    qs = (
+        Club.objects.filter(is_sample=False)
+        .select_related("institution__state")
+        .prefetch_related("renewal_records")
     )
     if _sub_role(user) in ZONE_BOUND_SUB_ROLES:
         qs = qs.filter(institution__state__zone__code=_zone_code(user))

@@ -54,19 +54,23 @@ export function App({ ssrLocation }: AppProps = {}) {
     ssrLocation ?? (typeof window !== 'undefined' ? window.location : { pathname: '/', search: '' }),
   );
 
-  const [currentBranch, setCurrentBranch] = useState<BranchType>('landing');
+  const [currentBranch, setCurrentBranch] = useState<BranchType>(
+    initialRoute.tab === 'employee' ? 'admin_module' : 'landing'
+  );
   const [loginSourceBranch, setLoginSourceBranch] = useState<BranchType>('landing');
   const [loginSourceTab, setLoginSourceTab] = useState<string>('home');
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
   const [adminRole, setAdminRole] = useState('');
+  const [adminUsername, setAdminUsername] = useState('');
   const handleAdminSignOut = async (): Promise<void> => {
     try {
       await signOut();
     } finally {
       setAdminAuthed(false);
       setAdminRole('');
+      setAdminUsername('');
     }
   };
   const [adminGateError, setAdminGateError] = useState<string | null>(null);
@@ -76,6 +80,7 @@ export function App({ ssrLocation }: AppProps = {}) {
         if (s && s.category === 'iit_kgp_admin') {
           setAdminAuthed(true);
           setAdminRole(s.sub_role ?? '');
+          setAdminUsername(s.username ?? '');
           setAdminGateError(null);
         }
       })
@@ -492,11 +497,35 @@ export function App({ ssrLocation }: AppProps = {}) {
             door (the demo flow never authenticated, which surfaced raw 401s). */}
         {currentBranch === 'admin_module' && (
           adminAuthed ? (
-            adminRole === 'regional_officer' ? (
+            initialRoute.tab === 'employee' ? (
               <EmployeeModule
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}
                 adminRole={adminRole}
+                empId={(initialRoute.slug || 'EMP01').toUpperCase()}
+                viewOnly={
+                  adminRole === 'central_admin' ||
+                  adminRole === 'super_admin_ops' ||
+                  adminUsername.toUpperCase() !== (initialRoute.slug || 'EMP01').toUpperCase()
+                }
+                onNavigateBranch={(branch, tab) => {
+                  setCurrentBranch(branch);
+                  if (tab) setCurrentTab(tab);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                authorityRequests={authorityRequests}
+                onApproveAuthorityChange={handleApproveAuthorityChange}
+                onRejectAuthorityChange={handleRejectAuthorityChange}
+                clubs={clubs}
+                onUpdateClub={(updated) => setClubs(prev => prev.map(c => c.id === updated.id ? updated : c))}
+              />
+            ) : adminRole === 'regional_officer' ? (
+              <EmployeeModule
+                onSignOut={() => void handleAdminSignOut()}
+                subRole={adminRole}
+                adminRole={adminRole}
+                empId={adminUsername || 'EMP01'}
+                viewOnly={false}
                 onNavigateBranch={(branch, tab) => {
                   setCurrentBranch(branch);
                   if (tab) setCurrentTab(tab);
@@ -521,10 +550,8 @@ export function App({ ssrLocation }: AppProps = {}) {
                 onHealForensicRecord={handleHealForensicRecord}
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}
-                onLaunchEmployeeNode={(_empId: string) => {
-                  setAdminRole('regional_officer');
-                  setCurrentBranch('admin_module');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                onLaunchEmployeeNode={(empId: string) => {
+                  window.open(`/employee/${encodeURIComponent(empId)}`, '_blank');
                 }}
               />
             )
@@ -547,6 +574,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   if (s && s.category === 'iit_kgp_admin') {
                     setAdminAuthed(true);
                     setAdminRole(s.sub_role ?? '');
+                    setAdminUsername(s.username ?? '');
                     setAdminGateError(null);
                     return;
                   }

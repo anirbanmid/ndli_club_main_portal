@@ -383,15 +383,7 @@ OFFICER_METADATA: dict[str, dict[str, Any]] = {
     },
 }
 
-CANONICAL_BASELINES: dict[str, BaselineBreakdown] = {
-    "EMP01": BaselineBreakdown(approvals=5, support=44, online_workshops=0),
-    "EMP02": BaselineBreakdown(approvals=0, support=4, online_workshops=4),
-    "EMP03": BaselineBreakdown(approvals=1, support=9, online_workshops=0),
-    "EMP04": BaselineBreakdown(approvals=3, support=1, online_workshops=0),
-    "EMP05": BaselineBreakdown(approvals=0, support=3, online_workshops=0),
-    "EMP06": BaselineBreakdown(approvals=1, support=1, online_workshops=0),
-    "EMP07": BaselineBreakdown(approvals=1, support=0, online_workshops=0),
-}
+CANONICAL_BASELINES: dict[str, BaselineBreakdown] = {}
 
 
 def evaluate_officers(
@@ -412,7 +404,7 @@ def evaluate_officers(
 
     for officer in officers:
         key = str(getattr(officer, "username", ""))
-        if not key.upper().startswith("EMP") or key.upper() not in CANONICAL_BASELINES:
+        if not key.upper().startswith("EMP"):
             continue
         base = active_baselines.get(key, BaselineBreakdown())
         meta = OFFICER_METADATA.get(key.upper(), {})

@@ -676,20 +676,8 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     void loadPISettings();
   }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadPISettings]);
 
-  // Canonical Performance Baselines per Regional Officer (SSOT Parity)
-  const CANONICAL_BASELINES: Record<string, { approvals: number; support: number; online: number; offline: number }> = useMemo(() => ({
-    EMP01: { approvals: 5, support: 44, online: 0, offline: 0 },
-    EMP02: { approvals: 0, support: 4, online: 4, offline: 0 },
-    EMP03: { approvals: 1, support: 9, online: 0, offline: 1 },
-    EMP04: { approvals: 3, support: 1, online: 0, offline: 0 },
-    EMP05: { approvals: 0, support: 3, online: 0, offline: 0 },
-    EMP06: { approvals: 1, support: 1, online: 0, offline: 0 },
-    EMP07: { approvals: 1, support: 0, online: 0, offline: 0 },
-  }), []);
-
-  // Quota counts (Canonical Baseline + Live Ledgers, with max protection)
+  // Pure SSOT Quota counts — directly calculated from live database ledger
   const quota = useMemo(() => {
-    const base = CANONICAL_BASELINES[currentEmpId.toUpperCase()] || { approvals: 0, support: 0, online: 0, offline: 0 };
     let countedClubs = 0;
     let countedOnline = 0;
     let countedOffline = 0;
@@ -709,12 +697,12 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     }
 
     return {
-      clubs: Math.max(base.approvals, countedClubs),
-      online: Math.max(base.online, countedOnline),
-      offline: Math.max(base.offline, countedOffline),
-      support: Math.max(base.support, countedSupport),
+      clubs: countedClubs,
+      online: countedOnline,
+      offline: countedOffline,
+      support: countedSupport,
     };
-  }, [CANONICAL_BASELINES, currentEmpId, rows]);
+  }, [rows]);
 
   // Submit SEC A support log
   const handleSecASubmit = async (e: React.FormEvent) => {

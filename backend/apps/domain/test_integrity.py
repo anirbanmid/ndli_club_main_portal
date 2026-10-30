@@ -72,6 +72,7 @@ class LedgerIntegrityTests(TestCase):
         ).first()
 
         self.assertIsNotNone(log, "Approval log must exist for the created club.")
+        assert log is not None
         self.assertEqual(log.employee, self.officer)
         self.assertEqual(log.club_code, club.code)
         self.assertTrue(log.priority_flag)
@@ -95,6 +96,7 @@ class LedgerIntegrityTests(TestCase):
             club_code=club.code,
         ).first()
         self.assertIsNotNone(healed_log)
+        assert healed_log is not None
         self.assertEqual(healed_log.employee, self.officer)
 
     def test_strict_gate_rejects_unassigned_state(self) -> None:

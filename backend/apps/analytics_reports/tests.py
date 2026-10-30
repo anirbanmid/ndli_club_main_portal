@@ -304,19 +304,40 @@ class OfficerRatingTests(DashboardFixture):
         self.assertEqual(stars_for(0.0, 0.0), 1)
 
     def test_cohort_ranking_is_relative(self):
-        self._sanctioned(self.officer_n1, club="A Club")  # 0.50
-        self._sanctioned(self.officer_n1, club="B Club")  # 0.50
-        self._sanctioned(self.officer_n1, club="C Club")  # 0.50 -> 1.50
-        self._sanctioned(self.officer_w1, club="W Club")  # 0.50
+        self._sanctioned(self.officer_n1, club="A Club")
+        self._sanctioned(self.officer_n1, club="B Club")
+        self._sanctioned(self.officer_n1, club="C Club")
+        self._sanctioned(self.officer_w1, club="W Club")
         rows = evaluate_officers([self.officer_n1, self.officer_w1])
         self.assertEqual([r["officer"] for r in rows], ["emp03", "emp05"])
         self.assertEqual(rows[0]["rank"], 1)
-        self.assertEqual(rows[0]["weighted_score"], 1.50)
-        self.assertEqual(rows[0]["max_score"], 1.50)
-        # emp03 ratio 1.00 -> 5 stars; emp05 ratio .33 -> 2 stars (old banding)
-        self.assertEqual(rows[0]["stars"], 5)
+        self.assertEqual(rows[0]["weighted_score"], 45.5)
+        self.assertEqual(rows[0]["stars"], 2.5)
         self.assertEqual(rows[1]["rank"], 2)
-        self.assertEqual(rows[1]["stars"], 2)
+
+    def test_worked_example_calculation(self):
+        """Verify the worked example from user prompt:
+
+        Approved 18, Support 120, Offline 4, Online 6 (NNE).
+        Adjusted: 25.2 / 150 / 5 / 7.5.
+        Team maxima: 30 / 160 / 6 / 10 -> scores 84 / 93.75 / 83.33 / 75.
+        Total = 85.7, Stars = 4.5.
+        """
+        from apps.analytics_reports.ratings import (
+            NORM_WEIGHT_CLUBS_APPROVED,
+            NORM_WEIGHT_OFFLINE_TRAINING,
+            NORM_WEIGHT_ONLINE_TRAINING,
+            NORM_WEIGHT_OTHER_SUPPORTS,
+            compute_stars,
+        )
+        total = (
+            NORM_WEIGHT_CLUBS_APPROVED * 84.0
+            + NORM_WEIGHT_OTHER_SUPPORTS * 93.75
+            + NORM_WEIGHT_OFFLINE_TRAINING * (500.0 / 6.0)
+            + NORM_WEIGHT_ONLINE_TRAINING * 75.0
+        )
+        self.assertAlmostEqual(round(total, 1), 85.7, places=1)
+        self.assertEqual(compute_stars(total), 4.5)
 
 
 class DashboardScopeTests(DashboardFixture):

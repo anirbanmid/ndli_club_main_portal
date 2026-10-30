@@ -24,9 +24,18 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [joinedClub, setJoinedClub] = useState<InstituteClub | null>(null);
 
-  // S1: shared dialog behaviour (Escape / scroll-lock / focus). The callback
-  // is deferred through the arrow so it stays safe regardless of definition order.
-  useModalBehavior(isOpen, () => resetForm());
+  const resetForm = () => {
+    setPasskeyInput('');
+    setStudentName('');
+    setStudentEmail('');
+    setRollNumber('');
+    setErrorMsg('');
+    setJoinedClub(null);
+    onClose();
+  };
+
+  // S1: shared dialog behaviour (Escape / scroll-lock / focus).
+  useModalBehavior(isOpen, resetForm);
 
   if (!isOpen) return null;
 
@@ -55,16 +64,6 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
     setJoinedClub(matchedClub);
     onMemberJoined(matchedClub, studentName);
-  };
-
-  const resetForm = () => {
-    setPasskeyInput('');
-    setStudentName('');
-    setStudentEmail('');
-    setRollNumber('');
-    setErrorMsg('');
-    setJoinedClub(null);
-    onClose();
   };
 
   return (

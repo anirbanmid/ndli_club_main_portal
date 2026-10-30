@@ -53,7 +53,26 @@ from apps.audit.models import AuditLog
 from apps.grievances.models import SLAEvent
 from apps.onboarding.models import CharterApplication
 
-#: Weights of the old project's composite (routes/metrics.py line 478-482).
+#: Weights of composite:
+#: Raw weights: Clubs Approved 50, Other Supports 30, Offline Training 20,
+#: Online Training 10 (sum = 110). Normalize: w' = w / sum(w).
+RAW_WEIGHT_CLUBS_APPROVED = 50.0
+RAW_WEIGHT_OTHER_SUPPORTS = 30.0
+RAW_WEIGHT_OFFLINE_TRAINING = 20.0
+RAW_WEIGHT_ONLINE_TRAINING = 10.0
+TOTAL_RAW_WEIGHT = (
+    RAW_WEIGHT_CLUBS_APPROVED
+    + RAW_WEIGHT_OTHER_SUPPORTS
+    + RAW_WEIGHT_OFFLINE_TRAINING
+    + RAW_WEIGHT_ONLINE_TRAINING
+)  # 110.0
+
+NORM_WEIGHT_CLUBS_APPROVED = RAW_WEIGHT_CLUBS_APPROVED / TOTAL_RAW_WEIGHT
+NORM_WEIGHT_OTHER_SUPPORTS = RAW_WEIGHT_OTHER_SUPPORTS / TOTAL_RAW_WEIGHT
+NORM_WEIGHT_OFFLINE_TRAINING = RAW_WEIGHT_OFFLINE_TRAINING / TOTAL_RAW_WEIGHT
+NORM_WEIGHT_ONLINE_TRAINING = RAW_WEIGHT_ONLINE_TRAINING / TOTAL_RAW_WEIGHT
+
+#: Legacy backward compatibility aliases
 WEIGHT_CLUBS_APPROVED = 0.50
 WEIGHT_OTHER_SUPPORTS = 0.30
 WEIGHT_OFFLINE_TRAINING = 0.20
@@ -283,12 +302,7 @@ def officer_rating(
 
 
 def stars_for(score: float, max_score: float) -> int:
-    """Relative star banding — the previous project's thresholds.
-
-    ``routes/metrics.py`` bands ``score / max_score`` at 0.80/0.60/0.40/0.20
-    into 5/4/3/2 stars, everything else (including a zero cohort) 1 star.
-    Pure: same inputs, same output.
-    """
+    """Relative star banding (integer legacy helper)."""
     if max_score > 0 and score > 0:
         ratio = score / max_score
         if ratio >= 0.80:
@@ -301,6 +315,24 @@ def stars_for(score: float, max_score: float) -> int:
             return 2
         return 1
     return 1
+
+
+def compute_stars(total_score: float) -> float:
+    """Convert 0-100 total score into 5-star rating (0.5 star increments).
+
+    Rules:
+    Total / 20 rounded to nearest 0.5, minimum 1.0, maximum 5.0.
+    Total 90-100 -> 5.0
+    Total 80-89.9 -> 4.0-4.5
+    Total 60-79.9 -> 3.0-3.5
+    Total 40-59.9 -> 2.0-2.5
+    Below 40 -> 1.0-1.5
+    """
+    raw_stars = total_score / 20.0
+    stars = round(raw_stars * 2) / 2.0
+    if total_score >= 90.0:
+        stars = 5.0
+    return max(1.0, min(5.0, stars))
 
 
 OFFICER_METADATA: dict[str, dict[str, Any]] = {
@@ -369,21 +401,20 @@ def evaluate_officers(
     month: int | None = None,
     baselines: dict[str, BaselineBreakdown] | None = None,
 ) -> list[dict[str, Any]]:
-    """Rank a cohort exactly like the old ``routes/metrics.py``.
+    """Rank a cohort using normalized weights, zone difficulty multipliers,
 
-    Sort: weighted_score desc, then clubs_approved desc, then total_activities
-    desc (old line 509); ranks are 1..n in that order; stars are banded
-    RELATIVELY against the cohort's ``max_score`` (old lines 512-524).
+    task scores (0-100 against team maxima), and 0.5-star banded scoring.
     """
+    from apps.activities.models import ActivityLog, SupportType
+
     active_baselines = CANONICAL_BASELINES if baselines is None else baselines
     evaluations: list[dict[str, Any]] = []
+
     for officer in officers:
         key = str(getattr(officer, "username", ""))
         if not key.upper().startswith("EMP") or key.upper() not in CANONICAL_BASELINES:
             continue
-        base = active_baselines.get(key)
-        rating = officer_rating(officer, baseline=base, year=year, month=month)
-
+        base = active_baselines.get(key, BaselineBreakdown())
         meta = OFFICER_METADATA.get(key.upper(), {})
         full_name = (
             getattr(officer, "get_full_name", lambda: "")() or meta.get("name") or key
@@ -418,6 +449,49 @@ def evaluate_officers(
         except Exception:
             pass
 
+        # Raw counts: preserve SSOT without double counting baseline and ActivityLog
+        clubs = clubs_approved_for(officer, year=year, month=month)
+        tickets = tickets_closed_for(officer, year=year, month=month)
+        calls = phone_calls_for(officer, year=year, month=month)
+        offline = offline_training_for(officer, year=year, month=month)
+        online = online_training_for(officer, year=year, month=month)
+        act_approvals = _in_period(
+            ActivityLog.objects.filter(
+                employee=officer, support_type=SupportType.CLUB_APPROVAL
+            ),
+            "timestamp",
+            year,
+            month,
+        ).count()
+
+        raw_a = max(clubs, int(base.approvals), act_approvals)
+        raw_s = max(tickets + calls, int(base.support))
+        raw_f = max(offline, 0)
+        raw_o = max(online, int(base.online_workshops))
+
+        # Zone difficulty multipliers:
+        # North / North-East: Club Approval x1.40; Other Supports, Offline, Online x1.25
+        # Other zones: all x1.00
+        z_clean = (
+            zone_name.upper().replace("-", " ").replace("_", " ").strip()
+        )
+        is_nne = z_clean in [
+            "NORTH",
+            "NORTH EAST",
+            "NNE",
+            "NORTH ZONE",
+            "NORTH EAST ZONE",
+        ]
+        m_a = 1.40 if is_nne else 1.00
+        m_s = 1.25 if is_nne else 1.00
+        m_f = 1.25 if is_nne else 1.00
+        m_o = 1.25 if is_nne else 1.00
+
+        adj_a = raw_a * m_a
+        adj_s = raw_s * m_s
+        adj_f = raw_f * m_f
+        adj_o = raw_o * m_o
+
         evaluations.append(
             {
                 "officer": key,
@@ -426,39 +500,87 @@ def evaluate_officers(
                 "full_name": full_name,
                 "name": full_name,
                 "zone": zone_name,
+                "is_nne": is_nne,
                 "assigned_jurisdiction": assigned_states,
                 "assigned_states": assigned_states,
-                "clubs_approved": rating.clubs_approved,
-                "tickets_closed": rating.tickets_closed,
-                "phone_calls": rating.phone_calls,
-                "other_supports": rating.other_supports,
-                "offline_training": rating.offline_training,
-                "online_training": rating.online_training,
-                "total_activities": (
-                    rating.other_supports
-                    + rating.offline_training
-                    + rating.online_training
-                ),
-                "weighted_score": rating.score,
-                "score": rating.score,
+                "clubs_approved": raw_a,
+                "tickets_closed": tickets,
+                "phone_calls": calls,
+                "other_supports": raw_s,
+                "offline_training": raw_f,
+                "online_training": raw_o,
+                "total_activities": raw_s + raw_f + raw_o,
+                "multiplier_clubs_approved": m_a,
+                "multiplier_other_supports": m_s,
+                "multiplier_offline_training": m_f,
+                "multiplier_online_training": m_o,
+                "adj_clubs_approved": round(adj_a, 2),
+                "adj_other_supports": round(adj_s, 2),
+                "adj_offline_training": round(adj_f, 2),
+                "adj_online_training": round(adj_o, 2),
                 "migrated_baseline": {
-                    "approvals": rating.migrated_baseline.approvals,
-                    "support": rating.migrated_baseline.support,
-                    "online_workshops": rating.migrated_baseline.online_workshops,
+                    "approvals": base.approvals,
+                    "support": base.support,
+                    "online_workshops": base.online_workshops,
                 },
             }
         )
 
+    # Calculate team maxima for task scores (0-100)
+    max_a = max((e["adj_clubs_approved"] for e in evaluations), default=0.0)
+    max_s = max((e["adj_other_supports"] for e in evaluations), default=0.0)
+    max_f = max((e["adj_offline_training"] for e in evaluations), default=0.0)
+    max_o = max((e["adj_online_training"] for e in evaluations), default=0.0)
+
+    for e in evaluations:
+        score_a = (
+            (e["adj_clubs_approved"] / max_a * 100.0) if max_a > 0 else 0.0
+        )
+        score_s = (
+            (e["adj_other_supports"] / max_s * 100.0) if max_s > 0 else 0.0
+        )
+        score_f = (
+            (e["adj_offline_training"] / max_f * 100.0) if max_f > 0 else 0.0
+        )
+        score_o = (
+            (e["adj_online_training"] / max_o * 100.0) if max_o > 0 else 0.0
+        )
+
+        total = (
+            (NORM_WEIGHT_CLUBS_APPROVED * score_a)
+            + (NORM_WEIGHT_OTHER_SUPPORTS * score_s)
+            + (NORM_WEIGHT_OFFLINE_TRAINING * score_f)
+            + (NORM_WEIGHT_ONLINE_TRAINING * score_o)
+        )
+        stars = compute_stars(total)
+
+        e["score_clubs_approved"] = round(score_a, 1)
+        e["score_other_supports"] = round(score_s, 1)
+        e["score_offline_training"] = round(score_f, 1)
+        e["score_online_training"] = round(score_o, 1)
+        e["total"] = round(total, 1)
+        e["score"] = round(total, 1)
+        e["weighted_score"] = round(total, 1)
+        e["stars"] = stars
+        full_stars = int(stars)
+        has_half = (stars % 1.0) != 0
+        empty_stars = 5 - full_stars - (1 if has_half else 0)
+        e["stars_display"] = (
+            ("★" * full_stars) + ("½" if has_half else "") + ("☆" * empty_stars)
+        )
+        e["rating_label"] = f"{stars:.1f} / 5.0"
+        e["max_score"] = 100.0
+
     evaluations.sort(
-        key=lambda e: (e["weighted_score"], e["clubs_approved"], e["total_activities"]),
+        key=lambda e: (
+            e["weighted_score"],
+            e["clubs_approved"],
+            e["other_supports"],
+        ),
         reverse=True,
     )
-    max_score = max((e["weighted_score"] for e in evaluations), default=0.0)
+
     for index, evaluation in enumerate(evaluations, start=1):
         evaluation["rank"] = index
-        stars = stars_for(evaluation["weighted_score"], max_score)
-        evaluation["stars"] = stars
-        evaluation["stars_display"] = "★" * stars + "☆" * (5 - stars)
-        evaluation["rating_label"] = f"{stars}.0 / 5.0"
-        evaluation["max_score"] = max_score
+
     return evaluations

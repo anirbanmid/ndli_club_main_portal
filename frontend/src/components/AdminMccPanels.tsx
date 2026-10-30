@@ -216,20 +216,10 @@ export const RenewalDesk: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => void onIssueRequest(row.id, row.club_code)}
-                      disabled={busy === `req:${row.id}`}
-                      className="px-3 py-1 rounded-lg bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs disabled:opacity-50"
-                    >
-                      {t('Issue Certificate')}
-                    </button>
-                    <button
-                      onClick={() => void onRejectRequest(row.id)}
-                      disabled={busy === `rej:${row.id}`}
-                      className="px-3 py-1 rounded-lg border border-rose-300 bg-white text-rose-700 font-bold hover:bg-rose-50 shadow-2xs disabled:opacity-50"
-                    >
-                      {t('Reject')}
-                    </button>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold shadow-2xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      {t('Zonal Officer Action Pending (View Only for Admin)')}
+                    </span>
                   </div>
                 </div>
               ))}

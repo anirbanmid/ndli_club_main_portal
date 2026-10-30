@@ -42,6 +42,7 @@ import {
   ExternalLink,
   Eye,
   Filter,
+  Info,
   Key,
   Layers,
   Lock,
@@ -227,6 +228,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   // Performance matrix filters
   const [perfYear, setPerfYear] = useState<string>('ALL');
   const [perfMonth, setPerfMonth] = useState<string>('ALL');
+  const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
   const [perfState, setPerfState] = useState<string>('ALL');
 
   // Backend data
@@ -1475,7 +1477,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       </div>
 
       {/* =====================================================================
-          6. REGIONAL OFFICER PERFORMANCE EVALUATION & STAR RATING MATRIX (EMP01–EMP07)
+          6. REGIONAL OFFICER PERFORMANCE EVALUATION & STAR RATING MATRIX
           ===================================================================== */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E2ECE7] pb-4">
@@ -1483,15 +1485,21 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             <div className="flex items-center gap-2 mb-1">
               <h4 className="text-base font-extrabold text-[#103125] flex items-center gap-2">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                Regional Officer Performance Matrix (EMP01–EMP07)
+                Regional Officer Performance Matrix
               </h4>
+              <button
+                type="button"
+                onClick={() => setIsFormulaModalOpen(true)}
+                className="p-1 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-800"
+                title="View Scoring &amp; Ranking Methodology"
+                aria-label="View Scoring Methodology"
+              >
+                <Info className="w-4 h-4 text-slate-500 hover:text-slate-800" />
+              </button>
               <span className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
                 Ranked 1 to 5 Stars ★
               </span>
             </div>
-            <p className="text-xs text-[#5A7366]">
-              Scoring Rubric (50/30/20/10 points): <strong>50</strong> Club Approval + <strong>30</strong> Other Supports + <strong>20</strong> Offline Training + <strong>10</strong> Online Training
-            </p>
           </div>
 
           {/* Performance Filters */}
@@ -1548,29 +1556,6 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           </div>
         </div>
 
-        {/* Scoring Rubric Summary Chips */}
-        <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] text-xs">
-          <span className="inline-flex items-center gap-1.5 font-bold text-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-            Clubs Approved: <strong>50 points (50% Wt)</strong>
-          </span>
-          <span className="text-slate-300">|</span>
-          <span className="inline-flex items-center gap-1.5 font-bold text-sky-800">
-            <span className="w-2 h-2 rounded-full bg-sky-600" />
-            Other Supports (Call / Remote / OS Ticket): <strong>30 points (30% Wt)</strong>
-          </span>
-          <span className="text-slate-300">|</span>
-          <span className="inline-flex items-center gap-1.5 font-bold text-amber-800">
-            <span className="w-2 h-2 rounded-full bg-amber-600" />
-            Offline Training: <strong>20 points (20% Wt)</strong>
-          </span>
-          <span className="text-slate-300">|</span>
-          <span className="inline-flex items-center gap-1.5 font-bold text-purple-800">
-            <span className="w-2 h-2 rounded-full bg-purple-600" />
-            Online Training: <strong>10 points (10% Wt)</strong>
-          </span>
-        </div>
-
         {/* Performance Scorecard Matrix Table */}
         <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
           <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
@@ -1579,12 +1564,12 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                 <th className="p-3 text-center w-12">Rank</th>
                 <th className="p-3">Officer &amp; Zone</th>
                 <th className="p-3">Assigned Jurisdiction</th>
-                <th className="p-3 text-center">Clubs Appr.<br /><span className="text-[10px] text-emerald-700 font-bold\">(50% Wt)</span></th>
-                <th className="p-3 text-center">Online Tr.<br /><span className="text-[10px] text-purple-700 font-bold\">(10% Wt)</span></th>
-                <th className="p-3 text-center">Offline Tr.<br /><span className="text-[10px] text-amber-700 font-bold\">(20% Wt)</span></th>
-                <th className="p-3 text-center">Other Supp.<br /><span className="text-[10px] text-sky-700 font-bold\">(30% Wt)</span></th>
-                <th className="p-3 text-center">Weighted<br /><span className="text-[10px] text-emerald-800 font-bold">Score</span></th>
-                <th className="p-3 text-center">Star Rating<br /><span className="text-[10px] text-amber-700 font-bold\">(1 to 5 ★)</span></th>
+                <th className="p-3 text-center">Clubs Appr.<br /><span className="text-[10px] text-emerald-700 font-bold">[Score]</span></th>
+                <th className="p-3 text-center">Online Tr.<br /><span className="text-[10px] text-purple-700 font-bold">[Score]</span></th>
+                <th className="p-3 text-center">Offline Tr.<br /><span className="text-[10px] text-amber-700 font-bold">[Score]</span></th>
+                <th className="p-3 text-center">Other Supp.<br /><span className="text-[10px] text-sky-700 font-bold">[Score]</span></th>
+                <th className="p-3 text-center">Total<br /><span className="text-[10px] text-emerald-800 font-bold">Score</span></th>
+                <th className="p-3 text-center">Star Rating<br /><span className="text-[10px] text-amber-700 font-bold">(1 to 5 ★)</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
@@ -1604,11 +1589,15 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                   else if (rank === 2) rankDisplay = <span className="text-lg" title="Rank 2">🥈</span>;
                   else if (rank === 3) rankDisplay = <span className="text-lg" title="Rank 3">🥉</span>;
 
-                  const starsCount = o.stars ?? Math.min(5, Math.max(1, Math.round(Number(o.weighted_score ?? o.score ?? 3) / 20)));
+                  const starsCount = typeof o.stars === 'number' ? o.stars : 1.0;
+                  const fullStars = Math.floor(starsCount);
+                  const hasHalf = (starsCount % 1.0) !== 0;
+                  const emptyStars = Math.max(0, 5 - fullStars - (hasHalf ? 1 : 0));
+
                   const scoreVal = typeof o.weighted_score === 'number'
-                    ? o.weighted_score.toFixed(2)
+                    ? o.weighted_score.toFixed(1)
                     : typeof o.score === 'number'
-                    ? o.score.toFixed(2)
+                    ? o.score.toFixed(1)
                     : String(o.weighted_score ?? o.score ?? '—');
 
                   return (
@@ -1631,23 +1620,35 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                         {o.assigned_jurisdiction || (o.assigned_states ? o.assigned_states.join(', ') : 'All India')}
                       </td>
                       <td className="p-3 text-center align-middle font-mono font-bold text-emerald-800">
-                        <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                          {o.clubs_approved ?? 0}
+                        <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 inline-flex items-center gap-1">
+                          <span>{o.clubs_approved ?? 0}</span>
+                          {o.score_clubs_approved !== undefined && (
+                            <span className="text-[10px] text-emerald-600 font-normal font-sans">[{o.score_clubs_approved}]</span>
+                          )}
                         </span>
                       </td>
                       <td className="p-3 text-center align-middle font-mono font-bold text-purple-800">
-                        <span className="bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200">
-                          {o.online_training ?? 0}
+                        <span className="bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200 inline-flex items-center gap-1">
+                          <span>{o.online_training ?? 0}</span>
+                          {o.score_online_training !== undefined && (
+                            <span className="text-[10px] text-purple-600 font-normal font-sans">[{o.score_online_training}]</span>
+                          )}
                         </span>
                       </td>
                       <td className="p-3 text-center align-middle font-mono font-bold text-amber-800">
-                        <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200">
-                          {o.offline_training ?? 0}
+                        <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200 inline-flex items-center gap-1">
+                          <span>{o.offline_training ?? 0}</span>
+                          {o.score_offline_training !== undefined && (
+                            <span className="text-[10px] text-amber-600 font-normal font-sans">[{o.score_offline_training}]</span>
+                          )}
                         </span>
                       </td>
                       <td className="p-3 text-center align-middle font-mono font-bold text-sky-800">
-                        <span className="bg-sky-50 text-sky-800 px-2 py-0.5 rounded-full border border-sky-200">
-                          {o.other_supports ?? 0}
+                        <span className="bg-sky-50 text-sky-800 px-2 py-0.5 rounded-full border border-sky-200 inline-flex items-center gap-1">
+                          <span>{o.other_supports ?? 0}</span>
+                          {o.score_other_supports !== undefined && (
+                            <span className="text-[10px] text-sky-600 font-normal font-sans">[{o.score_other_supports}]</span>
+                          )}
                         </span>
                       </td>
                       <td className="p-3 text-center align-middle font-mono font-extrabold text-emerald-900">
@@ -1658,11 +1659,12 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                       <td className="p-3 text-center align-middle">
                         <div className="flex flex-col items-center justify-center">
                           <span className="text-amber-500 text-sm tracking-wider font-bold">
-                            {'★'.repeat(starsCount)}
-                            <span className="text-slate-300 font-normal">{'☆'.repeat(5 - starsCount)}</span>
+                            {'★'.repeat(fullStars)}
+                            {hasHalf ? '½' : ''}
+                            <span className="text-slate-300 font-normal">{'☆'.repeat(emptyStars)}</span>
                           </span>
                           <span className="text-[10px] font-bold text-slate-500 mt-0.5">
-                            {o.rating_label || `${starsCount}.0 / 5.0`}
+                            {o.rating_label || `${starsCount.toFixed(1)} / 5.0`}
                           </span>
                         </div>
                       </td>
@@ -1673,17 +1675,6 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             </tbody>
           </table>
         </div>
-
-        {/* Activity Distribution Matrix & Ribbon */}
-        <div className="pt-4 border-t border-[#E2ECE7] space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Activity Distribution Matrix (Live Sync)
-            </span>
-            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-              Relative Officer Share
-            </span>
-          </div>
 
           {/* Contribution Share Ribbon */}
           {(() => {
@@ -1721,8 +1712,138 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
               </div>
             );
           })()}
-        </div>
       </div>
+
+
+
+      {/* Scoring Methodology Info Modal */}
+      {isFormulaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-[#E2ECE7] shadow-2xl max-w-2xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#E2ECE7] pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+                  <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-[#103125]">Employee Ranking Calculation Methodology</h3>
+                  <p className="text-xs text-[#5A7366]">6-Step Weighted Rubric with Zone Difficulty Adjustments</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFormulaModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-[#17332A] leading-relaxed">
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] space-y-2">
+                <div className="font-bold text-sm text-[#103125]">Step 1: Normalized Weights (Total = 110)</div>
+                <p className="text-slate-600">Raw weights are divided by 110 (w’ = w / 110) to obtain normalized weights:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  <div className="p-2.5 rounded-xl bg-white border border-[#E2ECE7]">
+                    <div className="text-[10px] font-bold text-emerald-700 uppercase">Club Approval</div>
+                    <div className="text-sm font-extrabold font-mono text-slate-800">wA = 0.4545</div>
+                    <div className="text-[10px] text-slate-500">(50 / 110)</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-[#E2ECE7]">
+                    <div className="text-[10px] font-bold text-sky-700 uppercase">Other Support</div>
+                    <div className="text-sm font-extrabold font-mono text-slate-800">wS = 0.2727</div>
+                    <div className="text-[10px] text-slate-500">(30 / 110)</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-[#E2ECE7]">
+                    <div className="text-[10px] font-bold text-amber-700 uppercase">Offline Training</div>
+                    <div className="text-sm font-extrabold font-mono text-slate-800">wF = 0.1818</div>
+                    <div className="text-[10px] text-slate-500">(20 / 110)</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-[#E2ECE7]">
+                    <div className="text-[10px] font-bold text-purple-700 uppercase">Online Training</div>
+                    <div className="text-sm font-extrabold font-mono text-slate-800">wO = 0.0909</div>
+                    <div className="text-[10px] text-slate-500">(10 / 110)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] space-y-2">
+                <div className="font-bold text-sm text-[#103125]">Step 2: Zone Difficulty Multipliers</div>
+                <p className="text-slate-600">Officers deployed to geographically challenging North and North-East (NNE) regions receive difficulty multipliers due to higher logistical barriers:</p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                  <li><strong>North &amp; North-East Zone:</strong> Club Approval <strong>×1.40</strong>; Other Supports, Offline Training, Online Training <strong>×1.25</strong>.</li>
+                  <li><strong>Other Zones (East, West, Central, South):</strong> all factors <strong>×1.00</strong>.</li>
+                  <li><em>Adjusted Count = Raw Count × Multiplier</em> (A* = A × mA, S* = S × mS, etc.).</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] space-y-2">
+                <div className="font-bold text-sm text-[#103125]">Step 3 &amp; 4: Task Scores (0–100) &amp; Total Weighted Score</div>
+                <p className="text-slate-600">Each task is scored relatively against the highest adjusted count among all officers:</p>
+                <code className="block p-2.5 rounded-xl bg-slate-900 text-emerald-400 font-mono text-[11px]">
+                  Score_task = (Adjusted count ÷ highest adjusted count among team) × 100
+                </code>
+                <p className="text-slate-600 pt-1">Total score is the weighted sum (0 to 100):</p>
+                <code className="block p-2.5 rounded-xl bg-slate-900 text-amber-300 font-mono text-[11px]">
+                  Total = wA·Score_A + wS·Score_S + wF·Score_F + wO·Score_O
+                </code>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] space-y-2">
+                <div className="font-bold text-sm text-[#103125]">Step 5 &amp; 6: 5-Star Rating &amp; Ranking</div>
+                <p className="text-slate-600">Stars = Total ÷ 20, rounded to the nearest 0.5, with minimum 1.0:</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center pt-1 font-mono">
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="text-[10px] text-emerald-800 font-bold">90–100</div>
+                    <div className="font-bold text-amber-600">5.0 ★</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <div className="text-[10px] text-emerald-800 font-bold">80–89.9</div>
+                    <div className="font-bold text-amber-600">4.0–4.5 ★</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-blue-50 border border-blue-200">
+                    <div className="text-[10px] text-blue-800 font-bold">60–79.9</div>
+                    <div className="font-bold text-amber-600">3.0–3.5 ★</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-amber-50 border border-amber-200">
+                    <div className="text-[10px] text-amber-800 font-bold">40–59.9</div>
+                    <div className="font-bold text-amber-600">2.0–2.5 ★</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-100 border border-slate-200">
+                    <div className="text-[10px] text-slate-800 font-bold">&lt; 40</div>
+                    <div className="font-bold text-amber-600">1.0–1.5 ★</div>
+                  </div>
+                </div>
+                <p className="text-slate-500 text-[11px] pt-1">
+                  <em>Ties are broken by Clubs Approved first, then by Other Supports.</em>
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1.5">
+                <div className="font-bold text-emerald-950">Worked Example (NNE Officer)</div>
+                <p className="text-emerald-900 text-[11px]">
+                  Raw inputs: Approved 18, Support 120, Offline 4, Online 6.<br />
+                  Adjusted (NNE factors): 25.2 / 150 / 5 / 7.5.<br />
+                  Against team maxima (30 / 160 / 6 / 10): Task scores = 84 / 93.75 / 83.33 / 75.<br />
+                  Total = (0.4545 × 84) + (0.2727 × 93.75) + (0.1818 × 83.33) + (0.0909 × 75) = <strong>85.7</strong>.<br />
+                  Stars = 85.7 ÷ 20 = 4.29 → rounded to nearest 0.5 = <strong>4.5 ★</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#E2ECE7]">
+              <button
+                type="button"
+                onClick={() => setIsFormulaModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-[#103125] text-white font-bold text-xs hover:bg-[#103125]/90 transition-colors shadow-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* =====================================================================
           MODAL 1: RENEWAL ATTENTION LIST MODAL (Opens on clicking Renewal Attention KPI)

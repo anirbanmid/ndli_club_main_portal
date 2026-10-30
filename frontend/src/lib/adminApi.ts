@@ -135,6 +135,18 @@ export interface OfficerEvaluation {
   offline_training?: number;
   online_training?: number;
   total_activities?: number;
+  score_clubs_approved?: number;
+  score_other_supports?: number;
+  score_offline_training?: number;
+  score_online_training?: number;
+  multiplier_clubs_approved?: number;
+  multiplier_other_supports?: number;
+  multiplier_offline_training?: number;
+  multiplier_online_training?: number;
+  adj_clubs_approved?: number;
+  adj_other_supports?: number;
+  adj_offline_training?: number;
+  adj_online_training?: number;
   calls?: number;
   calls_made?: number;
   emails?: number;

@@ -539,7 +539,7 @@ export const EmployeeDutyPanel: React.FC<{
                         </span>
                       </td>
                       <td className="py-3 px-3 text-center font-bold text-[#103125]">
-                        {emp.clubs_approved_count ?? 15}
+                        {emp.clubs_approved_count ?? 0}
                       </td>
                       <td className="py-3 px-3 text-center font-bold text-[#0D7751]">
                         {emp.support_logs_count ?? 0}

@@ -384,11 +384,11 @@ OFFICER_METADATA: dict[str, dict[str, Any]] = {
 }
 
 CANONICAL_BASELINES: dict[str, BaselineBreakdown] = {
-    "EMP01": BaselineBreakdown(approvals=50, support=38, online_workshops=0),
-    "EMP02": BaselineBreakdown(approvals=9, support=41, online_workshops=4),
-    "EMP03": BaselineBreakdown(approvals=3, support=9, online_workshops=0),
-    "EMP04": BaselineBreakdown(approvals=3, support=2, online_workshops=0),
-    "EMP05": BaselineBreakdown(approvals=3, support=3, online_workshops=0),
+    "EMP01": BaselineBreakdown(approvals=5, support=44, online_workshops=0),
+    "EMP02": BaselineBreakdown(approvals=0, support=4, online_workshops=4),
+    "EMP03": BaselineBreakdown(approvals=1, support=9, online_workshops=0),
+    "EMP04": BaselineBreakdown(approvals=3, support=1, online_workshops=0),
+    "EMP05": BaselineBreakdown(approvals=0, support=3, online_workshops=0),
     "EMP06": BaselineBreakdown(approvals=1, support=1, online_workshops=0),
     "EMP07": BaselineBreakdown(approvals=1, support=0, online_workshops=0),
 }
@@ -464,8 +464,17 @@ def evaluate_officers(
             month,
         ).count()
 
+        renewals = _in_period(
+            ActivityLog.objects.filter(
+                employee=officer, support_type=SupportType.REGISTRATION_RENEWAL
+            ),
+            "timestamp",
+            year,
+            month,
+        ).count()
+
         raw_a = max(clubs, int(base.approvals), act_approvals)
-        raw_s = max(tickets + calls, int(base.support))
+        raw_s = max(tickets + calls + renewals, int(base.support))
         raw_f = max(offline, 0)
         raw_o = max(online, int(base.online_workshops))
 

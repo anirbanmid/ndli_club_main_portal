@@ -215,7 +215,9 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         "online_training": online_training,
         "offline_training": offline_training,
     }
-    agg = act_qs.aggregate(total=Sum(Coalesce("call_count", 1)))
+    agg = act_qs.exclude(support_type=SupportType.CLUB_APPROVAL).aggregate(
+        total=Sum(Coalesce("call_count", 1))
+    )
     total_activities = agg["total"] or 0
 
     # 3. Active Nodal Officers

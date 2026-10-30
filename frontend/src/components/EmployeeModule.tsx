@@ -678,11 +678,11 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   // Canonical Performance Baselines per Regional Officer (SSOT Parity)
   const CANONICAL_BASELINES: Record<string, { approvals: number; support: number; online: number; offline: number }> = useMemo(() => ({
-    EMP01: { approvals: 50, support: 38, online: 0, offline: 0 },
-    EMP02: { approvals: 9, support: 41, online: 4, offline: 0 },
-    EMP03: { approvals: 3, support: 9, online: 0, offline: 1 },
-    EMP04: { approvals: 3, support: 2, online: 0, offline: 0 },
-    EMP05: { approvals: 3, support: 3, online: 0, offline: 0 },
+    EMP01: { approvals: 5, support: 44, online: 0, offline: 0 },
+    EMP02: { approvals: 0, support: 4, online: 4, offline: 0 },
+    EMP03: { approvals: 1, support: 9, online: 0, offline: 1 },
+    EMP04: { approvals: 3, support: 1, online: 0, offline: 0 },
+    EMP05: { approvals: 0, support: 3, online: 0, offline: 0 },
     EMP06: { approvals: 1, support: 1, online: 0, offline: 0 },
     EMP07: { approvals: 1, support: 0, online: 0, offline: 0 },
   }), []);

@@ -36,7 +36,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.activities.models import ActivityLog
+from apps.activities.models import ActivityLog, SupportType
 from apps.audit.services import record as audit_record
 from apps.domain.models import Club, OfficerAssignment, State, Zone
 from apps.onboarding.models import CharterApplication
@@ -125,17 +125,27 @@ class EmployeeListView(APIView):
             z_name = effective_zone.name if effective_zone else "North"
             z_code = effective_zone.code if effective_zone else "NORTH"
             clean_z = z_name.replace(" Zone", "").strip() or "North"
+            # Authentic activities & canonical clubs SSOT
             act_logs = (
-                ActivityLog.objects.filter(employee=officer).aggregate(
-                    total=Sum(Coalesce("call_count", 1))
-                )["total"]
+                ActivityLog.objects.filter(employee=officer)
+                .exclude(support_type=SupportType.CLUB_APPROVAL)
+                .aggregate(total=Sum(Coalesce("call_count", 1)))["total"]
                 or 0
             )
             charter_count = CharterApplication.objects.filter(
                 reviewed_by=officer, status=CharterApplication.Status.SANCTIONED
             ).count()
-            if charter_count == 0:
-                charter_count = 15  # baseline parity
+            approval_logs = ActivityLog.objects.filter(
+                employee=officer, support_type=SupportType.CLUB_APPROVAL
+            ).count()
+            assigned_clubs = (
+                Club.objects.filter(
+                    is_sample=False, institution__state__code__in=codes
+                ).count()
+                if codes
+                else 0
+            )
+            clubs_approved = max(charter_count, approval_logs, assigned_clubs)
             is_act = officer.account_state != "blocked" and officer.is_active
 
             results.append(
@@ -156,7 +166,7 @@ class EmployeeListView(APIView):
                     "is_active": is_act,
                     "account_state": officer.account_state
                     or ("active" if is_act else "blocked"),
-                    "clubs_approved_count": charter_count,
+                    "clubs_approved_count": clubs_approved,
                     "support_logs_count": act_logs,
                 }
             )

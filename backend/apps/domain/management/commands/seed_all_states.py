@@ -15,6 +15,7 @@ from datetime import date
 from typing import Any
 
 from django.core.management.base import BaseCommand
+from django.db import connection
 
 from apps.accounts.models import AccountState, Category, SubRole, User
 from apps.domain.assignments import invalidate_officer_cache
@@ -26,6 +27,7 @@ from apps.domain.models import (
     Institution,
     OfficerAssignment,
     State,
+    Zone,
 )
 
 STANDARD_PASSWORD = "NdliClub@2026!"
@@ -584,41 +586,77 @@ ALL_STATE_CLUBS: list[dict[str, Any]] = [
 ]
 
 
+
+OFFICER_ZONE_MAP = {
+    "EMP01": "NORTH",
+    "EMP02": "CENTRAL",
+    "EMP03": "WEST",
+    "EMP04": "EAST",
+    "EMP05": "NORTH_EAST",
+    "EMP06": "SOUTH",
+    "EMP07": "SOUTH",
+}
+
+
+def get_or_create_officer(emp_code: str) -> User:
+    officer = User.objects.filter(username=emp_code).first()
+    if not officer:
+        zone_code = OFFICER_ZONE_MAP.get(emp_code, "NORTH")
+        zone = Zone.objects.filter(code=zone_code).first()
+        officer, _ = User.objects.get_or_create(
+            username=emp_code,
+            defaults={
+                "category": Category.IIT_KGP_ADMIN,
+                "sub_role": SubRole.REGIONAL_OFFICER,
+                "email": f"{emp_code.lower()}@ndli.gov.in",
+                "first_name": f"Regional Officer {emp_code}",
+                "zone": zone,
+                "account_state": AccountState.ACTIVE,
+                "is_active": True,
+            },
+        )
+        officer.set_password("NdliOffice@2026!")
+        officer.save()
+    return officer
+
 class Command(BaseCommand):
     help = "Seed at least 1 canonical NDLI Club for every State and UT in India."
 
     def handle(self, *args: Any, **options: Any) -> None:
+        tables = connection.introspection.table_names()
+        user_table = User._meta.db_table
+        has_users = user_table in tables
+        has_activities = "activities_activitylog" in tables
+
         self.stdout.write("=" * 80)
         self.stdout.write(
             "STEP 1: Reconciling Officer Assignments across all 36 States & UTs..."
         )
         self.stdout.write("=" * 80)
 
-        for state_code, emp_code in OFFICER_STATE_MAP.items():
-            state = State.objects.filter(code=state_code).first()
-            if not state:
-                continue
-            officer = User.objects.filter(username=emp_code, is_active=True).first()
-            if not officer:
-                self.stdout.write(f"Warning: Officer {emp_code} not found.")
-                continue
+        if has_users:
+            for state_code, emp_code in OFFICER_STATE_MAP.items():
+                state = State.objects.filter(code=state_code).first()
+                if not state:
+                    continue
+                officer = get_or_create_officer(emp_code)
 
-            oa, created = OfficerAssignment.objects.get_or_create(
-                state=state,
-                defaults={"officer": officer, "from_date": date(2020, 1, 1)},
-            )
-            if oa.officer != officer:
-                oa.officer = officer
-                oa.save(update_fields=["officer"])
-                self.stdout.write(
-                    f"Updated OfficerAssignment: {state.name} -> {officer.username}"
+                oa, created = OfficerAssignment.objects.get_or_create(
+                    state=state,
+                    defaults={"officer": officer, "from_date": date(2020, 1, 1)},
                 )
-            elif created:
-                self.stdout.write(
-                    f"Created OfficerAssignment: {state.name} -> {officer.username}"
-                )
+                if oa.officer != officer:
+                    oa.officer = officer
+                    oa.save(update_fields=["officer"])
+                    self.stdout.write(
+                        f"Updated OfficerAssignment: {state.name} -> {officer.username}"
+                    )
+                elif created:
+                    self.stdout.write(
+                        f"Created OfficerAssignment: {state.name} -> {officer.username}"
+                    )
 
-        invalidate_officer_cache()
+            invalidate_officer_cache()
 
         self.stdout.write("\n" + "=" * 80)
         self.stdout.write(
@@ -633,31 +671,43 @@ class Command(BaseCommand):
                 self.stdout.write(f"Error: State {st_code} not found in DB.")
                 continue
 
-            emp_code = OFFICER_STATE_MAP.get(st_code, "EMP01")
-            officer = User.objects.get(username=emp_code)
+            assigned_officer: User | None = None
+            if has_users:
+                emp_code = OFFICER_STATE_MAP.get(st_code, "EMP01")
+                assigned_officer = get_or_create_officer(emp_code)
 
-            # 1. District
+            # 1. District (Idempotent: find by name, code, or any in state)
             district_name = item["district"]
             dist_code = f"DIST-{st_code[:4]}-01"
-            district, _ = District.objects.get_or_create(
-                state=state,
-                name=district_name,
-                defaults={"code": dist_code},
-            )
+            district = District.objects.filter(
+                state=state, name__iexact=district_name
+            ).first()
+            if not district:
+                district = District.objects.filter(state=state, code=dist_code).first()
+            if not district:
+                district = District.objects.filter(state=state).first()
+            if not district:
+                district = District.objects.create(
+                    state=state,
+                    name=district_name,
+                    code=dist_code,
+                )
 
-            # 2. Institution
+            # 2. Institution (Idempotent: find by code, or name & state)
             inst_name = item["inst_name"]
             inst_code = f"INST-{item['club_code'].replace('CLUB-', '')}"
-            inst, _ = Institution.objects.get_or_create(
-                name=inst_name,
-                state=state,
-                defaults={
-                    "code": inst_code,
-                    "legacy_id": f"leg-{inst_code.lower()}",
-                    "district": district,
-                    "status": Institution.Status.ACTIVE,
-                },
-            )
+            inst = Institution.objects.filter(code=inst_code).first()
+            if not inst:
+                inst = Institution.objects.filter(name=inst_name, state=state).first()
+            if not inst:
+                inst = Institution.objects.create(
+                    name=inst_name,
+                    code=inst_code,
+                    legacy_id=f"leg-{inst_code.lower()}",
+                    state=state,
+                    district=district,
+                    status=Institution.Status.ACTIVE,
+                )
 
             # 3. Club
             c_code = item["club_code"]
@@ -692,91 +742,93 @@ class Command(BaseCommand):
                 club.save(update_fields=["is_sample"])
 
             # 4. Trigger State-Gated Hard Check Gate (ActivityLog entry)
-            LedgerIntegrityEngine.ensure_club_approval_log(
-                club,
-                officer=officer,
-                timestamp=c_date,
-                strict_gate=False,
-            )
+            if has_activities and assigned_officer:
+                LedgerIntegrityEngine.ensure_club_approval_log(
+                    club,
+                    officer=assigned_officer,
+                    timestamp=c_date,
+                    strict_gate=False,
+                )
 
             # 5. Authority User (President Account)
-            pres_username = f"pres.{c_code.lower().replace('club-', '')}"
-            pres_email = f"pres.{c_code.lower()}@ndli.edu"
-            user, _ = User.objects.get_or_create(
-                username=pres_username,
-                defaults={
-                    "email": pres_email,
-                    "category": Category.CLUB_ADMIN,
-                    "sub_role": SubRole.CLUB_PRESIDENT,
-                    "account_state": AccountState.ACTIVE,
-                    "first_name": item["pres_name"],
-                    "is_active": True,
-                },
-            )
-            user.set_password(STANDARD_PASSWORD)
-            user.save()
-
-            # Link AuthorityAssignment
-            AuthorityAssignment.objects.get_or_create(
-                user=user,
-                club=club,
-                tier="President",
-                defaults={
-                    "from_date": c_date,
-                    "status": AuthorityAssignment.Status.ACTIVE,
-                },
-            )
-
-        # Ensure all canonical clubs have president authority credentials
-        for club in Club.objects.filter(is_sample=False):
-            auth = AuthorityAssignment.objects.filter(
-                club=club, tier="President"
-            ).first()
-            if not auth or not auth.user:
-                clean_code = (
-                    club.code.lower()
-                    .replace("club-", "")
-                    .replace("ndli-", "")
-                    .replace("-", "")
-                )
-                pres_username = f"pres.{clean_code}"
-                pres_email = f"pres.{club.code.lower()}@ndli.edu"
-                u, _ = User.objects.get_or_create(
+            if has_users:
+                pres_username = f"pres.{c_code.lower().replace('club-', '')}"
+                pres_email = f"pres.{c_code.lower()}@ndli.edu"
+                user, _ = User.objects.get_or_create(
                     username=pres_username,
                     defaults={
                         "email": pres_email,
                         "category": Category.CLUB_ADMIN,
                         "sub_role": SubRole.CLUB_PRESIDENT,
                         "account_state": AccountState.ACTIVE,
-                        "first_name": club.president_name or "Dr. Club President",
+                        "first_name": item["pres_name"],
                         "is_active": True,
                     },
                 )
-                u.set_password(STANDARD_PASSWORD)
-                u.save()
+                user.set_password(STANDARD_PASSWORD)
+                user.save()
+
+                # Link AuthorityAssignment
                 AuthorityAssignment.objects.get_or_create(
-                    user=u,
+                    user=user,
                     club=club,
                     tier="President",
                     defaults={
-                        "from_date": club.date_of_approval or club.created_at.date(),
+                        "from_date": c_date,
                         "status": AuthorityAssignment.Status.ACTIVE,
                     },
                 )
-                self.stdout.write(
-                    f"Created missing President Authority: {club.code} -> "
-                    f"{pres_username}"
-                )
+
+        if has_users:
+            # Ensure all canonical clubs have president authority credentials
+            for club in Club.objects.filter(is_sample=False):
+                auth = AuthorityAssignment.objects.filter(
+                    club=club, tier="President"
+                ).first()
+                if not auth or not auth.user:
+                    clean_code = (
+                        club.code.lower()
+                        .replace("club-", "")
+                        .replace("ndli-", "")
+                        .replace("-", "")
+                    )
+                    pres_username = f"pres.{clean_code}"
+                    pres_email = f"pres.{club.code.lower()}@ndli.edu"
+                    u, _ = User.objects.get_or_create(
+                        username=pres_username,
+                        defaults={
+                            "email": pres_email,
+                            "category": Category.CLUB_ADMIN,
+                            "sub_role": SubRole.CLUB_PRESIDENT,
+                            "account_state": AccountState.ACTIVE,
+                            "first_name": club.president_name or "Dr. Club President",
+                            "is_active": True,
+                        },
+                    )
+                    u.set_password(STANDARD_PASSWORD)
+                    u.save()
+                    AuthorityAssignment.objects.get_or_create(
+                        user=u,
+                        club=club,
+                        tier="President",
+                        defaults={
+                            "from_date": (
+                                club.date_of_approval or club.created_at.date()
+                            ),
+                            "status": AuthorityAssignment.Status.ACTIVE,
+                        },
+                    )
 
         # Run full Ledger Audit & Reconcile
-        report = LedgerIntegrityEngine.audit_and_heal()
-        self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("STEP 3: SSOT Ledger Audit & Auto-Healing Report:")
-        self.stdout.write("=" * 80)
-        self.stdout.write(f"Total Clubs Audited: {report.total_clubs_audited}")
-        self.stdout.write(f"Healed Approvals: {report.healed_approvals_count}")
-        self.stdout.write(
-            f"Unresolved Deviations: {report.unresolved_deviations_count}"
-        )
-        status_str = "HEALTHY" if report.healthy else "DEVIATIONS"
-        self.stdout.write(f"Ledger Status: {status_str}")
+        if has_activities:
+            report = LedgerIntegrityEngine.audit_and_heal()
+            self.stdout.write("\n" + "=" * 80)
+            self.stdout.write("STEP 3: SSOT Ledger Audit & Auto-Healing Report:")
+            self.stdout.write("=" * 80)
+            self.stdout.write(f"Total Clubs Audited: {report.total_clubs_audited}")
+            self.stdout.write(f"Healed Approvals: {report.healed_approvals_count}")
+            self.stdout.write(
+                f"Unresolved Deviations: {report.unresolved_deviations_count}"
+            )
+            status_str = "HEALTHY" if report.healthy else "DEVIATIONS"
+            self.stdout.write(f"Ledger Status: {status_str}")

@@ -539,7 +539,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   }, [stateRows]);
 
   // Telemetrics calculations
-  const totalClubs = dashboard?.total_clubs ?? 11;
+  const totalClubs = dashboard?.total_clubs ?? 0;
   const totalActivities = dashboard?.total_activities ?? 0;
   const activeOfficers = dashboard?.active_officers ?? 7;
   const attentionCount = renewalAttention?.total_attention_count ?? (dashboard?.renewal_attention ?? 0);
@@ -773,7 +773,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           label={t('Total NDLI Clubs')}
           value={dashboard ? dashboard.total_clubs : '—'}
           desc={t('Across all 36 States & UTs (Click to inspect)')}
-          badge={t('11 Canonical')}
+          badge={dashboard ? `${dashboard.total_clubs} Canonical` : t('Live')}
           icon={<Building2 className="w-5 h-5" />}
           variant="green"
           clickable={true}
@@ -1100,7 +1100,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
                 { x: 200, y: 108, label: 'Mar', val: 4 },
                 { x: 290, y: 82, label: 'May', val: 6 },
                 { x: 380, y: 52, label: 'Jul', val: 8 },
-                { x: 486, y: 22, label: 'Oct', val: 11 },
+                { x: 486, y: 22, label: 'Oct', val: totalClubs },
               ].map((pt, i) => (
                 <g key={i}>
                   <circle

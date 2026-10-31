@@ -3,12 +3,30 @@
 from __future__ import annotations
 
 from django.core.management import call_command
-from django.db import migrations
+from django.db import migrations, transaction
 
 
 def seed_all_canonical_states(apps, schema_editor) -> None:
+    State = apps.get_model("domain", "State")
+    if not State.objects.exists():
+        return
+
+    with schema_editor.connection.cursor() as cursor:
+        table_names = schema_editor.connection.introspection.table_names(cursor)
+        if "domain_institution" not in table_names:
+            return
+        columns = {
+            col.name
+            for col in schema_editor.connection.introspection.get_table_description(
+                cursor, "domain_institution"
+            )
+        }
+    if "affiliation_code" not in columns:
+        return
+
     try:
-        call_command("seed_all_states")
+        with transaction.atomic():
+            call_command("seed_all_states")
     except Exception:
         pass
 

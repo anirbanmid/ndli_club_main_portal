@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from django.db import connection, migrations
+from django.db import connection, migrations, transaction
 
 STANDARD_PASSWORD = "NdliClub@2026!"
 
@@ -174,6 +174,23 @@ def seed_nine_clubs(apps, schema_editor) -> None:
         State,
         Zone,
     )
+
+    State = apps.get_model("domain", "State")
+    if not State.objects.exists():
+        return
+
+    with schema_editor.connection.cursor() as cursor:
+        table_names = schema_editor.connection.introspection.table_names(cursor)
+        if "domain_institution" not in table_names:
+            return
+        columns = {
+            col.name
+            for col in schema_editor.connection.introspection.get_table_description(
+                cursor, "domain_institution"
+            )
+        }
+    if "affiliation_code" not in columns:
+        return
 
     tables = connection.introspection.table_names()
     has_users = User._meta.db_table in tables

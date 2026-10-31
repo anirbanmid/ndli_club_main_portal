@@ -232,11 +232,12 @@ class LedgerIntegrityEngine:
     def audit_and_heal(cls) -> IntegrityReport:
         """Scan all active non-sample clubs and reconcile with ActivityLog."""
         try:
-            clubs = list(
-                Club.objects.filter(is_sample=False)
-                .select_related("institution__state__zone")
-                .order_by("code")
-            )
+            with transaction.atomic():
+                clubs = list(
+                    Club.objects.filter(is_sample=False)
+                    .select_related("institution__state__zone")
+                    .order_by("code")
+                )
         except Exception:
             return IntegrityReport(
                 healthy=True,

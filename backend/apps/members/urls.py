@@ -81,6 +81,16 @@ urlpatterns += [
         name="join-batch-confirm",
     ),
     path(
+        "students/register/",
+        views.StudentJoinRegisterView.as_view(),
+        name="student-register",
+    ),
+    path(
+        "students/",
+        views.StudentProfileListView.as_view(),
+        name="student-list",
+    ),
+    path(
         "students/<int:profile_id>/",
         views.StudentProfileDetailView.as_view(),
         name="student-profile-detail",
@@ -89,6 +99,21 @@ urlpatterns += [
         "students/<int:profile_id>/subclubs/",
         views.StudentSubClubAssignView.as_view(),
         name="student-subclubs-assign",
+    ),
+    path(
+        "me/",
+        views.StudentMemberMeView.as_view(),
+        name="student-me",
+    ),
+    path(
+        "me/subclubs/",
+        views.StudentMemberMeSubClubsView.as_view(),
+        name="student-me-subclubs",
+    ),
+    path(
+        "me/change-password/",
+        views.StudentMemberMePasswordView.as_view(),
+        name="student-me-password",
     ),
     path(
         "school/<str:club_code>/upload/",
@@ -101,3 +126,4 @@ urlpatterns += [
         name="school-cards-list",
     ),
 ]
+

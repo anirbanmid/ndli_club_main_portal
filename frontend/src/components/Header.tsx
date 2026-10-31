@@ -237,6 +237,23 @@ export const Header: React.FC<HeaderProps> = ({
             <Landmark className="h-4 w-4" />
             <span>{t("3. IIT KGP Admin Module")}</span>
           </button>
+
+          {/* Branch 4: Club Member (Student) Module */}
+          <button
+            onClick={() => {
+              setCurrentBranch('student_module');
+              setCurrentTab('student_home');
+            }}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+              currentBranch === 'student_module'
+                ? 'bg-[#B45309] text-white shadow-sm'
+                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
+            }`}
+          >
+            <Award className="h-4 w-4 text-amber-500" />
+            <span>{t("4. Club Member Module")}</span>
+            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("STUDENT")}</span>
+          </button>
         </div>
 
         {/* Quick Action Buttons */}

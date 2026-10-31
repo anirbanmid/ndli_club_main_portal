@@ -108,6 +108,9 @@ export interface ZoneDashboard {
   active_officers: number;
   renewal_attention: number;
   escalations_30d: number;
+  total_members?: number;
+  active_members?: number;
+  inactive_members?: number;
   support_type_breakdown?: {
     phone_remote?: number;
     os_tickets?: number;

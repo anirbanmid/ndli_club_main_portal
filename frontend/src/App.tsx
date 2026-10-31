@@ -21,13 +21,13 @@ import { OnboardingWizardView } from './components/onboarding/OnboardingWizardVi
 import { RegisterInstitutionalClubModal } from './components/onboarding/RegisterInstitutionalClubModal';
 import { HEIRegistrationWizard } from './components/onboarding/HEIRegistrationWizard';
 import { SchoolRegistrationWizard } from './components/onboarding/SchoolRegistrationWizard';
-import { ForgotPasswordModal } from './components/auth/ForgotPasswordModal';
 import { DraftPayload } from './lib/onboardingApi';
 import { ShowcaseIndexView } from './components/clubs/ShowcaseIndexView';
 import { ClubShowcaseDetailView } from './components/clubs/ClubShowcaseDetailView';
 import { InstitutionalClubsLandingView } from './components/InstitutionalClubsLandingView';
 import { JoinView } from './components/clubs/JoinView';
 import { JoinClubModal } from './components/JoinClubModal';
+import { ClubMemberModuleView } from './components/members/ClubMemberModuleView';
 import { 
   INITIAL_CLUBS, 
   INITIAL_ACTIVITIES, 
@@ -79,6 +79,7 @@ export function App({ ssrLocation }: AppProps = {}) {
       setAdminUsername('');
     }
   };
+  const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
   const [adminGateError, setAdminGateError] = useState<string | null>(null);
   const probeAdminSession = () => {
     fetchSession()
@@ -88,6 +89,9 @@ export function App({ ssrLocation }: AppProps = {}) {
           setAdminRole(s.sub_role ?? '');
           setAdminUsername(s.username ?? '');
           setAdminGateError(null);
+        } else if (s && s.category === 'student_member') {
+          setCurrentBranch('student_module');
+          setCurrentTab('student_home');
         }
       })
       .catch(() => {
@@ -101,7 +105,6 @@ export function App({ ssrLocation }: AppProps = {}) {
   useEffect(() => {
     probeAdminSession();
   }, []);
-  const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
 
   // Application Data States
   const [clubs, setClubs] = useState<InstituteClub[]>(INITIAL_CLUBS);
@@ -337,6 +340,11 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab(route.tab);
                 }}
                 onSignedIn={(session) => {
+                  if (session.category === 'student_member') {
+                    setCurrentBranch('student_module');
+                    setCurrentTab('student_home');
+                    return;
+                  }
                   if (session.category === 'iit_kgp_admin') {
                     setAdminAuthed(true);
                     setAdminRole(session.sub_role ?? '');
@@ -536,6 +544,32 @@ export function App({ ssrLocation }: AppProps = {}) {
           </>
         )}
 
+        {/* BRANCH 4: DEDICATED STUDENT MEMBER MODULE (Campus Specification §5) */}
+        {currentBranch === 'student_module' && (
+          <ClubMemberModuleView
+            onSignOut={() => {
+              void signOut().catch(() => null);
+              setCurrentBranch('landing');
+              setCurrentTab('home');
+            }}
+            onSignIn={() => {
+              setLoginSourceBranch('student_module');
+              setLoginSourceTab('student_home');
+              setCurrentBranch('landing');
+              setCurrentTab('login');
+            }}
+            onViewPublicProfile={() => {
+              if (activeClub) {
+                setCurrentBranch('club_module');
+                setCurrentTab('club_dashboard');
+              } else {
+                setCurrentBranch('club_module');
+                setCurrentTab('club_directory');
+              }
+            }}
+          />
+        )}
+
         {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE — LOGIN-GATED.
             Without a real iit_kgp_admin session this branch renders the sign-in
             door (the demo flow never authenticated, which surfaced raw 401s). */}
@@ -620,6 +654,11 @@ export function App({ ssrLocation }: AppProps = {}) {
               onSignedIn={async () => {
                 try {
                   const s = await fetchSession();
+                  if (s && s.category === 'student_member') {
+                    setCurrentBranch('student_module');
+                    setCurrentTab('student_home');
+                    return;
+                  }
                   if (s && s.category === 'iit_kgp_admin') {
                     setAdminAuthed(true);
                     setAdminRole(s.sub_role ?? '');

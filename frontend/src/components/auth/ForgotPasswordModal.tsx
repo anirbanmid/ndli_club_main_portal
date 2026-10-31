@@ -146,10 +146,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                   {busy ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Verifying in Registry...</span>
+                      <span>Checking...</span>
                     </>
                   ) : (
-                    <span>Request Password Reset Link</span>
+                    <span>Check</span>
                   )}
                 </button>
               </div>

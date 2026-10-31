@@ -259,6 +259,21 @@ def _require_club_login_eligible(user: AbstractBaseUser) -> User:
         )
     if profile.account_state != AccountState.ACTIVE:
         raise PermissionDenied("Account is not active.", code="account_inactive")
+    if profile.category == Category.STUDENT_MEMBER:
+        stu_prof = getattr(profile, "student_profile", None)
+        if stu_prof is not None:
+            if stu_prof.is_suspended_by_coordinator:
+                raise PermissionDenied(
+                    "Your student membership account is temporarily "
+                    "suspended by your coordinator.",
+                    code="account_suspended",
+                )
+            if stu_prof.valid_until and stu_prof.valid_until < timezone.localdate():
+                raise PermissionDenied(
+                    "Your student membership validity has expired. "
+                    "Please contact your club authority.",
+                    code="membership_expired",
+                )
     return profile
 
 

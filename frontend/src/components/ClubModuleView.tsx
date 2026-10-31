@@ -45,7 +45,9 @@ import { SchoolBulkUploadPanel } from './members/SchoolBulkUploadPanel';
 import { InstitutionalEventModal } from './activities/InstitutionalEventModal';
 import { EventParticipationCard } from './activities/EventParticipationCard';
 import { CuratedLibraryHub } from './sharing/CuratedLibraryHub';
-import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub } from '../lib/campusApi';
+import { StudentMembershipApprovalPanel } from './members/StudentMembershipApprovalPanel';
+import { ClubMemberModuleView } from './members/ClubMemberModuleView';
+import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub, fetchStudentProfiles } from '../lib/campusApi';
 import { Layers, BookOpen, School as SchoolIcon } from 'lucide-react';
 
 interface ClubModuleViewProps {
@@ -91,22 +93,30 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   onViewPublicProfile,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'roster' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash' | 'subclubs' | 'school_roster' | 'libraries'
+    'overview' | 'roster' | 'membership_approval' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash' | 'subclubs' | 'school_roster' | 'libraries'
   >('overview');
 
   // Campus Events & Sub-Clubs state
   const [backendEvents, setBackendEvents] = useState<ClubEvent[]>([]);
   const [subClubsList, setSubClubsList] = useState<SubClub[]>([]);
+  const [memberStats, setMemberStats] = useState<{ total: number; active: number; inactive: number } | null>(null);
   const [showInstitutionalEventModal, setShowInstitutionalEventModal] = useState(false);
 
   const loadCampusData = async () => {
     try {
-      const [evts, subs] = await Promise.all([
+      const [evts, subs, profs] = await Promise.all([
         fetchClubEvents(activeClub.id).catch(() => []),
         fetchSubClubs(activeClub.id).catch(() => []),
+        fetchStudentProfiles({ club_code: activeClub.id }).catch(() => null),
       ]);
       setBackendEvents(evts);
       setSubClubsList(subs);
+      if (profs && profs.results) {
+        const total = profs.total ?? profs.results.length;
+        const active = profs.results.filter((s) => s.status === 'active').length;
+        const inactive = total - active;
+        setMemberStats({ total, active, inactive });
+      }
     } catch {
       // fallback
     }
@@ -500,6 +510,18 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         </button>
 
         <button
+          onClick={() => setActiveTab('membership_approval')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            activeTab === 'membership_approval'
+              ? 'bg-[#1A503E] text-white shadow-xs'
+              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+          }`}
+        >
+          <UserPlus className="h-4 w-4 text-emerald-400" />
+          <span>{activeClub.category === 'School' ? t("School Roster & Bulk Upload") : t("Membership Approval & Roster")}</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('roster')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'roster'
@@ -560,17 +582,19 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <span>{t("Authority Succession")}</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('student_dash')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'student_dash'
-              ? 'bg-[#B45309] text-white shadow-xs'
-              : 'text-[#B45309] hover:bg-amber-50'
-          }`}
-        >
-          <Award className="h-4 w-4" />
-          <span>{t("Student View")}</span>
-        </button>
+        {activeClub.category !== 'School' && (
+          <button
+            onClick={() => setActiveTab('student_dash')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              activeTab === 'student_dash'
+                ? 'bg-[#B45309] text-white shadow-xs'
+                : 'text-[#B45309] hover:bg-amber-50'
+            }`}
+          >
+            <Award className="h-4 w-4" />
+            <span>{t("Student View")}</span>
+          </button>
+        )}
 
         {activeClub.category !== 'School' && (
           <button
@@ -618,8 +642,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Enrolled Members")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">{clubStudents.length.toLocaleString()}</div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Total Members Till Date")}</span>
+              <div className="text-xl font-extrabold text-[#103125]">
+                {memberStats
+                  ? `${memberStats.total.toLocaleString()} (Active ${memberStats.active.toLocaleString()} + Inactive ${memberStats.inactive.toLocaleString()})`
+                  : `${clubStudents.length.toLocaleString()} (Active ${clubStudents.filter((s) => s.status === 'Active').length} + Inactive ${clubStudents.filter((s) => s.status !== 'Active').length})`}
+              </div>
               <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1">
                 <span>{t("Passkey:")} {activeClub.passkey}</span>
               </div>
@@ -801,7 +829,20 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         </div>
       )}
 
-      {/* TAB 2: Student Roster (M5-D4) — the live API-backed manager. */}
+      {/* TAB 2: Membership Approval & Existing Roster (Campus Specification §4.A) */}
+      {activeTab === 'membership_approval' && (
+        activeClub.category === 'School' ? (
+          <SchoolBulkUploadPanel
+            clubCode={activeClub.id}
+            schoolName={activeClub.name}
+            isAuthority={Boolean(isAuthorityAuthenticated)}
+          />
+        ) : (
+          <StudentMembershipApprovalPanel clubCode={activeClub.id} isMainAuthority={true} />
+        )
+      )}
+
+      {/* TAB 2b: Student Roster (M5-D4) — legacy API-backed manager. */}
       {activeTab === 'roster' && <RosterManager />}
 
       {/* TAB 3: Activities & Workshops */}
@@ -1098,73 +1139,25 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         </div>
       )}
 
-      {/* TAB 7: Student Workspace & Certificate Claim (Requirement 3c.vi) */}
+      {/* TAB 7: Dedicated Student Member Module View (Campus Specification §5) */}
       {activeTab === 'student_dash' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="border-b border-[#E2ECE7] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full mb-1">
-                <Sparkles className="h-3.5 w-3.5 text-amber-700" />
-                <span>{t("Student Member Portal View")}</span>
-              </div>
-              <h3 className="text-xl font-bold text-[#103125]">
-                {t("Welcome, Aarav Mukherjee (Roll: 22CS30045)")}
-                                            </h3>
-              <p className="text-xs text-[#5A7366]">
-                {t("Active Scholar at")} {activeClub.name} {t("• Reading Streak: 18 Days")}
-                                            </p>
-            </div>
-
-            <div className="text-right">
-              <div className="text-2xl font-black text-[#B45309]">{t("850 Pts")}</div>
-              <div className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
-                {t("Diamond Scholar Tier")}
-                                            </div>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-2xl text-xs text-amber-900 font-bold">
+            <span className="flex items-center space-x-2">
+              <Sparkles className="h-4 w-4 text-amber-600" />
+              <span>{t("Authority Preview: Live Student Member Portal View")}</span>
+            </span>
+            <button
+              onClick={() => setActiveTab('overview')}
+              className="text-amber-800 underline hover:text-amber-950 font-bold cursor-pointer"
+            >
+              {t("Return to Club Dashboard")}
+            </button>
           </div>
-
-          {/* Certificate Claim Locker */}
-          <div className="space-y-4">
-            <h4 className="font-bold text-sm text-[#103125] flex items-center space-x-2">
-              <Award className="h-4 w-4 text-[#0D7751]" />
-              <span>{t("Your Event Credentials & Verified Certificates")}</span>
-            </h4>
-
-            <div className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2 py-0.5 rounded">
-                  <Check className="h-3 w-3 inline -mt-0.5" /> {t("Attendance Approved by Club Coordinator")}
-                                                  </span>
-                <h5 className="font-bold text-sm text-[#103125]">{t("National Reading Month: Digital Research & Open Ethics Assessment")}</h5>
-                <p className="text-xs text-[#5A7366]">{t("Performance Grade: A+ (sample record) • CID: NDLI-A7KQ-2M4X")}</p>
-              </div>
-
-              <button
-                onClick={() => {
-                  const cert: CertificateData = {
-                    certId: 'NDLI-A7KQ-2M4X',
-                    recipientName: 'Aarav Mukherjee',
-                    recipientEmail: 'aarav.m@demo.example.edu',
-                    recipientRoll: '22CS30045',
-                    instituteName: activeClub.name,
-                    eventName: 'National Reading Month: Digital Research & Open Ethics Assessment',
-                    eventDate: '15th October 2026',
-                    category: 'Merit',
-                    score: '100% Score',
-                    issuedAt: new Date().toISOString(),
-                    qrDataUrl: '',
-                    verified: true,
-                    authorityApproved: true
-                  };
-                  onClaimCertificate(cert);
-                }}
-                className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#0a5c3e] text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all shrink-0"
-              >
-                <Award className="h-4 w-4" />
-                <span>{t("View & Print Master Certificate")}</span>
-              </button>
-            </div>
-          </div>
+          <ClubMemberModuleView
+            onSignOut={onAuthoritySignOut}
+            onViewPublicProfile={() => onViewPublicProfile(activeClub)}
+          />
         </div>
       )}
 

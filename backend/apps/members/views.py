@@ -10,6 +10,8 @@ to a ``domain.Membership`` row (D3).
 
 from __future__ import annotations
 
+from typing import Any
+
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import NotFound
@@ -131,6 +133,51 @@ class JoinRequestRejectView(APIView):
         return Response({"id": join_request.pk, "status": join_request.status})
 
 
+def _is_main_club_authority(actor: Any, club: Any) -> bool:
+    """Verify if actor is an authorized main club officer.
+
+    Includes Patron, President, Secretary, and Executive Committee members.
+    """
+    from apps.accounts.models import CLUB_AUTHORITY_SUB_ROLES, Category
+
+    if actor is None or not getattr(actor, "is_authenticated", False):
+        return False
+    actor_category = getattr(actor, "category", None)
+    if actor_category == Category.IIT_KGP_ADMIN:
+        return True
+    actor_sub_role = getattr(actor, "sub_role", None)
+    if (
+        actor_category != Category.CLUB_ADMIN
+        or actor_sub_role not in CLUB_AUTHORITY_SUB_ROLES
+    ):
+        return False
+    actor_club = getattr(actor, "club", None)
+    if actor_club is None or club is None or actor_club.pk != club.pk:
+        return False
+    return True
+
+
+def _is_subclub_coordinator(
+    actor: Any, club: Any, subclub_ids: list[int] | None = None
+) -> bool:
+    """Verify if actor is an assigned coordinator for a sub-club."""
+    if actor is None or not getattr(actor, "is_authenticated", False):
+        return False
+    from apps.domain.models import SubClub
+
+    actor_email = getattr(actor, "email", "") or ""
+    if not actor_email:
+        return False
+    qs = SubClub.objects.filter(
+        club=club,
+        coordinator_email__iexact=actor_email,
+        is_active=True,
+    )
+    if subclub_ids is not None:
+        qs = qs.filter(id__in=subclub_ids)
+    return qs.exists()
+
+
 class JoinBatchConfirmView(APIView):
     """Approve all or selected join requests."""
 
@@ -138,6 +185,7 @@ class JoinBatchConfirmView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        actor = request.user
         club_code = str(request.data.get("club_code", "")).strip()
         approve_all = bool(request.data.get("approve_all", False))
         request_ids = request.data.get("request_ids", None)
@@ -146,6 +194,26 @@ class JoinBatchConfirmView(APIView):
             return Response(
                 {"detail": "club_code is required.", "code": "missing_club"},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.domain.models import Club
+
+        target_club = Club.objects.filter(code__iexact=club_code).first()
+        if not target_club:
+            return Response(
+                {"detail": "Club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not _is_main_club_authority(actor, target_club):
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities can approve membership requests."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         results = services.batch_confirm_joins(
@@ -167,6 +235,7 @@ class StudentProfileDetailView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request, profile_id: int) -> Response:
+        actor = request.user
         from apps.members.models import StudentMemberProfile
 
         profile = (
@@ -179,6 +248,20 @@ class StudentProfileDetailView(APIView):
             return Response(
                 {"detail": "Student profile not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        caller_is_auth = _is_main_club_authority(actor, profile.club)
+        caller_is_coord = _is_subclub_coordinator(actor, profile.club)
+        caller_is_self = getattr(actor, "pk", None) == profile.user_id
+        if not caller_is_auth and not caller_is_coord and not caller_is_self:
+            return Response(
+                {
+                    "detail": (
+                        "You do not have permission to view this student profile."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         return Response(
@@ -211,22 +294,57 @@ class StudentProfileDetailView(APIView):
         )
 
     def patch(self, request: Request, profile_id: int) -> Response:
+        actor = request.user
         from datetime import timedelta
 
         from apps.members.models import StudentMemberProfile
 
-        profile = StudentMemberProfile.objects.filter(id=profile_id).first()
+        profile = (
+            StudentMemberProfile.objects.select_related("user", "club")
+            .prefetch_related("sub_clubs")
+            .filter(id=profile_id)
+            .first()
+        )
         if not profile:
             return Response(
                 {"detail": "Student profile not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        student_subclub_ids = list(profile.sub_clubs.values_list("id", flat=True))
+        caller_is_main_auth = _is_main_club_authority(actor, profile.club)
+        caller_is_coord = _is_subclub_coordinator(
+            actor, profile.club, student_subclub_ids
+        )
+
+        if not caller_is_main_auth and not caller_is_coord:
+            return Response(
+                {
+                    "detail": (
+                        "Permission denied. Only club authorities or assigned "
+                        "sub-club coordinators may modify student records."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         data = request.data
         if "validity_years" in data:
+            if not caller_is_main_auth:
+                return Response(
+                    {
+                        "detail": (
+                            "Only main club authorities can update membership validity."
+                        ),
+                        "code": "permission_denied",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             years = int(data["validity_years"])
             profile.validity_years = years
             profile.valid_until = timezone.localdate() + timedelta(days=365 * years)
+
         if "is_suspended" in data:
             profile.is_suspended_by_coordinator = bool(data["is_suspended"])
         if "department" in data:
@@ -251,6 +369,56 @@ class StudentProfileDetailView(APIView):
         profile.save()
         return Response({"message": "Profile updated successfully.", "id": profile.id})
 
+    def delete(self, request: Request, profile_id: int) -> Response:
+        actor = request.user
+        from apps.accounts.models import AccountState
+        from apps.domain.models import Membership
+        from apps.members.models import JoinRequest, StudentMemberProfile
+
+        profile = (
+            StudentMemberProfile.objects.select_related("user", "club")
+            .filter(id=profile_id)
+            .first()
+        )
+        if not profile:
+            return Response(
+                {"detail": "Student profile not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not _is_main_club_authority(actor, profile.club):
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities of this club can permanently "
+                        "remove a student member."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        user = profile.user
+        club = profile.club
+
+        from django.db import transaction
+
+        with transaction.atomic():
+            Membership.objects.filter(user=user, club=club).delete()
+            JoinRequest.objects.filter(user=user, club=club).delete()
+            profile.delete()
+            user.club_id = ""
+            user.institution_id = ""
+            user.account_state = AccountState.DORMANT
+            user.save(update_fields=["club", "institution", "account_state"])
+
+        return Response(
+            {
+                "message": "Student member removed permanently from the club.",
+                "success": True,
+            }
+        )
+
 
 class StudentSubClubAssignView(APIView):
     """Assign or remove Sub-Clubs for a student member."""
@@ -259,14 +427,30 @@ class StudentSubClubAssignView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request, profile_id: int) -> Response:
+        actor = request.user
         from apps.domain.models import SubClub
         from apps.members.models import StudentMemberProfile
 
-        profile = StudentMemberProfile.objects.filter(id=profile_id).first()
+        profile = (
+            StudentMemberProfile.objects.select_related("club")
+            .filter(id=profile_id)
+            .first()
+        )
         if not profile:
             return Response(
                 {"detail": "Student profile not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not _is_main_club_authority(actor, profile.club):
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities can assign sub-clubs to students."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         subclub_ids = request.data.get("subclub_ids", [])
@@ -352,3 +536,653 @@ class SchoolCardsListView(APIView):
         return Response(
             {"school_name": club.institution.name, "cards": cards, "total": len(cards)}
         )
+
+
+class StudentProfileListView(APIView):
+    """List existing student members with filters for Year, Dept, Gender, Sub-Club."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        from django.db.models import Q
+
+        from apps.accounts.models import Category
+        from apps.members.models import StudentMemberProfile
+
+        actor = request.user
+        if not getattr(actor, "is_authenticated", False):
+            return Response(
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        actor_category = getattr(actor, "category", None)
+        actor_club = getattr(actor, "club", None)
+        club_code = str(request.query_params.get("club_code", "")).strip()
+
+        if actor_category == Category.STUDENT_MEMBER:
+            return Response(
+                {
+                    "detail": "Students cannot access club management rosters.",
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if actor_category == Category.CLUB_ADMIN and actor_club is not None:
+            if club_code and actor_club.code.lower() != club_code.lower():
+                return Response(
+                    {
+                        "detail": "Access to another club's roster is forbidden.",
+                        "code": "permission_denied",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        qs = StudentMemberProfile.objects.select_related(
+            "user", "club", "club__institution"
+        ).prefetch_related("sub_clubs")
+
+        if club_code:
+            qs = qs.filter(club__code__iexact=club_code)
+        elif actor_club:
+            qs = qs.filter(club=actor_club)
+
+        department = str(request.query_params.get("department", "")).strip()
+        if department:
+            qs = qs.filter(department__icontains=department)
+
+        gender = str(request.query_params.get("gender", "")).strip()
+        if gender:
+            qs = qs.filter(gender__iexact=gender)
+
+        year = request.query_params.get("year")
+        if year:
+            try:
+                y = int(year)
+                qs = qs.filter(Q(created_at__year=y) | Q(valid_until__year=y))
+            except (ValueError, TypeError):
+                pass
+
+        sub_club_id = request.query_params.get("sub_club_id")
+        if sub_club_id:
+            try:
+                qs = qs.filter(sub_clubs__id=int(sub_club_id))
+            except (ValueError, TypeError):
+                pass
+
+        main_club_only = request.query_params.get("main_club_only")
+        if str(main_club_only).lower() in ("true", "1", "yes"):
+            qs = qs.filter(sub_clubs__isnull=True)
+
+        search = str(request.query_params.get("search", "")).strip()
+        if search:
+            qs = qs.filter(
+                Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+                | Q(user__username__icontains=search)
+                | Q(user__email__icontains=search)
+                | Q(roll_number__icontains=search)
+                | Q(department__icontains=search)
+            )
+
+        today = timezone.localdate()
+        results = []
+        for p in qs.distinct().order_by("roll_number", "id"):
+            is_expired = bool(p.valid_until and p.valid_until < today)
+            status_str = (
+                "suspended"
+                if p.is_suspended_by_coordinator
+                else ("expired" if is_expired else "active")
+            )
+            results.append(
+                {
+                    "id": p.id,
+                    "user_id": p.user_id,
+                    "full_name": p.user.get_full_name() or p.user.username,
+                    "email": p.user.email,
+                    "gender": p.gender,
+                    "department": p.department,
+                    "roll_number": p.roll_number,
+                    "validity_years": p.validity_years,
+                    "valid_until": p.valid_until,
+                    "is_suspended": p.is_suspended_by_coordinator,
+                    "is_expired": is_expired,
+                    "status": status_str,
+                    "points": p.points,
+                    "badge": p.badge,
+                    "sub_clubs": [
+                        {"id": sc.id, "name": sc.name} for sc in p.sub_clubs.all()
+                    ],
+                    "joined_at": p.created_at,
+                }
+            )
+
+        return Response({"results": results, "total": len(results)})
+
+
+class StudentJoinRegisterView(APIView):
+    """POST /api/v1/members/students/register/ -- Student Passkey Join enrollment."""
+
+    permission_classes: list = []
+    authentication_classes: list = []
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        from datetime import timedelta
+
+        from django.db import transaction
+        from django.db.models import Q
+
+        from apps.accounts.models import AccountState, Category, SubRole, User
+        from apps.clubs import services as club_services
+        from apps.domain.models import Club
+        from apps.members.models import JoinRequest, StudentMemberProfile
+
+        data = request.data
+        passkey = str(data.get("passkey", "")).strip()
+        full_name = str(data.get("full_name", "")).strip()
+        gender = str(data.get("gender", "other")).strip().lower()
+        email = str(data.get("email", "")).strip().lower()
+        password = str(data.get("password", "")).strip()
+        department = str(data.get("department", "")).strip()
+        roll_number = str(data.get("roll_number", "")).strip()
+
+        if (
+            not passkey
+            or not full_name
+            or not email
+            or not password
+            or not department
+            or not roll_number
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Passkey, Full Name, Gender, Email, Password, "
+                        "Department, and Roll Number are all required."
+                    ),
+                    "code": "missing_fields",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if gender not in ("male", "female", "other"):
+            gender = "other"
+
+        # Resolve Club via Passkey
+        club = None
+        try:
+            passkey_row = club_services.resolve_passkey(passkey)
+            club = passkey_row.club
+        except Exception:
+            club = (
+                Club.objects.filter(
+                    Q(code__iexact=passkey) | Q(institution__code__iexact=passkey)
+                )
+                .select_related(
+                    "institution", "institution__state", "institution__state__zone"
+                )
+                .first()
+            )
+
+        if not club:
+            return Response(
+                {
+                    "detail": (
+                        "Invalid institutional passkey. Please verify with your "
+                        "college library or club authority."
+                    ),
+                    "code": "invalid_passkey",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user is not None:
+            from apps.domain.models import Membership
+
+            has_active_membership = Membership.objects.filter(
+                user=existing_user, status=Membership.Status.ACTIVE
+            ).exists()
+            has_active_profile = StudentMemberProfile.objects.filter(
+                user=existing_user
+            ).exists()
+            if has_active_membership or has_active_profile:
+                return Response(
+                    {
+                        "detail": (
+                            "An active account with this email address is already "
+                            "registered in a club."
+                        ),
+                        "code": "email_exists",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        username = email
+        if (
+            User.objects.filter(username__iexact=username)
+            .exclude(email__iexact=email)
+            .exists()
+        ):
+            import secrets
+
+            username = f"{email.split('@')[0]}_{secrets.token_hex(2)}"
+
+        parts = full_name.split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else ""
+
+        with transaction.atomic():
+            if existing_user is not None:
+                user = existing_user
+                user.first_name = first_name
+                user.last_name = last_name
+                user.category = Category.STUDENT_MEMBER
+                user.sub_role = SubRole.STUDENT_MEMBER
+                user.club = club
+                user.institution = club.institution
+                user.state = club.institution.state
+                user.zone = club.institution.state.zone
+                user.account_state = AccountState.PENDING_APPROVAL
+                user.set_password(password)
+                user.save()
+            else:
+                user = User(
+                    username=username,
+                    email=email,
+                    first_name=first_name,
+                    last_name=last_name,
+                    category=Category.STUDENT_MEMBER,
+                    sub_role=SubRole.STUDENT_MEMBER,
+                    club=club,
+                    institution=club.institution,
+                    state=club.institution.state,
+                    zone=club.institution.state.zone,
+                    account_state=AccountState.PENDING_APPROVAL,
+                )
+                user.set_password(password)
+                user.save()
+
+            default_expiry = timezone.localdate() + timedelta(days=365)
+            profile = StudentMemberProfile.objects.create(
+                user=user,
+                club=club,
+                gender=gender,
+                department=department,
+                roll_number=roll_number,
+                validity_years=1,
+                valid_until=default_expiry,
+                points=50,
+                badge="copper",
+            )
+
+            JoinRequest.objects.create(
+                user=user,
+                club=club,
+                source=JoinRequest.Source.PASSKEY,
+                status=JoinRequest.Status.PENDING,
+            )
+
+        return Response(
+            {
+                "success": True,
+                "message": (
+                    "Verification link sent to your student email. Your enrollment "
+                    "application is under review by the club authority."
+                ),
+                "club_code": club.code,
+                "institution_name": club.institution.name,
+                "full_name": full_name,
+                "roll_number": roll_number,
+                "profile_id": profile.id,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+
+def _calculate_profile_completeness(profile: Any) -> int:
+    checks = [
+        bool(profile.avatar),
+        bool(profile.date_of_birth),
+        bool(profile.hobbies and profile.hobbies.strip()),
+        bool(profile.address and profile.address.strip()),
+        bool(profile.state and profile.state.strip()),
+        bool(profile.pincode and profile.pincode.strip()),
+        bool(profile.social_facebook or profile.social_instagram or profile.social_x),
+    ]
+    return int(round((sum(checks) / float(len(checks))) * 100))
+
+
+def _compute_gamification(
+    profile: Any, user: Any
+) -> tuple[int, str, int, int, int]:
+    from apps.activities.models import EventAttendance
+    from apps.certificates.models import Certificate
+    from apps.sharing.models import CuratedLibrary
+
+    completeness = _calculate_profile_completeness(profile)
+    subclubs_count = profile.sub_clubs.count()
+
+    events_attended = EventAttendance.objects.filter(user=user).count()
+    certs_count = (
+        Certificate.objects.filter(holder=user).count()
+        + EventAttendance.objects.filter(user=user, is_approved=True).count()
+    )
+    community_libs = CuratedLibrary.objects.filter(
+        owner=user, is_published_to_community=True
+    ).count()
+
+    points = (
+        50
+        + (50 if completeness >= 70 else 0)
+        + (subclubs_count * 25)
+        + (events_attended * 50)
+        + (community_libs * 50)
+    )
+
+    if points >= 500:
+        badge = "platinum"
+    elif points >= 250:
+        badge = "gold"
+    elif points >= 100:
+        badge = "silver"
+    else:
+        badge = "copper"
+
+    if profile.points != points or profile.badge != badge:
+        profile.points = points
+        profile.badge = badge
+        profile.save(update_fields=["points", "badge"])
+
+    return points, badge, completeness, events_attended, certs_count
+
+
+class StudentMemberMeView(APIView):
+    """GET, PATCH /api/v1/members/me/ -- Student personal profile & telemetrics."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request: Request) -> Response:
+        from apps.members.models import StudentMemberProfile
+
+        user = request.user
+        profile = getattr(user, "student_profile", None)
+        if not profile:
+            club = getattr(user, "club", None)
+            if not club:
+                from apps.domain.models import Club
+
+                club = Club.objects.first()
+            if club:
+                from datetime import timedelta
+
+                profile, _ = StudentMemberProfile.objects.get_or_create(
+                    user=user,
+                    club=club,
+                    defaults={
+                        "roll_number": user.username,
+                        "department": "General",
+                        "gender": "other",
+                        "validity_years": 1,
+                        "valid_until": timezone.localdate() + timedelta(days=365),
+                    },
+                )
+
+        if not profile:
+            return Response(
+                {"detail": "Student profile not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        points, badge, completeness, events_attended, certs_count = (
+            _compute_gamification(profile, user)
+        )
+
+        age = None
+        if profile.date_of_birth:
+            today = timezone.localdate()
+            dob = profile.date_of_birth
+            age = (
+                today.year
+                - dob.year
+                - ((today.month, today.day) < (dob.month, dob.day))
+            )
+
+        passkey = ""
+        if hasattr(profile.club, "passkey") and profile.club.passkey:
+            passkey = profile.club.passkey
+        else:
+            passkey = profile.club.code
+
+        return Response(
+            {
+                "profile": {
+                    "id": profile.id,
+                    "user_id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "full_name": user.get_full_name() or user.username,
+                    "gender": profile.gender,
+                    "department": profile.department,
+                    "roll_number": profile.roll_number,
+                    "validity_years": profile.validity_years,
+                    "valid_until": profile.valid_until,
+                    "is_suspended": profile.is_suspended_by_coordinator,
+                    "avatar_url": profile.avatar.url if profile.avatar else "",
+                    "date_of_birth": profile.date_of_birth,
+                    "age": age,
+                    "hobbies": profile.hobbies,
+                    "address": profile.address,
+                    "state": profile.state,
+                    "pincode": profile.pincode,
+                    "social_facebook": profile.social_facebook,
+                    "social_instagram": profile.social_instagram,
+                    "social_x": profile.social_x,
+                    "club": {
+                        "code": profile.club.code,
+                        "name": profile.club.name,
+                        "institution_name": profile.club.institution.name,
+                        "passkey": passkey,
+                    },
+                    "sub_clubs": [
+                        {"id": sc.id, "name": sc.name}
+                        for sc in profile.sub_clubs.all()
+                    ],
+                },
+                "stats": {
+                    "points": points,
+                    "badge": badge,
+                    "badge_label": badge.capitalize(),
+                    "profile_completeness": completeness,
+                    "streak_days": 5,
+                    "events_attended": events_attended,
+                    "certificates_earned": certs_count,
+                    "next_tier_points": 100
+                    if points < 100
+                    else (250 if points < 250 else (500 if points < 500 else 1000)),
+                },
+            }
+        )
+
+    def patch(self, request: Request) -> Response:
+
+        user = request.user
+        profile = getattr(user, "student_profile", None)
+        if not profile:
+            return Response(
+                {"detail": "Student profile not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if profile.is_suspended_by_coordinator:
+            return Response(
+                {
+                    "detail": (
+                        "Your account is temporarily suspended by your coordinator."
+                    ),
+                    "code": "account_suspended",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if profile.valid_until and profile.valid_until < timezone.localdate():
+            return Response(
+                {
+                    "detail": "Your student membership validity has expired.",
+                    "code": "membership_expired",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        data = request.data
+        if "department" in data:
+            profile.department = str(data["department"]).strip()
+        if "gender" in data and data["gender"] in ("male", "female", "other"):
+            profile.gender = data["gender"]
+        if "date_of_birth" in data and data["date_of_birth"]:
+            profile.date_of_birth = data["date_of_birth"]
+        if "hobbies" in data:
+            profile.hobbies = str(data["hobbies"]).strip()
+        if "address" in data:
+            profile.address = str(data["address"]).strip()
+        if "state" in data:
+            profile.state = str(data["state"]).strip()
+        if "pincode" in data:
+            profile.pincode = str(data["pincode"]).strip()
+        if "social_facebook" in data:
+            profile.social_facebook = str(data["social_facebook"]).strip()
+        if "social_instagram" in data:
+            profile.social_instagram = str(data["social_instagram"]).strip()
+        if "social_x" in data:
+            profile.social_x = str(data["social_x"]).strip()
+        if "avatar" in request.FILES:
+            profile.avatar = request.FILES["avatar"]
+
+        profile.save()
+        points, badge, _completeness, _events, _certs = _compute_gamification(
+            profile, user
+        )
+        return Response(
+            {
+                "message": "Profile updated successfully.",
+                "id": profile.id,
+                "points": points,
+                "badge": badge,
+            }
+        )
+
+
+class StudentMemberMeSubClubsView(APIView):
+    """POST /api/v1/members/me/subclubs/ -- Student self-selects preferred sub-clubs."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        from apps.domain.models import SubClub
+
+        actor = request.user
+        profile = getattr(actor, "student_profile", None)
+        if not profile:
+            return Response(
+                {"detail": "Student profile not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if profile.is_suspended_by_coordinator:
+            return Response(
+                {
+                    "detail": (
+                        "Your account is temporarily suspended by your coordinator."
+                    ),
+                    "code": "account_suspended",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if profile.valid_until and profile.valid_until < timezone.localdate():
+            return Response(
+                {
+                    "detail": "Your student membership validity has expired.",
+                    "code": "membership_expired",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        subclub_ids = request.data.get("subclub_ids", [])
+        subclubs = SubClub.objects.filter(
+            id__in=subclub_ids, club=profile.club, is_active=True
+        )
+        profile.sub_clubs.set(subclubs)
+        _compute_gamification(profile, actor)
+        return Response(
+            {
+                "message": "Sub-clubs updated successfully.",
+                "sub_clubs": [{"id": sc.id, "name": sc.name} for sc in subclubs],
+                "points": profile.points,
+            }
+        )
+
+
+class StudentMemberMePasswordView(APIView):
+    """POST /api/v1/members/me/change-password/ -- In-app password change."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        current_password = str(request.data.get("current_password", "")).strip()
+        new_password = str(request.data.get("new_password", "")).strip()
+
+        if not current_password or not new_password:
+            return Response(
+                {
+                    "detail": "Current password and new password are required.",
+                    "code": "missing_fields",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        profile = getattr(user, "student_profile", None)
+        if profile is not None:
+            if profile.is_suspended_by_coordinator:
+                return Response(
+                    {
+                        "detail": (
+                            "Your account is temporarily suspended by your coordinator."
+                        ),
+                        "code": "account_suspended",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if profile.valid_until and profile.valid_until < timezone.localdate():
+                return Response(
+                    {
+                        "detail": "Your student membership validity has expired.",
+                        "code": "membership_expired",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        if not user.check_password(current_password):
+            return Response(
+                {"detail": "Incorrect current password.", "code": "invalid_password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {
+                    "detail": "New password must be at least 8 characters long.",
+                    "code": "weak_password",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        return Response({"message": "Password updated successfully.", "success": True})
+

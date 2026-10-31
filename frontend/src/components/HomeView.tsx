@@ -140,10 +140,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="text-center border-l border-brand-900/60">
             <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Users className="h-4 w-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">{t("Enrolled Scholars")}</span>
+              <span className="text-xs font-bold uppercase tracking-wider">{t("Total Members Till Date")}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">12,800</div>
-            <div className="text-[11px] text-brand-200">{t("Students & Researchers")}</div>
+            <div className="text-2xl sm:text-3xl font-black text-white">
+              {telemetry?.totals?.members ? telemetry.totals.members.toLocaleString() : '12,800'}
+            </div>
+            <div className="text-[11px] text-brand-200">{t("Total enrolled till date")}</div>
           </div>
 
           <div className="text-center border-l border-brand-900/60">

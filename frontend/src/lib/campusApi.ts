@@ -142,6 +142,7 @@ export interface EventConductor {
 
 export interface ClubEvent {
   id: number;
+  event_ref?: string;
   host_club: string;
   host_club_name?: string;
   title: string;
@@ -161,6 +162,7 @@ export interface ClubEvent {
     retry_count: number;
   }[];
   is_attendance_open?: boolean;
+  is_window_open?: boolean;
 }
 
 export interface CreateEventInput {
@@ -514,3 +516,372 @@ export async function confirmAuthorityDeactivation(
   }
   return body;
 }
+
+// --- HEI Student Member & Joining Workflow ---------------------------------
+
+export interface StudentJoinPayload {
+  passkey: string;
+  full_name: string;
+  gender: 'male' | 'female' | 'other';
+  email: string;
+  password: string;
+  department: string;
+  roll_number: string;
+}
+
+export interface StudentJoinResponse {
+  success: boolean;
+  message: string;
+  club_code: string;
+  institution_name: string;
+  full_name: string;
+  roll_number: string;
+  profile_id?: number;
+}
+
+export async function registerStudentMember(
+  payload: StudentJoinPayload,
+): Promise<StudentJoinResponse> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/register/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Student registration failed', res.status);
+  }
+  return body;
+}
+
+export interface PendingJoinItem {
+  id: number;
+  user_id: number;
+  user?: { username: string; email: string };
+  full_name: string;
+  email: string;
+  gender: string;
+  department: string;
+  roll_number: string;
+  club_code: string;
+  source: string;
+  status: string;
+  created_at: string;
+}
+
+export async function fetchPendingJoins(clubCode?: string): Promise<PendingJoinItem[]> {
+  const url = clubCode
+    ? `${MEMBERS_API_BASE}/joins/?status=pending&club_code=${encodeURIComponent(clubCode)}`
+    : `${MEMBERS_API_BASE}/joins/?status=pending`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new ApiError('server', 'Failed to fetch pending join requests', res.status);
+  }
+  const data = await res.json();
+  return data.results ?? [];
+}
+
+export async function approveJoinRequest(joinId: number): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/joins/${joinId}/confirm/`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to approve join request', res.status);
+  }
+}
+
+export async function rejectJoinRequest(joinId: number): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/joins/${joinId}/reject/`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to reject join request', res.status);
+  }
+}
+
+export async function batchApproveJoins(
+  clubCode: string,
+  approveAll: boolean,
+  requestIds?: number[],
+): Promise<number> {
+  const res = await fetch(`${MEMBERS_API_BASE}/joins/batch-confirm/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      club_code: clubCode,
+      approve_all: approveAll,
+      request_ids: requestIds ?? [],
+    }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to batch approve joins', res.status);
+  }
+  return body.count ?? 0;
+}
+
+export interface StudentProfileItem {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  gender: string;
+  department: string;
+  roll_number: string;
+  validity_years: number;
+  valid_until: string;
+  is_suspended: boolean;
+  is_expired: boolean;
+  status: 'active' | 'suspended' | 'expired';
+  points: number;
+  badge: string;
+  sub_clubs: Array<{ id: number; name: string }>;
+  joined_at: string;
+}
+
+export interface StudentProfileFilters {
+  club_code?: string;
+  year?: number | string;
+  department?: string;
+  gender?: string;
+  sub_club_id?: number | string;
+  main_club_only?: boolean;
+  search?: string;
+}
+
+export async function fetchStudentProfiles(
+  filters: StudentProfileFilters = {},
+): Promise<{ results: StudentProfileItem[]; total: number }> {
+  const params = new URLSearchParams();
+  if (filters.club_code) params.append('club_code', filters.club_code);
+  if (filters.year) params.append('year', String(filters.year));
+  if (filters.department) params.append('department', filters.department);
+  if (filters.gender) params.append('gender', filters.gender);
+  if (filters.sub_club_id) params.append('sub_club_id', String(filters.sub_club_id));
+  if (filters.main_club_only) params.append('main_club_only', 'true');
+  if (filters.search) params.append('search', filters.search);
+
+  const res = await fetch(`${MEMBERS_API_BASE}/students/?${params.toString()}`, {
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new ApiError('server', 'Failed to fetch student profiles', res.status);
+  }
+  return res.json();
+}
+
+export async function updateStudentValidity(
+  profileId: number,
+  validityYears: number,
+): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/${profileId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ validity_years: validityYears }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to update validity', res.status);
+  }
+}
+
+export async function toggleStudentSuspension(
+  profileId: number,
+  isSuspended: boolean,
+): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/${profileId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ is_suspended: isSuspended }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to toggle suspension', res.status);
+  }
+}
+
+export async function assignStudentSubClubs(
+  profileId: number,
+  subclubIds: number[],
+): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/${profileId}/subclubs/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ subclub_ids: subclubIds }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to assign sub-clubs', res.status);
+  }
+}
+
+export async function removeStudentMember(profileId: number): Promise<void> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/${profileId}/`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to remove student member', res.status);
+  }
+}
+
+// --- Dedicated Student Member Portal (Me) -----------------------------------
+
+export interface StudentMeResponse {
+  profile: {
+    id: number;
+    user_id: number;
+    username: string;
+    email: string;
+    full_name: string;
+    gender: string;
+    department: string;
+    roll_number: string;
+    validity_years: number;
+    valid_until: string;
+    is_suspended: boolean;
+    avatar_url: string;
+    date_of_birth: string | null;
+    age: number | null;
+    hobbies: string;
+    address: string;
+    state: string;
+    pincode: string;
+    social_facebook: string;
+    social_instagram: string;
+    social_x: string;
+    club: {
+      code: string;
+      name: string;
+      institution_name: string;
+      passkey: string;
+    };
+    sub_clubs: Array<{ id: number; name: string }>;
+  };
+  stats: {
+    points: number;
+    badge: string;
+    badge_label: string;
+    profile_completeness: number;
+    streak_days: number;
+    events_attended: number;
+    certificates_earned: number;
+    next_tier_points: number;
+  };
+}
+
+export async function fetchStudentMe(): Promise<StudentMeResponse> {
+  const res = await fetch(`${MEMBERS_API_BASE}/me/`, {
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new ApiError('server', 'Failed to fetch student profile', res.status);
+  }
+  return res.json();
+}
+
+export async function updateStudentMe(
+  data: Partial<StudentMeResponse['profile']> | FormData,
+): Promise<{ message: string; points?: number; badge?: string }> {
+  const isFormData = data instanceof FormData;
+  const res = await fetch(`${MEMBERS_API_BASE}/me/`, {
+    method: 'PATCH',
+    headers: isFormData
+      ? { Accept: 'application/json', ...csrfHeader() }
+      : {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...csrfHeader(),
+        },
+    credentials: 'include',
+    body: isFormData ? data : JSON.stringify(data),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to update profile', res.status);
+  }
+  return body;
+}
+
+export async function updateStudentMeSubClubs(
+  subclubIds: number[],
+): Promise<{ message: string; sub_clubs: Array<{ id: number; name: string }>; points: number }> {
+  const res = await fetch(`${MEMBERS_API_BASE}/me/subclubs/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ subclub_ids: subclubIds }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to update sub-clubs', res.status);
+  }
+  return body;
+}
+
+export async function changeStudentPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ message: string; success: boolean }> {
+  const res = await fetch(`${MEMBERS_API_BASE}/me/change-password/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to change password', res.status);
+  }
+  return body;
+}
+

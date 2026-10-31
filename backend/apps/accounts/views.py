@@ -244,13 +244,14 @@ class ForgotPasswordCheckView(APIView):
                 is_matched = AuthorityAssignment.objects.filter(
                     user=user, status=AuthorityAssignment.Status.ACTIVE
                 ).exists() or user.category in ("club", "institution_authority")
-            elif role in ("Club Member (Student Only)", "Student Member"):
-                # Check active student membership or profile
-                is_matched = Membership.objects.filter(user=user).exists() or hasattr(
-                    user, "student_profile"
+            elif "student" in role_lower or "member" in role_lower:
+                from apps.members.models import StudentMemberProfile
+
+                is_matched = (
+                    Membership.objects.filter(user=user).exists()
+                    or StudentMemberProfile.objects.filter(user=user).exists()
                 )
             else:
-                # Direct check if user exists
                 is_matched = True
 
         if not is_matched:

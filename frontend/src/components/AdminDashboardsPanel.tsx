@@ -768,7 +768,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       {/* =====================================================================
           2. TOP 5 ZERO-JARGON KPI CARDS
           ===================================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           label={t('Total NDLI Clubs')}
           value={dashboard ? dashboard.total_clubs : '—'}
@@ -778,6 +778,27 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           variant="green"
           clickable={true}
           onClick={openClubRegister}
+        />
+
+        <StatCard
+          label={t('Total Members Till Date')}
+          value={
+            dashboard && dashboard.total_members !== undefined
+              ? `${dashboard.total_members.toLocaleString()} (Active ${(dashboard.active_members ?? 0).toLocaleString()} + Inactive ${(dashboard.inactive_members ?? 0).toLocaleString()})`
+              : '—'
+          }
+          desc={
+            dashboard && dashboard.active_members !== undefined
+              ? `${t('Active')}: ${(dashboard.active_members ?? 0).toLocaleString()} + ${t('Inactive')}: ${(dashboard.inactive_members ?? 0).toLocaleString()}`
+              : t('HEI student members + school tangible roster')
+          }
+          badge={
+            dashboard && dashboard.active_members !== undefined
+              ? `${(dashboard.active_members ?? 0).toLocaleString()} Active`
+              : t('Enrolled')
+          }
+          icon={<Users className="w-5 h-5" />}
+          variant="blue"
         />
 
         <StatCard

@@ -1,4 +1,4 @@
-export type BranchType = 'landing' | 'club_module' | 'admin_module';
+export type BranchType = 'landing' | 'club_module' | 'admin_module' | 'student_module';
 
 export type RegionalZone = 'North' | 'Central' | 'West' | 'East' | 'North East' | 'South';
 

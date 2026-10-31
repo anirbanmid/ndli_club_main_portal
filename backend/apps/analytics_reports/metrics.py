@@ -213,8 +213,28 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         if school_qs is not None:
             school_qs = school_qs.filter(club__institution__state__zone__code=zone)
 
-    active_mem = mem_qs.filter(status=Membership.Status.ACTIVE).count()
-    inactive_mem = mem_qs.exclude(status=Membership.Status.ACTIVE).count()
+    from django.db.models import Q
+
+    from apps.members.models import StudentMemberProfile
+
+    today = timezone.localdate()
+    stu_qs = StudentMemberProfile.objects.all()
+    if zone:
+        stu_qs = stu_qs.filter(club__institution__state__zone__code=zone)
+
+    active_stu = stu_qs.filter(
+        is_suspended_by_coordinator=False, valid_until__gte=today
+    ).count()
+    inactive_stu = stu_qs.filter(
+        Q(is_suspended_by_coordinator=True) | Q(valid_until__lt=today)
+    ).count()
+
+    other_mem_qs = mem_qs.exclude(user__category=Category.STUDENT_MEMBER)
+    active_other = other_mem_qs.filter(status=Membership.Status.ACTIVE).count()
+    inactive_other = other_mem_qs.exclude(status=Membership.Status.ACTIVE).count()
+
+    active_mem = active_stu + active_other
+    inactive_mem = inactive_stu + inactive_other
     if school_qs is not None:
         active_mem += school_qs.filter(is_active=True).count()
         inactive_mem += school_qs.filter(is_active=False).count()

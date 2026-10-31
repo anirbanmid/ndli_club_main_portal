@@ -75,6 +75,28 @@ def confirm_join(
         join_request.decided_by = decided_by
         join_request.decided_at = timezone.now()
         join_request.save(update_fields=["status", "decided_by", "decided_at"])
+
+        from datetime import timedelta
+
+        from apps.accounts.models import AccountState
+        from apps.members.models import StudentMemberProfile
+
+        if join_request.user.account_state == AccountState.PENDING_APPROVAL:
+            join_request.user.account_state = AccountState.ACTIVE
+            join_request.user.save(update_fields=["account_state"])
+
+        default_expiry = timezone.localdate() + timedelta(days=365)
+        StudentMemberProfile.objects.get_or_create(
+            user=join_request.user,
+            club=join_request.club,
+            defaults={
+                "validity_years": 1,
+                "valid_until": default_expiry,
+                "gender": "other",
+                "department": "General",
+                "roll_number": join_request.user.username,
+            },
+        )
     _audit(
         "club_join.confirmed",
         request,
@@ -115,9 +137,16 @@ def reject_join(
 def join_request_payload(join_request: JoinRequest) -> dict[str, Any]:
     """Roster-view row: member identity stays BEHIND Module 2 auth (M4-A2)."""
     user = join_request.user
+    profile = getattr(user, "student_profile", None)
     return {
         "id": join_request.pk,
+        "user_id": user.pk,
         "user": {"username": user.get_username(), "email": user.email},
+        "full_name": user.get_full_name() or user.username,
+        "email": user.email,
+        "gender": getattr(profile, "gender", "other"),
+        "department": getattr(profile, "department", "General"),
+        "roll_number": getattr(profile, "roll_number", user.username),
         "club_code": join_request.club_id,
         "source": join_request.source,
         "status": join_request.status,
@@ -164,6 +193,12 @@ def batch_confirm_joins(
             req.decided_by = decided_by
             req.decided_at = now
             req.save(update_fields=["status", "decided_by", "decided_at"])
+
+            from apps.accounts.models import AccountState
+
+            if req.user.account_state == AccountState.PENDING_APPROVAL:
+                req.user.account_state = AccountState.ACTIVE
+                req.user.save(update_fields=["account_state"])
 
             # Ensure profile exists with validity
             StudentMemberProfile.objects.get_or_create(

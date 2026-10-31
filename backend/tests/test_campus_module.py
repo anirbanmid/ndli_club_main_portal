@@ -575,3 +575,275 @@ class CampusModuleTests(TestCase):
         self.authority_user.refresh_from_db()
         self.assertTrue(self.authority_user.check_password("EmergencyResetPass@2026!"))
         self.assertTrue(self.authority_user.must_change_password)
+
+    # -------------------------------------------------------------------------
+    # 9. HEI Student Joining, Authority Workflow & Member Module
+    # -------------------------------------------------------------------------
+    def test_hei_student_lifecycle_and_member_module(self) -> None:
+        from apps.clubs.services import issue_passkey
+        from apps.members.models import JoinRequest, StudentMemberProfile
+
+        # Mint active passkey for the club
+        passkey = issue_passkey(club=self.club, issued_by=self.authority_user)
+
+        # 1. Student Passkey Registration (Public / Self-Join)
+        reg_resp = self.client.post(
+            "/api/v1/members/students/register/",
+            data={
+                "passkey": passkey,
+                "full_name": "Rohan Gupta",
+                "gender": "male",
+                "email": "rohan.gupta@student.delhi.ac.in",
+                "password": "SecureStudentPass@2026!",
+                "department": "Computer Science & Engineering",
+                "roll_number": "2024CSB1042",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(reg_resp.status_code, 201)
+        reg_data = reg_resp.json()
+        self.assertTrue(reg_data["success"])
+        self.assertEqual(reg_data["roll_number"], "2024CSB1042")
+
+        # Verify JoinRequest and Profile created
+        join_req = JoinRequest.objects.filter(
+            club=self.club, user__email="rohan.gupta@student.delhi.ac.in"
+        ).first()
+        self.assertIsNotNone(join_req)
+        assert join_req is not None
+        self.assertEqual(join_req.status, JoinRequest.Status.PENDING)
+
+        student_user = join_req.user
+        self.assertEqual(student_user.category, Category.STUDENT_MEMBER)
+
+        # 2. Club Authority reviews Pending Joins & Batch Approves
+        self.client.force_login(self.authority_user)
+        batch_resp = self.client.post(
+            "/api/v1/members/joins/batch-confirm/",
+            data={
+                "club_code": self.club.code,
+                "approve_all": True,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(batch_resp.status_code, 200)
+        self.assertEqual(batch_resp.json()["count"], 1)
+
+        join_req.refresh_from_db()
+        self.assertEqual(join_req.status, JoinRequest.Status.APPROVED)
+
+        # 2b. Verify student can log in via club_login (account_state is ACTIVE)
+        from apps.accounts.services import PermissionDenied, club_login
+
+        login_res = club_login(
+            username=student_user.username,
+            password="SecureStudentPass@2026!",
+            request=None,
+        )
+        self.assertEqual(login_res.id, student_user.id)
+
+        # 3. Club Authority views Existing Members list with filters
+        list_resp = self.client.get(
+            f"/api/v1/members/students/?club_code={self.club.code}&department=Computer"
+        )
+        self.assertEqual(list_resp.status_code, 200)
+        members_data = list_resp.json()
+        self.assertGreaterEqual(members_data["total"], 1)
+        first_member = members_data["results"][0]
+        self.assertEqual(first_member["roll_number"], "2024CSB1042")
+        self.assertEqual(first_member["status"], "active")
+
+        # 4. Club Authority updates validity to 3 years and tests suspension
+        profile_id = first_member["id"]
+        patch_resp = self.client.patch(
+            f"/api/v1/members/students/{profile_id}/",
+            data={
+                "validity_years": 3,
+                "is_suspended": True,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+
+        prof = StudentMemberProfile.objects.get(id=profile_id)
+        self.assertEqual(prof.validity_years, 3)
+        self.assertTrue(prof.is_suspended_by_coordinator)
+
+        # Verify suspended student cannot log in via club_login
+        with self.assertRaises(PermissionDenied) as ctx:
+            club_login(
+                username=student_user.username,
+                password="SecureStudentPass@2026!",
+                request=None,
+            )
+        self.assertEqual(ctx.exception.detail.code, "account_suspended")
+
+        # Verify suspended student cannot patch profile or subclubs
+        self.client.force_login(student_user)
+        self.assertEqual(
+            self.client.patch(
+                "/api/v1/members/me/",
+                data={"hobbies": "Gaming"},
+                content_type="application/json",
+            ).status_code,
+            403,
+        )
+
+        # Re-activate student
+        self.client.force_login(self.authority_user)
+        self.client.patch(
+            f"/api/v1/members/students/{profile_id}/",
+            data={"is_suspended": False},
+            content_type="application/json",
+        )
+
+        # Verify validity expiration rejection
+        from datetime import timedelta
+        prof.valid_until = timezone.localdate() - timedelta(days=1)
+        prof.save(update_fields=["valid_until"])
+
+        with self.assertRaises(PermissionDenied) as ctx:
+            club_login(
+                username=student_user.username,
+                password="SecureStudentPass@2026!",
+                request=None,
+            )
+        self.assertEqual(ctx.exception.detail.code, "membership_expired")
+
+        # Restore validity
+        prof.valid_until = timezone.localdate() + timedelta(days=365)
+        prof.save(update_fields=["valid_until"])
+
+        # 5. Student logs in and accesses /api/v1/members/me/
+        self.client.force_login(student_user)
+        me_resp = self.client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertEqual(me_data["profile"]["roll_number"], "2024CSB1042")
+        self.assertGreaterEqual(me_data["stats"]["points"], 50)
+        self.assertEqual(me_data["stats"]["badge"], "copper")
+
+        # 6. Sub-Clubs & Coordinator Permission Testing
+        from apps.domain.models import SubClub
+
+        sub_club = SubClub.objects.create(
+            club=self.club,
+            name="Robotics Society",
+            code=f"ROBO-{self.club.code[:4]}",
+            discipline="Technology",
+            coordinator_name="Dr. Rao",
+            coordinator_email="rao@delhi.ac.in",
+            created_by=self.authority_user,
+            is_active=True,
+        )
+
+        coord_user = User.objects.create(
+            username="coord.rao",
+            email="rao@delhi.ac.in",
+            club=self.club,
+            institution=self.club.institution,
+            category=Category.CLUB_ADMIN,
+            account_state=AccountState.ACTIVE,
+            is_active=True,
+        )
+
+        # Student selects preferred sub-club
+        self.client.force_login(student_user)
+        subclub_resp = self.client.post(
+            "/api/v1/members/me/subclubs/",
+            data={"subclub_ids": [sub_club.id]},
+            content_type="application/json",
+        )
+        self.assertEqual(subclub_resp.status_code, 200)
+        self.assertEqual(len(subclub_resp.json()["sub_clubs"]), 1)
+
+        # Coordinator can toggle suspension for member of their sub-club
+        self.client.force_login(coord_user)
+        coord_patch = self.client.patch(
+            f"/api/v1/members/students/{profile_id}/",
+            data={"is_suspended": True},
+            content_type="application/json",
+        )
+        self.assertEqual(coord_patch.status_code, 200)
+        prof.refresh_from_db()
+        self.assertTrue(prof.is_suspended_by_coordinator)
+
+        # But coordinator CANNOT modify validity_years (HTTP 403)
+        coord_bad_patch = self.client.patch(
+            f"/api/v1/members/students/{profile_id}/",
+            data={"validity_years": 5},
+            content_type="application/json",
+        )
+        self.assertEqual(coord_bad_patch.status_code, 403)
+
+        # And coordinator CANNOT delete student profile (HTTP 403)
+        coord_del = self.client.delete(f"/api/v1/members/students/{profile_id}/")
+        self.assertEqual(coord_del.status_code, 403)
+
+        # Coordinator unsuspends
+        self.client.patch(
+            f"/api/v1/members/students/{profile_id}/",
+            data={"is_suspended": False},
+            content_type="application/json",
+        )
+
+        # 7. Student changes password in-app
+        self.client.force_login(student_user)
+        pw_resp = self.client.post(
+            "/api/v1/members/me/change-password/",
+            data={
+                "current_password": "SecureStudentPass@2026!",
+                "new_password": "UpdatedStudentPass@2026!",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(pw_resp.status_code, 200)
+        student_user.refresh_from_db()
+        self.assertTrue(student_user.check_password("UpdatedStudentPass@2026!"))
+
+        # 8. Authority permanently removes member
+        self.client.force_login(self.authority_user)
+        del_resp = self.client.delete(f"/api/v1/members/students/{profile_id}/")
+        self.assertEqual(del_resp.status_code, 200)
+        self.assertFalse(StudentMemberProfile.objects.filter(id=profile_id).exists())
+
+        student_user.refresh_from_db()
+        self.assertEqual(student_user.club_id, "")
+        self.assertEqual(student_user.institution_id, "")
+        self.assertEqual(student_user.account_state, AccountState.DORMANT)
+
+        # 9. Verify re-registration with same email at another club
+        from apps.domain.models import Club, Institution
+
+        other_inst = Institution.objects.create(
+            code="INST-MUMBAI-TECH",
+            legacy_id="LEG-MUMBAI-01",
+            name="Mumbai University",
+            state=self.club.institution.state,
+            district=self.district,
+            institution_type="higher_education",
+        )
+        other_club = Club.objects.create(
+            name="Mumbai Tech Club",
+            code="MUMBAI-TECH-01",
+            institution=other_inst,
+            status=Club.Status.ACTIVE,
+        )
+        other_passkey = issue_passkey(club=other_club, issued_by=self.authority_user)
+
+        re_reg = self.client.post(
+            "/api/v1/members/students/register/",
+            data={
+                "passkey": other_passkey,
+                "full_name": "Rohan Gupta",
+                "gender": "male",
+                "email": "rohan.gupta@student.delhi.ac.in",
+                "password": "NewStudentPass@2026!",
+                "department": "Information Technology",
+                "roll_number": "2024ITB2001",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(re_reg.status_code, 201)
+        self.assertTrue(re_reg.json()["success"])
+

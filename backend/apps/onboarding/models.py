@@ -40,8 +40,17 @@ class OnboardingDraft(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Institution/club identity snapshot (the domain Club row is created by
     # the M6 review, not here — this is the REQUEST, not the record).
+    institution_type = models.CharField(
+        max_length=32,
+        choices=[
+            ("higher_education", "Higher Education Institution"),
+            ("school", "School"),
+        ],
+        default="higher_education",
+    )
     institution_name = models.CharField(max_length=200)
     aishe_code = models.CharField(max_length=64, blank=True, default="")
+    affiliation_code = models.CharField(max_length=64, blank=True, default="")
     club_name = models.CharField(max_length=200)
     zone_code = models.CharField(max_length=32)
     state_code = models.CharField(max_length=32)
@@ -52,6 +61,8 @@ class OnboardingDraft(models.Model):
     # Resume token: only the SHA-256 is stored (P0 — never the raw token).
     resume_token_hash = models.CharField(max_length=64, unique=True)
     resume_token_expires_at = models.DateTimeField()
+    current_step = models.PositiveSmallIntegerField(default=1)
+    application_id = models.CharField(max_length=32, unique=True, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -133,6 +144,16 @@ class CharterApplication(models.Model):
     zone_code = models.CharField(max_length=32)
     state_code = models.CharField(max_length=32)
     district_code = models.CharField(max_length=32)
+    institution_type = models.CharField(
+        max_length=32,
+        choices=[
+            ("higher_education", "Higher Education Institution"),
+            ("school", "School"),
+        ],
+        default="higher_education",
+    )
+    affiliation_code = models.CharField(max_length=64, blank=True, default="")
+    application_id = models.CharField(max_length=32, unique=True, null=True, blank=True)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.QUEUED
     )

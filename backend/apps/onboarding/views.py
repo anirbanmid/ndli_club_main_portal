@@ -8,6 +8,7 @@ windows guard every credential-taking endpoint (P0).
 
 from __future__ import annotations
 
+from django.db import models
 from django.http import FileResponse
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -87,12 +88,16 @@ def _draft_payload(draft: OnboardingDraft) -> dict[str, object]:
     }
     return {
         "id": str(draft.id),
+        "institution_type": getattr(draft, "institution_type", "higher_education"),
         "institution_name": draft.institution_name,
         "aishe_code": draft.aishe_code,
+        "affiliation_code": getattr(draft, "affiliation_code", ""),
         "club_name": draft.club_name,
         "zone_code": draft.zone_code,
         "state_code": draft.state_code,
         "district_code": draft.district_code,
+        "current_step": getattr(draft, "current_step", 1),
+        "application_id": getattr(draft, "application_id", ""),
         "status": draft.status,
         "authorities": authorities,
         "document_uploaded": hasattr(draft, "upload"),
@@ -115,6 +120,8 @@ class DraftCreateView(APIView):
             draft, raw_token = services.create_draft(
                 institution_name=str(data.get("institution_name", "")),
                 aishe_code=str(data.get("aishe_code", "")),
+                affiliation_code=str(data.get("affiliation_code", "")),
+                institution_type=str(data.get("institution_type", "higher_education")),
                 club_name=str(data.get("club_name", "")),
                 zone_code=str(data.get("zone_code", "")),
                 state_code=str(data.get("state_code", "")),
@@ -352,4 +359,76 @@ class SubmitView(APIView):
         return Response(
             {"application_id": str(application.id), "status": application.status},
             status=status.HTTP_201_CREATED,
+        )
+
+
+class AuthorityEmailCheckView(APIView):
+    """Check if email is active authority elsewhere."""
+
+    permission_classes: list = []
+    authentication_classes: list = []
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        email = str(request.data.get("email", "")).strip()
+        if not email:
+            return Response(
+                {"detail": "Email is required.", "code": "missing_email"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = services.check_authority_email(email)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class AuthorityDeactivateView(APIView):
+    """Deactivate prior post."""
+
+    permission_classes: list = []
+    authentication_classes: list = []
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        email = str(request.data.get("email", "")).strip()
+        confirmed = bool(request.data.get("confirmed", False))
+        if not email or not confirmed:
+            return Response(
+                {
+                    "detail": "Email and confirmation are required.",
+                    "code": "missing_params",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = services.deactivate_authority_account(email)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class ApplicationStatusView(APIView):
+    """Public application status tracking."""
+
+    permission_classes: list = []
+    authentication_classes: list = []
+
+    def get(self, request: Request, application_id: str) -> Response:
+        from apps.onboarding.models import CharterApplication
+
+        clean_id = str(application_id).strip()
+        app = CharterApplication.objects.filter(
+            models.Q(application_id__iexact=clean_id) | models.Q(id__iexact=clean_id)
+        ).first()
+        if not app:
+            return Response(
+                {"detail": "Application ID not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(
+            {
+                "application_id": getattr(app, "application_id", str(app.id)),
+                "institution_name": app.institution_name,
+                "club_name": app.club_name,
+                "state_code": app.state_code,
+                "status": app.status,
+                "submitted_at": app.submitted_at,
+                "reviewed_at": app.reviewed_at,
+                "review_reason": app.review_reason,
+            }
         )

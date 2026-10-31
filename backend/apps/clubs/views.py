@@ -18,16 +18,19 @@ Discipline (P0/P4/I5):
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.models import User
 from apps.accounts.policies import CLUB_AUTHORITY_GATE
 from apps.accounts.throttles import client_ip, sliding_window_allow
 from apps.governance.renewals import record_payload, request_renewal
@@ -375,3 +378,227 @@ class CanonicalClubsListView(APIView):
 
         clubs = get_all_canonical_clubs()
         return Response({"clubs": clubs, "count": len(clubs)})
+
+
+class SubClubListView(APIView):
+    """List or create disciplinary sub-clubs under an HEI main club."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def get(self, request: Request, club_code: str) -> Response:
+        from apps.domain.models import Club, SubClub
+
+        club = Club.objects.filter(code__iexact=club_code).first()
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "club_not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        sub_clubs = SubClub.objects.filter(club=club, is_active=True).order_by("name")
+        data = [
+            {
+                "id": sc.id,
+                "code": sc.code,
+                "name": sc.name,
+                "discipline": sc.discipline,
+                "coordinator_name": sc.coordinator_name,
+                "coordinator_email": sc.coordinator_email,
+                "coordinator_phone": sc.coordinator_phone,
+                "created_at": sc.created_at,
+                "members_count": sc.enrolled_students.count(),
+            }
+            for sc in sub_clubs
+        ]
+        return Response({"sub_clubs": data, "count": len(data)})
+
+    def post(self, request: Request, club_code: str) -> Response:
+        import secrets
+
+        from apps.domain.models import Club, SubClub
+
+        club = Club.objects.filter(code__iexact=club_code).first()
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "club_not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = request.data
+        name = str(data.get("name", "")).strip()
+        discipline = str(data.get("discipline", "")).strip()
+        if not name:
+            return Response(
+                {"detail": "Sub-club name is required.", "code": "missing_name"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Generate unique code
+        slug_part = re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-").upper()
+        code = f"{club.code}-SUB-{slug_part[:12]}-{secrets.token_hex(2).upper()}"
+
+        from apps.core.scoping import authenticated_user
+
+        user = authenticated_user(request)
+        if not user:
+            # Fallback to an admin or club authority
+            user = (
+                User.objects.filter(authority_assignments__club=club).first()
+                or User.objects.first()
+            )
+
+        if not isinstance(user, User):
+            return Response(
+                {"detail": "Authenticated authority required to create sub-clubs."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        sub_club = SubClub.objects.create(
+            club=club,
+            code=code,
+            name=name,
+            discipline=discipline,
+            created_by=user,
+            coordinator_name=str(data.get("coordinator_name", "")).strip(),
+            coordinator_email=str(data.get("coordinator_email", "")).strip(),
+            coordinator_phone=str(data.get("coordinator_phone", "")).strip(),
+        )
+        return Response(
+            {
+                "id": sub_club.id,
+                "code": sub_club.code,
+                "name": sub_club.name,
+                "discipline": sub_club.discipline,
+                "coordinator_name": sub_club.coordinator_name,
+                "coordinator_email": sub_club.coordinator_email,
+                "coordinator_phone": sub_club.coordinator_phone,
+                "message": "Sub-club created successfully.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SubClubDetailView(APIView):
+    """Update or toggle sub-club / coordinator."""
+
+    parser_classes = [JSONParser]
+
+    def patch(self, request: Request, club_code: str, subclub_id: int) -> Response:
+        from apps.domain.models import SubClub
+
+        sub_club = SubClub.objects.filter(
+            id=subclub_id, club__code__iexact=club_code
+        ).first()
+        if not sub_club:
+            return Response(
+                {"detail": "Sub-club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = request.data
+        for field in (
+            "name",
+            "discipline",
+            "coordinator_name",
+            "coordinator_email",
+            "coordinator_phone",
+        ):
+            if field in data:
+                setattr(sub_club, field, str(data[field]).strip())
+        if "is_active" in data:
+            sub_club.is_active = bool(data["is_active"])
+        sub_club.save()
+
+        return Response(
+            {
+                "id": sub_club.id,
+                "code": sub_club.code,
+                "name": sub_club.name,
+                "discipline": sub_club.discipline,
+                "coordinator_name": sub_club.coordinator_name,
+                "coordinator_email": sub_club.coordinator_email,
+                "coordinator_phone": sub_club.coordinator_phone,
+                "is_active": sub_club.is_active,
+                "message": "Sub-club updated successfully.",
+            }
+        )
+
+
+class ClubBrandingView(APIView):
+    """Institutional branding: Transparent PNG logo and Signing Authority Signature."""
+
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request: Request, club_code: str) -> Response:
+        from apps.domain.models import Club
+
+        club = (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        inst = club.institution
+        return Response(
+            {
+                "institution_name": inst.name,
+                "institution_type": getattr(
+                    inst, "institution_type", "higher_education"
+                ),
+                "affiliation_code": getattr(inst, "affiliation_code", ""),
+                "signing_authority_name": getattr(inst, "signing_authority_name", ""),
+                "signing_authority_affiliation": getattr(
+                    inst, "signing_authority_affiliation", ""
+                ),
+                "has_logo": bool(inst.logo_image),
+                "logo_url": inst.logo_image.url if inst.logo_image else "",
+                "has_signature": bool(inst.signature_image),
+                "signature_url": inst.signature_image.url
+                if inst.signature_image
+                else "",
+            }
+        )
+
+    def post(self, request: Request, club_code: str) -> Response:
+        from apps.domain.models import Club
+
+        club = (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        inst = club.institution
+        if "logo_image" in request.FILES:
+            inst.logo_image = request.FILES["logo_image"]
+        if "signature_image" in request.FILES:
+            inst.signature_image = request.FILES["signature_image"]
+        if "signing_authority_name" in request.data:
+            inst.signing_authority_name = str(
+                request.data["signing_authority_name"]
+            ).strip()
+        if "signing_authority_affiliation" in request.data:
+            inst.signing_authority_affiliation = str(
+                request.data["signing_authority_affiliation"]
+            ).strip()
+
+        inst.save()
+        return Response(
+            {
+                "message": "Institutional branding assets saved successfully.",
+                "has_logo": bool(inst.logo_image),
+                "has_signature": bool(inst.signature_image),
+                "signing_authority_name": inst.signing_authority_name,
+                "signing_authority_affiliation": inst.signing_authority_affiliation,
+            }
+        )

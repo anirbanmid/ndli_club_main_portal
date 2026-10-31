@@ -41,6 +41,7 @@ class CertificateCategory(models.TextChoices):
 
     PARTICIPATION = "Participation", "Participation"
     MERIT = "Merit", "Merit"
+    CONDUCTOR = "Conductor", "Event Conductor"
     CLUB_REGISTRATION = "Club Registration", "Club Registration"
     RENEWAL = "Renewal", "Renewal"
 
@@ -61,9 +62,14 @@ class Certificate(models.Model):
 
     holder = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.PROTECT,
         related_name="certificates",
     )
+    recipient_name = models.CharField(max_length=200, blank=True, default="")
+    student_uid = models.CharField(max_length=64, blank=True, default="")
+    conductor_affiliation = models.CharField(max_length=255, blank=True, default="")
     club = models.ForeignKey(
         "domain.Club",
         on_delete=models.PROTECT,

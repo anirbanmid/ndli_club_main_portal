@@ -586,7 +586,6 @@ ALL_STATE_CLUBS: list[dict[str, Any]] = [
 ]
 
 
-
 OFFICER_ZONE_MAP = {
     "EMP01": "NORTH",
     "EMP02": "CENTRAL",
@@ -618,6 +617,7 @@ def get_or_create_officer(emp_code: str) -> User:
         officer.set_password("NdliOffice@2026!")
         officer.save()
     return officer
+
 
 class Command(BaseCommand):
     help = "Seed at least 1 canonical NDLI Club for every State and UT in India."
@@ -821,14 +821,17 @@ class Command(BaseCommand):
 
         # Run full Ledger Audit & Reconcile
         if has_activities:
-            report = LedgerIntegrityEngine.audit_and_heal()
-            self.stdout.write("\n" + "=" * 80)
-            self.stdout.write("STEP 3: SSOT Ledger Audit & Auto-Healing Report:")
-            self.stdout.write("=" * 80)
-            self.stdout.write(f"Total Clubs Audited: {report.total_clubs_audited}")
-            self.stdout.write(f"Healed Approvals: {report.healed_approvals_count}")
-            self.stdout.write(
-                f"Unresolved Deviations: {report.unresolved_deviations_count}"
-            )
-            status_str = "HEALTHY" if report.healthy else "DEVIATIONS"
-            self.stdout.write(f"Ledger Status: {status_str}")
+            try:
+                report = LedgerIntegrityEngine.audit_and_heal()
+                self.stdout.write("\n" + "=" * 80)
+                self.stdout.write("STEP 3: SSOT Ledger Audit & Auto-Healing Report:")
+                self.stdout.write("=" * 80)
+                self.stdout.write(f"Total Clubs Audited: {report.total_clubs_audited}")
+                self.stdout.write(f"Healed Approvals: {report.healed_approvals_count}")
+                self.stdout.write(
+                    f"Unresolved Deviations: {report.unresolved_deviations_count}"
+                )
+                status_str = "HEALTHY" if report.healthy else "DEVIATIONS"
+                self.stdout.write(f"Ledger Status: {status_str}")
+            except Exception as exc:
+                self.stdout.write(f"Notice: Ledger audit skipped ({exc})")

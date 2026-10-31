@@ -29,6 +29,7 @@ import {
 import type { AppRoute } from '../../lib/route';
 import ndliClubLogo from '../../assets/img/ndli_club_logo.png';
 import ndliMainLogoSmallGreen from '../../assets/img/NDLI_Main_Logo_Small_Green.png';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface LoginViewProps {
   initialNext?: string;
@@ -72,6 +73,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [error, setError] = useState<FlowError | null>(null);
   const [busy, setBusy] = useState(false);
   const [shaking, setShaking] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const passwordRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -266,13 +268,22 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="lock-form-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
               <label htmlFor="lock-password" style={{ margin: 0 }}>Password</label>
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ background: 'none', border: 'none', color: '#34d399', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
-              >
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPasswordOpen(true)}
+                  style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                >
+                  Forgot Password?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ background: 'none', border: 'none', color: '#34d399', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
             <input
               ref={passwordRef}
@@ -346,24 +357,36 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   if (fullViewport) {
     return (
-      <div
-        id="app-lock-gate"
-        className="lock-screen-overlay"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onDismiss?.();
-          }
-        }}
-        title="Click background to dismiss"
-      >
-        {content}
-      </div>
+      <>
+        <div
+          id="app-lock-gate"
+          className="lock-screen-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              onDismiss?.();
+            }
+          }}
+          title="Click background to dismiss"
+        >
+          {content}
+        </div>
+        <ForgotPasswordModal
+          isOpen={isForgotPasswordOpen}
+          onClose={() => setIsForgotPasswordOpen(false)}
+        />
+      </>
     );
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem 0' }}>
-      {content}
-    </div>
+    <>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem 0' }}>
+        {content}
+      </div>
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+      />
+    </>
   );
 };

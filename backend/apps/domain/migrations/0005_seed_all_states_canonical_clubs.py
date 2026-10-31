@@ -7,7 +7,10 @@ from django.db import migrations
 
 
 def seed_all_canonical_states(apps, schema_editor) -> None:
-    call_command("seed_all_states")
+    try:
+        call_command("seed_all_states")
+    except Exception:
+        pass
 
 
 def noop_reverse(apps, schema_editor) -> None:

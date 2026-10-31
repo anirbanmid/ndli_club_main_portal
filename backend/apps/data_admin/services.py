@@ -46,7 +46,13 @@ from apps.accounts.models import (
     EmailOTP,
     TOTPRecoveryCode,
 )
-from apps.activities.models import ActivityLog
+from apps.activities.models import (
+    ActivityLog,
+    ClubEvent,
+    EventAttendance,
+    EventCollaboration,
+    EventConductor,
+)
 from apps.audit.models import AuditLog
 from apps.certificates.models import Certificate, Revocation
 from apps.clubs.models import CampusPasskey, ClubShowcase, ShowcaseSection
@@ -58,17 +64,25 @@ from apps.domain.models import (
     Membership,
     OfficerAssignment,
     State,
+    SubClub,
     Zone,
 )
 from apps.governance.models import CharterMaterialisation, RenewalRecord
 from apps.grievances.models import GrievanceTicket, SLAEvent
-from apps.members.models import JoinRequest, RosterEntry, RosterImportJob
+from apps.members.models import (
+    JoinRequest,
+    RosterEntry,
+    RosterImportJob,
+    SchoolStudentRoster,
+    StudentMemberProfile,
+)
 from apps.onboarding.models import (
     CharterApplication,
     OnboardingAuthority,
     OnboardingDraft,
     OnboardingUpload,
 )
+from apps.sharing.models import CuratedLibrary, CuratedResourceLink
 
 #: Handover decision (owner 2026-10-25): the client gets a clean/fresh product,
 #: so the audit trail is wiped too. Set to False only if the client should
@@ -94,7 +108,14 @@ KEEP_MODELS: tuple[Any, ...] = (
 #: ``AuditLog`` is deliberately in EXEMPT_MODELS, not here - see the module
 #: docstring: the ledger is append-only by design and forbids deletion.
 WIPE_MODELS: tuple[Any, ...] = (
+    # sharing
+    CuratedResourceLink,
+    CuratedLibrary,
     # activities (business data; the audit ledger stays exempt below)
+    EventAttendance,
+    EventCollaboration,
+    EventConductor,
+    ClubEvent,
     ActivityLog,
     # certificates
     Revocation,
@@ -106,6 +127,8 @@ WIPE_MODELS: tuple[Any, ...] = (
     SLAEvent,
     GrievanceTicket,
     # members
+    SchoolStudentRoster,
+    StudentMemberProfile,
     RosterImportJob,
     RosterEntry,
     JoinRequest,
@@ -122,6 +145,7 @@ WIPE_MODELS: tuple[Any, ...] = (
     OfficerAssignment,
     AuthorityAssignment,
     Membership,
+    SubClub,
     Club,
 )
 

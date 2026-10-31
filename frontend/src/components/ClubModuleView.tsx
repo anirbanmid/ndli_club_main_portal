@@ -26,7 +26,8 @@ import {
   Copy,
   Download,
   Printer,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from 'lucide-react';
 import { 
   InstituteClub, 
@@ -39,6 +40,13 @@ import {
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from "../i18n";
 import { RosterManager } from './roster/RosterManager';
+import { SubClubManagementPanel } from './clubs/SubClubManagementPanel';
+import { SchoolBulkUploadPanel } from './members/SchoolBulkUploadPanel';
+import { InstitutionalEventModal } from './activities/InstitutionalEventModal';
+import { EventParticipationCard } from './activities/EventParticipationCard';
+import { CuratedLibraryHub } from './sharing/CuratedLibraryHub';
+import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub } from '../lib/campusApi';
+import { Layers, BookOpen, School as SchoolIcon } from 'lucide-react';
 
 interface ClubModuleViewProps {
   activeClub: InstituteClub;
@@ -83,8 +91,30 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   onViewPublicProfile,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'roster' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash'
+    'overview' | 'roster' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash' | 'subclubs' | 'school_roster' | 'libraries'
   >('overview');
+
+  // Campus Events & Sub-Clubs state
+  const [backendEvents, setBackendEvents] = useState<ClubEvent[]>([]);
+  const [subClubsList, setSubClubsList] = useState<SubClub[]>([]);
+  const [showInstitutionalEventModal, setShowInstitutionalEventModal] = useState(false);
+
+  const loadCampusData = async () => {
+    try {
+      const [evts, subs] = await Promise.all([
+        fetchClubEvents(activeClub.id).catch(() => []),
+        fetchSubClubs(activeClub.id).catch(() => []),
+      ]);
+      setBackendEvents(evts);
+      setSubClubsList(subs);
+    } catch {
+      // fallback
+    }
+  };
+
+  React.useEffect(() => {
+    loadCampusData();
+  }, [activeClub.id]);
 
   // New Activity Form State
   const [showNewActivityModal, setShowNewActivityModal] = useState(false);
@@ -541,6 +571,46 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <Award className="h-4 w-4" />
           <span>{t("Student View")}</span>
         </button>
+
+        {activeClub.category !== 'School' && (
+          <button
+            onClick={() => setActiveTab('subclubs')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              activeTab === 'subclubs'
+                ? 'bg-[#1A503E] text-white shadow-xs'
+                : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <Layers className="h-4 w-4 text-emerald-400" />
+            <span>{t("Sub-Clubs (1+N)")}</span>
+          </button>
+        )}
+
+        {activeClub.category === 'School' && (
+          <button
+            onClick={() => setActiveTab('school_roster')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+              activeTab === 'school_roster'
+                ? 'bg-[#1A503E] text-white shadow-xs'
+                : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            }`}
+          >
+            <SchoolIcon className="h-4 w-4 text-amber-400" />
+            <span>{t("School Roster & Cards")}</span>
+          </button>
+        )}
+
+        <button
+          onClick={() => setActiveTab('libraries')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            activeTab === 'libraries'
+              ? 'bg-[#1A503E] text-white shadow-xs'
+              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+          }`}
+        >
+          <BookOpen className="h-4 w-4 text-emerald-400" />
+          <span>{t("3-Tier NDLI Libraries")}</span>
+        </button>
       </div>
 
       {/* TAB 1: 360° Overview & NAAC Metrics */}
@@ -748,14 +818,44 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                                             </p>
             </div>
 
-            <button
-              onClick={() => setShowNewActivityModal(true)}
-              className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs"
-            >
-              <PlusCircle className="h-4 w-4 text-amber-300" />
-              <span>{t("Host New Activity")}</span>
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setShowInstitutionalEventModal(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <Calendar className="h-4 w-4 text-amber-300" />
+                <span>{t("Schedule Institutional / Multi-Club Event")}</span>
+              </button>
+              <button
+                onClick={() => setShowNewActivityModal(true)}
+                className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <PlusCircle className="h-4 w-4 text-amber-300" />
+                <span>{t("Host New Activity")}</span>
+              </button>
+            </div>
           </div>
+
+          {backendEvents.length > 0 && (
+            <div className="space-y-3 pb-4 border-b border-[#E2ECE7]">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-emerald-700" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                  Scheduled Events (Dynamic 30-Minute Participation Window)
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {backendEvents.map(evt => (
+                  <EventParticipationCard
+                    key={evt.id}
+                    event={evt}
+                    isAuthority={isAuthorityAuthenticated}
+                    onRefresh={loadCampusData}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {clubActivities.map(act => (
@@ -1506,6 +1606,48 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB 8: Sub-Clubs Management (HEI Only) */}
+      {activeTab === 'subclubs' && activeClub.category !== 'School' && (
+        <SubClubManagementPanel
+          clubCode={activeClub.id}
+          clubName={activeClub.name}
+          isAuthority={isAuthorityAuthenticated}
+        />
+      )}
+
+      {/* TAB 9: School Offline-First Roster & Tangible Identity Cards (School Only) */}
+      {activeTab === 'school_roster' && activeClub.category === 'School' && (
+        <SchoolBulkUploadPanel
+          clubCode={activeClub.id}
+          schoolName={activeClub.name}
+          isAuthority={isAuthorityAuthenticated}
+        />
+      )}
+
+      {/* TAB 10: 3-Tier Curated NDLI Libraries */}
+      {activeTab === 'libraries' && (
+        <CuratedLibraryHub
+          clubId={activeClub.id}
+          isAuthority={isAuthorityAuthenticated}
+          isStudent={!isAuthorityAuthenticated}
+        />
+      )}
+
+      {/* MODAL: Institutional & Multi-Club Event Creator */}
+      {showInstitutionalEventModal && (
+        <InstitutionalEventModal
+          isOpen={showInstitutionalEventModal}
+          onClose={() => setShowInstitutionalEventModal(false)}
+          clubCode={activeClub.id}
+          subClubs={subClubsList}
+          canonicalClubs={[]}
+          onEventCreated={() => {
+            loadCampusData();
+            setShowInstitutionalEventModal(false);
+          }}
+        />
       )}
     </div>
   );

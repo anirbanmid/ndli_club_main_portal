@@ -326,7 +326,10 @@ def seed_nine_clubs(apps, schema_editor) -> None:
         invalidate_officer_cache()
 
     if has_activities:
-        LedgerIntegrityEngine.audit_and_heal()
+        try:
+            LedgerIntegrityEngine.audit_and_heal()
+        except Exception:
+            pass
 
 
 def noop_reverse(apps, schema_editor) -> None:

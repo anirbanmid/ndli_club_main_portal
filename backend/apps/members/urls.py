@@ -72,3 +72,32 @@ urlpatterns = [
         name="roster-export",
     ),
 ]
+
+
+urlpatterns += [
+    path(
+        "joins/batch-confirm/",
+        views.JoinBatchConfirmView.as_view(),
+        name="join-batch-confirm",
+    ),
+    path(
+        "students/<int:profile_id>/",
+        views.StudentProfileDetailView.as_view(),
+        name="student-profile-detail",
+    ),
+    path(
+        "students/<int:profile_id>/subclubs/",
+        views.StudentSubClubAssignView.as_view(),
+        name="student-subclubs-assign",
+    ),
+    path(
+        "school/<str:club_code>/upload/",
+        views.SchoolRosterUploadView.as_view(),
+        name="school-roster-upload",
+    ),
+    path(
+        "school/<str:club_code>/cards/",
+        views.SchoolCardsListView.as_view(),
+        name="school-cards-list",
+    ),
+]

@@ -31,6 +31,16 @@ from apps.accounts.models import (
 )
 
 
+def authenticated_user(request: Any) -> User | None:
+    """Return the authenticated User or None."""
+    actor = getattr(request, "user", None)
+    return (
+        actor
+        if isinstance(actor, User) and getattr(actor, "is_authenticated", False)
+        else None
+    )
+
+
 def _profile(user: Any) -> Any:
     """The identity record of ``user`` (M2U: the user IS the record).
 

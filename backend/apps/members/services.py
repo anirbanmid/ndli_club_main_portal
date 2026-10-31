@@ -9,6 +9,7 @@ decision is always audited (M8 ethic: zero silent loss).
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from django.db import transaction
@@ -122,4 +123,150 @@ def join_request_payload(join_request: JoinRequest) -> dict[str, Any]:
         "status": join_request.status,
         "created_at": join_request.created_at,
         "decided_at": join_request.decided_at,
+    }
+
+
+def batch_confirm_joins(
+    *,
+    club_code: str,
+    decided_by: Any,
+    request_ids: list[int] | None = None,
+    approve_all: bool = False,
+    request: Any = None,
+) -> list[dict[str, Any]]:
+    """Approve all or selected pending join requests."""
+    from datetime import timedelta
+
+    from apps.domain.models import Membership
+    from apps.members.models import JoinRequest, StudentMemberProfile
+
+    qs = JoinRequest.objects.filter(
+        club__code__iexact=club_code, status=JoinRequest.Status.PENDING
+    )
+    if not approve_all and request_ids is not None:
+        qs = qs.filter(id__in=request_ids)
+
+    results = []
+    now = timezone.now()
+    default_expiry = timezone.localdate() + timedelta(days=365)
+
+    with transaction.atomic():
+        for req in qs.select_related("user", "club"):
+            membership, _created = Membership.objects.get_or_create(
+                user=req.user,
+                club=req.club,
+                defaults={
+                    "role": Membership.Role.MEMBER,
+                    "status": Membership.Status.ACTIVE,
+                },
+            )
+            req.status = JoinRequest.Status.APPROVED
+            req.decided_by = decided_by
+            req.decided_at = now
+            req.save(update_fields=["status", "decided_by", "decided_at"])
+
+            # Ensure profile exists with validity
+            StudentMemberProfile.objects.get_or_create(
+                user=req.user,
+                club=req.club,
+                defaults={
+                    "validity_years": 1,
+                    "valid_until": default_expiry,
+                    "gender": "other",
+                    "department": "General",
+                    "roll_number": req.user.username,
+                },
+            )
+            results.append(
+                {"join_id": req.pk, "username": req.user.username, "status": "approved"}
+            )
+
+    return results
+
+
+def process_school_roster_csv(
+    *,
+    club_code: str,
+    csv_rows: list[dict[str, str]],
+    batch_year: int = 2026,
+) -> dict[str, Any]:
+    """Parse CSV rows and create SchoolStudentRoster entries with deterministic UIDs."""
+    from apps.domain.models import Club
+    from apps.members.models import SchoolStudentRoster
+
+    club = (
+        Club.objects.select_related("institution__state")
+        .filter(code__iexact=club_code)
+        .first()
+    )
+    if not club:
+        raise MemberError("Club not found.", code="club_not_found", http_status=404)
+
+    state_prefix = (
+        club.institution.state.code[:2]
+        if club.institution and club.institution.state
+        else "IN"
+    ).upper()
+    club_clean = re.sub(r"[^A-Za-z0-9]+", "", club.code).upper()[:8]
+
+    # Find highest existing serial
+    existing_count = SchoolStudentRoster.objects.filter(club=club).count()
+    created_entries = []
+
+    for idx, row in enumerate(csv_rows, start=existing_count + 1):
+        name = str(
+            row.get("student_name")
+            or row.get("Full Name")
+            or row.get("full_name")
+            or row.get("Name")
+            or ""
+        ).strip()
+        gender = str(row.get("Gender") or row.get("gender") or "Other").strip()
+        s_class = str(
+            row.get("class_grade")
+            or row.get("Class")
+            or row.get("class")
+            or row.get("Standard")
+            or "I"
+        ).strip()
+        section = str(row.get("Section") or row.get("section") or "A").strip()
+        phone = str(
+            row.get("Guardian Phone")
+            or row.get("guardian_phone")
+            or row.get("Phone")
+            or ""
+        ).strip()
+
+        if not name:
+            continue
+
+        clean_cls = re.sub(r"[^A-Za-z0-9]+", "", s_class).upper()[:4]
+        clean_sec = re.sub(r"[^A-Za-z0-9]+", "", section).upper()[:2]
+        uid = f"SCH-{state_prefix}-{club_clean}-{clean_cls}{clean_sec}-{idx:03d}"
+
+        entry = SchoolStudentRoster.objects.create(
+            club=club,
+            student_uid=uid,
+            full_name=name,
+            gender=gender,
+            student_class=s_class,
+            section=section,
+            guardian_phone=phone,
+            batch_year=batch_year,
+            is_active=True,
+        )
+        created_entries.append(
+            {
+                "id": entry.id,
+                "student_uid": entry.student_uid,
+                "full_name": entry.full_name,
+                "student_class": entry.student_class,
+                "section": entry.section,
+            }
+        )
+
+    return {
+        "club_code": club.code,
+        "total_imported": len(created_entries),
+        "entries": created_entries,
     }

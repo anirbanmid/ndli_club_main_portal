@@ -151,6 +151,25 @@ class Institution(models.Model):
         blank=True,
         related_name="institutions",
     )
+
+    class Type(models.TextChoices):
+        HIGHER_EDUCATION = "higher_education", "Higher Education Institution"
+        SCHOOL = "school", "School"
+
+    institution_type = models.CharField(
+        max_length=32,
+        choices=Type.choices,
+        default=Type.HIGHER_EDUCATION,
+    )
+    affiliation_code = models.CharField(max_length=64, blank=True, default="")
+    logo_image = models.FileField(upload_to="institution_logos/", null=True, blank=True)
+    signature_image = models.FileField(
+        upload_to="authority_signatures/", null=True, blank=True
+    )
+    signing_authority_name = models.CharField(max_length=128, blank=True, default="")
+    signing_authority_affiliation = models.CharField(
+        max_length=255, blank=True, default=""
+    )
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
     )
@@ -421,3 +440,48 @@ class OfficerAssignment(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - repr helper
         return f"{self.state_id}->{self.officer_id} from {self.from_date}"
+
+
+class SubClub(models.Model):
+    """One disciplinary/departmental sub-club under an HEI main club."""
+
+    club = models.ForeignKey(
+        Club,
+        on_delete=models.CASCADE,
+        related_name="sub_clubs",
+    )
+    code = models.CharField(max_length=CODE_MAX_LENGTH, unique=True)
+    name = models.CharField(max_length=255)
+    discipline = models.CharField(max_length=128, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_sub_clubs",
+    )
+    coordinator_name = models.CharField(max_length=128, blank=True, default="")
+    coordinator_email = models.EmailField(blank=True, default="")
+    coordinator_phone = models.CharField(max_length=32, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+        "state": "club__institution__state__code",
+        "zone": "club__institution__state__zone__code",
+        "institution": "club__institution__code",
+        "club": "club__code",
+    }
+
+    class Meta:
+        ordering = ["club", "name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["club", "name"], name="sub_club_unique_per_club"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["club", "is_active"], name="subclub_club_active_idx"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - repr helper
+        return f"{self.club.code} / {self.name}"

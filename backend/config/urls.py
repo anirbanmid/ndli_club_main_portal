@@ -27,6 +27,7 @@ API_URLPATTERNS = [
     path("notifications/", include("apps.notifications.urls")),
     path("audit/", include("apps.audit.urls")),
     path("public/", include("apps.public_api.urls")),
+    path("activities/", include("apps.activities.urls")),
 ]
 
 urlpatterns = [

@@ -24,6 +24,7 @@ interface InstitutionalClubsLandingViewProps {
   onManageClub: (club: InstituteClub) => void;
   onAuthoritySignIn: () => void;
   onBackToLanding: () => void;
+  onRegisterClub?: () => void;
 }
 
 export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingViewProps> = ({
@@ -32,6 +33,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
   onManageClub,
   onAuthoritySignIn,
   onBackToLanding,
+  onRegisterClub,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState('All');
@@ -101,13 +103,24 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
             </div>
           </div>
 
-          <button
-            onClick={onAuthoritySignIn}
-            className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-ink-950 text-xs font-bold shadow-md transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
-          >
-            <LogIn className="h-4 w-4" />
-            <span>{t("Club Authority Sign In")}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {onRegisterClub && (
+              <button
+                onClick={onRegisterClub}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold shadow-md transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
+              >
+                <Building2 className="h-4 w-4" />
+                <span>{t("Register Institutional Club")}</span>
+              </button>
+            )}
+            <button
+              onClick={onAuthoritySignIn}
+              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-ink-950 text-xs font-bold shadow-md transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>{t("Club Authority Sign In")}</span>
+            </button>
+          </div>
         </div>
       </div>
 

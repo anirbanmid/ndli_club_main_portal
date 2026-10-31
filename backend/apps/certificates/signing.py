@@ -127,7 +127,7 @@ def canonical_payload_for(cert: Certificate) -> bytes:
     """Canonical payload for a stored certificate row (P4: one definition)."""
     return canonical_payload(
         certificate_id=cert.certificate_id,
-        holder_id=cert.holder_id,
+        holder_id=cert.holder_id or 0,
         club_id=cert.club_id,
         event_ref=cert.event_ref,
         issue_date=cert.issue_date.isoformat(),

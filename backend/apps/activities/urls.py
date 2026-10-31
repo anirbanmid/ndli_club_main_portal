@@ -47,3 +47,34 @@ urlpatterns = [
         name="ledger-integrity",
     ),
 ]
+
+
+urlpatterns += [
+    path("events/", views.ClubEventListCreateView.as_view(), name="event-list-create"),
+    path("events/<int:pk>/", views.ClubEventDetailView.as_view(), name="event-detail"),
+    path(
+        "events/<int:pk>/participate/",
+        views.EventParticipateView.as_view(),
+        name="event-participate",
+    ),
+    path(
+        "events/<int:pk>/collaborate/",
+        views.EventCollaborationRequestView.as_view(),
+        name="event-collaborate",
+    ),
+    path(
+        "events/collaborations/<int:collab_id>/respond/",
+        views.EventCollaborationRespondView.as_view(),
+        name="event-collab-respond",
+    ),
+    path(
+        "events/<int:pk>/approve-certificates/",
+        views.EventCertificateApprovalView.as_view(),
+        name="event-approve-certificates",
+    ),
+    path(
+        "events/<int:event_id>/conductors/<int:conductor_id>/certificate/",
+        views.EventConductorCertificateView.as_view(),
+        name="conductor-certificate",
+    ),
+]

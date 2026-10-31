@@ -18,6 +18,11 @@ import { CertificateView } from './components/CertificateView';
 import { DirectoryView } from './components/DirectoryView';
 import { LoginView } from './components/auth/LoginView';
 import { OnboardingWizardView } from './components/onboarding/OnboardingWizardView';
+import { RegisterInstitutionalClubModal } from './components/onboarding/RegisterInstitutionalClubModal';
+import { HEIRegistrationWizard } from './components/onboarding/HEIRegistrationWizard';
+import { SchoolRegistrationWizard } from './components/onboarding/SchoolRegistrationWizard';
+import { ForgotPasswordModal } from './components/auth/ForgotPasswordModal';
+import { DraftPayload } from './lib/onboardingApi';
 import { ShowcaseIndexView } from './components/clubs/ShowcaseIndexView';
 import { ClubShowcaseDetailView } from './components/clubs/ClubShowcaseDetailView';
 import { InstitutionalClubsLandingView } from './components/InstitutionalClubsLandingView';
@@ -123,6 +128,10 @@ export function App({ ssrLocation }: AppProps = {}) {
   // M5-D3: showcase slug for /clubs/<slug>/ (deep-linked via route.ts, or set
   // when a card is opened from the showcase index).
   const [showcaseSlug, setShowcaseSlug] = useState<string>(initialRoute.slug);
+  const [isBifurcationModalOpen, setIsBifurcationModalOpen] = useState(false);
+  const [resumedDraft, setResumedDraft] = useState<DraftPayload | null>(null);
+  const [resumedToken, setResumedToken] = useState<string | null>(null);
+  const [onboardingSuccessAppId, setOnboardingSuccessAppId] = useState<string | null>(null);
 
   // Single Source of Truth (SSOT): Hydrate clubs from canonical backend API on mount
   // and maintain real-time reactive cross-module synchronization
@@ -275,7 +284,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab('public_club_profile');
                 }}
                 onJoinWithPasskey={() => setIsPasskeyModalOpen(true)}
-                onRegisterInstitute={() => setCurrentTab('onboarding')}
+                onRegisterInstitute={() => setIsBifurcationModalOpen(true)}
                 onGoToClubModule={() => {
                   setCurrentBranch('club_module');
                   setCurrentTab(authenticatedClubId ? 'club_dashboard' : 'club_directory');
@@ -365,6 +374,32 @@ export function App({ ssrLocation }: AppProps = {}) {
               />
             )}
 
+            {currentTab === 'hei_onboarding' && (
+              <HEIRegistrationWizard
+                initialDraft={resumedDraft}
+                initialToken={resumedToken}
+                onBackToLanding={() => setCurrentTab('home')}
+                onSubmitSuccess={(appId) => {
+                  setOnboardingSuccessAppId(appId);
+                  alert(`Official Charter Application Submitted Successfully! Tracking Application ID: ${appId}`);
+                  setCurrentTab('home');
+                }}
+              />
+            )}
+
+            {currentTab === 'school_onboarding' && (
+              <SchoolRegistrationWizard
+                initialDraft={resumedDraft}
+                initialToken={resumedToken}
+                onBackToLanding={() => setCurrentTab('home')}
+                onSubmitSuccess={(appId) => {
+                  setOnboardingSuccessAppId(appId);
+                  alert(`Official School Charter Application Submitted Successfully! Tracking Application ID: ${appId}`);
+                  setCurrentTab('home');
+                }}
+              />
+            )}
+
             {/* M5-D2: the real 4-authority resumable wizard (token-gated API,
                 SPA-only — kept out of the prerender set, BRIEF_M5 §4c). */}
             {currentTab === 'onboarding' && (
@@ -435,6 +470,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentBranch('landing');
                   setCurrentTab('login');
                 }}
+                onRegisterClub={() => setIsBifurcationModalOpen(true)}
                 onBackToLanding={() => {
                   setCurrentBranch('landing');
                   setCurrentTab('home');
@@ -613,6 +649,36 @@ export function App({ ssrLocation }: AppProps = {}) {
         clubs={clubs}
         onMemberJoined={(club) => {
           setClubs(prev => prev.map(c => c.id === club.id ? { ...c, memberCount: c.memberCount + 1 } : c));
+        }}
+      />
+
+      {/* Institutional Club Bifurcation Modal */}
+      <RegisterInstitutionalClubModal
+        isOpen={isBifurcationModalOpen}
+        onClose={() => setIsBifurcationModalOpen(false)}
+        onSelectType={(type) => {
+          setIsBifurcationModalOpen(false);
+          setResumedDraft(null);
+          setResumedToken(null);
+          if (type === 'higher_education') {
+            setCurrentBranch('landing');
+            setCurrentTab('hei_onboarding');
+          } else {
+            setCurrentBranch('landing');
+            setCurrentTab('school_onboarding');
+          }
+        }}
+        onDraftResumed={(draft, token) => {
+          setIsBifurcationModalOpen(false);
+          setResumedDraft(draft);
+          setResumedToken(token);
+          if ((draft as any).institution_type === 'school') {
+            setCurrentBranch('landing');
+            setCurrentTab('school_onboarding');
+          } else {
+            setCurrentBranch('landing');
+            setCurrentTab('hei_onboarding');
+          }
         }}
       />
     </div>

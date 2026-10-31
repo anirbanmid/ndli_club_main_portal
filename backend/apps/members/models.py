@@ -249,3 +249,113 @@ class RosterImportJob(models.Model):
             "errors": self.error_rows,
             "duplicates": self.duplicate_rows,
         }
+
+
+class StudentMemberProfile(models.Model):
+    """Extended profile for authenticated HEI students."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="student_profile",
+    )
+    club = models.ForeignKey(
+        Club,
+        on_delete=models.PROTECT,
+        related_name="student_profiles",
+    )
+    sub_clubs = models.ManyToManyField(
+        "domain.SubClub",
+        blank=True,
+        related_name="enrolled_students",
+    )
+    gender = models.CharField(
+        max_length=16,
+        choices=[("male", "Male"), ("female", "Female"), ("other", "Other")],
+    )
+    department = models.CharField(max_length=128)
+    roll_number = models.CharField(max_length=64)
+
+    validity_years = models.PositiveSmallIntegerField(default=1)
+    valid_until = models.DateField(null=True, blank=True)
+    is_suspended_by_coordinator = models.BooleanField(default=False)
+
+    points = models.PositiveIntegerField(default=0)
+    badge = models.CharField(
+        max_length=16,
+        choices=[
+            ("copper", "Copper"),
+            ("silver", "Silver"),
+            ("gold", "Gold"),
+            ("platinum", "Platinum"),
+        ],
+        default="copper",
+    )
+
+    avatar = models.FileField(upload_to="student_avatars/", null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    hobbies = models.TextField(blank=True, default="")
+    address = models.TextField(blank=True, default="")
+    state = models.CharField(max_length=64, blank=True, default="")
+    pincode = models.CharField(max_length=10, blank=True, default="")
+    social_facebook = models.URLField(blank=True, default="")
+    social_instagram = models.URLField(blank=True, default="")
+    social_x = models.URLField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+        "state": "club__institution__state__code",
+        "zone": "club__institution__state__zone__code",
+        "institution": "club__institution__code",
+        "club": "club__code",
+        "user": "user",
+    }
+
+    class Meta:
+        ordering = ["club", "roll_number"]
+        indexes = [
+            models.Index(fields=["club", "department"], name="student_club_dept_idx"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.user.username} ({self.roll_number})"
+
+
+class SchoolStudentRoster(models.Model):
+    """Offline roster entry for School students with Deterministic Tangible Identity."""
+
+    club = models.ForeignKey(
+        Club,
+        on_delete=models.CASCADE,
+        related_name="school_roster",
+    )
+    student_uid = models.CharField(max_length=64, unique=True, db_index=True)
+    full_name = models.CharField(max_length=200)
+    gender = models.CharField(max_length=16)
+    student_class = models.CharField(max_length=32)
+    section = models.CharField(max_length=16)
+    guardian_phone = models.CharField(max_length=32, blank=True, default="")
+    batch_year = models.PositiveIntegerField(default=2026)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    SCOPE_LOOKUPS: ClassVar[dict[str, str]] = {
+        "state": "club__institution__state__code",
+        "zone": "club__institution__state__zone__code",
+        "institution": "club__institution__code",
+        "club": "club__code",
+    }
+
+    class Meta:
+        ordering = ["club", "student_class", "section", "full_name"]
+        indexes = [
+            models.Index(
+                fields=["club", "student_class"], name="school_club_class_idx"
+            ),
+            models.Index(fields=["student_uid"], name="school_student_uid_idx"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.student_uid} - {self.full_name}"

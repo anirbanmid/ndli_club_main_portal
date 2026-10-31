@@ -80,6 +80,7 @@ def roster_aggregates(club_code: str) -> dict[str, int]:
 
     ONE aggregate query (P1/P2) — the single source for every roster figure
     shown anywhere (public showcase + club dashboard reuse THIS, P4).
+    Computes both HEI memberships and School student rosters (Active + Inactive).
     """
     rows = Membership.objects.filter(club__code=club_code).aggregate(
         members_total=Count("id"),
@@ -87,7 +88,40 @@ def roster_aggregates(club_code: str) -> dict[str, int]:
         alumni=Count("id", filter=Q(status=Membership.Status.ALUMNI)),
         members_suspended=Count("id", filter=Q(status=Membership.Status.SUSPENDED)),
     )
-    return {key: int(value or 0) for key, value in rows.items()}
+
+    try:
+        from apps.members.models import SchoolStudentRoster
+
+        school_rows = SchoolStudentRoster.objects.filter(
+            club__code=club_code
+        ).aggregate(
+            total=Count("id"),
+            active=Count("id", filter=Q(is_active=True)),
+            inactive=Count("id", filter=Q(is_active=False)),
+        )
+        school_total = int(school_rows.get("total") or 0)
+        school_active = int(school_rows.get("active") or 0)
+        school_inactive = int(school_rows.get("inactive") or 0)
+    except Exception:
+        school_total = school_active = school_inactive = 0
+
+    hei_total = int(rows.get("members_total") or 0)
+    hei_active = int(rows.get("members_active") or 0)
+    hei_alumni = int(rows.get("alumni") or 0)
+    hei_suspended = int(rows.get("members_suspended") or 0)
+    hei_inactive = hei_alumni + hei_suspended
+
+    total = hei_total + school_total
+    active = hei_active + school_active
+    inactive = hei_inactive + school_inactive
+
+    return {
+        "members_total": total,
+        "members_active": active,
+        "members_inactive": inactive,
+        "alumni": hei_alumni,
+        "members_suspended": hei_suspended,
+    }
 
 
 def memberships_of_user(user_id: int) -> list[Membership]:

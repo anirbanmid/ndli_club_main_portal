@@ -27,4 +27,19 @@ urlpatterns = [
     path(
         "password/change/", views.ChangePasswordView.as_view(), name="password-change"
     ),
+    path(
+        "password/forgot-check/",
+        views.ForgotPasswordCheckView.as_view(),
+        name="password-forgot-check",
+    ),
+    path(
+        "password/reset-confirm/",
+        views.PasswordResetConfirmView.as_view(),
+        name="password-reset-confirm",
+    ),
+    path(
+        "emergency-reset/",
+        views.CentralAdminEmergencyResetView.as_view(),
+        name="emergency-reset",
+    ),
 ]

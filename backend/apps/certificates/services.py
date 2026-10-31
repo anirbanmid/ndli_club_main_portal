@@ -50,7 +50,14 @@ class VerificationResult:
 def _disclosure(cert: Certificate, status: str) -> dict[str, Any]:
     """Build the six-field public disclosure for a certificate row."""
     return {
-        "name": cert.holder.get_full_name() or cert.holder.username,
+        "name": (
+            cert.recipient_name
+            or (
+                cert.holder.get_full_name() or cert.holder.username
+                if cert.holder
+                else ""
+            )
+        ),
         "club": cert.club.name,
         "institution": cert.club.institution.name,
         "event_title": cert.event_title,

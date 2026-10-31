@@ -49,4 +49,19 @@ urlpatterns = [
         views.SubmitView.as_view(),
         name="submit",
     ),
+    path(
+        "authority/check-email/",
+        views.AuthorityEmailCheckView.as_view(),
+        name="authority-check-email",
+    ),
+    path(
+        "authority/confirm-deactivation/",
+        views.AuthorityDeactivateView.as_view(),
+        name="authority-confirm-deactivation",
+    ),
+    path(
+        "applications/<str:application_id>/status/",
+        views.ApplicationStatusView.as_view(),
+        name="application-status",
+    ),
 ]

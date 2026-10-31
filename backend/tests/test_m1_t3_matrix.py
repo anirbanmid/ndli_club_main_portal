@@ -95,6 +95,8 @@ ENDPOINT_MATRIX: dict[str, str] = {
     # only, scope-keyed to the caller's club (W9).
     "/api/v1/members/": "club",
     "/api/v1/grievances/": "club",
+    "/api/v1/activities/": "club",
+    "/api/v1/sharing/": "club",
     "/admin/": "admin",
 }
 

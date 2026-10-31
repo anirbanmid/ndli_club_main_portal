@@ -81,3 +81,22 @@ urlpatterns += [
         name="renewal-request",
     ),
 ]
+
+
+urlpatterns += [
+    path(
+        "<str:club_code>/subclubs/",
+        views.SubClubListView.as_view(),
+        name="subclub-list",
+    ),
+    path(
+        "<str:club_code>/subclubs/<int:subclub_id>/",
+        views.SubClubDetailView.as_view(),
+        name="subclub-detail",
+    ),
+    path(
+        "<str:club_code>/branding/",
+        views.ClubBrandingView.as_view(),
+        name="club-branding",
+    ),
+]

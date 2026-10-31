@@ -92,3 +92,191 @@ class ActivityLog(models.Model):
     def is_approval_log(self) -> bool:
         """True for the delete-protected club-approval log types."""
         return self.support_type in APPROVAL_LOG_TYPES
+
+
+class EventScope(models.TextChoices):
+    INSTITUTIONAL = "institutional", "Institutional Event"
+    MULTI_CLUB = "multi_club", "Multi-Club Event"
+
+
+class EventStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    COLLABORATION_PENDING = "collab_pending", "Collaboration Pending"
+    PUBLISHED = "published", "Published"
+    ACTIVE = "active", "Active"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class ClubEvent(models.Model):
+    """One club activity / event with institutional or cross-campus scope."""
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    event_ref = models.CharField(max_length=64, unique=True, db_index=True)
+    host_club = models.ForeignKey(
+        "domain.Club",
+        on_delete=models.CASCADE,
+        related_name="hosted_events",
+    )
+    scope = models.CharField(
+        max_length=16,
+        choices=EventScope.choices,
+        default=EventScope.INSTITUTIONAL,
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    joining_link = models.URLField(blank=True, default="")
+    poster = models.FileField(upload_to="event_posters/", null=True, blank=True)
+
+    # Sub-Club scoping for HEI
+    all_sub_clubs = models.BooleanField(default=True)
+    target_sub_clubs = models.ManyToManyField(
+        "domain.SubClub",
+        blank=True,
+        related_name="target_events",
+    )
+
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    status = models.CharField(
+        max_length=24,
+        choices=EventStatus.choices,
+        default=EventStatus.DRAFT,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-start_time"]
+        indexes = [
+            models.Index(
+                fields=["host_club", "status"], name="clubevent_club_status_idx"
+            ),
+            models.Index(
+                fields=["start_time", "end_time"], name="clubevent_window_idx"
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.title} ({self.status})"
+
+
+class EventConductor(models.Model):
+    """Conductor / Speaker / Resource Person for an event."""
+
+    event = models.ForeignKey(
+        ClubEvent,
+        on_delete=models.CASCADE,
+        related_name="conductors",
+    )
+    full_name = models.CharField(max_length=128)
+    affiliation = models.CharField(max_length=255)
+    certificate_generated = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["full_name"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.full_name} ({self.affiliation})"
+
+
+class EventCollaboration(models.Model):
+    """Inter-institutional partnership request for a multi-club event."""
+
+    class Status(models.TextChoices):
+        INVITED = "invited", "Invited"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+
+    event = models.ForeignKey(
+        ClubEvent,
+        on_delete=models.CASCADE,
+        related_name="collaborations",
+    )
+    partner_club = models.ForeignKey(
+        "domain.Club",
+        on_delete=models.CASCADE,
+        related_name="event_partnerships",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.INVITED,
+    )
+    retry_count = models.PositiveSmallIntegerField(default=0)  # Max 1 retry
+    responded_at = models.DateTimeField(null=True, blank=True)
+    responded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="responded_collaborations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "partner_club"],
+                name="event_collaboration_uniq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.event.title} <-> {self.partner_club.name}: {self.status}"
+
+
+class EventAttendance(models.Model):
+    """Student participation attendance record with 30-min window tracking."""
+
+    event = models.ForeignKey(
+        ClubEvent,
+        on_delete=models.CASCADE,
+        related_name="attendees",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="event_attendances",
+    )
+    school_student = models.ForeignKey(
+        "members.SchoolStudentRoster",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="event_attendances",
+    )
+    participated_at = models.DateTimeField(auto_now_add=True)
+    is_approved = models.BooleanField(default=False)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="approved_attendances",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-participated_at"]
+        indexes = [
+            models.Index(
+                fields=["event", "is_approved"], name="event_attend_approved_idx"
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        attendee = (
+            self.user.username
+            if self.user
+            else (self.school_student.student_uid if self.school_student else "Unknown")
+        )
+        return f"{attendee} @ {self.event.title} (approved={self.is_approved})"

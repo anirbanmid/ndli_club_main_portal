@@ -109,6 +109,9 @@ class ZoneDashboard:
     active_officers: int = 0
     renewal_attention: int = 0
     escalations_30d: int = 0
+    total_members: int = 0
+    active_members: int = 0
+    inactive_members: int = 0
     support_type_breakdown: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -127,6 +130,9 @@ class ZoneDashboard:
             "active_officers": self.active_officers,
             "renewal_attention": self.renewal_attention,
             "escalations_30d": self.escalations_30d,
+            "total_members": self.total_members,
+            "active_members": self.active_members,
+            "inactive_members": self.inactive_members,
             "support_type_breakdown": self.support_type_breakdown,
         }
 
@@ -181,11 +187,38 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
     tickets = _tickets(zone)
     events = _sla_events(zone)
 
-    # 1. Total NDLI Clubs
+    # 1. Total NDLI Clubs (Main Clubs + Disciplinary Sub-Clubs: 1+N)
+    from apps.domain.models import SubClub
+
     club_qs = Club.objects.filter(is_sample=False)
+    sub_qs = SubClub.objects.filter(is_active=True, club__is_sample=False)
     if zone:
         club_qs = club_qs.filter(institution__state__zone__code=zone)
-    total_clubs = club_qs.count()
+        sub_qs = sub_qs.filter(club__institution__state__zone__code=zone)
+    total_clubs = club_qs.count() + sub_qs.count()
+
+    # Members SSOT Breakdown
+    from apps.domain.models import Membership
+
+    try:
+        from apps.members.models import SchoolStudentRoster
+
+        school_qs = SchoolStudentRoster.objects.all()
+    except Exception:
+        school_qs = None
+
+    mem_qs = Membership.objects.all()
+    if zone:
+        mem_qs = mem_qs.filter(club__institution__state__zone__code=zone)
+        if school_qs is not None:
+            school_qs = school_qs.filter(club__institution__state__zone__code=zone)
+
+    active_mem = mem_qs.filter(status=Membership.Status.ACTIVE).count()
+    inactive_mem = mem_qs.exclude(status=Membership.Status.ACTIVE).count()
+    if school_qs is not None:
+        active_mem += school_qs.filter(is_active=True).count()
+        inactive_mem += school_qs.filter(is_active=False).count()
+    total_members = active_mem + inactive_mem
 
     # 2. Total Daily Support Logs (real-time sum of call_count) & Breakdown
     from apps.activities.models import SupportType
@@ -275,6 +308,9 @@ def zone_dashboard(zone: str | None = None) -> ZoneDashboard:
         active_officers=active_officers,
         renewal_attention=renewal_attention,
         escalations_30d=escalations_30d,
+        total_members=total_members,
+        active_members=active_mem,
+        inactive_members=inactive_mem,
         support_type_breakdown=support_breakdown,
     )
 

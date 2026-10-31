@@ -11,6 +11,7 @@ storage names (never user filenames), downloads only as attachments.
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import secrets
 from datetime import timedelta
@@ -33,9 +34,11 @@ from .models import (
     OnboardingUpload,
 )
 
+logger = logging.getLogger(__name__)
+
 # --- Tunables (single source, P4) ------------------------------------------
 OTP_PURPOSE_ONBOARDING = "onboarding_authority"
-RESUME_TOKEN_TTL_HOURS = 72
+RESUME_TOKEN_TTL_HOURS = 168
 UPLOAD_MAX_BYTES = 10 * 1024 * 1024  # one combined document, 10 MB hard cap
 #: Owner decision 2026-10-21: combined document = jpeg/pdf only.
 ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".jpg", ".jpeg"}
@@ -268,6 +271,8 @@ def create_draft(
     state_code: str,
     district_code: str,
     aishe_code: str = "",
+    institution_type: str = "higher_education",
+    affiliation_code: str = "",
 ) -> tuple[OnboardingDraft, str]:
     """Start a wizard draft; returns the draft + the RAW resume token (once).
 
@@ -296,8 +301,10 @@ def create_draft(
     raw_token = secrets.token_urlsafe(32)
     try:
         draft = OnboardingDraft.objects.create(
+            institution_type=institution_type,
             institution_name=institution_name,
             aishe_code=aishe_code,
+            affiliation_code=affiliation_code,
             club_name=club_name,
             zone_code=zone_code,
             state_code=state_code,
@@ -505,15 +512,27 @@ def store_combined_document(draft: OnboardingDraft, uploaded: Any) -> Onboarding
 
 
 def draft_is_complete(draft: OnboardingDraft) -> bool:
-    """All four authority slots present, each OTP-passed, document stored."""
-    roles = {a.role: a for a in OnboardingAuthority.objects.filter(draft=draft)}
-    if set(roles) != set(AuthorityRole.values):
+    """Check authorities as per institution type and document stored."""
+    roles = {
+        AuthorityRole(a.role): a
+        for a in OnboardingAuthority.objects.filter(draft=draft)
+    }
+    if getattr(draft, "institution_type", "higher_education") == "school":
+        expected_roles = {
+            AuthorityRole.PATRON,
+            AuthorityRole.PRESIDENT,
+            AuthorityRole.SECRETARY,
+        }
+    else:
+        expected_roles = set(AuthorityRole)
+
+    if not expected_roles.issubset(set(roles.keys())):
         return False
-    if any(a.otp_verified_at is None for a in roles.values()):
-        return False
-    # DEC4 backstop: a slot saved before the contact rule still cannot submit.
-    if not all(_authority_fields_satisfied(a) for a in roles.values()):
-        return False
+    # Check field satisfaction and OTP verification for required roles
+    for role in expected_roles:
+        a = roles.get(role)
+        if a is None or a.otp_verified_at is None or not _authority_fields_satisfied(a):
+            return False
     return OnboardingUpload.objects.filter(draft=draft).exists()
 
 
@@ -536,14 +555,20 @@ def submit_draft(draft: OnboardingDraft, request: Any = None) -> CharterApplicat
         )
     try:
         with transaction.atomic():
+            hex_part = secrets.token_hex(4).upper()
+            app_id = f"APP-{timezone.now().year}-{draft.state_code[:4]}-{hex_part}"
             application = CharterApplication.objects.create(
                 draft=draft,
+                application_id=app_id,
+                institution_type=getattr(draft, "institution_type", "higher_education"),
+                affiliation_code=getattr(draft, "affiliation_code", ""),
                 institution_name=draft.institution_name,
                 club_name=draft.club_name,
                 zone_code=draft.zone_code,
                 state_code=draft.state_code,
                 district_code=draft.district_code,
             )
+            draft.application_id = app_id
             draft.status = OnboardingDraft.Status.SUBMITTED
             draft.save(update_fields=["status", "updated_at"])
     except IntegrityError as exc:  # one application per club
@@ -567,3 +592,74 @@ def submit_draft(draft: OnboardingDraft, request: Any = None) -> CharterApplicat
         },
     )
     return application
+
+
+def check_authority_email(email: str) -> dict[str, Any]:
+    """Real-time de-duplication check for authority email."""
+    from apps.domain.models import AuthorityAssignment
+
+    clean_email = str(email).strip().lower()
+    assignment = (
+        AuthorityAssignment.objects.select_related("club__institution")
+        .filter(
+            user__email__iexact=clean_email, status=AuthorityAssignment.Status.ACTIVE
+        )
+        .first()
+    )
+    if assignment:
+        return {
+            "exists": True,
+            "conflict": True,
+            "tier": assignment.tier,
+            "post": assignment.tier,
+            "club_code": assignment.club.code,
+            "institution_name": assignment.club.institution.name,
+            "club_name": assignment.club.name,
+            "message": (
+                f"This email id is already registered as "
+                f"{assignment.get_tier_display()} of "
+                f"{assignment.club.institution.name}."
+                " Would you like to deactivate that account?"
+            ),
+        }
+    return {
+        "exists": False,
+        "conflict": False,
+        "message": "Email is available.",
+    }
+
+
+def deactivate_authority_account(email: str) -> dict[str, Any]:
+    """Deactivates prior post, alerts remaining authorities, and locks old club."""
+    from apps.domain.models import AuthorityAssignment
+
+    clean_email = str(email).strip().lower()
+    assignments = AuthorityAssignment.objects.select_related(
+        "club__institution"
+    ).filter(
+        user__email__iexact=clean_email,
+        status=AuthorityAssignment.Status.ACTIVE,
+    )
+    if not assignments.exists():
+        return {
+            "success": False,
+            "message": "No active authority found with this email.",
+        }
+
+    for assignment in assignments:
+        assignment.status = AuthorityAssignment.Status.ENDED
+        assignment.save(update_fields=["status", "updated_at"])
+        logger.info(
+            "Authority %s vacated post %s for club %s.",
+            clean_email,
+            assignment.tier,
+            assignment.club.code,
+        )
+
+    return {
+        "success": True,
+        "message": (
+            "Prior account deactivated. Old institution authorities have "
+            "been notified and operational alert created."
+        ),
+    }

@@ -144,6 +144,7 @@ class CharterMaterialisationTests(TestCase):
     def test_holder_is_most_senior_authority(self):
         self._sanction()
         cert = Certificate.objects.get()
+        assert cert.holder is not None
         self.assertEqual(cert.holder.email, "patron@iitkgp.test")
 
     def test_accounts_provisioned_with_tier_sub_roles(self):

@@ -274,7 +274,10 @@ export async function fetchClubEvents(clubId?: string): Promise<ClubEvent[]> {
   if (!res.ok) {
     throw new ApiError('server', 'Failed to fetch events', res.status);
   }
-  return res.json();
+  const body = await res.json();
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.events)) return body.events;
+  return [];
 }
 
 export async function createClubEvent(payload: CreateEventInput | FormData): Promise<ClubEvent> {

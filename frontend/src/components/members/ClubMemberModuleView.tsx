@@ -138,10 +138,10 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
       setSocialFb(res.profile.social_facebook || '');
       setSocialInsta(res.profile.social_instagram || '');
       setSocialX(res.profile.social_x || '');
-      setSelectedSubClubIds(res.profile.sub_clubs.map((sc) => sc.id));
+      setSelectedSubClubIds((res.profile?.sub_clubs || []).map((sc) => sc.id));
 
       // Also load events for this club
-      if (res.profile.club?.code) {
+      if (res.profile?.club?.code) {
         void loadEvents(res.profile.club.code);
         void loadSubClubs(res.profile.club.code);
       }
@@ -392,10 +392,20 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
     );
   }
 
-  const { profile, stats } = data;
+  const profile = data.profile;
+  const stats = data.stats || {
+    badge: 'copper',
+    badge_label: 'Copper',
+    points: 0,
+    profile_completeness: 0,
+    events_attended: 0,
+    certificates_earned: 0,
+    streak_days: 0,
+    next_tier_points: 100,
+  };
   const isSuspended = Boolean(profile.is_suspended);
   const isExpired = Boolean(
-    profile.valid_until && new Date(`${profile.valid_until}T23:59:59`) < new Date()
+    profile.valid_until && !isNaN(new Date(`${profile.valid_until}T23:59:59`).getTime()) && new Date(`${profile.valid_until}T23:59:59`) < new Date()
   );
 
   const badgeColor = {
@@ -470,14 +480,14 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
                   <span>{profile.department}</span>
                 </span>
                 <span>•</span>
-                <span>{profile.club.institution_name}</span>
+                <span>{profile.club?.institution_name || profile.club?.name || t('Institutional Club')}</span>
                 <span>•</span>
                 <span className="text-amber-300 font-mono">
-                  {t('Passkey:')} {profile.club.passkey}
+                  {t('Passkey:')} {profile.club?.passkey || '—'}
                 </span>
               </div>
 
-              {profile.sub_clubs.length > 0 && (
+              {Array.isArray(profile.sub_clubs) && profile.sub_clubs.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   <span className="text-[11px] text-brand-300 font-medium">
                     {t('My Sub-Clubs:')}
@@ -643,7 +653,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
         >
           <Calendar className="w-4 h-4" />
           <span>
-            {t('Events & Live Participation')} ({events.length})
+            {t('Events & Live Participation')} ({Array.isArray(events) ? events.length : 0})
           </span>
         </button>
 
@@ -695,7 +705,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
               </p>
             </div>
             <button
-              onClick={() => void loadEvents(profile.club.code)}
+              onClick={() => profile.club?.code && void loadEvents(profile.club.code)}
               className="p-2 rounded-xl border border-[#E2ECE7] bg-white text-[#2E4A3E] hover:bg-[#F4F8F6] cursor-pointer"
               title={t('Refresh events')}
             >
@@ -708,7 +718,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
               <Loader2 className="w-6 h-6 animate-spin text-[#0D7751]" />
               <span>{t('Loading events...')}</span>
             </div>
-          ) : events.length === 0 ? (
+          ) : !Array.isArray(events) || events.length === 0 ? (
             <div className="py-12 bg-white rounded-3xl border border-[#E2ECE7] text-center space-y-2">
               <Calendar className="w-10 h-10 text-[#5A7366] mx-auto opacity-50" />
               <div className="text-base font-bold text-[#103125]">
@@ -722,7 +732,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {events.map((evt) => {
+              {(events || []).map((evt) => {
                 const isWindowOpen = evt.is_window_open ?? evt.is_attendance_open;
                 const isParticipating = participatingId === evt.id;
                 const noticeMsg = participateNotice?.id === evt.id ? participateNotice.msg : null;
@@ -1227,7 +1237,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
       {activeTab === 'libraries' && (
         <div className="space-y-4">
           <CuratedLibraryHub
-            clubId={profile.club.code}
+            clubId={profile.club?.code || ''}
             isAuthority={false}
             isStudent={true}
           />

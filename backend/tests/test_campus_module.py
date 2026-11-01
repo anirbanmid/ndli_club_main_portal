@@ -1024,4 +1024,139 @@ class CampusModuleTests(TestCase):
             self.assertIn("HMAC Tag (V2)", sample_cert)
             self.assertIn("Student UID", sample_cert)
 
+    def test_event_certificate_approval_saves_and_signs_certificates(self) -> None:
+        """Verify EventCertificateApprovalView creates signed, persisted Certificate records."""
+        from apps.certificates import services
+        from apps.members.models import SchoolStudentRoster
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-APPROVE-TEST",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="Interactive Workshop",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        roster_entry = SchoolStudentRoster.objects.create(
+            club=self.club,
+            student_uid="SCH-TEST-UID-001",
+            full_name="Pooja Sen",
+            student_class="X",
+            section="A",
+            batch_year=now.year,
+            is_active=True,
+        )
+        att = EventAttendance.objects.create(
+            event=event,
+            school_student=roster_entry,
+            is_approved=False,
+        )
+
+        # 1. Unauthenticated request should fail (401)
+        self.client.logout()
+        unauth_resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "any", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertIn(unauth_resp.status_code, (401, 403))
+
+        # 2. Authenticated request with password challenge
+        self.client.force_login(self.authority_user)
+        resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "Club@123", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["issued_count"], 1)
+
+        # 3. Verify Certificate record was saved to DB and signed
+        cert = Certificate.objects.filter(club=self.club, event_ref=event.event_ref).first()
+        self.assertIsNotNone(cert)
+        self.assertEqual(cert.recipient_name, "Pooja Sen")
+        self.assertEqual(cert.student_uid, "SCH-TEST-UID-001")
+        self.assertTrue(cert.hmac_tag)
+
+        # 4. Verify certificate validates under HMAC signing service
+        verify_result = services.verify_certificate(cert.certificate_id)
+        self.assertEqual(verify_result.status, services.STATUS_VALID)
+
+        # 5. Verify attendance was updated to approved
+        att.refresh_from_db()
+        self.assertTrue(att.is_approved)
+        self.assertIsNotNone(att.approved_at)
+
+    def test_event_certificates_zip_download_zero_attendees(self) -> None:
+        """Verify downloading certificate zip for event with 0 attendees returns valid zip with manifest."""
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-EMPTY-ZIP",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="Empty Attendee Event",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        self.client.force_login(self.authority_user)
+        zip_resp = self.client.get(
+            f"/api/v1/activities/events/{event.id}/download-certificates-zip/"
+        )
+        self.assertEqual(zip_resp.status_code, 200)
+        self.assertIn("application/zip", zip_resp["Content-Type"])
+
+        with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as zf:
+            namelist = zf.namelist()
+            self.assertIn("manifest.csv", namelist)
+            manifest_text = zf.read("manifest.csv").decode("utf-8")
+            self.assertIn("certificate_id,student_uid,recipient_name", manifest_text)
+
+    def test_event_participant_upload_ragged_csv(self) -> None:
+        """Verify CSV with ragged columns (missing fields / None values) and non-ASCII chars is parsed safely."""
+        from apps.members.models import SchoolStudentRoster
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-RAGGED-CSV",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="School Folk Dance",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        # Row 2 is ragged: only has one field (name), header has 5 fields
+        csv_content = (
+            "Full Name,Gender,Class,Section,Guardian Phone\n"
+            "Maitreyi Deb,female,IX,B,9876543210\n"
+            "Rohan Mukherjee\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "ragged.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.authority_user)
+        resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/upload-participants/",
+            data={"file": csv_file},
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["enrolled_count"], 2)
+        roster = SchoolStudentRoster.objects.filter(club=self.club, full_name="Rohan Mukherjee").first()
+        self.assertIsNotNone(roster)
+
+
 

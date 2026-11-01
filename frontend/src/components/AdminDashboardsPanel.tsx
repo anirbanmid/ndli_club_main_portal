@@ -103,6 +103,7 @@ function formatStamp(iso: string | null | undefined): string {
 interface StatCardProps {
   label: string;
   value: number | string;
+  subValue?: string;
   desc: string;
   badge?: string;
   icon: React.ReactNode;
@@ -114,6 +115,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({
   label,
   value,
+  subValue,
   desc,
   badge,
   icon,
@@ -186,7 +188,12 @@ const StatCard: React.FC<StatCardProps> = ({
         <div className="text-3xl font-extrabold text-[#103125] tracking-tight">
           {value}
         </div>
-        <div className="text-xs font-bold text-[#2E4A3E] mt-0.5 flex items-center justify-between">
+        {subValue && (
+          <div className="text-xs text-[#5A7366] font-medium mt-0.5">
+            {subValue}
+          </div>
+        )}
+        <div className="text-xs font-bold text-[#2E4A3E] mt-1 flex items-center justify-between">
           <span>{label}</span>
           {clickable && (
             <span className="text-[10px] text-[#0D7751] font-bold flex items-center gap-0.5">
@@ -787,11 +794,12 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
               ? dashboard.total_members.toLocaleString()
               : '—'
           }
-          desc={
+          subValue={
             dashboard && dashboard.active_members !== undefined
               ? `(${(dashboard.active_members ?? 0).toLocaleString()} ${t('Active')} + ${(dashboard.inactive_members ?? 0).toLocaleString()} ${t('Inactive')})`
-              : t('HEI student members + school tangible roster')
+              : undefined
           }
+          desc={t('HEI student members + school tangible roster')}
           badge={
             dashboard && dashboard.active_members !== undefined
               ? `${(dashboard.active_members ?? 0).toLocaleString()} Active`

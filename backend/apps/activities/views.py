@@ -412,9 +412,9 @@ class EmployeeClubsExportCSVView(APIView):
                     c.get("secretary_name", "Prof. Secretary Lead"),
                     c.get("secretary_email", ""),
                     "+91 9434000000",
-                    str(c.get("member_count", 3840)),
-                    str(c.get("solo_activities", 35)),
-                    str(c.get("joint_activities", 7)),
+                    str(c.get("member_count", 0)),
+                    str(c.get("solo_activities", 0)),
+                    str(c.get("joint_activities", 0)),
                 ]
             )
         return response
@@ -1015,6 +1015,7 @@ class EventCollaborationRequestView(APIView):
 class EventCollaborationRespondView(APIView):
     """Accept or Reject collaboration request (with 1 retry limit)."""
 
+    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
     def post(self, request: Request, collab_id: int) -> Response:
@@ -1054,6 +1055,7 @@ class EventCollaborationRespondView(APIView):
 class EventCertificateApprovalView(APIView):
     """Post-event certificate approval with password verification challenge."""
 
+    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
     def post(self, request: Request, pk: int) -> Response:
@@ -1065,7 +1067,7 @@ class EventCertificateApprovalView(APIView):
             random_certificate_id_body,
         )
         from apps.certificates.models import Certificate, CertificateCategory
-        from apps.certificates.signing import active_key_id
+        from apps.certificates.signing import active_key_id, sign_certificate
 
         # 1. Password verification challenge
         password = str(request.data.get("password", "")).strip()
@@ -1106,10 +1108,15 @@ class EventCertificateApprovalView(APIView):
 
         now = timezone.now()
         issued_certs = []
+        approver = (
+            user
+            if (user and hasattr(user, "is_authenticated") and user.is_authenticated)
+            else None
+        )
 
         for att in qs.select_related("user", "school_student"):
             att.is_approved = True
-            att.approved_by = user
+            att.approved_by = approver
             att.approved_at = now
             att.save(update_fields=["is_approved", "approved_by", "approved_at"])
 
@@ -1140,11 +1147,15 @@ class EventCertificateApprovalView(APIView):
                 category=CertificateCategory.PARTICIPATION,
                 issue_date=now.date(),
             )
+            cert.hmac_tag = sign_certificate(cert)
+            cert.save()
+
             issued_certs.append(
                 {
                     "certificate_id": cert.certificate_id,
                     "recipient_name": recipient_name,
                     "student_uid": student_uid,
+                    "hmac_tag": cert.hmac_tag,
                 }
             )
 
@@ -1329,7 +1340,7 @@ class EventParticipantUploadView(APIView):
             reader = csv.DictReader(io.StringIO(decoded))
             for raw_row in reader:
                 norm = {
-                    k.strip().lower().replace(" ", "_"): v.strip()
+                    k.strip().lower().replace(" ", "_"): (v.strip() if v else "")
                     for k, v in raw_row.items()
                     if k
                 }
@@ -1463,8 +1474,6 @@ class EventCertificatesZipDownloadView(APIView):
         attendances = EventAttendance.objects.filter(event=evt).select_related(
             "school_student", "user"
         )
-        if not attendances.exists():
-            return HttpResponse("No attendees found for this event", status=400)
 
         now = timezone.now()
         key_id = active_key_id()

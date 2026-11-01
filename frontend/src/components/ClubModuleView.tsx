@@ -46,7 +46,7 @@ import { InstitutionalEventModal } from './activities/InstitutionalEventModal';
 import { EventParticipationCard } from './activities/EventParticipationCard';
 import { CuratedLibraryHub } from './sharing/CuratedLibraryHub';
 import { StudentMembershipApprovalPanel } from './members/StudentMembershipApprovalPanel';
-import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub, fetchStudentProfiles } from '../lib/campusApi';
+import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub, fetchStudentProfiles, fetchSchoolCards } from '../lib/campusApi';
 import { INITIAL_CLUBS } from '../mockData';
 import { Layers, BookOpen, School as SchoolIcon } from 'lucide-react';
 
@@ -104,14 +104,20 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
   const loadCampusData = async () => {
     try {
-      const [evts, subs, profs] = await Promise.all([
+      const [evts, subs, profs, schoolCards] = await Promise.all([
         fetchClubEvents(activeClub.id).catch(() => []),
         fetchSubClubs(activeClub.id).catch(() => []),
         fetchStudentProfiles({ club_code: activeClub.id }).catch(() => null),
+        activeClub.category === 'School'
+          ? fetchSchoolCards(activeClub.id).catch(() => [])
+          : Promise.resolve([]),
       ]);
       setBackendEvents(evts);
       setSubClubsList(subs);
-      if (profs && profs.results) {
+      if (activeClub.category === 'School') {
+        const total = schoolCards.length;
+        setMemberStats({ total, active: total, inactive: 0 });
+      } else if (profs && profs.results) {
         const total = profs.total ?? profs.results.length;
         const active = profs.results.filter((s) => s.status === 'active').length;
         const inactive = total - active;
@@ -463,7 +469,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           </h1>
 
           <p className="text-xs text-[#5A7366]">
-            {t("Club ID:")} <strong className="font-mono text-[#103125]">{activeClub.id}</strong> {t("• Enrolled Students:")} <strong>{clubStudents.length.toLocaleString()}</strong>
+            {t("Club ID:")} <strong className="font-mono text-[#103125]">{activeClub.id}</strong> {t("• Enrolled Students:")} <strong>{(memberStats ? memberStats.total : clubStudents.length).toLocaleString()}</strong>
           </p>
         </div>
 

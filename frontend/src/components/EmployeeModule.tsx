@@ -3112,7 +3112,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       Date of Approval
                     </span>
                     <strong style={{ fontSize: '0.92rem', color: 'var(--primary)', marginTop: '0.2rem', display: 'block' }}>
-                      {selectedEditClub.date_of_approval || '2021-04-12'}
+                      {selectedEditClub.date_of_approval || '—'}
                     </strong>
                     <small style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Inception timestamp</small>
                   </div>
@@ -3132,7 +3132,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       Upcoming Renewal Due Date
                     </span>
                     <strong style={{ fontSize: '0.95rem', color: '#15803d', marginTop: '0.2rem', display: 'block' }}>
-                      {selectedEditClub.upcoming_renewal_date || selectedEditClub.renewal_date || '2026-04-12'}
+                      {selectedEditClub.upcoming_renewal_date || selectedEditClub.renewal_date || '—'}
                     </strong>
                     <small style={{ fontSize: '10px', color: 'var(--text-muted)' }}>+1 Year Validity</small>
                   </div>

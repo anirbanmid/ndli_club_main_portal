@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchCanonicalClubs, subscribeToClubUpdates } from './lib/clubRepository';
-import { changeLanguage } from './i18n';
+import { changeLanguage, t } from './i18n';
 import { resolveRoute } from './lib/route';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -116,7 +116,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [forensicRecords, setForensicRecords] = useState<ForensicQuarantineRecord[]>(INITIAL_FORENSIC_RECORDS);
 
   // Active selections
-  const [activeClub, setActiveClub] = useState<InstituteClub>(INITIAL_CLUBS[0]);
+  const [activeClub, setActiveClub] = useState<InstituteClub | null>(INITIAL_CLUBS[0] ?? null);
   const [selectedClubForPublicProfile, setSelectedClubForPublicProfile] = useState<InstituteClub | null>(null);
   const [authenticatedClubId, setAuthenticatedClubId] = useState<string | null>(null);
   const [authenticatedAuthority, setAuthenticatedAuthority] = useState<{
@@ -154,7 +154,7 @@ export function App({ ssrLocation }: AppProps = {}) {
         prev.map((c) => (c.id === clubId ? { ...c, ...updates } : c))
       );
       setActiveClub((current) =>
-        current.id === clubId ? { ...current, ...updates } : current
+        current && current.id === clubId ? { ...current, ...updates } : current
       );
     });
 
@@ -506,43 +506,56 @@ export function App({ ssrLocation }: AppProps = {}) {
             )}
 
             {currentTab === 'club_dashboard' && (
-              <ClubModuleView
-                activeClub={activeClub}
-                students={students}
-                activities={activities}
-                tickets={tickets}
-                authorityRequests={authorityRequests}
-                isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
-                authenticatedAuthority={authenticatedAuthority}
-                onAuthoritySignIn={() => {
-                  setLoginSourceBranch('club_module');
-                  setCurrentBranch('landing');
-                  setCurrentTab('login');
-                }}
-                onAuthorityQuickSignIn={(authority) => {
-                  setAuthenticatedClubId(authority.clubId);
-                  setAuthenticatedAuthority(authority);
-                }}
-                onAuthoritySignOut={() => {
-                  setAuthenticatedClubId(null);
-                  setAuthenticatedAuthority(null);
-                }}
-                onBackToClubsList={() => {
-                  setCurrentTab('club_directory');
-                }}
-                onCreateActivity={handleCreateActivity}
-                onRaiseTicket={handleRaiseTicket}
-                onSubmitAuthorityChange={handleSubmitAuthorityChange}
-                onClaimCertificate={(cert) => {
-                  setActiveCertificate(cert);
-                  setCurrentBranch('landing');
-                  setCurrentTab('view_certificate');
-                }}
-                onViewPublicProfile={(club) => {
-                  setSelectedClubForPublicProfile(club);
-                  setCurrentTab('public_club_profile');
-                }}
-              />
+              activeClub ? (
+                <ClubModuleView
+                  activeClub={activeClub}
+                  students={students}
+                  activities={activities}
+                  tickets={tickets}
+                  authorityRequests={authorityRequests}
+                  isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
+                  authenticatedAuthority={authenticatedAuthority}
+                  onAuthoritySignIn={() => {
+                    setLoginSourceBranch('club_module');
+                    setCurrentBranch('landing');
+                    setCurrentTab('login');
+                  }}
+                  onAuthorityQuickSignIn={(authority) => {
+                    setAuthenticatedClubId(authority.clubId);
+                    setAuthenticatedAuthority(authority);
+                  }}
+                  onAuthoritySignOut={() => {
+                    setAuthenticatedClubId(null);
+                    setAuthenticatedAuthority(null);
+                  }}
+                  onBackToClubsList={() => {
+                    setCurrentTab('club_directory');
+                  }}
+                  onCreateActivity={handleCreateActivity}
+                  onRaiseTicket={handleRaiseTicket}
+                  onSubmitAuthorityChange={handleSubmitAuthorityChange}
+                  onClaimCertificate={(cert) => {
+                    setActiveCertificate(cert);
+                    setCurrentBranch('landing');
+                    setCurrentTab('view_certificate');
+                  }}
+                  onViewPublicProfile={(club) => {
+                    setSelectedClubForPublicProfile(club);
+                    setCurrentTab('public_club_profile');
+                  }}
+                />
+              ) : (
+                <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-4">
+                  <h2 className="text-xl font-bold text-ink-900">{t('No Active Club Selected')}</h2>
+                  <p className="text-sm text-ink-600">{t('Please select an institutional club from the directory to view its dashboard.')}</p>
+                  <button
+                    onClick={() => setCurrentTab('club_directory')}
+                    className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {t('Go to Club Directory')}
+                  </button>
+                </div>
+              )
             )}
           </>
         )}

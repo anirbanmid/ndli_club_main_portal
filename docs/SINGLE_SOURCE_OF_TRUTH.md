@@ -57,7 +57,7 @@ Disparate data sources, parallel mock arrays, fragmented component states, and b
 
 ### Rule 1: No Competing In-Memory Mock Data in Production Views
 - Frontend components must NEVER maintain private, hardcoded lists of clubs, dates, or authority records.
-- `mockData.ts` (`INITIAL_CLUBS`) is strictly an offline hydration fallback and initial bootstrap seed. It must never diverge from or compete with backend data.
+- `mockData.ts` contains empty baseline structures (`INITIAL_CLUBS = []`); all rendered data originates strictly from backend APIs.
 
 ### Rule 2: Universal Endpoints Must Use `apps.domain.clubs`
 - All backend views serving club listings or certificate verifications must query `apps.domain.clubs.get_all_canonical_clubs()` or `apps.domain.clubs.get_club_dates()`.

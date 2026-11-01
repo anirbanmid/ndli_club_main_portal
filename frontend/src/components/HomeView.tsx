@@ -258,61 +258,71 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         {/* Club Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClubs.map(club => (
-            <div
-              key={club.id}
-              className="bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-md hover:border-[#0D7751]/60 transition-all flex flex-col justify-between group"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
-                    {t("AISHE:")} {club.aisheCode}
-                  </span>
-                  <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
-                    <CheckCircle2 className="h-3 w-3 text-brand-700" />
-                    <span>{t(club.zone)} {t("Zone")}</span>
-                  </span>
+        {filteredClubs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredClubs.map(club => (
+              <div
+                key={club.id}
+                className="bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-md hover:border-[#0D7751]/60 transition-all flex flex-col justify-between group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
+                      {t("AISHE:")} {club.aisheCode}
+                    </span>
+                    <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
+                      <CheckCircle2 className="h-3 w-3 text-brand-700" />
+                      <span>{t(club.zone)} {t("Zone")}</span>
+                    </span>
+                  </div>
+
+                  <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2">
+                    {club.name}
+                  </h3>
+
+                  <div className="flex items-center space-x-1.5 text-xs text-[#5A7366]">
+                    <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span>{club.district}, {club.state}</span>
+                  </div>
+
+                  {/* Key authorities snippet */}
+                  <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
+                      <span className="font-bold text-[#103125]">{club.authorities.find(a => a.role === 'Patron')?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#5A7366] font-medium">{t("President:")}</span>
+                      <span className="font-bold text-[#103125]">{club.authorities.find(a => a.role === 'President')?.name}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2">
-                  {club.name}
-                </h3>
-
-                <div className="flex items-center space-x-1.5 text-xs text-[#5A7366]">
-                  <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                  <span>{club.district}, {club.state}</span>
-                </div>
-
-                {/* Key authorities snippet */}
-                <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
-                    <span className="font-bold text-[#103125]">{club.authorities.find(a => a.role === 'Patron')?.name}</span>
+                <div className="mt-5 pt-4 border-t border-[#E2ECE7] flex items-center justify-between">
+                  <div className="text-xs text-[#5A7366]">
+                    <span className="font-bold text-[#103125]">{club.memberCount.toLocaleString()}</span> {t("Scholars")}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#5A7366] font-medium">{t("President:")}</span>
-                    <span className="font-bold text-[#103125]">{club.authorities.find(a => a.role === 'President')?.name}</span>
-                  </div>
+
+                  <button
+                    onClick={() => onSelectClub(club)}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#1A503E] bg-[#E9F5EF] hover:bg-[#d5eee0] transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30"
+                  >
+                    <span>{t("View Public Profile")}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
-
-              <div className="mt-5 pt-4 border-t border-[#E2ECE7] flex items-center justify-between">
-                <div className="text-xs text-[#5A7366]">
-                  <span className="font-bold text-[#103125]">{club.memberCount.toLocaleString()}</span> {t("Scholars")}
-                                          </div>
-
-                <button
-                  onClick={() => onSelectClub(club)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#1A503E] bg-[#E9F5EF] hover:bg-[#d5eee0] transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30"
-                >
-                  <span>{t("View Public Profile")}</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border border-[#E2ECE7] p-12 text-center space-y-4">
+            <Building2 className="h-12 w-12 text-[#5A7366] mx-auto opacity-50" />
+            <h3 className="text-base font-bold text-[#103125]">{t("No institutional chapters found")}</h3>
+            <p className="text-xs text-[#5A7366] max-w-md mx-auto">
+              {t("No active institutional chapters match your current selection.")}
+            </p>
+          </div>
+        )}
       </section>
 
       {/* 3 Main Architectural Branches Overview (Pitch Feature) */}

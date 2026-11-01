@@ -205,40 +205,6 @@ class VerifyCertificateView(APIView):
             )
 
         if target_club is None:
-            from apps.domain.clubs import CANONICAL_INSTITUTIONAL_CLUBS
-
-            matched_entry = None
-            for canon_club in CANONICAL_INSTITUTIONAL_CLUBS:
-                cid = str(canon_club["id"]).upper()
-                c_reg = str(canon_club.get("registrationNo", "")).upper()
-                if (
-                    cid in raw_id.upper()
-                    or (c_reg and c_reg in raw_id.upper())
-                    or (reg_no and (cid in reg_no.upper() or c_reg in reg_no.upper()))
-                    or (club_id and cid == club_id.upper())
-                ):
-                    matched_entry = canon_club
-                    break
-
-            if matched_entry:
-                inst_name = matched_entry["institution_name"]
-                club_name = matched_entry["name"]
-                code = matched_entry["id"]
-                doa, last_ren, _upcoming = get_club_dates(code, None)
-                eff_date = (
-                    last_ren
-                    if (last_ren and "None" not in last_ren and "-" in last_ren)
-                    else doa
-                )
-                disclosure = {
-                    "name": inst_name,
-                    "club": club_name,
-                    "institution": inst_name,
-                    "event_title": "Annual Institutional Registration Renewal",
-                    "date": eff_date,
-                    "status": cert_services.STATUS_VALID,
-                }
-                return {key: disclosure[key] for key in PUBLIC_KEYS}
             return None
 
         doa, last_ren, _upcoming = get_club_dates(

@@ -241,7 +241,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
       currentName: currentAuth,
       proposedName: succProposedName,
       proposedEmail: succProposedEmail,
-      proposedPhone: succProposedPhone || '+91 9800000000',
+      proposedPhone: succProposedPhone,
       officialDocName: succDocName,
       reason: succReason,
       status: 'Pending Admin Review',

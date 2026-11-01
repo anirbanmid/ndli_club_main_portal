@@ -210,7 +210,7 @@ export const HEIRegistrationWizard: React.FC<HEIRegistrationWizardProps> = ({
       const updated = await upsertAuthority(draft.id, resumeToken, role, {
         full_name: authData.fullName.trim(),
         email: authData.email.trim(),
-        phone: authData.phone.trim() || '+91 9800000000',
+        phone: authData.phone.trim(),
         designation: authData.designation.trim(),
       });
       setDraft(updated);

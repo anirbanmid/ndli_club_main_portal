@@ -102,7 +102,7 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
     status: (raw.status as InstituteClub['status']) || 'Active',
     memberCount: Number(raw.memberCount ?? raw.member_count ?? 0),
     eventsConducted: Number(raw.eventsConducted ?? raw.events_conducted ?? 0),
-    establishedDate: String(raw.establishedDate ?? raw.established_date ?? raw.date_of_approval ?? '2021-04-12'),
+    establishedDate: String(raw.establishedDate ?? raw.established_date ?? raw.date_of_approval ?? ''),
     authorities: rawAuthorities.length > 0
       ? (rawAuthorities as InstituteClub['authorities'])
       : [
@@ -134,9 +134,9 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
     description: String(raw.description || (name ? `Official NDLI Club chapter at ${name}.` : '')),
     websiteUrl: String(raw.websiteUrl || raw.website_url || ''),
     registrationNo: String(raw.registrationNo || raw.registration_no || raw.reg_no || `NDLI/CLUB/${id}`),
-    dateOfApproval: String(raw.dateOfApproval || raw.date_of_approval || '2021-04-12'),
+    dateOfApproval: String(raw.dateOfApproval || raw.date_of_approval || ''),
     lastRenewalDate: String(raw.lastRenewalDate || raw.last_renewal_date || 'None (Initial)'),
-    nextRenewalDate: String(raw.nextRenewalDate || raw.next_renewal_date || raw.upcoming_renewal_date || '2026-04-12'),
+    nextRenewalDate: String(raw.nextRenewalDate || raw.next_renewal_date || raw.upcoming_renewal_date || ''),
     soloSessions: Number(raw.soloSessions ?? raw.solo_activities ?? 0),
     jointSessions: Number(raw.jointSessions ?? raw.joint_activities ?? 0),
   };

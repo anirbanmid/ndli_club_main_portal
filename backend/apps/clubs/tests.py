@@ -126,6 +126,19 @@ class PasskeyHashUnitTests(TestCase):
 
 
 class CanonicalClubsSingleSourceTests(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        import importlib
+
+        from django.apps import apps
+        from django.core.management import call_command
+
+        call_command("seed_samples")
+        migration_0004 = importlib.import_module(
+            "apps.domain.migrations.0004_seed_canonical_institutional_clubs"
+        )
+        migration_0004.seed_canonical_clubs(apps, None)
+
     def test_canonical_clubs_returns_unified_dataset(self) -> None:
         from apps.domain.clubs import get_all_canonical_clubs
 

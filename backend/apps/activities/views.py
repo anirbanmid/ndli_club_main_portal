@@ -597,7 +597,14 @@ class ClubRenewView(APIView):
 
         # Persist renewal immediately to disk and in-memory cache
         save_persisted_renewal(club_id, today, next_year)
-        doa = MASTER_CLUB_DATES.get(club_id, ("2021-04-12", "", ""))[0]
+        from apps.domain.models import Club
+
+        club_obj = Club.objects.filter(code=club_id).first()
+        doa = (
+            str(club_obj.date_of_approval)
+            if club_obj and club_obj.date_of_approval
+            else MASTER_CLUB_DATES.get(club_id, ("", "", ""))[0]
+        )
         MASTER_CLUB_DATES[club_id] = (doa, today, next_year)
 
         return Response(

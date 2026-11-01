@@ -106,20 +106,19 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
           (c) =>
             c.passkey.trim().toUpperCase() === passkeyInput.trim().toUpperCase() ||
             c.id.toLowerCase() === res.club_code.toLowerCase(),
-        ) ||
-        clubs[0] || {
+        ) || {
           id: res.club_code,
           name: res.institution_name,
-          aisheCode: 'AISHE-EST',
-          district: 'Campus',
-          state: 'National',
+          aisheCode: '',
+          district: '',
+          state: '',
           zone: 'Central' as const,
-          category: 'University' as const,
+          category: 'Autonomous Institute' as const,
           passkey: passkeyInput,
           status: 'Active' as const,
           memberCount: 0,
           eventsConducted: 0,
-          establishedDate: '2026-01-01',
+          establishedDate: '',
           authorities: [],
         };
 

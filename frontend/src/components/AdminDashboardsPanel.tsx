@@ -560,7 +560,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   const deficitStatesCount = Math.max(0, totalStatesCount - representedStatesCount);
 
   // Club Retention Rate
-  const retentionRate = totalClubs > 0 ? Math.round(((totalClubs - overdueCount) / totalClubs) * 100) : 100;
+  const retentionRate = totalClubs > 0 ? Math.round(((totalClubs - overdueCount) / totalClubs) * 100) : 0;
   const activeValidityCount = Math.max(0, totalClubs - overdueCount);
 
   // Support Density Ratio

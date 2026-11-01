@@ -394,82 +394,89 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
       {/* Top Admin Header */}
-      <div className="bg-[#103125] text-white p-5 sm:p-7 rounded-3xl border border-[#1A503E] shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <span className="bg-[#0D7751] text-brand-100 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-brand-400/30">
+      <div className="hero-mesh bg-gradient-to-br from-[#103125] via-[#164433] to-[#0A5C3E] text-white p-6 sm:p-8 rounded-3xl border border-[#0D7751]/30 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
+        {/* Ambient glow */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="bg-[#0D7751] text-brand-100 text-[11px] font-black px-3 py-0.5 rounded-full border border-brand-400/30 tracking-wider">
               {t("IIT KHARAGPUR NODAL COMMAND")}
             </span>
-            <span className="text-xs text-amber-300 font-semibold">
+            <span className="text-xs text-amber-300 font-extrabold flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               {t("6-Zone National Governance Core")}
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight">
             {t("Central Administration & Regional Management Desk")}
           </h1>
 
-          <p className="text-xs text-brand-200/90 max-w-2xl">
+          <p className="text-xs sm:text-sm text-brand-100/90 max-w-2xl font-normal leading-relaxed">
             {t("Coordinating club charter approvals, regional support desk dispatches (EMP01–EMP07), institutional authority transitions, and legacy data healing.")}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <NotificationBell
-            notifications={adminNotifications}
-            storageKey="ndli_admin_read_notifications"
-            variant="dark"
-            onNavigateTab={handleAdminNavigateTab}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              setIsChangePasswordOpen(true);
-              setPasswordError(null);
-              setPasswordNotice(null);
-            }}
-            className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0 flex items-center gap-1.5"
-            title="Rotate Administrator Password"
-          >
-            <Key className="w-3.5 h-3.5 text-amber-300" />
-            <span>{t("Change Password")}</span>
-          </button>
-          {onSignOut && (
+        <div className="relative flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            <NotificationBell
+              notifications={adminNotifications}
+              storageKey="ndli_admin_read_notifications"
+              variant="dark"
+              onNavigateTab={handleAdminNavigateTab}
+            />
             <button
               type="button"
-              onClick={onSignOut}
-              className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0"
+              onClick={() => {
+                setIsChangePasswordOpen(true);
+                setPasswordError(null);
+                setPasswordNotice(null);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0 flex items-center gap-1.5 cursor-pointer backdrop-blur-md"
+              title="Rotate Administrator Password"
             >
-              {t("Sign out")}
+              <Key className="w-3.5 h-3.5 text-amber-300" />
+              <span>{t("Change Password")}</span>
             </button>
-          )}
-        </div>
-
-        {/* Telemetry Pills */}
-        <div className="grid grid-cols-2 gap-3 text-center shrink-0">
-          <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
-            <div className="text-2xl font-black text-amber-300">
-              7
-            </div>
-            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Nodal Officers")}</div>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-xs font-bold hover:bg-white/20 transition-all shrink-0 cursor-pointer backdrop-blur-md"
+              >
+                {t("Sign out")}
+              </button>
+            )}
           </div>
-          <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-xs">
-            <div className="text-2xl font-black text-white">
-              {grievancesLoading ? '—' : openGrievances.length}
+
+          {/* Telemetry Pills */}
+          <div className="grid grid-cols-2 gap-3 text-center shrink-0 w-full sm:w-auto">
+            <div className="glass-card bg-white/10 p-3.5 rounded-2xl border border-white/15 backdrop-blur-md shadow-xs">
+              <div className="text-2xl sm:text-3xl font-black text-amber-300">
+                7
+              </div>
+              <div className="text-[10px] text-brand-200 uppercase font-black tracking-wider">{t("Nodal Officers")}</div>
             </div>
-            <div className="text-[11px] text-brand-200 uppercase font-bold">{t("Active Tickets")}</div>
+            <div className="glass-card bg-white/10 p-3.5 rounded-2xl border border-white/15 backdrop-blur-md shadow-xs">
+              <div className="text-2xl sm:text-3xl font-black text-white">
+                {grievancesLoading ? '—' : openGrievances.length}
+              </div>
+              <div className="text-[10px] text-brand-200 uppercase font-black tracking-wider">{t("Active Tickets")}</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Zone Selector & Navigation Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 rounded-2xl border border-[#E2ECE7] shadow-xs">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#F4F8F6] p-2 rounded-2xl border border-[#E2ECE7] shadow-2xs">
         {/* Navigation Desks */}
-        <div id="admin-desks-container" className="tab-scroll flex items-center space-x-1 overflow-x-auto w-full sm:w-auto">
+        <div id="admin-desks-container" className="tab-scroll flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto">
           <button
             onClick={() => setAdminTab('dashboards')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'dashboards' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'dashboards' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
             <BarChart3 className="h-4 w-4" />
@@ -478,40 +485,38 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
 
           <button
             onClick={() => setAdminTab('insights')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'insights' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'insights' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
-            <Users className="h-4 w-4" />
+            <Users className="h-4 w-4 text-emerald-400" />
             <span>{t("AI Strategic Insights")}</span>
           </button>
 
           <button
             onClick={() => setAdminTab('zones')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'zones' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'zones' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
-            <Landmark className="h-4 w-4" />
+            <Landmark className="h-4 w-4 text-amber-300" />
             <span>{t("Employee Management")}</span>
           </button>
 
           <button
             onClick={() => setAdminTab('tickets')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'tickets' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'tickets' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
             <LifeBuoy className="h-4 w-4" />
             <span>{t("Grievance Desk")} ({filteredGrievances.filter((g) => g.status !== 'resolved').length})</span>
           </button>
 
-
-
           <button
             onClick={() => setAdminTab('renewals')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              adminTab === 'renewals' ? 'bg-[#1A503E] text-white shadow-xs' : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'renewals' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
             <FileText className="h-4 w-4" />

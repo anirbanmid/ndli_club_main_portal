@@ -57,65 +57,67 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
 
       {data && !loading && (
         <>
-          {/* Summary counters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-xl bg-[#E9F5EF] text-[#0D7751] flex items-center justify-center">
-                <Map className="h-5 w-5" />
+          {/* Summary counters with Bento Grid aesthetic */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 stagger-children">
+            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
+                <Map className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xl font-black text-[#103125]">{data.totals.states.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('States / UTs Covered')}</div>
+                <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.states.toLocaleString()}</div>
+                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('States / UTs Covered')}</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-xl bg-[#E9F5EF] text-[#0D7751] flex items-center justify-center">
-                <Building2 className="h-5 w-5" />
+            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
+                <Building2 className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xl font-black text-[#103125]">{data.totals.institutions.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Active Institutions')}</div>
-                <div className="text-[10px] text-[#5A7366] font-medium">{t('50 with Approved Clubs')}</div>
+                <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.institutions.toLocaleString()}</div>
+                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Active Institutions')}</div>
+                <div className="text-[10px] text-[#5A7366] font-medium mt-0.5">{t('50 with Approved Clubs')}</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-xl bg-[#E9F5EF] text-[#0D7751] flex items-center justify-center">
-                <Award className="h-5 w-5" />
+            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 text-amber-600 flex items-center justify-center shadow-xs shrink-0 border border-amber-200/50">
+                <Award className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xl font-black text-[#103125]">{data.totals.clubs.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Approved Clubs')}</div>
-                <div className="text-[10px] text-[#0D7751] font-medium">{t('50 Main + 2 Sub-Clubs')}</div>
+                <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.clubs.toLocaleString()}</div>
+                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Approved Clubs')}</div>
+                <div className="text-[10px] text-[#0D7751] font-semibold mt-0.5">{t('50 Main + 2 Sub-Clubs')}</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-xl bg-[#E9F5EF] text-[#0D7751] flex items-center justify-center">
-                <Users className="h-5 w-5" />
+            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
+                <Users className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xl font-black text-[#103125]">{data.totals.members.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Enrolled Members')}</div>
+                <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.members.toLocaleString()}</div>
+                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Enrolled Members')}</div>
               </div>
             </div>
           </div>
 
           {/* Chart (decorative duplicate of the table below — P4, one payload) */}
-          <div className="bg-white rounded-2xl border border-[#E2ECE7] p-6 shadow-xs">
-            <div className="flex items-center space-x-2 mb-4">
-              <BarChart3 className="h-4 w-4 text-[#0D7751]" />
-              <h3 className="text-sm font-bold text-[#103125]">{t('Active Members by State / UT')}</h3>
+          <div className="bg-white rounded-3xl border border-[#E2ECE7] p-6 sm:p-8 shadow-xs card-glow">
+            <div className="flex items-center space-x-2.5 mb-5 border-b border-[#E2ECE7]/70 pb-3">
+              <div className="p-1.5 rounded-lg bg-[#E9F5EF] text-[#0D7751]">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              <h3 className="text-sm font-extrabold text-[#103125]">{t('Active Members by State / UT')}</h3>
             </div>
-            <div className="max-h-96 overflow-y-auto pr-2 space-y-1.5" aria-hidden="true">
+            <div className="max-h-96 overflow-y-auto pr-2 space-y-2" aria-hidden="true">
               {ranked.map((row) => (
-                <div key={row.code} className="flex items-center space-x-2 text-[11px]">
-                  <div className="w-36 shrink-0 truncate text-[#5A7366] font-medium">{row.name}</div>
-                  <div className="grow bg-[#F4F8F6] rounded-full h-3.5 overflow-hidden">
+                <div key={row.code} className="flex items-center space-x-3 text-[11px] group">
+                  <div className="w-36 shrink-0 truncate text-[#5A7366] font-semibold group-hover:text-[#103125] transition-colors">{row.name}</div>
+                  <div className="grow bg-[#F4F8F6] rounded-full h-4 overflow-hidden p-0.5 border border-[#E2ECE7]/50">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[#1A503E] to-[#0D7751]"
-                      style={{ width: `${maxMembers > 0 ? Math.max((row.members / maxMembers) * 100, row.members > 0 ? 2 : 0) : 0}%` }}
+                      className="h-full rounded-full bg-gradient-to-r from-[#1A503E] via-[#0D7751] to-emerald-500 transition-all duration-500 shadow-xs"
+                      style={{ width: `${maxMembers > 0 ? Math.max((row.members / maxMembers) * 100, row.members > 0 ? 3 : 0) : 0}%` }}
                     />
                   </div>
-                  <div className="w-12 text-right font-bold text-[#103125]">{row.members.toLocaleString()}</div>
+                  <div className="w-14 text-right font-black text-[#103125]">{row.members.toLocaleString()}</div>
                 </div>
               ))}
             </div>

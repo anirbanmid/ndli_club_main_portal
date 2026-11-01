@@ -71,35 +71,38 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
       {/* Header Banner */}
-      <div className="bg-gradient-to-br from-[#103125] via-[#1A503E] to-[#0A5C3E] rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden">
+      <div className="hero-mesh bg-gradient-to-br from-[#103125] via-[#164433] to-[#0A5C3E] rounded-3xl p-6 sm:p-10 text-white shadow-2xl relative overflow-hidden border border-[#0D7751]/30">
         <div className="absolute right-0 top-0 opacity-10 p-8 pointer-events-none">
           <GraduationCap className="h-72 w-72 text-white" />
         </div>
+        {/* Ambient glow */}
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-3xl space-y-3">
-          <div className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 px-3 py-1 rounded-full text-xs font-bold text-brand-200 backdrop-blur-xs">
+          <div className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-xs font-bold text-brand-100 backdrop-blur-md shadow-xs">
             <Building2 className="h-3.5 w-3.5 text-amber-300" />
             <span>{t("Module 2: Institutional Club Module (CAMPUS)")}</span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
             {t("National Institutional Chapter Network")}
           </h1>
 
-          <p className="text-xs sm:text-sm text-brand-100/90 leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-brand-100/90 leading-relaxed max-w-2xl font-normal">
             {t("Explore chartered NDLI club chapters across Indian universities, colleges, and institutes. Select a campus chapter to view its public governance and activities, or sign in as an appointed authority to enter your institutional management dashboard.")}
           </p>
         </div>
 
         {/* Authority Fast-Track Sign In Ribbon */}
-        <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center shrink-0">
+        <div className="relative mt-8 pt-6 border-t border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="h-11 w-11 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-center shrink-0 shadow-xs">
               <ShieldCheck className="h-5 w-5 text-amber-300" />
             </div>
             <div>
-              <div className="text-xs font-bold text-white">{t("Appointed Club Authorities (Patron, President, Secretary, Executive Member)")}</div>
-              <div className="text-[11px] text-brand-200">{t("Access your club's operational desk, manage student rosters, and log campus events.")}</div>
+              <div className="text-xs font-extrabold text-white">{t("Appointed Club Authorities (Patron, President, Secretary, Executive Member)")}</div>
+              <div className="text-[11px] text-brand-200/90 font-medium">{t("Access your club's operational desk, manage student rosters, and log campus events.")}</div>
             </div>
           </div>
 
@@ -107,7 +110,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
             {onRegisterClub && (
               <button
                 onClick={onRegisterClub}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold shadow-md transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-gray-950 text-xs font-extrabold shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
               >
                 <Building2 className="h-4 w-4" />
                 <span>{t("Register Institutional Club")}</span>
@@ -115,10 +118,10 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
             )}
             <button
               onClick={onAuthoritySignIn}
-              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-ink-950 text-xs font-bold shadow-md transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-ink-950 text-xs font-black shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center space-x-2 shrink-0 cursor-pointer"
             >
               <LogIn className="h-4 w-4" />
-              <span>{t("Club Authority Sign In")}</span>
+              <span>{t("Authority Sign In")}</span>
             </button>
           </div>
         </div>
@@ -213,13 +216,16 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
 
       {/* Clubs Cards Grid */}
       {filteredClubs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
           {filteredClubs.map(club => (
             <div
               key={club.id}
-              className="bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-md hover:border-[#0D7751]/60 transition-all flex flex-col justify-between group"
+              className="bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-xl hover:border-[#0D7751]/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden card-glow"
             >
-              <div className="space-y-3">
+              {/* Top Accent Gradient Bar */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-600 via-[#0D7751] to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+              <div className="space-y-3.5">
                 {/* Badges */}
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20 font-mono">
@@ -232,7 +238,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
                 </div>
 
                 {/* Club / Institute Name */}
-                <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2">
+                <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2 leading-snug">
                   {club.name}
                 </h3>
 
@@ -243,26 +249,26 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
                 </div>
 
                 {/* Key authorities snippet */}
-                <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1">
+                <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1.5">
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
-                    <span className="font-bold text-[#103125] truncate max-w-[160px]">{club.authorities.find(a => a.role === 'Patron')?.name}</span>
+                    <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">{club.authorities.find(a => a.role === 'Patron')?.name}</span>
                   </div>
                   <div className="flex justify-between items-center text-[11px]">
                     <span className="text-[#5A7366] font-medium">{t("President:")}</span>
-                    <span className="font-bold text-[#103125] truncate max-w-[160px]">{club.authorities.find(a => a.role === 'President')?.name}</span>
+                    <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">{club.authorities.find(a => a.role === 'President')?.name}</span>
                   </div>
                 </div>
 
                 {/* Summary counts */}
                 <div className="grid grid-cols-2 gap-2 text-center pt-1">
-                  <div className="bg-[#F4F8F6] p-2 rounded-lg border border-[#E2ECE7]">
-                    <div className="text-sm font-extrabold text-[#103125]">{club.memberCount.toLocaleString()}</div>
-                    <div className="text-[10px] text-[#5A7366] font-medium uppercase">{t("Enrolled")}</div>
+                  <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
+                    <div className="text-base font-black text-[#103125]">{club.memberCount.toLocaleString()}</div>
+                    <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Enrolled")}</div>
                   </div>
-                  <div className="bg-[#F4F8F6] p-2 rounded-lg border border-[#E2ECE7]">
-                    <div className="text-sm font-extrabold text-[#0D7751]">{club.eventsConducted}</div>
-                    <div className="text-[10px] text-[#5A7366] font-medium uppercase">{t("Activities")}</div>
+                  <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
+                    <div className="text-base font-black text-[#0D7751]">{club.eventsConducted}</div>
+                    <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Activities")}</div>
                   </div>
                 </div>
               </div>
@@ -279,7 +285,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
 
                 <button
                   onClick={() => onManageClub(club)}
-                  className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#1A503E] hover:bg-[#103125] transition-colors flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer"
+                  className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#1A503E] hover:bg-[#103125] transition-colors flex items-center justify-center space-x-1.5 shadow-xs hover:shadow-md cursor-pointer"
                 >
                   <Lock className="h-3.5 w-3.5 text-amber-300" />
                   <span>{t("Manage Club")}</span>

@@ -187,18 +187,18 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* 3 Master Branches Switcher (The Core Portal Partition) */}
-        <div className="flex items-center p-1 bg-[#F4F8F6] rounded-xl border border-[#E2ECE7] self-start lg:self-auto overflow-x-auto max-w-full">
+        {/* 4 Master Branches Switcher (The Core Portal Partition) */}
+        <nav aria-label="Portal Modules" className="flex items-center p-1 bg-[#F4F8F6] rounded-2xl border border-[#E2ECE7] self-start lg:self-auto overflow-x-auto max-w-full shadow-2xs">
           {/* Branch 1: Public Landing */}
           <button
             onClick={() => {
               setCurrentBranch('landing');
               setCurrentTab('home');
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               currentBranch === 'landing'
-                ? 'bg-[#1A503E] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
+                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
             }`}
           >
             <Compass className="h-4 w-4" />
@@ -211,15 +211,15 @@ export const Header: React.FC<HeaderProps> = ({
               setCurrentBranch('club_module');
               setCurrentTab('club_directory');
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               currentBranch === 'club_module'
-                ? 'bg-[#1A503E] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
+                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
             }`}
           >
-            <GraduationCap className="h-4 w-4" />
+            <GraduationCap className="h-4 w-4 text-amber-300" />
             <span>{t("2. Institutional Club Module")}</span>
-            <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("CAMPUS")}</span>
+            <span className="bg-[#B45309] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("CAMPUS")}</span>
           </button>
 
           {/* Branch 3: IIT KGP Admin Module */}
@@ -228,10 +228,10 @@ export const Header: React.FC<HeaderProps> = ({
               setCurrentBranch('admin_module');
               setCurrentTab('admin_overview');
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               (currentBranch as string) === 'admin_module'
-                ? 'bg-[#1A503E] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
+                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
             }`}
           >
             <Landmark className="h-4 w-4" />
@@ -244,17 +244,17 @@ export const Header: React.FC<HeaderProps> = ({
               setCurrentBranch('student_module');
               setCurrentTab('student_home');
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               currentBranch === 'student_module'
-                ? 'bg-[#B45309] text-white shadow-sm'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/60'
+                ? 'bg-[#B45309] text-white shadow-sm shadow-amber-950/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
             }`}
           >
-            <Award className="h-4 w-4 text-amber-500" />
+            <Award className="h-4 w-4 text-amber-400" />
             <span>{t("4. Club Member Module")}</span>
-            <span className="bg-[#0D7751] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("STUDENT")}</span>
+            <span className="bg-[#0D7751] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("STUDENT")}</span>
           </button>
-        </div>
+        </nav>
 
         {/* Quick Action Buttons */}
         <div className="hidden lg:flex items-center space-x-2.5">
@@ -267,14 +267,14 @@ export const Header: React.FC<HeaderProps> = ({
                 setCurrentTab('login');
               }
             }}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#E2ECE7] bg-white text-[#1A503E] shadow-xs hover:bg-[#F4F8F6] transition-all"
+            className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold rounded-xl border border-[#E2ECE7] bg-white text-[#1A503E] shadow-2xs hover:bg-[#F4F8F6] hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all cursor-pointer"
           >
             <LogIn className="h-3.5 w-3.5 text-[#0D7751]" />
             <span>{t("Sign in")}</span>
           </button>
           <button
             onClick={openPasskeyModal}
-            className="flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold rounded-lg border border-[#0D7751] bg-[#1A503E] text-white shadow-xs hover:bg-[#103125] transition-all"
+            className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold rounded-xl border border-[#0D7751]/40 bg-gradient-to-r from-[#1A503E] to-[#103125] text-white shadow-md shadow-[#1A503E]/20 hover:from-[#103125] hover:to-[#0A5C3E] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
           >
             <KeyRound className="h-3.5 w-3.5 text-amber-300" />
             <span>{t("Student Passkey Join")}</span>

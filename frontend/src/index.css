@@ -79,14 +79,157 @@
   }
 }
 
-/* Custom smooth transitions and animations */
+/* ── Premium animations & micro-interactions ─────────────────────────── */
 .fade-in {
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Staggered children entrance (add .stagger-children to parent) */
+.stagger-children > * {
+  opacity: 0;
+  animation: slideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.16s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.20s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.24s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.28s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.32s; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scale-in for modals & panels */
+.scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Hero gradient mesh (living ambient glow) */
+.hero-mesh {
+  position: relative;
+  overflow: hidden;
+}
+.hero-mesh::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 50%, rgba(13, 119, 81, 0.35), transparent),
+    radial-gradient(ellipse 500px 350px at 80% 30%, rgba(180, 83, 9, 0.18), transparent),
+    radial-gradient(ellipse 400px 400px at 50% 80%, rgba(26, 80, 62, 0.30), transparent);
+  animation: meshDrift 12s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes meshDrift {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(3%, -2%) rotate(2deg); }
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Premium card hover glow (brand-tinted) */
+.card-glow {
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+.card-glow:hover {
+  box-shadow: 0 0 0 1px rgba(13, 119, 81, 0.15),
+              0 8px 24px -4px rgba(16, 49, 37, 0.12),
+              0 0 48px -12px rgba(13, 119, 81, 0.10);
+  border-color: rgba(13, 119, 81, 0.40);
+  transform: translateY(-2px);
+}
+
+/* Gradient text utility */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #F59E0B, #FCD34D, #F59E0B);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Shimmer loading skeleton */
+.shimmer {
+  background: linear-gradient(90deg, #E9F5EF 25%, #F4F8F6 50%, #E9F5EF 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Dot pattern overlay for hero */
+.dot-pattern {
+  background-image: radial-gradient(rgba(13, 119, 81, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Pulse ring for live indicators */
+.pulse-ring {
+  position: relative;
+}
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid rgba(13, 119, 81, 0.30);
+  animation: pulseRing 2s ease-out infinite;
+}
+@keyframes pulseRing {
+  0%   { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+/* Active tab pill indicator animation */
+.tab-pill-active {
+  position: relative;
+}
+.tab-pill-active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 3px;
+  border-radius: 3px;
+  background: #F59E0B;
+}
+
+/* Smooth gradient border for featured cards */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 9999px 9999px 0 0;
+  background: linear-gradient(90deg, #0D7751, #1A503E, #F59E0B);
 }
 
 @media print {

@@ -265,38 +265,41 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         {onBackToClubsList && (
           <button
             onClick={onBackToClubsList}
-            className="flex items-center space-x-1.5 text-xs font-bold text-[#2E4A3E] hover:text-[#103125] transition-colors cursor-pointer"
+            className="flex items-center space-x-2 text-xs font-bold text-[#2E4A3E] hover:text-[#103125] transition-colors cursor-pointer group"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
             <span>{t("Back to National Chapters Directory")}</span>
           </button>
         )}
 
-        <div className="bg-white rounded-3xl border border-[#E2ECE7] shadow-xl overflow-hidden">
-          {/* Top Security Banner */}
-          <div className="bg-gradient-to-r from-[#103125] via-[#1A503E] to-[#103125] text-white p-8 text-center relative">
-            <div className="inline-flex p-3.5 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-amber-300 mb-3">
+        <div className="bg-white rounded-3xl border border-[#E2ECE7] shadow-2xl overflow-hidden card-glow">
+          {/* Top Security Banner with Ambient Mesh */}
+          <div className="hero-mesh bg-gradient-to-r from-[#103125] via-[#164433] to-[#103125] text-white p-8 sm:p-10 text-center relative overflow-hidden border-b border-[#0D7751]/30">
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative inline-flex p-3.5 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-amber-300 mb-4 shadow-lg">
               <Lock className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="relative text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-snug">
               {t("Club Authority Authentication Required")}
             </h1>
-            <p className="text-xs sm:text-sm text-brand-200 mt-2 max-w-xl mx-auto">
-              {t("The Management Dashboard for")} <strong className="text-white">{activeClub.name}</strong> {t("is strictly locked behind authorized institutional credentials.")}
+            <p className="relative text-xs sm:text-sm text-brand-200 mt-2.5 max-w-xl mx-auto font-normal">
+              {t("The Management Dashboard for")} <strong className="text-white font-bold">{activeClub.name}</strong> {t("is strictly locked behind authorized institutional credentials.")}
             </p>
-            <div className="inline-flex items-center space-x-2 text-[11px] font-mono bg-white/10 px-3 py-1 rounded-full mt-3 text-brand-200 border border-white/10">
-              <span>{t("AISHE:")} {activeClub.aisheCode}</span>
-              <span>•</span>
+            <div className="relative inline-flex items-center space-x-2.5 text-[11px] font-mono bg-white/10 px-3.5 py-1.5 rounded-full mt-4 text-brand-200 border border-white/15 backdrop-blur-md">
+              <span className="font-semibold text-white">{t("AISHE:")} {activeClub.aisheCode}</span>
+              <span className="text-white/40">•</span>
               <span>{t("Zone:")} {t(activeClub.zone)}</span>
             </div>
           </div>
 
           <div className="p-6 sm:p-8 space-y-6">
             {/* Security Explanation */}
-            <div className="bg-[#F4F8F6] p-4 rounded-2xl border border-[#E2ECE7] space-y-2">
+            <div className="bg-[#F4F8F6] p-4 sm:p-5 rounded-2xl border border-[#E2ECE7] space-y-2">
               <div className="flex items-center space-x-2 text-xs font-bold text-[#103125]">
                 <ShieldCheck className="h-4 w-4 text-[#0D7751]" />
-                <span>{t("Institutional Governance Protection")}</span>
+                <span className="tracking-wide uppercase text-[11px] font-extrabold">{t("Institutional Governance Protection")}</span>
               </div>
               <p className="text-xs text-[#5A7366] leading-relaxed">
                 {t("This dashboard provides privileged access to student member rosters, confidential NAAC 3.3 audit documentation, certificate issuance workflows, and official succession requests. Public access is disabled in compliance with NDLI Club security protocols.")}
@@ -305,20 +308,23 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
             {/* Recognized Authorities Roster */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D7751]">
-                {t("Recognized Institutional Authorities for this Chapter:")}
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#0D7751] flex items-center space-x-2">
+                <span>{t("Recognized Institutional Authorities for this Chapter:")}</span>
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 stagger-children">
                 {activeClub.authorities.map(auth => (
-                  <div key={auth.role} className="p-3.5 rounded-xl bg-white border border-[#E2ECE7] shadow-2xs space-y-1">
+                  <div key={auth.role} className="p-4 rounded-2xl bg-white border border-[#E2ECE7] shadow-xs hover:shadow-md hover:border-[#0D7751]/40 transition-all card-glow space-y-1.5">
                     <div className="flex justify-between items-center text-[10px]">
-                      <span className="font-extrabold uppercase px-2 py-0.5 rounded bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
+                      <span className="font-extrabold uppercase px-2.5 py-0.5 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
                         {t(auth.role)}
                       </span>
-                      <span className="text-[#0D7751] font-bold text-[11px]">✓ Verified</span>
+                      <span className="text-[#0D7751] font-bold text-[11px] flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        <span>Verified</span>
+                      </span>
                     </div>
                     <div className="font-bold text-xs text-[#103125] pt-0.5">{auth.name}</div>
-                    <div className="text-[11px] text-[#5A7366]">{t(auth.designation)}</div>
+                    <div className="text-[11px] text-[#5A7366] font-medium">{t(auth.designation)}</div>
                     <div className="text-[11px] font-mono text-[#2E4A3E]">{auth.email}</div>
                   </div>
                 ))}
@@ -326,16 +332,16 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-4 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="pt-5 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center justify-between gap-3.5">
               <button
                 onClick={() => onViewPublicProfile(activeClub)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-[#E2ECE7] text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] hover:border-[#0D7751]/30 transition-all flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <Globe2 className="h-4 w-4 text-[#0D7751]" />
                 <span>{t("View Chapter Public Profile")}</span>
               </button>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
                 {/* NOTE FOR CLIENT HANDOVER: Remove this quick demo sign-in block prior to client handover */}
                 {onAuthorityQuickSignIn && presidentAuth && (
                   <button
@@ -345,12 +351,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                       email: presidentAuth.email,
                       clubId: activeClub.id
                     })}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 transition-all flex items-center justify-center space-x-1.5 cursor-pointer relative"
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#E9F5EF] hover:bg-[#d5eee0] text-[#0D7751] text-xs font-extrabold border border-[#0D7751]/30 transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-2xs hover:-translate-y-0.5"
                     title={t("Development / Review Only — Remove at client handover")}
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span>{t("Demo Sign In:")} {presidentAuth.name} ({t(presidentAuth.role)})</span>
-                    <span className="text-[9px] uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-extrabold border border-amber-300 ml-1">
+                    <span className="text-[9px] uppercase tracking-wider bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black border border-amber-300 ml-1">
                       {t("Review Only")}
                     </span>
                   </button>
@@ -359,7 +365,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 {onAuthoritySignIn && (
                   <button
                     onClick={onAuthoritySignIn}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#1A503E] to-[#103125] hover:from-[#103125] hover:to-[#0A5C3E] text-white text-xs font-extrabold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center space-x-2 cursor-pointer"
                   >
                     <LogIn className="h-4 w-4 text-amber-300" />
                     <span>{t("Sign In with Authority Email & OTP")}</span>
@@ -376,15 +382,17 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
       {/* Authorized Session Ribbon */}
-      <div className="bg-[#103125] text-white px-5 py-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs border border-[#1A503E] shadow-sm">
-        <div className="flex items-center space-x-2">
-          <ShieldCheck className="h-4 w-4 text-amber-300 shrink-0" />
+      <div className="bg-gradient-to-r from-[#103125] via-[#164433] to-[#103125] text-white px-5 py-3 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs border border-[#1A503E] shadow-md">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-400/30">
+            <ShieldCheck className="h-4 w-4" />
+          </div>
           <span>
-            {t("Authorized Management Session:")} <strong className="text-white">{authenticatedAuthority?.name || 'Club Authority'}</strong> ({t(authenticatedAuthority?.role || 'President')})
+            {t("Authorized Management Session:")} <strong className="text-white font-extrabold">{authenticatedAuthority?.name || 'Club Authority'}</strong> ({t(authenticatedAuthority?.role || 'President')})
           </span>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3.5">
           {onBackToClubsList && (
             <button
               onClick={onBackToClubsList}
@@ -399,7 +407,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               <span className="text-brand-600">|</span>
               <button
                 onClick={onAuthoritySignOut}
-                className="text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center space-x-1 cursor-pointer transition-colors"
+                className="text-xs text-amber-300 hover:text-amber-200 font-extrabold flex items-center space-x-1.5 cursor-pointer transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span>{t("Sign Out & Lock")}</span>
@@ -410,18 +418,18 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
       </div>
 
       {/* Club Module Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6 card-glow">
+        <div className="space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
+            <span className="text-[11px] font-extrabold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
               {t("Active Institutional Chapter")}
-                                      </span>
-            <span className="text-xs text-[#5A7366] font-mono">
+            </span>
+            <span className="text-xs text-[#5A7366] font-mono font-medium">
               {t("AISHE:")} {activeClub.aisheCode} {t("• Zone:")} {t(activeClub.zone)}
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#103125] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#103125] tracking-tight">
             {activeClub.name}
           </h1>
 
@@ -434,7 +442,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={() => setShowPosterModal(true)}
-            className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold transition-colors flex items-center space-x-1.5 shadow-xs cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#0D7751] to-[#109364] hover:from-[#0a5c3e] hover:to-[#0D7751] text-white text-xs font-bold transition-all flex items-center space-x-2 shadow-xs hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
           >
             <KeyRound className="h-4 w-4 text-amber-300" />
             <span>{t("Campus Passkey & QR Hub")}</span>
@@ -442,7 +450,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
           <button
             onClick={() => onViewPublicProfile(activeClub)}
-            className="px-4 py-2 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] text-xs font-bold transition-colors flex items-center space-x-1.5 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer hover:border-[#0D7751]/30"
           >
             <Globe2 className="h-4 w-4 text-[#0D7751]" />
             <span>{t("Public Profile Page")}</span>
@@ -450,7 +458,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
           <button
             onClick={() => setShowNaacPreview(true)}
-            className="px-4 py-2 rounded-xl bg-[#E9F5EF] text-[#0D7751] hover:bg-[#d5eee0] text-xs font-bold transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-[#E9F5EF] text-[#0D7751] hover:bg-[#d5eee0] text-xs font-extrabold transition-all flex items-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer hover:-translate-y-0.5"
           >
             <FileSpreadsheet className="h-4 w-4" />
             <span>{t("NAAC 3.3 Audit Report")}</span>
@@ -459,13 +467,13 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
       </div>
 
       {/* Internal Navigation Tabs (Requirements 3c.i to 3c.vii) */}
-      <div className="tab-scroll flex items-center gap-1 overflow-x-auto p-1.5 bg-white rounded-2xl border border-[#E2ECE7] shadow-2xs">
+      <div className="tab-scroll flex items-center gap-1.5 overflow-x-auto p-1.5 bg-[#F4F8F6] rounded-2xl border border-[#E2ECE7] shadow-2xs">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'overview'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
           <BarChart3 className="h-4 w-4" />
@@ -474,10 +482,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
         <button
           onClick={() => setActiveTab('membership_approval')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'membership_approval'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
           <UserPlus className="h-4 w-4 text-emerald-400" />
@@ -487,10 +495,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         {activeClub.category !== 'School' && (
           <button
             onClick={() => setActiveTab('subclubs')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'subclubs'
-                ? 'bg-[#1A503E] text-white shadow-xs'
-                : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
             <Layers className="h-4 w-4 text-emerald-400" />
@@ -501,10 +509,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         {activeClub.category === 'School' && (
           <button
             onClick={() => setActiveTab('school_roster')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'school_roster'
-                ? 'bg-[#1A503E] text-white shadow-xs'
-                : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                : 'text-[#2E4A3E] hover:bg-white/80'
             }`}
           >
             <SchoolIcon className="h-4 w-4 text-amber-400" />
@@ -514,22 +522,22 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
         <button
           onClick={() => setActiveTab('activities')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'activities'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
-          <Calendar className="h-4 w-4" />
+          <Calendar className="h-4 w-4 text-amber-300" />
           <span>{t("Activities & Events (")}{backendEvents.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab('libraries')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'libraries'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
           <BookOpen className="h-4 w-4 text-emerald-400" />
@@ -538,10 +546,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
         <button
           onClick={() => setActiveTab('tickets')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'tickets'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
           <LifeBuoy className="h-4 w-4" />
@@ -550,10 +558,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
         <button
           onClick={() => setActiveTab('succession')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
             activeTab === 'succession'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+              ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+              : 'text-[#2E4A3E] hover:bg-white/80'
           }`}
         >
           <Lock className="h-4 w-4" />
@@ -564,10 +572,10 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
       {/* TAB 1: 360° Overview & NAAC Metrics */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 stagger-children">
+            <div className="bg-white p-6 rounded-2xl border border-[#E2ECE7] shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Total Members Till Date")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">
+              <div className="text-3xl font-black text-[#103125] tracking-tight">
                 {memberStats
                   ? memberStats.total.toLocaleString()
                   : clubStudents.length.toLocaleString()}
@@ -577,28 +585,28 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                   ? `${memberStats.active.toLocaleString()} ${t("Active")} + ${memberStats.inactive.toLocaleString()} ${t("Inactive")}`
                   : `${clubStudents.filter((s) => s.status === 'Active').length.toLocaleString()} ${t("Active")} + ${clubStudents.filter((s) => s.status !== 'Active').length.toLocaleString()} ${t("Inactive")}`}
               </div>
-              <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1 pt-1 border-t border-[#E2ECE7]/50 mt-1">
-                <span>{t("Passkey:")} {activeClub.passkey}</span>
+              <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1 pt-1.5 border-t border-[#E2ECE7]/70 mt-1">
+                <span>{t("Passkey:")} <strong className="font-mono">{activeClub.passkey}</strong></span>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
+            <div className="bg-white p-6 rounded-2xl border border-[#E2ECE7] shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Annual Activities")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">{backendEvents.length}</div>
+              <div className="text-3xl font-black text-[#103125] tracking-tight">{backendEvents.length}</div>
               <div className="text-[11px] text-[#0D7751] font-semibold">{t("Verifiable events on record")}</div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
+            <div className="bg-white p-6 rounded-2xl border border-[#E2ECE7] shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Certificates Awarded")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">
+              <div className="text-3xl font-black text-[#103125] tracking-tight">
                 {clubStudents.reduce((acc, s) => acc + s.approvedCertificateCount, 0)}
               </div>
               <div className="text-[11px] text-[#B45309] font-semibold">{t("Authorized by Club President")}</div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
+            <div className="bg-white p-6 rounded-2xl border border-[#E2ECE7] shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Open Tickets")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">
+              <div className="text-3xl font-black text-[#103125] tracking-tight">
                 {clubTickets.filter(t => t.status !== 'Resolved').length}
               </div>
               <div className="text-[11px] text-[#5A7366]">{t("Routed to IIT KGP")} {t(activeClub.zone)} {t("Zone")}</div>

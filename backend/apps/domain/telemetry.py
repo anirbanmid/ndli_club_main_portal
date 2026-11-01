@@ -40,7 +40,6 @@ def state_breakdown() -> dict[str, Any]:
     institution_rows = {
         row["state__code"]: row["n"]
         for row in Institution.objects.filter(status=Institution.Status.ACTIVE)
-        .exclude(name__icontains="sample")
         .values("state__code")
         .annotate(n=Count("id"))
     }
@@ -61,14 +60,12 @@ def state_breakdown() -> dict[str, Any]:
         .annotate(n=Count("id"))
     }
 
-    # HEI Memberships (Total till date: active + alumni/inactive under genuine clubs)
+    # HEI Memberships (Total till date: active + alumni/inactive)
     hei_member_rows = {
         row["club__institution__state__code"]: row["n"]
-        for row in Membership.objects.filter(
-            club__is_sample=False, club__status=Club.Status.ACTIVE
+        for row in Membership.objects.values("club__institution__state__code").annotate(
+            n=Count("id")
         )
-        .values("club__institution__state__code")
-        .annotate(n=Count("id"))
     }
 
     # School Student Rosters (offline members)
@@ -77,11 +74,9 @@ def state_breakdown() -> dict[str, Any]:
 
         school_member_rows = {
             row["club__institution__state__code"]: row["n"]
-            for row in SchoolStudentRoster.objects.filter(
-                club__is_sample=False, club__status=Club.Status.ACTIVE
-            )
-            .values("club__institution__state__code")
-            .annotate(n=Count("id"))
+            for row in SchoolStudentRoster.objects.values(
+                "club__institution__state__code"
+            ).annotate(n=Count("id"))
         }
     except Exception:
         school_member_rows = {}

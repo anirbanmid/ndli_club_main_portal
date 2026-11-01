@@ -52,10 +52,8 @@ def directory_search(
     directory. ``q`` is optional; with no filters this lists the directory in
     stable code order.
     """
-    queryset = (
-        Institution.objects.select_related("state", "district")
-        .filter(status=Institution.Status.ACTIVE)
-        .exclude(name__icontains="sample")
+    queryset = Institution.objects.select_related("state", "district").filter(
+        status=Institution.Status.ACTIVE
     )
     if state:
         queryset = queryset.filter(state__code=state)

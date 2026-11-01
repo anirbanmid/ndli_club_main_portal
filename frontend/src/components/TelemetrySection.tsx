@@ -75,6 +75,7 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
               <div>
                 <div className="text-xl font-black text-[#103125]">{data.totals.institutions.toLocaleString()}</div>
                 <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Active Institutions')}</div>
+                <div className="text-[10px] text-[#5A7366] font-medium">{t('50 Verified HEIs')}</div>
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
@@ -83,7 +84,8 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
               </div>
               <div>
                 <div className="text-xl font-black text-[#103125]">{data.totals.clubs.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Chartered Clubs')}</div>
+                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Chartered Chapters')}</div>
+                <div className="text-[10px] text-[#0D7751] font-medium">{t('50 Main + 2 Sub-Clubs')}</div>
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">

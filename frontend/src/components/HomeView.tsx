@@ -59,14 +59,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
       .finally(() => setTelemetryLoading(false));
   }, []);
 
-  // Active verified clubs only for the public directory
-  const activeClubs = clubs.filter(c => c.status === 'Active');
+  // Chartered verified clubs for the public directory (excluding test samples or suspended)
+  const canonicalClubs = clubs.filter(c => c.status !== 'Suspended' && !c.isSample && !c.name.includes('(SAMPLE)'));
 
-  // Extract unique states for filter
-  const states = ['All', ...Array.from(new Set(activeClubs.map(c => c.state)))];
+  // Extract unique states for filter - sorted alphabetically across all States & UTs
+  const states = ['All', ...Array.from(new Set(canonicalClubs.map(c => c.state))).filter(Boolean).sort()];
   const categories = ['All', 'University', 'College', 'Autonomous Institute', 'School'];
 
-  const filteredClubs = activeClubs.filter(club => {
+  const filteredClubs = canonicalClubs.filter(club => {
     const matchesSearch = 
       club.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       club.aisheCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -210,8 +210,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span>{t("Public Certificate Verifier")}</span>
             </button>
             <span className="text-xs font-bold text-[#103125] bg-[#E9F5EF] px-3 py-1.5 rounded-lg border border-[#0D7751]/20">
-              {filteredClubs.length} {t("Active Chapters")}
-                                      </span>
+              {filteredClubs.length} {t("Chartered Chapters")}
+            </span>
           </div>
         </div>
 

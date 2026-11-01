@@ -28,6 +28,7 @@ import { InstitutionalClubsLandingView } from './components/InstitutionalClubsLa
 import { JoinView } from './components/clubs/JoinView';
 import { JoinClubModal } from './components/JoinClubModal';
 import { ClubMemberModuleView } from './components/members/ClubMemberModuleView';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { 
   INITIAL_CLUBS, 
   INITIAL_ACTIVITIES, 
@@ -567,28 +568,30 @@ export function App({ ssrLocation }: AppProps = {}) {
 
         {/* BRANCH 4: DEDICATED STUDENT MEMBER MODULE (Campus Specification §5) */}
         {currentBranch === 'student_module' && (
-          <ClubMemberModuleView
-            onSignOut={() => {
-              void signOut().catch(() => null);
-              setCurrentBranch('landing');
-              setCurrentTab('home');
-            }}
-            onSignIn={() => {
-              setLoginSourceBranch('student_module');
-              setLoginSourceTab('student_home');
-              setCurrentBranch('landing');
-              setCurrentTab('login');
-            }}
-            onViewPublicProfile={() => {
-              if (activeClub) {
-                setCurrentBranch('club_module');
-                setCurrentTab('club_dashboard');
-              } else {
-                setCurrentBranch('club_module');
-                setCurrentTab('club_directory');
-              }
-            }}
-          />
+          <ErrorBoundary fallbackTitle="Club Member Portal Error">
+            <ClubMemberModuleView
+              onSignOut={() => {
+                void signOut().catch(() => null);
+                setCurrentBranch('landing');
+                setCurrentTab('home');
+              }}
+              onSignIn={() => {
+                setLoginSourceBranch('student_module');
+                setLoginSourceTab('student_home');
+                setCurrentBranch('landing');
+                setCurrentTab('login');
+              }}
+              onViewPublicProfile={() => {
+                if (activeClub) {
+                  setCurrentBranch('club_module');
+                  setCurrentTab('club_dashboard');
+                } else {
+                  setCurrentBranch('club_module');
+                  setCurrentTab('club_directory');
+                }
+              }}
+            />
+          </ErrorBoundary>
         )}
 
         {/* BRANCH 3: IIT KHARAGPUR ADMINISTRATION MODULE — LOGIN-GATED.

@@ -40,7 +40,7 @@ export interface InstituteClub {
   zone: RegionalZone;
   category: 'University' | 'College' | 'Autonomous Institute' | 'School';
   passkey: string;
-  status: 'Active' | 'Pending Verification' | 'Needs Renewal' | 'Revision Required';
+  status: 'Active' | 'Pending Verification' | 'Needs Renewal' | 'Revision Required' | 'Suspended';
   memberCount: number;
   eventsConducted: number;
   establishedDate: string;

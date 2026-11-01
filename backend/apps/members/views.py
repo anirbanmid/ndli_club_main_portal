@@ -957,11 +957,18 @@ class StudentMemberMeView(APIView):
         user = request.user
         profile = getattr(user, "student_profile", None)
         if not profile:
-            club = getattr(user, "club", None)
+            club = None
+            try:
+                club = user.club
+            except Exception:
+                club = None
             if not club:
                 from apps.domain.models import Club
 
-                club = Club.objects.first()
+                club = (
+                    Club.objects.filter(is_sample=False, status="active").first()
+                    or Club.objects.first()
+                )
             if club:
                 from datetime import timedelta
 
@@ -1028,9 +1035,13 @@ class StudentMemberMeView(APIView):
                     "social_instagram": profile.social_instagram,
                     "social_x": profile.social_x,
                     "club": {
-                        "code": profile.club.code,
-                        "name": profile.club.name,
-                        "institution_name": profile.club.institution.name,
+                        "code": profile.club.code if profile.club else "",
+                        "name": profile.club.name if profile.club else "",
+                        "institution_name": (
+                            profile.club.institution.name
+                            if (profile.club and profile.club.institution)
+                            else (profile.club.name if profile.club else "")
+                        ),
                         "passkey": passkey,
                     },
                     "sub_clubs": [

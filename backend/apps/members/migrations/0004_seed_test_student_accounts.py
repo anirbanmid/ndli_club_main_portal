@@ -11,6 +11,7 @@ def seed_test_students_and_subclubs(apps, schema_editor):
     SubClub = apps.get_model("domain", "SubClub")
     Membership = apps.get_model("domain", "Membership")
     StudentMemberProfile = apps.get_model("members", "StudentMemberProfile")
+    JoinRequest = apps.get_model("members", "JoinRequest")
 
     creator = User.objects.filter(username="EMP01").first() or User.objects.first()
 
@@ -160,6 +161,15 @@ def seed_test_students_and_subclubs(apps, schema_editor):
                 club=club,
                 defaults={
                     "status": "active",
+                },
+            )
+
+            JoinRequest.objects.update_or_create(
+                user=user,
+                club=club,
+                defaults={
+                    "source": "passkey",
+                    "status": "approved",
                 },
             )
 

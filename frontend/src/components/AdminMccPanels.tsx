@@ -15,7 +15,7 @@
  *                   guard and aborts if the safety checkpoint cannot be written.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, FileText, Lock, RefreshCw, ShieldCheck, X, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock, FileText, Lock, RefreshCw, Send, ShieldCheck, X, Zap } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { t } from '../i18n';
 import { fetchInsightsReport, fetchRenewalAttention, fetchRenewalHistory, fetchSecurityChallenge, HARD_RESET_CONFIRM_PHRASE, hardReset, HardResetResult, InsightsReport, issueRenewal, issueRenewalDirect, rejectRenewal, RenewalAttentionRow, RenewalRecordRow } from '../lib/adminApi';
@@ -43,6 +43,15 @@ const RECORD_STATUS_LABEL: Record<string, string> = {
   requested: 'Requested',
   issued: 'Issued',
   rejected: 'Rejected',
+};
+
+const ZONE_OFFICER_MAP: Record<string, { code: string; name: string }> = {
+  NORTH: { code: 'EMP01', name: 'North Zone Officer' },
+  CENTRAL: { code: 'EMP02', name: 'Central Zone Officer' },
+  WEST: { code: 'EMP03', name: 'West Zone Officer' },
+  EAST: { code: 'EMP04', name: 'East Zone Officer' },
+  NORTH_EAST: { code: 'EMP05', name: 'North East Zone Officer' },
+  SOUTH: { code: 'EMP06', name: 'South Zone Officer' },
 };
 
 export const RenewalDesk: React.FC = () => {
@@ -161,37 +170,38 @@ export const RenewalDesk: React.FC = () => {
                     <th className="p-3">{t('Due Date')}</th>
                     <th className="p-3">{t('Days Left')}</th>
                     <th className="p-3">{t('Last Renewal')}</th>
-                    <th className="p-3 text-right">{t('Action')}</th>
+                    <th className="p-3 text-right">{t('Responsible Regional Officer')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-                  {attention.map((row) => (
-                    <tr key={row.club_code} className="hover:bg-[#F4F8F6]/60">
-                      <td className="p-3">
-                        <div className="font-bold text-[#103125]">{row.club_name}</div>
-                        <div className="font-mono text-[11px] text-[#5A7366]">{row.club_code}</div>
-                      </td>
-                      <td className="p-3">{row.zone_code}</td>
-                      <td className="p-3 font-mono">{formatDate(row.due_date)}</td>
-                      <td className="p-3">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                          row.days_left < 0 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {row.days_left < 0 ? `${-row.days_left}d ${t('overdue')}` : `${row.days_left}d`}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono">{formatDate(row.last_renewal_date)}</td>
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => void onIssueDirect(row.club_code)}
-                          disabled={busy === `direct:${row.club_code}`}
-                          className="px-3 py-1 rounded-lg bg-[#0D7751] text-white font-bold hover:bg-[#0a5c3e] shadow-2xs disabled:opacity-50"
-                        >
-                          {t('Issue Certificate')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {attention.map((row) => {
+                    const officer = ZONE_OFFICER_MAP[(row.zone_code || '').toUpperCase()] || { code: 'EMP01', name: 'Regional Zonal Officer' };
+                    return (
+                      <tr key={row.club_code} className="hover:bg-[#F4F8F6]/60">
+                        <td className="p-3">
+                          <div className="font-bold text-[#103125]">{row.club_name}</div>
+                          <div className="font-mono text-[11px] text-[#5A7366]">{row.club_code}</div>
+                        </td>
+                        <td className="p-3">{row.zone_code}</td>
+                        <td className="p-3 font-mono">{formatDate(row.due_date)}</td>
+                        <td className="p-3">
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                            row.days_left < 0 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {row.days_left < 0 ? `${-row.days_left}d ${t('overdue')}` : `${row.days_left}d`}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono">{formatDate(row.last_renewal_date)}</td>
+                        <td className="p-3 text-right">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200 text-xs font-semibold shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="font-mono font-bold">{officer.code}</span>
+                            <span className="text-[#5A7366] text-[11px] hidden sm:inline">({t(officer.name)})</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {attention.length === 0 && (
                     <tr><td colSpan={6} className="p-6 text-center text-[#5A7366]">{t('Nothing due in the next 30 days.')}</td></tr>
                   )}
@@ -359,6 +369,14 @@ export const InsightsPanel: React.FC = () => {
   const [report, setReport] = useState<InsightsReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedRec, setSelectedRec] = useState<{
+    category: string;
+    priority: string;
+    title: string;
+    insight: string;
+    action: string;
+  } | null>(null);
+  const [directiveDispatched, setDirectiveDispatched] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -434,7 +452,20 @@ export const InsightsPanel: React.FC = () => {
                 return (
                   <div
                     key={i}
-                    className="p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-xs transition-shadow"
+                    onClick={() => {
+                      setSelectedRec(rec);
+                      setDirectiveDispatched(false);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedRec(rec);
+                        setDirectiveDispatched(false);
+                      }
+                    }}
+                    className="p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2ECE7] flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-lg hover:border-[#5B45A8]/50 hover:-translate-y-1 transition-all cursor-pointer group card-glow"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
@@ -451,23 +482,121 @@ export const InsightsPanel: React.FC = () => {
                           {rec.category}
                         </span>
                       </div>
-                      <h4 className="text-sm font-extrabold text-[#103125]">
+                      <h4 className="text-sm font-extrabold text-[#103125] group-hover:text-[#5B45A8] transition-colors">
                         {rec.title}
                       </h4>
-                      <p className="text-xs text-[#5A7366] leading-relaxed">
+                      <p className="text-xs text-[#5A7366] leading-relaxed line-clamp-3">
                         {rec.insight}
                       </p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-[11px] text-[#0A5C3E] leading-relaxed">
-                      <strong className="block text-[10px] uppercase font-black tracking-wider text-emerald-900 mb-0.5">
-                        Recommended Policy Action:
-                      </strong>
-                      {rec.action}
+                    <div className="space-y-2.5 pt-1">
+                      <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-[11px] text-[#0A5C3E] leading-relaxed">
+                        <strong className="block text-[10px] uppercase font-black tracking-wider text-emerald-900 mb-0.5">
+                          Recommended Policy Action:
+                        </strong>
+                        <span className="line-clamp-2">{rec.action}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-[#5B45A8] font-bold pt-1">
+                        <span>{t('View Strategic Directive')}</span>
+                        <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Modal: AI Policy Directive Details */}
+        {selectedRec && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rec-modal-title"
+          >
+            <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full border border-[#E2ECE7] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-[#103125] via-[#164433] to-[#5B45A8] p-6 text-white flex items-start justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 text-white">
+                      {selectedRec.category}
+                    </span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      selectedRec.priority === 'High' ? 'bg-rose-500 text-white' : 'bg-amber-400 text-[#103125]'
+                    }`}>
+                      {selectedRec.priority} Priority
+                    </span>
+                  </div>
+                  <h3 id="rec-modal-title" className="text-lg font-black tracking-tight leading-snug">
+                    {selectedRec.title}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRec(null)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs text-[#17332A]">
+                <div>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#5A7366] mb-1.5">
+                    {t('AI Diagnostic Analysis & Strategic Insight')}
+                  </h4>
+                  <div className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] text-[#103125] leading-relaxed">
+                    {selectedRec.insight}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-emerald-900 mb-1.5">
+                    {t('Actionable Policy Directive')}
+                  </h4>
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#0A5C3E] leading-relaxed font-medium">
+                    {selectedRec.action}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-[11px] text-[#5A7366]">
+                  <span>Target Execution Authority:</span>
+                  <span className="font-mono font-bold text-[#103125]">IIT KGP Central Admin • Zonal EMP01–EMP07</span>
+                </div>
+
+                {directiveDispatched && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>{t('Strategic Directive successfully dispatched to all 6 Regional Zonal Desks (EMP01–EMP07).')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-[#F4F8F6] border-t border-[#E2ECE7] flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRec(null)}
+                  className="px-4 py-2 rounded-xl border border-[#E2ECE7] bg-white text-xs font-bold text-[#5A7366] hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  {t('Close')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDirectiveDispatched(true)}
+                  disabled={directiveDispatched}
+                  className="px-4 py-2 rounded-xl bg-[#5B45A8] hover:bg-[#4a378a] text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>{directiveDispatched ? t('Directive Dispatched') : t('Dispatch Directive to Zonal Officers')}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

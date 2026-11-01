@@ -310,3 +310,30 @@ h1, h2, h3 {
 .tab-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* --- Auto-scrolling dynamic marquee for club cards (Issue 9) --- */
+@keyframes marqueeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marqueeScroll 40s linear infinite;
+}
+
+.marquee-container:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* --- Subtle floating animation for top hero banner (Issue 11) --- */
+@keyframes ambientFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.04); }
+}
+
+.animate-ambient-float {
+  animation: ambientFloat 8s ease-in-out infinite;
+}
+

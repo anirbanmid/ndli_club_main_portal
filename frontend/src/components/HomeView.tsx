@@ -80,9 +80,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
     <div className="space-y-14 pb-20">
       {/* Hero Section with Authentic NDLI Green & Amber Theme */}
       <section className="relative overflow-hidden hero-mesh bg-gradient-to-br from-[#103125] via-[#164433] to-[#0A5C3E] text-white py-16 sm:py-20 px-4 sm:px-6 lg:px-8 rounded-3xl mx-4 sm:mx-6 lg:mx-8 mt-6 shadow-2xl border border-[#0D7751]/30">
-        {/* Ambient decorative glow spheres */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient decorative glow spheres with subtle float animation */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none animate-ambient-float" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none animate-ambient-float" style={{ animationDelay: '4s' }} />
         <div className="absolute inset-0 opacity-15 dot-pattern pointer-events-none"></div>
 
         <div className="relative max-w-5xl mx-auto text-center space-y-6">
@@ -182,6 +182,88 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
+      {/* Four Seamless Modules Selection Bar - positioned with comfortable spacing below hero */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#103125] via-[#164433] to-[#0d3b2c] text-white rounded-3xl p-6 sm:p-10 border border-[#1A503E] shadow-2xl">
+          {/* Ambient Glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative max-w-3xl mb-8 space-y-2">
+            <span className="inline-flex items-center space-x-2 text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+              <Sparkles className="h-3 w-3" />
+              <span>{t("Unified National Learning Architecture")}</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight pt-1">
+              {t("Four Seamless Modules Powering NDLI Club 2.0")}
+            </h2>
+            <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed font-normal">
+              {t("Replacing the legacy portal with an enterprise-grade quadruple-branch platform.")}
+            </p>
+          </div>
+
+          <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
+            <div className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 hover:bg-white/[0.09] transition-all">
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30">
+                1
+              </div>
+              <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToClubModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                2
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("Club & Campus Module")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToAdminModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                3
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("IIT Kharagpur Admin")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToStudentModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                4
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("Club Member Module (STUDENT)")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("Personal learning dashboard for enrolled scholars. Participate in activities, manage disciplinary sub-clubs, and curate digital libraries.")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Live registry telemetry (chart + accessible table, one payload) */}
       <TelemetrySection data={telemetry} loading={telemetryLoading} failed={telemetryFailed} />
 
@@ -266,8 +348,85 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Club Grid */}
-        {filteredClubs.length > 0 ? (
+        {/* Dynamic Auto-Scrolling Row (Unsearched) or Fixed Filtered Grid (Searched) */}
+        {!searchTerm.trim() && selectedState === 'All' && selectedCategory === 'All' ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#5A7366] px-1">
+              <span className="font-semibold flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                {t("Dynamic National Roster (Auto-scrolling showcase • Hover to pause • Use search to isolate specific club)")}
+              </span>
+              <span className="text-[11px] font-mono font-bold bg-[#E9F5EF] text-[#0D7751] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
+                {canonicalClubs.length} {t("Approved Clubs")}
+              </span>
+            </div>
+
+            <div className="marquee-container relative overflow-hidden py-3">
+              {/* Gradient edge masks for smooth fade */}
+              <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[#F4F8F6] to-transparent z-10 pointer-events-none" />
+              <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-[#F4F8F6] to-transparent z-10 pointer-events-none" />
+
+              <div className="marquee-track gap-6 px-4">
+                {[...canonicalClubs.slice(0, 14), ...canonicalClubs.slice(0, 14)].map((club, idx) => (
+                  <div
+                    key={`${club.id}-${idx}`}
+                    className="w-80 sm:w-96 shrink-0 bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-xl hover:border-[#0D7751]/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden card-glow"
+                  >
+                    {/* Subtle top accent highlight */}
+                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-600 via-[#0D7751] to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    <div className="space-y-3.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20">
+                          {t("AISHE:")} {club.aisheCode}
+                        </span>
+                        <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
+                          <CheckCircle2 className="h-3 w-3 text-brand-700" />
+                          <span>{t(club.zone)} {t("Zone")}</span>
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2 leading-snug">
+                        {club.name}
+                      </h3>
+
+                      <div className="flex items-center space-x-1.5 text-xs text-[#5A7366]">
+                        <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span>{club.district}, {club.state}</span>
+                      </div>
+
+                      {/* Key authorities snippet */}
+                      <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1.5">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
+                          <span className="font-bold text-[#103125] truncate max-w-[170px] text-right">{club.authorities.find(a => a.role === 'Patron')?.name || 'Nodal Head'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#5A7366] font-medium">{t("President:")}</span>
+                          <span className="font-bold text-[#103125] truncate max-w-[170px] text-right">{club.authorities.find(a => a.role === 'President')?.name || 'Faculty Advisor'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-[#E2ECE7] flex items-center justify-between">
+                      <div className="text-xs text-[#5A7366]">
+                        <span className="font-black text-[#103125] text-sm">{club.memberCount.toLocaleString()}</span> {t("Scholars")}
+                      </div>
+
+                      <button
+                        onClick={() => onSelectClub(club)}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#1A503E] bg-[#E9F5EF] hover:bg-[#d5eee0] transition-colors flex items-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer group-hover:border-[#0D7751]"
+                      >
+                        <span>{t("View Public Profile")}</span>
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : filteredClubs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
             {filteredClubs.map(club => (
               <div
@@ -335,88 +494,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </p>
           </div>
         )}
-      </section>
-
-      {/* 3 Main Architectural Branches Overview (Pitch Feature) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#103125] via-[#164433] to-[#0d3b2c] text-white rounded-3xl p-8 sm:p-12 border border-[#1A503E] shadow-2xl">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative max-w-3xl mb-10 space-y-2">
-            <span className="inline-flex items-center space-x-2 text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-              <Sparkles className="h-3 w-3" />
-              <span>{t("Unified National Learning Architecture")}</span>
-            </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight pt-1">
-              {t("Four Seamless Modules Powering NDLI Club 2.0")}
-            </h2>
-            <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed font-normal">
-              {t("Replacing the legacy portal with an enterprise-grade quadruple-branch platform.")}
-            </p>
-          </div>
-
-          <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
-            <div className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 hover:bg-white/[0.09] transition-all">
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30">
-                1
-              </div>
-              <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToClubModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                2
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("Club & Campus Module")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToAdminModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                3
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("IIT Kharagpur Admin")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToStudentModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                4
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("Club Member Module (STUDENT)")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("Personal learning dashboard for enrolled scholars. Participate in activities, manage disciplinary sub-clubs, and curate digital libraries.")}
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
     </div>
   );

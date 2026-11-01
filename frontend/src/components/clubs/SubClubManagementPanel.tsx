@@ -8,7 +8,11 @@ import {
   Layers, 
   UserCheck, 
   Mail, 
-  Phone
+  Phone,
+  ArrowRight,
+  Copy,
+  Check,
+  X
 } from 'lucide-react';
 import { SubClub, fetchSubClubs, createSubClub } from '../../lib/campusApi';
 
@@ -37,6 +41,8 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
   const [coordPhone, setCoordPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [selectedSubClub, setSelectedSubClub] = useState<SubClub | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   const loadSubClubs = async () => {
     setLoading(true);
@@ -191,50 +197,167 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
           {subClubs.map((sub) => (
             <div
               key={sub.id}
-              className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs hover:shadow-md transition-all space-y-3 relative group"
+              onClick={() => setSelectedSubClub(sub)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedSubClub(sub);
+                }
+              }}
+              className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs hover:shadow-xl hover:border-emerald-500/50 hover:-translate-y-1 transition-all duration-300 space-y-3 relative group cursor-pointer card-glow flex flex-col justify-between"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md uppercase tracking-wider">
-                      {sub.code}
-                    </span>
-                    <span className="text-xs text-gray-400 font-medium">{sub.discipline}</span>
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-md uppercase tracking-wider">
+                        {sub.code}
+                      </span>
+                      <span className="text-xs text-gray-400 font-medium">{sub.discipline}</span>
+                    </div>
+                    <h4 className="text-base font-bold text-gray-900 leading-tight group-hover:text-emerald-800 transition-colors">{sub.name}</h4>
                   </div>
-                  <h4 className="text-base font-bold text-gray-900 leading-tight">{sub.name}</h4>
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                    sub.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {sub.is_active ? 'Active' : 'Inactive'}
+                  </span>
                 </div>
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                  sub.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {sub.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
 
-              {/* Coordinator Information */}
-              <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 text-xs text-gray-600 border border-gray-100">
-                <div className="flex items-center space-x-2 text-gray-900 font-semibold">
-                  <UserCheck className="h-3.5 w-3.5 text-emerald-700" />
-                  <span>{sub.coordinator_name}</span>
-                  <span className="text-[10px] text-gray-400 font-normal">(Coordinator)</span>
-                </div>
-                <div className="flex items-center space-x-2 text-[11px] text-gray-500">
-                  <Mail className="h-3.5 w-3.5 text-gray-400" />
-                  <span className="truncate">{sub.coordinator_email}</span>
-                </div>
-                {sub.coordinator_phone && (
+                {/* Coordinator Information */}
+                <div className="p-3 bg-gray-50 rounded-xl space-y-1.5 text-xs text-gray-600 border border-gray-100">
+                  <div className="flex items-center space-x-2 text-gray-900 font-semibold">
+                    <UserCheck className="h-3.5 w-3.5 text-emerald-700" />
+                    <span>{sub.coordinator_name}</span>
+                    <span className="text-[10px] text-gray-400 font-normal">(Coordinator)</span>
+                  </div>
                   <div className="flex items-center space-x-2 text-[11px] text-gray-500">
-                    <Phone className="h-3.5 w-3.5 text-gray-400" />
-                    <span>{sub.coordinator_phone}</span>
+                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="truncate">{sub.coordinator_email}</span>
                   </div>
-                )}
+                  {sub.coordinator_phone && (
+                    <div className="flex items-center space-x-2 text-[11px] text-gray-500">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{sub.coordinator_phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
-                <span>Unit of {clubName}</span>
-                <span className="font-semibold text-emerald-700">No Central Approval Needed</span>
+              <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-emerald-700 font-bold group-hover:text-emerald-900">
+                <span>View Sub-Club Chapter Details</span>
+                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Selected Sub-Club Details & Management Modal */}
+      {selectedSubClub && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="subclub-modal-title"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full border border-emerald-100 overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-700/60 text-emerald-200 text-[10px] font-black uppercase tracking-wider">
+                    {selectedSubClub.code}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold">
+                    {selectedSubClub.is_active ? 'Active Unit' : 'Inactive'}
+                  </span>
+                </div>
+                <h3 id="subclub-modal-title" className="text-xl font-bold leading-snug">
+                  {selectedSubClub.name}
+                </h3>
+                <p className="text-xs text-emerald-200 mt-0.5">
+                  Disciplinary Chapter • {selectedSubClub.discipline}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSubClub(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs text-gray-700 max-h-[75vh] overflow-y-auto">
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
+                <div className="text-[11px] font-black text-emerald-900 uppercase tracking-wider">
+                  Federated Charter Specification
+                </div>
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  Established under <strong>{clubName}</strong> ($1+N$ Federated Architecture). Disciplinary sub-clubs operate autonomously with departmental coordinators, requiring no external central approval.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-[11px] font-bold uppercase text-gray-500 mb-2">Designated Coordinator</h4>
+                <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 space-y-2.5">
+                  <div className="flex items-center space-x-2 text-sm font-bold text-gray-900">
+                    <UserCheck className="h-4 w-4 text-emerald-700" />
+                    <span>{selectedSubClub.coordinator_name}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-gray-600">
+                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    <a href={`mailto:${selectedSubClub.coordinator_email}`} className="text-emerald-700 underline font-medium">
+                      {selectedSubClub.coordinator_email}
+                    </a>
+                  </div>
+                  {selectedSubClub.coordinator_phone && (
+                    <div className="flex items-center space-x-2 text-xs text-gray-600">
+                      <Phone className="h-3.5 w-3.5 text-gray-400" />
+                      <span>{selectedSubClub.coordinator_phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[10px] uppercase font-bold text-gray-400">Main Campus Club</div>
+                  <div className="font-semibold text-gray-900 truncate mt-0.5">{clubName}</div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <div className="text-[10px] uppercase font-bold text-gray-400">Institutional Code</div>
+                  <div className="font-mono font-bold text-gray-900 mt-0.5">{clubCode}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${selectedSubClub.name} (${selectedSubClub.code}) - ${clubName}`);
+                  setCopiedCode(true);
+                  setTimeout(() => setCopiedCode(false), 2000);
+                }}
+                className="px-3.5 py-2 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-700 hover:bg-gray-100 flex items-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{copiedCode ? 'Citation Copied' : 'Copy Chapter Citation'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedSubClub(null)}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

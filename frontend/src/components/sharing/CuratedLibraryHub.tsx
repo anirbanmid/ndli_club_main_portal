@@ -175,7 +175,7 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
 
           <button
             onClick={() => setIsNewLibModalOpen(true)}
-            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs rounded-xl transition-all shadow-md flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#103125] font-extrabold text-xs rounded-xl shadow-lg shadow-amber-950/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
           >
             <FolderPlus className="h-4 w-4" />
             <span>New {activeTier.toUpperCase()} Library</span>
@@ -183,13 +183,13 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
         </div>
 
         {/* 3-Tier Tabs Switcher */}
-        <div className="mt-6 pt-4 border-t border-emerald-800/60 flex flex-wrap gap-2 text-xs font-bold">
+        <div className="mt-6 pt-4 border-t border-emerald-800/60 flex flex-wrap gap-2.5 text-xs font-bold">
           <button
             onClick={() => setActiveTier('club')}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 cursor-pointer ${
               activeTier === 'club'
-                ? 'bg-white text-emerald-950 shadow-md'
-                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800'
+                ? 'bg-white text-[#103125] shadow-md shadow-black/20 scale-[1.03]'
+                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800/80 hover:text-white hover:-translate-y-0.5 active:translate-y-0'
             }`}
           >
             <Building2 className="h-4 w-4" />
@@ -198,10 +198,10 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
 
           <button
             onClick={() => setActiveTier('personal')}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 cursor-pointer ${
               activeTier === 'personal'
-                ? 'bg-white text-emerald-950 shadow-md'
-                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800'
+                ? 'bg-white text-[#103125] shadow-md shadow-black/20 scale-[1.03]'
+                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800/80 hover:text-white hover:-translate-y-0.5 active:translate-y-0'
             }`}
           >
             <User className="h-4 w-4" />
@@ -210,10 +210,10 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
 
           <button
             onClick={() => setActiveTier('community')}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center space-x-2 ${
+            className={`px-4 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 cursor-pointer ${
               activeTier === 'community'
-                ? 'bg-white text-emerald-950 shadow-md'
-                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800'
+                ? 'bg-white text-[#103125] shadow-md shadow-black/20 scale-[1.03]'
+                : 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800/80 hover:text-white hover:-translate-y-0.5 active:translate-y-0'
             }`}
           >
             <Globe className="h-4 w-4" />
@@ -330,7 +330,7 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveLibForResource(lib)}
-                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer"
+                  className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#0D7751] hover:text-[#0a5c3e] border border-emerald-200/80 rounded-xl text-xs font-bold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 hover:shadow-xs flex items-center space-x-1.5 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Add NDLI Link</span>

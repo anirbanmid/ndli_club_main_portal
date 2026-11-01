@@ -156,8 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Branding & Master Branch Bar - hidden when inside IIT KGP Admin Module */}
-      {currentBranch !== 'admin_module' && (
+      {/* Main Branding & Master Branch Bar - accessible across all modules */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         {/* Brand identity */}
         <div className="flex items-center justify-between">
@@ -281,7 +280,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
       </div>
-      )}
     </header>
   );
 };

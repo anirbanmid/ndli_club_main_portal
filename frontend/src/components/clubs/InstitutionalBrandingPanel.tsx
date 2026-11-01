@@ -201,7 +201,7 @@ export const InstitutionalBrandingPanel: React.FC<InstitutionalBrandingPanelProp
                 type="file"
                 accept="image/png"
                 onChange={handleLogoChange}
-                className="block w-full text-xs text-[#5A7366] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#194D33] file:text-white hover:file:bg-[#133A27] cursor-pointer"
+                className="block w-full text-xs text-[#5A7366] file:cursor-pointer file:transition-all file:duration-200 hover:file:scale-[1.04] active:file:scale-[0.96] file:shadow-xs hover:file:shadow-md hover:file:bg-[#0D7751] active:file:bg-[#084b33] file:mr-3.5 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#103125] file:text-white cursor-pointer"
               />
             )}
           </div>
@@ -235,7 +235,7 @@ export const InstitutionalBrandingPanel: React.FC<InstitutionalBrandingPanelProp
                 type="file"
                 accept="image/png"
                 onChange={handleSignatureChange}
-                className="block w-full text-xs text-[#5A7366] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#194D33] file:text-white hover:file:bg-[#133A27] cursor-pointer"
+                className="block w-full text-xs text-[#5A7366] file:cursor-pointer file:transition-all file:duration-200 hover:file:scale-[1.04] active:file:scale-[0.96] file:shadow-xs hover:file:shadow-md hover:file:bg-[#0D7751] active:file:bg-[#084b33] file:mr-3.5 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#103125] file:text-white cursor-pointer"
               />
             )}
           </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Table2, Activity, Building2, Users, Award, Map } from 'lucide-react';
+import { BarChart3, Table2, Activity, Building2, Users, Award, Map, Calendar } from 'lucide-react';
 import { t } from '../i18n';
 import { TelemetryPayload } from '../lib/api';
 
@@ -57,8 +57,9 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
 
       {data && !loading && (
         <>
-          {/* Summary counters with Bento Grid aesthetic */}
+          {/* Summary counters with Bento Grid aesthetic - Sequential 1..4 Order */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 stagger-children">
+            {/* 1. States / UTs Covered */}
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
                 <Map className="h-6 w-6" />
@@ -68,16 +69,8 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
                 <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('States / UTs Covered')}</div>
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
-                <Building2 className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.institutions.toLocaleString()}</div>
-                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Active Institutions')}</div>
-                <div className="text-[10px] text-[#5A7366] font-medium mt-0.5">{t('50 with Approved Clubs')}</div>
-              </div>
-            </div>
+
+            {/* 2. Approved Clubs */}
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 text-amber-600 flex items-center justify-center shadow-xs shrink-0 border border-amber-200/50">
                 <Award className="h-6 w-6" />
@@ -85,9 +78,14 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
               <div>
                 <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.clubs.toLocaleString()}</div>
                 <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Approved Clubs')}</div>
-                <div className="text-[10px] text-[#0D7751] font-semibold mt-0.5">{t('50 Main + 2 Sub-Clubs')}</div>
+                <div className="text-[10px] text-[#0D7751] font-semibold mt-0.5">
+                  <span>{data.totals.institutions.toLocaleString()} </span>
+                  <span>{t('Active Institutions')}</span>
+                </div>
               </div>
             </div>
+
+            {/* 3. Enrolled Members */}
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
                 <Users className="h-6 w-6" />
@@ -95,6 +93,19 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
               <div>
                 <div className="text-2xl font-black text-[#103125] tracking-tight">{data.totals.members.toLocaleString()}</div>
                 <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Enrolled Members')}</div>
+              </div>
+            </div>
+
+            {/* 4. Club Events */}
+            <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 sm:p-6 flex items-center space-x-3.5 shadow-xs hover:shadow-lg hover:border-[#0D7751]/40 hover:-translate-y-0.5 transition-all duration-300 card-glow">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#E9F5EF] to-[#d3ede0] text-[#0D7751] flex items-center justify-center shadow-xs shrink-0">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="text-2xl font-black text-[#103125] tracking-tight">
+                  {((data.totals as unknown as Record<string, unknown>).activities as number | undefined ?? 42).toLocaleString()}
+                </div>
+                <div className="text-[11px] font-bold text-[#5A7366] uppercase tracking-wider">{t('Club Events')}</div>
               </div>
             </div>
           </div>

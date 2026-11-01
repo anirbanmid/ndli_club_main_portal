@@ -950,9 +950,63 @@ class Command(BaseCommand):
                             "status": Membership.Status.ACTIVE,
                         },
                     )
+
+                bhu_club = Club.objects.filter(code__iexact="CLUB-BHU-008").first()
+                if bhu_club:
+                    for pres_uname, pres_email in [
+                        ("bhu.president", "pres.bhu@bhu.ac.in"),
+                        ("pres.bhu-008", "pres.club-bhu-008@ndli.edu"),
+                    ]:
+                        pres_user, _ = User.objects.get_or_create(
+                            username=pres_uname,
+                            defaults={
+                                "email": pres_email,
+                                "first_name": "Dr. D. K.",
+                                "last_name": "Rai",
+                                "category": Category.CLUB_ADMIN,
+                                "sub_role": SubRole.CLUB_PRESIDENT,
+                                "account_state": AccountState.ACTIVE,
+                                "club": bhu_club,
+                                "institution": bhu_club.institution,
+                                "state": (
+                                    bhu_club.institution.state
+                                    if bhu_club.institution
+                                    else None
+                                ),
+                                "zone": (
+                                    bhu_club.institution.state.zone
+                                    if (
+                                        bhu_club.institution
+                                        and bhu_club.institution.state
+                                    )
+                                    else None
+                                ),
+                                "is_active": True,
+                            },
+                        )
+                        pres_user.set_password("Password@123")
+                        pres_user.category = Category.CLUB_ADMIN
+                        pres_user.sub_role = SubRole.CLUB_PRESIDENT
+                        pres_user.account_state = AccountState.ACTIVE
+                        pres_user.must_change_password = False
+                        pres_user.is_active = True
+                        pres_user.club = bhu_club
+                        pres_user.institution = bhu_club.institution
+                        pres_user.save()
+
+                        AuthorityAssignment.objects.update_or_create(
+                            user=pres_user,
+                            club=bhu_club,
+                            tier="President",
+                            defaults={
+                                "from_date": timezone.localdate(),
+                                "status": AuthorityAssignment.Status.ACTIVE,
+                            },
+                        )
+
                 self.stdout.write(
                     "Successfully seeded active canonical student accounts "
-                    "(student.bhu, student.iitkgp, student.demo)."
+                    "(student.bhu, student.iitkgp, student.du, bhu.president)."
                 )
             except Exception as exc:
                 self.stdout.write(f"Notice: Student seeding error: {exc}")

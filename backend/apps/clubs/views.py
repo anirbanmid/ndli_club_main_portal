@@ -386,6 +386,9 @@ def _resolve_club_for_subclubs(club_code: str):
     from apps.domain.models import Club
 
     club_code_clean = str(club_code).strip()
+    if not club_code_clean:
+        return None
+
     # 1. Match by code (e.g. CLUB-BHU-008)
     club = Club.objects.filter(code__iexact=club_code_clean).first()
     if club:
@@ -416,9 +419,11 @@ def _resolve_club_for_subclubs(club_code: str):
         .replace("-", "")
         .replace("_", "")
     )
-    return Club.objects.filter(
-        Q(code__icontains=slug_token) | Q(name__icontains=slug_token)
-    ).first()
+    if len(slug_token) >= 2:
+        return Club.objects.filter(
+            Q(code__icontains=slug_token) | Q(name__icontains=slug_token)
+        ).first()
+    return None
 
 
 class SubClubListView(APIView):
@@ -440,13 +445,20 @@ class SubClubListView(APIView):
         data = [
             {
                 "id": sc.id,
+                "club_id": club.code,
                 "code": sc.code,
                 "name": sc.name,
                 "discipline": sc.discipline,
                 "coordinator_name": sc.coordinator_name,
                 "coordinator_email": sc.coordinator_email,
                 "coordinator_phone": sc.coordinator_phone,
-                "created_at": sc.created_at,
+                "is_active": sc.is_active,
+                "created_at": (
+                    sc.created_at.isoformat()
+                    if hasattr(sc.created_at, "isoformat")
+                    else str(sc.created_at)
+                ),
+                "member_count": sc.enrolled_students.count(),
                 "members_count": sc.enrolled_students.count(),
             }
             for sc in sub_clubs
@@ -522,13 +534,21 @@ class SubClubListView(APIView):
 class SubClubDetailView(APIView):
     """Update or toggle sub-club / coordinator."""
 
+    permission_classes = [AllowAny]
     parser_classes = [JSONParser]
 
     def patch(self, request: Request, club_code: str, subclub_id: int) -> Response:
         from apps.domain.models import SubClub
 
+        club = _resolve_club_for_subclubs(club_code)
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "club_not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         sub_club = SubClub.objects.filter(
-            id=subclub_id, club__code__iexact=club_code
+            id=subclub_id, club=club
         ).first()
         if not sub_club:
             return Response(

@@ -66,9 +66,12 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
         c.name.includes('(SAMPLE)') ||
         c.name.toLowerCase().includes('sample');
 
-      if (canonicalClubs && canonicalClubs.length > 0 && !canonicalClubs.some(isSample)) {
-        if (active) setCanonicalClubList(canonicalClubs);
-        return;
+      if (canonicalClubs && canonicalClubs.length > 0) {
+        const genuine = canonicalClubs.filter(c => !isSample(c));
+        if (genuine.length >= 50) {
+          if (active) setCanonicalClubList(genuine);
+          return;
+        }
       }
       setClubsLoading(true);
       try {
@@ -89,8 +92,9 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
     };
   }, [canonicalClubs]);
 
+  const hostCode = clubCode.trim().toLowerCase();
   const allAvailablePartners = canonicalClubList.filter(
-    c => c.id.toLowerCase() !== clubCode.toLowerCase() && c.code?.toLowerCase() !== clubCode.toLowerCase()
+    c => c.id.toLowerCase() !== hostCode && (!c.code || c.code.toLowerCase() !== hostCode)
   );
   const filteredPartners = allAvailablePartners.filter(p => {
     if (!clubSearchTerm.trim()) return true;

@@ -92,6 +92,8 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
 
   return {
     id,
+    code: String(raw.code || raw.club_id || id),
+    isSample: Boolean(raw.is_sample ?? raw.isSample ?? false),
     aisheCode: String(raw.aisheCode || raw.aishe_code || `AISHE-${id}`),
     name,
     state: String(raw.state || ''),

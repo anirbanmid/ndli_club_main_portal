@@ -54,9 +54,22 @@ export async function fetchSubClubs(clubCode: string): Promise<SubClub[]> {
     throw new ApiError('server', 'Failed to fetch sub-clubs', res.status);
   }
   const body = await res.json();
-  if (Array.isArray(body)) return body;
-  if (body && Array.isArray(body.sub_clubs)) return body.sub_clubs;
-  return [];
+  const rawList: any[] = Array.isArray(body)
+    ? body
+    : (body && Array.isArray(body.sub_clubs) ? body.sub_clubs : []);
+  return rawList.map((item: any) => ({
+    id: Number(item.id),
+    club_id: String(item.club_id || clubCode),
+    code: String(item.code || ''),
+    name: String(item.name || ''),
+    discipline: String(item.discipline || ''),
+    coordinator_name: String(item.coordinator_name || ''),
+    coordinator_email: String(item.coordinator_email || ''),
+    coordinator_phone: String(item.coordinator_phone || ''),
+    is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
+    member_count: Number(item.member_count ?? item.members_count ?? 0),
+    created_at: String(item.created_at || ''),
+  }));
 }
 
 export async function createSubClub(clubCode: string, payload: SubClubInput): Promise<SubClub> {

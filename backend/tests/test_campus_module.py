@@ -1414,6 +1414,11 @@ class CampusModuleTests(TestCase):
         data_code = resp_code.json()
         self.assertIn("sub_clubs", data_code)
         self.assertGreaterEqual(len(data_code["sub_clubs"]), 1)
+        sub_item = data_code["sub_clubs"][0]
+        self.assertIn("is_active", sub_item)
+        self.assertTrue(sub_item["is_active"])
+        self.assertEqual(sub_item["club_id"], bhu_club.code)
+        self.assertIn("member_count", sub_item)
 
         # Unauthenticated client request by slug
         resp_slug = anon_client.get(
@@ -1433,26 +1438,39 @@ class CampusModuleTests(TestCase):
         self.assertIn("sub_clubs", data_pk)
         self.assertGreaterEqual(len(data_pk["sub_clubs"]), 1)
 
+        # PATCH subclub using slug resolution
+        subclub_obj = SubClub.objects.filter(club=bhu_club).first()
+        self.assertIsNotNone(subclub_obj)
+        assert subclub_obj is not None
+        patch_resp = anon_client.patch(
+            f"/api/v1/clubs/bhu-main/subclubs/{subclub_obj.id}/",
+            data={"coordinator_phone": "+91 9876543210"},
+            content_type="application/json",
+            HTTP_HOST="localhost",
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        self.assertEqual(
+            patch_resp.json().get("coordinator_phone"), "+91 9876543210"
+        )
+
     def test_student_test_accounts_login_and_state(self) -> None:
-        """Verify seeded test student accounts exist with active state and
-        can authenticate with DEV_TEST captcha bypass using username and email.
+        """Verify seeded test student accounts and bhu.president exist from migrations
+        with active state and can authenticate with DEV_TEST captcha bypass using
+        username and email.
         """
-        from django.core.management import call_command
-
         from apps.accounts.models import AccountState, User
-
-        call_command("seed_all_states")
 
         test_accounts = [
             ("student.bhu", "student.bhu@bhu.ac.in"),
             ("student.iitkgp", "student.iitkgp@iitkgp.ac.in"),
             ("student.du", "student.du@du.ac.in"),
+            ("bhu.president", "pres.bhu@bhu.ac.in"),
         ]
 
         for username, email in test_accounts:
             user = User.objects.filter(username=username).first()
             self.assertIsNotNone(
-                user, f"Test account {username} must exist in the database."
+                user, f"Test account {username} must exist from migration."
             )
             assert user is not None
             self.assertTrue(user.is_active)

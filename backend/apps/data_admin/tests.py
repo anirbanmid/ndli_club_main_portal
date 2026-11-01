@@ -298,6 +298,7 @@ class HardResetWipeTests(TestCase):
     master: Any
     state: State
     zone: Zone
+    expected_users: int
 
     @classmethod
     def setUpTestData(cls) -> None:
@@ -328,6 +329,7 @@ class HardResetWipeTests(TestCase):
             reminder_due_at=timezone.now() + timedelta(hours=72),
             admin_reminder_due_at=timezone.now() + timedelta(days=30),
         )
+        cls.expected_users = User.objects.count()
 
     def setUp(self) -> None:
         self.client = APIClient()
@@ -353,7 +355,7 @@ class HardResetWipeTests(TestCase):
         self.assertFalse(GrievanceTicket.objects.exists())
 
         # provisioned skeleton survives
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.count(), self.expected_users)
         self.assertTrue(Zone.objects.filter(pk=self.zone.pk).exists())
         self.assertTrue(State.objects.filter(pk=self.state.pk).exists())
         self.assertTrue(Institution.objects.filter(pk=self.inst.pk).exists())
@@ -367,7 +369,7 @@ class HardResetWipeTests(TestCase):
         """Legacy semantics: blank-but-provisioned, never reseeded."""
         self._run()
         self.assertFalse(Club.objects.exists())
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.count(), self.expected_users)
 
     def test_wipe_is_recorded_in_the_audit_trail(self) -> None:
         self._run()
@@ -435,10 +437,11 @@ class HardResetServiceTests(TestCase):
             account_state=AccountState.ACTIVE,
         )
 
+        expected_users = User.objects.count()
         result = hard_reset_for_handover(actor_label="master")
 
-        self.assertEqual(result["accounts_kept"], 1)
-        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(result["accounts_kept"], expected_users)
+        self.assertEqual(User.objects.count(), expected_users)
         self.assertFalse(Club.objects.exists())
         self.assertTrue(Zone.objects.exists())
         self.assertTrue(Institution.objects.exists())

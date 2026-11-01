@@ -1333,10 +1333,11 @@ class EventParticipantUploadView(APIView):
         rows = []
         if "file" in request.FILES:
             uploaded_file = request.FILES["file"]
+            raw_bytes = uploaded_file.read()
             try:
-                decoded = uploaded_file.read().decode("utf-8-sig")
+                decoded = raw_bytes.decode("utf-8-sig")
             except Exception:
-                decoded = uploaded_file.read().decode("latin-1")
+                decoded = raw_bytes.decode("latin-1")
             reader = csv.DictReader(io.StringIO(decoded))
             for raw_row in reader:
                 norm = {

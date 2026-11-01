@@ -617,8 +617,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </div>
               <div className="text-xs text-[#5A7366] font-medium">
                 {memberStats
-                  ? `(${memberStats.active.toLocaleString()} ${t("Active")} + ${memberStats.inactive.toLocaleString()} ${t("Inactive")})`
-                  : `(${clubStudents.filter((s) => s.status === 'Active').length.toLocaleString()} ${t("Active")} + ${clubStudents.filter((s) => s.status !== 'Active').length.toLocaleString()} ${t("Inactive")})`}
+                  ? `${memberStats.active.toLocaleString()} ${t("Active")} + ${memberStats.inactive.toLocaleString()} ${t("Inactive")}`
+                  : `${clubStudents.filter((s) => s.status === 'Active').length.toLocaleString()} ${t("Active")} + ${clubStudents.filter((s) => s.status !== 'Active').length.toLocaleString()} ${t("Inactive")}`}
               </div>
               <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1 pt-1 border-t border-[#E2ECE7]/50 mt-1">
                 <span>{t("Passkey:")} {activeClub.passkey}</span>

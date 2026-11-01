@@ -1168,3 +1168,141 @@ class CampusModuleTests(TestCase):
         ).first()
         self.assertIsNotNone(roster)
         assert roster is not None
+
+    def test_event_participant_upload_non_utf8_fallback(self) -> None:
+        """Verify EventParticipantUploadView decodes non-UTF8 (latin-1) CSV
+        without stream exhaustion.
+        """
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-LATIN1-TEST",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="French Cultural Exchange",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        csv_text = (
+            "Full Name,Gender,Class,Section\n"
+            "Maitreyi Deb,female,IX,B\n"
+            "Renée Dupont,female,X,A\n"
+        )
+        csv_bytes = csv_text.encode("latin-1")
+        csv_file = SimpleUploadedFile(
+            "latin1.csv",
+            csv_bytes,
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.authority_user)
+        resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/upload-participants/",
+            data={"file": csv_file},
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["enrolled_count"], 2)
+
+    def test_school_roster_upload_non_utf8_fallback(self) -> None:
+        """Verify SchoolRosterUploadView decodes non-UTF8 (latin-1) CSV without
+        raising UnicodeDecodeError.
+        """
+        csv_text = (
+            "Full Name,Gender,Class,Section,Guardian Phone\n"
+            "Ananya Sen,female,VIII,A,9876543210\n"
+            "François Dubois,male,IX,C,9876543211\n"
+        )
+        csv_bytes = csv_text.encode("latin-1")
+        csv_file = SimpleUploadedFile(
+            "school_latin1.csv",
+            csv_bytes,
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.authority_user)
+        resp = self.client.post(
+            f"/api/v1/members/school/{self.club.code}/upload/",
+            data={"file": csv_file},
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["total_imported"], 2)
+
+    def test_student_profile_list_excludes_pending_applicants(self) -> None:
+        """Verify StudentProfileListView excludes unapproved pending applicants
+        and includes active members.
+        """
+        from apps.accounts.models import AccountState, Category, User
+        from apps.members.models import StudentMemberProfile
+
+        # 1. Create a pending student applicant
+        pending_user = User.objects.create(
+            username="pending_applicant_test",
+            email="pending.app@test.edu",
+            account_state=AccountState.PENDING_APPROVAL,
+            category=Category.STUDENT_MEMBER,
+        )
+        pending_prof = StudentMemberProfile.objects.create(
+            user=pending_user,
+            club=self.club,
+            gender="male",
+            department="CSE",
+            roll_number="PEND-001",
+        )
+
+        # 2. Query roster as authority
+        self.client.force_login(self.authority_user)
+        resp = self.client.get(f"/api/v1/members/students/?club_code={self.club.code}")
+        self.assertEqual(resp.status_code, 200)
+        emails = [r["email"] for r in resp.json().get("results", [])]
+        self.assertNotIn("pending.app@test.edu", emails)
+
+        # 3. Transition to active approved member
+        pending_user.account_state = AccountState.ACTIVE
+        pending_user.save(update_fields=["account_state"])
+
+        resp2 = self.client.get(f"/api/v1/members/students/?club_code={self.club.code}")
+        self.assertEqual(resp2.status_code, 200)
+        emails2 = [r["email"] for r in resp2.json().get("results", [])]
+        self.assertIn("pending.app@test.edu", emails2)
+
+        # Cleanup
+        pending_prof.delete()
+        pending_user.delete()
+
+    def test_admin_club_list_view_canonical_member_count(self) -> None:
+        """Verify AdminClubListView returns canonical calculated member count
+        and handles admin user without reverse club attribute.
+        """
+        from apps.accounts.models import AccountState, Category, SubRole, User
+
+        admin_user, _ = User.objects.get_or_create(
+            username="central_admin_test",
+            defaults={
+                "email": "central.adm@ndli.gov.in",
+                "category": Category.IIT_KGP_ADMIN,
+                "sub_role": SubRole.CENTRAL_ADMIN,
+                "account_state": AccountState.ACTIVE,
+                "must_change_password": False,
+                "is_active": True,
+            },
+        )
+        if admin_user.account_state != AccountState.ACTIVE:
+            admin_user.account_state = AccountState.ACTIVE
+            admin_user.must_change_password = False
+            admin_user.save()
+
+        self.client.force_login(admin_user)
+        session = self.client.session
+        session["mfa_verified"] = True
+        session.save()
+        resp = self.client.get("/admin/api/v1/employees/clubs/")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("clubs", data)
+        for club_dict in data["clubs"]:
+            self.assertIsInstance(club_dict["member_count"], int)
+            self.assertGreaterEqual(club_dict["member_count"], 0)

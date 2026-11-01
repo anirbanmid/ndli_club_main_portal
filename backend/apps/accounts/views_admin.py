@@ -780,6 +780,23 @@ class AdminClubListView(APIView):
             st = inst.state if inst else None
             zn = st.zone if st else None
             z_name = zn.name.replace(" Zone", "").strip() if zn else "Central"
+            hei_count = (
+                club.student_profiles.filter(user__account_state="active").count()
+                if hasattr(club, "student_profiles")
+                else 0
+            )
+            school_count = (
+                club.school_roster.filter(is_active=True).count()
+                if hasattr(club, "school_roster")
+                else 0
+            )
+            other_count = (
+                club.memberships.exclude(user__category="student_member").count()
+                if hasattr(club, "memberships")
+                else 0
+            )
+            actual_members = hei_count + school_count + other_count
+
             results.append(
                 {
                     "id": club.pk,
@@ -792,16 +809,22 @@ class AdminClubListView(APIView):
                     "state_code": st.code if st else "",
                     "zone": z_name,
                     "status": club.status or "Approved",
-                    "date_of_approval": club.date_of_approval.isoformat()
-                    if club.date_of_approval
-                    else None,
-                    "last_renewal_date": club.last_renewal_date.isoformat()
-                    if club.last_renewal_date
-                    else None,
-                    "upcoming_renewal_date": club.upcoming_renewal_date.isoformat()
-                    if club.upcoming_renewal_date
-                    else None,
-                    "member_count": club.member_count or 0,
+                    "date_of_approval": (
+                        club.date_of_approval.isoformat()
+                        if club.date_of_approval
+                        else None
+                    ),
+                    "last_renewal_date": (
+                        club.last_renewal_date.isoformat()
+                        if club.last_renewal_date
+                        else None
+                    ),
+                    "upcoming_renewal_date": (
+                        club.upcoming_renewal_date.isoformat()
+                        if club.upcoming_renewal_date
+                        else None
+                    ),
+                    "member_count": actual_members,
                     "patron_name": club.patron_name or "",
                     "patron_email": club.patron_email or "",
                     "patron_phone": club.patron_phone or "",

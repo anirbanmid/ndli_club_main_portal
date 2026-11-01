@@ -122,7 +122,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
           category: 'University' as const,
           passkey: passkeyInput,
           status: 'Active' as const,
-          memberCount: 1,
+          memberCount: 0,
           eventsConducted: 0,
           establishedDate: '2026-01-01',
           authorities: [],

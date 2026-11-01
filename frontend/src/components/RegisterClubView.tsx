@@ -128,7 +128,7 @@ export const RegisterClubView: React.FC<RegisterClubViewProps> = ({
       passkey,
 
       status: 'Active',
-      memberCount: 1, // starting count
+      memberCount: 0,
       eventsConducted: 0,
       establishedDate: new Date().toISOString().split('T')[0],
       authorities: [

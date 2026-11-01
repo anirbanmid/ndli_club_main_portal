@@ -686,8 +686,8 @@ export function App({ ssrLocation }: AppProps = {}) {
         isOpen={isPasskeyModalOpen}
         onClose={() => setIsPasskeyModalOpen(false)}
         clubs={clubs}
-        onMemberJoined={(club) => {
-          setClubs(prev => prev.map(c => c.id === club.id ? { ...c, memberCount: c.memberCount + 1 } : c));
+        onMemberJoined={(_club) => {
+          // Application submitted for review; actual count updates upon authority approval
         }}
       />
 

@@ -481,7 +481,11 @@ class SchoolRosterUploadView(APIView):
             )
 
         uploaded = request.FILES["file"]
-        decoded = uploaded.read().decode("utf-8-sig")
+        raw_bytes = uploaded.read()
+        try:
+            decoded = raw_bytes.decode("utf-8-sig")
+        except Exception:
+            decoded = raw_bytes.decode("latin-1")
         reader = csv.DictReader(io.StringIO(decoded))
         rows = [row for row in reader]
 
@@ -546,7 +550,7 @@ class StudentProfileListView(APIView):
     def get(self, request: Request) -> Response:
         from django.db.models import Q
 
-        from apps.accounts.models import Category
+        from apps.accounts.models import AccountState, Category
         from apps.members.models import StudentMemberProfile
 
         actor = request.user
@@ -557,7 +561,10 @@ class StudentProfileListView(APIView):
             )
 
         actor_category = getattr(actor, "category", None)
-        actor_club = getattr(actor, "club", None)
+        try:
+            actor_club = getattr(actor, "club", None)
+        except Exception:
+            actor_club = None
         club_code = str(request.query_params.get("club_code", "")).strip()
 
         if actor_category == Category.STUDENT_MEMBER:
@@ -579,9 +586,11 @@ class StudentProfileListView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-        qs = StudentMemberProfile.objects.select_related(
-            "user", "club", "club__institution"
-        ).prefetch_related("sub_clubs")
+        qs = (
+            StudentMemberProfile.objects.filter(user__account_state=AccountState.ACTIVE)
+            .select_related("user", "club", "club__institution")
+            .prefetch_related("sub_clubs")
+        )
 
         if club_code:
             qs = qs.filter(club__code__iexact=club_code)

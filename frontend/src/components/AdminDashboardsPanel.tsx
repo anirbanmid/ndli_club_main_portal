@@ -796,7 +796,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           }
           subValue={
             dashboard && dashboard.active_members !== undefined
-              ? `(${(dashboard.active_members ?? 0).toLocaleString()} ${t('Active')} + ${(dashboard.inactive_members ?? 0).toLocaleString()} ${t('Inactive')})`
+              ? `${(dashboard.active_members ?? 0).toLocaleString()} ${t('Active')} + ${(dashboard.inactive_members ?? 0).toLocaleString()} ${t('Inactive')}`
               : undefined
           }
           desc={t('HEI student members + school tangible roster')}

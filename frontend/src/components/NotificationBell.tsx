@@ -128,7 +128,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block', zIndex: isOpen ? 99999 : undefined }}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -192,7 +192,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
             borderRadius: '14px',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
             border: '1px solid #E2ECE7',
-            zIndex: 9999,
+            zIndex: 999999,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',

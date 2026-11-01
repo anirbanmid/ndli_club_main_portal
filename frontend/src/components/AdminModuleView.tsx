@@ -394,14 +394,14 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
       {/* Top Admin Header */}
-      <div className="hero-mesh bg-gradient-to-br from-[#103125] via-[#164433] to-[#0A5C3E] text-white p-6 sm:p-8 rounded-3xl border border-[#0D7751]/30 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
-        {/* Ambient glow clipped to banner curvature */}
-        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+      <div className="bg-gradient-to-br from-[#103125] via-[#164433] to-[#0A5C3E] text-white p-6 sm:p-8 rounded-3xl border border-[#0D7751]/30 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-visible z-20">
+        {/* Ambient glow mesh clipped to banner curvature */}
+        <div className="hero-mesh absolute inset-0 rounded-3xl overflow-hidden pointer-events-none z-0">
           <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative space-y-2.5">
+        <div className="relative z-10 space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="bg-[#0D7751] text-brand-100 text-[11px] font-black px-3 py-0.5 rounded-full border border-brand-400/30 tracking-wider">
               {t("IIT KHARAGPUR NODAL COMMAND")}
@@ -421,8 +421,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
           </p>
         </div>
 
-        <div className="relative flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center gap-4 shrink-0">
-          <div className="flex items-center gap-2.5 shrink-0">
+        <div className="relative z-30 flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 relative z-30">
             <NotificationBell
               notifications={adminNotifications}
               storageKey="ndli_admin_read_notifications"

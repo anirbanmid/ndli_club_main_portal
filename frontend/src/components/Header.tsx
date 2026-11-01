@@ -156,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Branding & Master Branch Bar - accessible across all modules */}
+      {/* Main Branding Bar - accessible across all modules */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         {/* Brand identity */}
         <div className="flex items-center justify-between">
@@ -186,74 +186,19 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* 4 Master Branches Switcher (The Core Portal Partition) */}
-        <nav aria-label="Portal Modules" className="flex items-center p-1 bg-[#F4F8F6] rounded-2xl border border-[#E2ECE7] self-start lg:self-auto overflow-x-auto max-w-full shadow-2xs">
-          {/* Branch 1: Public Landing */}
-          <button
-            onClick={() => {
-              setCurrentBranch('landing');
-              setCurrentTab('home');
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-              currentBranch === 'landing'
-                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
-            }`}
-          >
-            <Compass className="h-4 w-4" />
-            <span>{t("1. Public Portal")}</span>
-          </button>
-
-          {/* Branch 2: Club Module */}
-          <button
-            onClick={() => {
-              setCurrentBranch('club_module');
-              setCurrentTab('club_directory');
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-              currentBranch === 'club_module'
-                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
-            }`}
-          >
-            <GraduationCap className="h-4 w-4 text-amber-300" />
-            <span>{t("2. Institutional Club Module")}</span>
-            <span className="bg-[#B45309] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("CAMPUS")}</span>
-          </button>
-
-          {/* Branch 3: IIT KGP Admin Module */}
-          <button
-            onClick={() => {
-              setCurrentBranch('admin_module');
-              setCurrentTab('admin_overview');
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-              (currentBranch as string) === 'admin_module'
-                ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
-            }`}
-          >
-            <Landmark className="h-4 w-4" />
-            <span>{t("3. IIT KGP Admin Module")}</span>
-          </button>
-
-          {/* Branch 4: Club Member (Student) Module */}
-          <button
-            onClick={() => {
-              setCurrentBranch('student_module');
-              setCurrentTab('student_home');
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-              currentBranch === 'student_module'
-                ? 'bg-[#B45309] text-white shadow-sm shadow-amber-950/30 scale-[1.02]'
-                : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
-            }`}
-          >
-            <Award className="h-4 w-4 text-amber-400" />
-            <span>{t("4. Club Member Module")}</span>
-            <span className="bg-[#0D7751] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("STUDENT")}</span>
-          </button>
-        </nav>
+        {/* Animated National Mission Ticker in vacant banner space */}
+        <div className="hidden lg:flex items-center space-x-3 px-4 py-2 rounded-full bg-gradient-to-r from-[#F4F8F6] via-[#EAF4EF] to-[#F4F8F6] border border-[#D5E6DE] shadow-2xs">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#0D7751]"></span>
+          </span>
+          <span className="text-xs font-semibold text-[#103125] tracking-tight">
+            {t("Flagship National Digital Reading & Research Infrastructure")}
+          </span>
+          <span className="text-[10px] uppercase font-black tracking-wider bg-[#0D7751] text-white px-2 py-0.5 rounded-full shadow-2xs">
+            {t("MoE & IIT KGP")}
+          </span>
+        </div>
 
         {/* Quick Action Buttons */}
         <div className="hidden lg:flex items-center space-x-2.5">
@@ -278,6 +223,89 @@ export const Header: React.FC<HeaderProps> = ({
             <KeyRound className="h-3.5 w-3.5 text-amber-300" />
             <span>{t("Student Passkey Join")}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Universal Master Module Switcher - Positioned slightly lower than top banner with premium spacing */}
+      <div className="bg-[#FAFDFB] border-t border-b border-[#E2ECE7] py-2.5 px-4 sm:px-6 lg:px-8 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-[#5A7366] hidden md:flex items-center space-x-2 shrink-0">
+            <span className="inline-block w-2 h-2 rounded-full bg-[#0D7751]" />
+            <span>{t("Select Portal Module:")}</span>
+          </div>
+
+          <nav aria-label="Portal Modules" className="flex items-center p-1 bg-white rounded-2xl border border-[#D5E6DE] shadow-2xs overflow-x-auto max-w-full">
+            {/* Branch 1: Public Landing */}
+            <button
+              onClick={() => {
+                setCurrentBranch('landing');
+                setCurrentTab('home');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+                currentBranch === 'landing'
+                  ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                  : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
+              }`}
+            >
+              <Compass className="h-4 w-4" />
+              <span>{t("1. Public Portal")}</span>
+            </button>
+
+            {/* Branch 2: Club Module */}
+            <button
+              onClick={() => {
+                setCurrentBranch('club_module');
+                setCurrentTab('club_directory');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+                currentBranch === 'club_module'
+                  ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                  : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
+              }`}
+            >
+              <GraduationCap className="h-4 w-4 text-amber-300" />
+              <span>{t("2. Institutional Club Module")}</span>
+              <span className="bg-[#B45309] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("CAMPUS")}</span>
+            </button>
+
+            {/* Branch 3: IIT KGP Admin Module */}
+            <button
+              onClick={() => {
+                setCurrentBranch('admin_module');
+                setCurrentTab('admin_overview');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+                (currentBranch as string) === 'admin_module'
+                  ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]'
+                  : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
+              }`}
+            >
+              <Landmark className="h-4 w-4" />
+              <span>{t("3. IIT KGP Admin Module")}</span>
+            </button>
+
+            {/* Branch 4: Club Member (Student) Module */}
+            <button
+              onClick={() => {
+                setCurrentBranch('student_module');
+                setCurrentTab('student_home');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+                currentBranch === 'student_module'
+                  ? 'bg-[#B45309] text-white shadow-sm shadow-amber-950/30 scale-[1.02]'
+                  : 'text-[#2E4A3E] hover:text-[#103125] hover:bg-white/80'
+              }`}
+            >
+              <Award className="h-4 w-4 text-amber-400" />
+              <span>{t("4. Club Member Module")}</span>
+              <span className="bg-[#0D7751] text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-wider">{t("STUDENT")}</span>
+            </button>
+          </nav>
+
+          <div className="hidden lg:flex items-center space-x-2 text-[11px] text-[#5A7366] shrink-0 font-medium">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{t("Single Source of Truth Active")}</span>
+          </div>
         </div>
       </div>
     </header>

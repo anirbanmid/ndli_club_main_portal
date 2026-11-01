@@ -11,7 +11,7 @@ import { AdminModuleView } from './components/AdminModuleView';
 import { EmployeeModule } from './components/EmployeeModule';
 import { SuperAdminConsole } from './components/SuperAdminConsole';
 import { fetchSession } from './lib/adminApi';
-import { signOut } from './lib/authApi';
+import { passwordLogin, signOut } from './lib/authApi';
 
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
@@ -526,13 +526,27 @@ export function App({ ssrLocation }: AppProps = {}) {
                     setCurrentBranch('landing');
                     setCurrentTab('login');
                   }}
-                  onAuthorityQuickSignIn={(authority) => {
+                  onAuthorityQuickSignIn={async (authority) => {
                     setAuthenticatedClubId(authority.clubId);
                     setAuthenticatedAuthority(authority);
+                    try {
+                      await passwordLogin(authority.email, 'Password@123', 'DEV_TEST');
+                    } catch {
+                      try {
+                        await passwordLogin('library.bhu', 'Password@123', 'DEV_TEST');
+                      } catch {
+                        // ignore network error
+                      }
+                    }
                   }}
-                  onAuthoritySignOut={() => {
+                  onAuthoritySignOut={async () => {
                     setAuthenticatedClubId(null);
                     setAuthenticatedAuthority(null);
+                    try {
+                      await signOut();
+                    } catch {
+                      // ignore
+                    }
                   }}
                   onBackToClubsList={() => {
                     setCurrentTab('club_directory');

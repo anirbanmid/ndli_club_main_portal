@@ -1335,6 +1335,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           clubCode={activeClub.id}
           clubName={activeClub.name}
           isAuthority={isAuthorityAuthenticated}
+          onNavigateToRoster={() => setActiveTab('membership_approval')}
         />
       )}
 

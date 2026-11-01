@@ -377,6 +377,8 @@ export const InsightsPanel: React.FC = () => {
     action: string;
   } | null>(null);
   const [directiveDispatched, setDirectiveDispatched] = useState(false);
+  const [selectedDeficitModal, setSelectedDeficitModal] = useState<'zero_club' | 'retention' | null>(null);
+  const [deficitDispatched, setDeficitDispatched] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -602,69 +604,274 @@ export const InsightsPanel: React.FC = () => {
         )}
       </div>
 
-      {/* State Penetration Deficit Table */}
+      {/* State Penetration Deficit Table / Interactive Action Cards */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-4">
-        <div className="border-b border-[#E2ECE7] pb-3">
-          <h4 className="text-base font-extrabold text-[#103125]">
-            {t('State Penetration Deficit Analysis')}
-          </h4>
-          <p className="text-xs text-[#5A7366]">
-            {t('Identifies States and Union Territories needing immediate outreach campaigns.')}
-          </p>
+        <div className="border-b border-[#E2ECE7] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h4 className="text-base font-extrabold text-[#103125]">
+              {t('State Penetration Deficit Analysis')}
+            </h4>
+            <p className="text-xs text-[#5A7366]">
+              {t('Click on any deficit row to view regional drilldowns and dispatch zonal directives.')}
+            </p>
+          </div>
+          <span className="text-[10px] uppercase font-black tracking-wider bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full self-start sm:self-auto">
+            Interactive Governance Cards
+          </span>
         </div>
 
         <div className="overflow-x-auto border border-[#E2ECE7] rounded-2xl">
           <table className="w-full text-left text-xs divide-y divide-[#E2ECE7]">
             <thead className="bg-[#F4F8F6] text-[#2E4A3E] font-bold uppercase text-[11px]">
               <tr>
-                <th className="p-3">{t('Deficit Category')}</th>
-                <th className="p-3 text-center">{t('Count')}</th>
-                <th className="p-3">{t('Target States / UTs')}</th>
-                <th className="p-3">{t('Recommended Action')}</th>
+                <th className="p-3.5">{t('Deficit Category')}</th>
+                <th className="p-3.5 text-center">{t('Count')}</th>
+                <th className="p-3.5">{t('Target States / UTs')}</th>
+                <th className="p-3.5">{t('Recommended Action')}</th>
+                <th className="p-3.5 text-right">{t('Action')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2ECE7] text-[#17332A]">
-              <tr>
-                <td className="p-3 font-semibold text-rose-700">
+              <tr 
+                onClick={() => {
+                  setSelectedDeficitModal('zero_club');
+                  setDeficitDispatched(false);
+                }}
+                className="hover:bg-rose-50/40 transition-colors cursor-pointer group"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedDeficitModal('zero_club');
+                    setDeficitDispatched(false);
+                  }
+                }}
+              >
+                <td className="p-3.5 font-semibold text-rose-700">
                   <span className="inline-block px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[10px] font-black uppercase mr-1.5">
                     Zero-Club Deficit
                   </span>
                   Unrepresented States
                 </td>
-                <td className="p-3 text-center font-mono font-bold text-[#103125]">
+                <td className="p-3.5 text-center font-mono font-bold text-[#103125]">
                   {unrepresented.length} / {penetration?.total_states ?? 36}
                 </td>
-                <td className="p-3 font-mono text-[11px] text-slate-600 max-w-md">
+                <td className="p-3.5 font-mono text-[11px] text-slate-600 max-w-md">
                   {unrepresented.length > 0
                     ? unrepresented.join(', ')
                     : t('All states and union territories have active club presence.')}
                 </td>
-                <td className="p-3 text-[11px] text-[#2E4A3E]">
+                <td className="p-3.5 text-[11px] text-[#2E4A3E]">
                   Task corresponding regional nodal officers to initiate outreach with State Directorate of Higher Education.
+                </td>
+                <td className="p-3.5 text-right whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
+                    <span>{t('Drilldown & Dispatch')}</span>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </td>
               </tr>
               {renewalHealth && (renewalHealth.overdue ?? 0) > 0 && (
-                <tr>
-                  <td className="p-3 font-semibold text-amber-700">
+                <tr
+                  onClick={() => {
+                    setSelectedDeficitModal('retention');
+                    setDeficitDispatched(false);
+                  }}
+                  className="hover:bg-amber-50/40 transition-colors cursor-pointer group"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedDeficitModal('retention');
+                      setDeficitDispatched(false);
+                    }
+                  }}
+                >
+                  <td className="p-3.5 font-semibold text-amber-700">
                     <span className="inline-block px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-black uppercase mr-1.5">
                       Retention Deficit
                     </span>
                     Overdue Renewal Clubs
                   </td>
-                  <td className="p-3 text-center font-mono font-bold text-amber-900">
+                  <td className="p-3.5 text-center font-mono font-bold text-amber-900">
                     {renewalHealth.overdue}
                   </td>
-                  <td className="p-3 text-[11px] text-slate-600">
+                  <td className="p-3.5 text-[11px] text-slate-600">
                     Clubs with lapsed 1-year registration validity
                   </td>
-                  <td className="p-3 text-[11px] text-[#2E4A3E]">
+                  <td className="p-3.5 text-[11px] text-[#2E4A3E]">
                     Dispatch automatic reminders and phone support to complete renewal documentation.
+                  </td>
+                  <td className="p-3.5 text-right whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold group-hover:bg-amber-600 group-hover:text-white transition-all shadow-2xs">
+                      <span>{t('Drilldown & Escalation')}</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Dedicated State Penetration Deficit Action Modal */}
+        {selectedDeficitModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className={`p-6 text-white flex items-start justify-between gap-4 ${
+                selectedDeficitModal === 'zero_club'
+                  ? 'bg-gradient-to-r from-rose-950 via-rose-900 to-[#103125]'
+                  : 'bg-gradient-to-r from-amber-950 via-amber-900 to-[#103125]'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider">
+                      {selectedDeficitModal === 'zero_club' ? 'Zero-Club Penetration Deficit' : 'Retention Deficit Backlog'}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-black/30 text-white text-[10px] font-bold">
+                      {selectedDeficitModal === 'zero_club'
+                        ? `${unrepresented.length} Unrepresented States`
+                        : `${renewalHealth?.overdue ?? 0} Overdue Clubs`}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold leading-snug">
+                    {selectedDeficitModal === 'zero_club'
+                      ? t('Unrepresented States & Regional Nodal Officers')
+                      : t('Charter Renewal Backlog & Escalation Desk')}
+                  </h3>
+                  <p className="text-xs text-white/80 mt-0.5">
+                    {selectedDeficitModal === 'zero_club'
+                      ? t('6-Zone Regional Task Force allocation for state academic council liaison')
+                      : t('Enforcing 365-day statutory validity and re-certification')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeficitModal(null)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer shrink-0"
+                  aria-label="Close dialog"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-4 text-xs text-gray-700 max-h-[70vh] overflow-y-auto">
+                {selectedDeficitModal === 'zero_club' ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 leading-relaxed font-medium">
+                      <strong>Policy Assessment:</strong> Across India's 36 States & UTs, {unrepresented.length} territories currently lack an active approved NDLI Club charter. Central administration coordinates regional officers (EMP01–EMP07) to engage State Higher Education councils directly.
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                        Target States / Union Territories by Zonal Desk:
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">North & Central Zone (EMP01, EMP05)</span>
+                          <p className="font-semibold text-slate-800">Chandigarh, Ladakh, Lakshadweep</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">North-East 1 & 2 (EMP06, EMP07)</span>
+                          <p className="font-semibold text-slate-800">Nagaland, Mizoram, Sikkim</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">South & West Zone (EMP02, EMP04)</span>
+                          <p className="font-semibold text-slate-800">Dadra & Nagar Haveli, Daman & Diu, Puducherry</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Islands & Union Territories</span>
+                          <p className="font-semibold text-slate-800">Andaman & Nicobar Islands</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {deficitDispatched ? (
+                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center gap-2.5">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="text-sm">Zonal Outreach Task Force Directive Dispatched!</div>
+                          <div className="text-[11px] font-normal text-emerald-800 mt-0.5">
+                            Directive ref #NDLI-DIR-2026-PEN transmitted to Zonal Officers EMP01–EMP07 with 14-day Higher Education outreach SLA.
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 text-[11px]">
+                        Clicking below will dispatch formal institutional onboarding kits and high-priority directives to the 7 regional nodal officer dashboards.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed font-medium">
+                      <strong>Renewal Compliance Rule:</strong> Approved clubs carry a 365-day charter validity. Clubs with lapsed validity are automatically placed on "Needs Renewal" status.
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                      <span className="font-semibold text-slate-700">Overdue Renewal Threshold:</span>
+                      <span className="font-mono font-bold text-amber-800">{renewalHealth?.overdue ?? 0} Clubs Beyond 365 Days</span>
+                    </div>
+
+                    {deficitDispatched ? (
+                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center gap-2.5">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <div>
+                          <div className="text-sm">Automated Renewal Notices & Escalations Dispatched!</div>
+                          <div className="text-[11px] font-normal text-emerald-800 mt-0.5">
+                            Reminder notifications dispatched to club authorities, and escalation tickets queued on respective state employee desks.
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 text-[11px]">
+                        Clicking below will send urgent automated renewal alerts to the club authorities and queue telephone outreach on the regional officer desks.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-[#F4F8F6] border-t border-[#E2ECE7] flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeficitModal(null)}
+                  className="px-4 py-2 rounded-xl border border-[#E2ECE7] bg-white text-xs font-bold text-[#5A7366] hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  {t('Close')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeficitDispatched(true)}
+                  disabled={deficitDispatched}
+                  className={`px-4 py-2 rounded-xl text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer ${
+                    selectedDeficitModal === 'zero_club'
+                      ? 'bg-rose-700 hover:bg-rose-800'
+                      : 'bg-amber-700 hover:bg-amber-800'
+                  }`}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>
+                    {deficitDispatched 
+                      ? t('Directive Dispatched') 
+                      : selectedDeficitModal === 'zero_club' 
+                        ? t('Dispatch Zonal Task Force Directive') 
+                        : t('Dispatch Renewal Notices & Escalations')}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Strategic Growth Horizons (30/90/365-Day Roadmap) */}

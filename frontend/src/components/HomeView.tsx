@@ -182,88 +182,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* Four Seamless Modules Selection Bar - positioned with comfortable spacing below hero */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#103125] via-[#164433] to-[#0d3b2c] text-white rounded-3xl p-6 sm:p-10 border border-[#1A503E] shadow-2xl">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative max-w-3xl mb-8 space-y-2">
-            <span className="inline-flex items-center space-x-2 text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
-              <Sparkles className="h-3 w-3" />
-              <span>{t("Unified National Learning Architecture")}</span>
-            </span>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight pt-1">
-              {t("Four Seamless Modules Powering NDLI Club 2.0")}
-            </h2>
-            <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed font-normal">
-              {t("Replacing the legacy portal with an enterprise-grade quadruple-branch platform.")}
-            </p>
-          </div>
-
-          <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
-            <div className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 hover:bg-white/[0.09] transition-all">
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30">
-                1
-              </div>
-              <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToClubModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                2
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("Club & Campus Module")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToAdminModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                3
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("IIT Kharagpur Admin")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
-              </p>
-            </div>
-
-            <div 
-              onClick={onGoToStudentModule}
-              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
-            >
-              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
-                4
-              </div>
-              <h3 className="font-bold text-lg text-white flex items-center justify-between">
-                <span>{t("Club Member Module (STUDENT)")}</span>
-                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-              </h3>
-              <p className="text-xs text-brand-200/80 leading-relaxed">
-                {t("Personal learning dashboard for enrolled scholars. Participate in activities, manage disciplinary sub-clubs, and curate digital libraries.")}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Live registry telemetry (chart + accessible table, one payload) */}
       <TelemetrySection data={telemetry} loading={telemetryLoading} failed={telemetryFailed} />
 
@@ -495,6 +413,89 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
       </section>
+
+      {/* Four Seamless Modules Selection Bar - positioned with comfortable spacing below hero */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#103125] via-[#164433] to-[#0d3b2c] text-white rounded-3xl p-6 sm:p-10 border border-[#1A503E] shadow-2xl">
+          {/* Ambient Glow */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative max-w-3xl mb-8 space-y-2">
+            <span className="inline-flex items-center space-x-2 text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+              <Sparkles className="h-3 w-3" />
+              <span>{t("Unified National Learning Architecture")}</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight pt-1">
+              {t("Four Seamless Modules Powering NDLI Club 2.0")}
+            </h2>
+            <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed font-normal">
+              {t("Replacing the legacy portal with an enterprise-grade quadruple-branch platform.")}
+            </p>
+          </div>
+
+          <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
+            <div className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 hover:bg-white/[0.09] transition-all">
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30">
+                1
+              </div>
+              <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToClubModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                2
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("Club & Campus Module")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToAdminModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                3
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("IIT Kharagpur Admin")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToStudentModule}
+              className="glass-card bg-white/[0.06] border border-white/10 p-6 rounded-2xl space-y-3.5 cursor-pointer hover-lift hover:bg-white/[0.12] hover:border-amber-400/50 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black text-sm border border-amber-400/30 group-hover:scale-105 transition-transform">
+                4
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("Club Member Module (STUDENT)")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("Personal learning dashboard for enrolled scholars. Participate in activities, manage disciplinary sub-clubs, and curate digital libraries.")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 };

@@ -97,6 +97,21 @@ class LibraryListView(APIView):
         topic_category = str(data.get("topic_category", "General")).strip()
         sub_club_id = data.get("sub_club_id")
 
+        from apps.core.scoping import authenticated_user
+
+        user = authenticated_user(request)
+
+        if not club_code and user:
+            profile = getattr(user, "student_profile", None)
+            if profile and profile.club:
+                club_code = profile.club.code
+            elif hasattr(user, "club") and user.club:
+                club_code = user.club.code
+            elif hasattr(user, "memberships") and user.memberships.exists():
+                first_m = user.memberships.first()
+                if first_m:
+                    club_code = first_m.club.code
+
         if not club_code or not title:
             return Response(
                 {
@@ -113,9 +128,6 @@ class LibraryListView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        from apps.core.scoping import authenticated_user
-
-        user = authenticated_user(request)
         if not user:
             user = (
                 User.objects.filter(authority_assignments__club=club).first()

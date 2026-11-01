@@ -510,6 +510,7 @@ export async function createLibrary(payload: {
   title: string;
   topic_category: string;
   library_type: 'club' | 'personal' | 'community';
+  club_code?: string;
   sub_club_id?: number;
 }): Promise<CuratedLibrary> {
   const res = await fetch(`${SHARING_API_BASE}/libraries/`, {

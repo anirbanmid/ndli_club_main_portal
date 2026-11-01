@@ -866,20 +866,30 @@ class Command(BaseCommand):
 
                 default_expiry = timezone.localdate() + timedelta(days=365)
                 for st_data in test_students:
+                    club_code_str = str(st_data["club_code"])
                     target_club = Club.objects.filter(
-                        code__iexact=st_data["club_code"]
+                        code__iexact=club_code_str
                     ).first()
                     if not target_club:
                         target_club = Club.objects.first()
                     if not target_club:
                         continue
 
+                    email_str = str(st_data["email"])
+                    first_name_str = str(st_data["first_name"])
+                    last_name_str = str(st_data["last_name"])
+                    username_str = str(st_data["username"])
+                    dept_str = str(st_data["department"])
+                    roll_str = str(st_data["roll_number"])
+                    points_int = int(str(st_data["points"]))
+                    badge_str = str(st_data["badge"])
+
                     stu_user, _ = User.objects.get_or_create(
-                        username=st_data["username"],
+                        username=username_str,
                         defaults={
-                            "email": st_data["email"],
-                            "first_name": st_data["first_name"],
-                            "last_name": st_data["last_name"],
+                            "email": email_str,
+                            "first_name": first_name_str,
+                            "last_name": last_name_str,
                             "category": Category.STUDENT_MEMBER,
                             "sub_role": SubRole.STUDENT_MEMBER,
                             "account_state": AccountState.ACTIVE,
@@ -900,10 +910,9 @@ class Command(BaseCommand):
                     stu_user.zone = target_club.institution.state.zone
                     stu_user.save()
 
-                    fname = str(st_data["first_name"])
                     gender_val = (
                         "male"
-                        if "Aarav" in fname or "Rohan" in fname
+                        if "Aarav" in first_name_str or "Rohan" in first_name_str
                         else "female"
                     )
                     StudentMemberProfile.objects.update_or_create(
@@ -911,12 +920,12 @@ class Command(BaseCommand):
                         defaults={
                             "club": target_club,
                             "gender": gender_val,
-                            "department": st_data["department"],
-                            "roll_number": st_data["roll_number"],
+                            "department": dept_str,
+                            "roll_number": roll_str,
                             "validity_years": 1,
                             "valid_until": default_expiry,
-                            "points": st_data["points"],
-                            "badge": st_data["badge"],
+                            "points": points_int,
+                            "badge": badge_str,
                             "is_suspended_by_coordinator": False,
                         },
                     )

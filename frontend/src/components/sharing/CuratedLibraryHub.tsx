@@ -85,6 +85,7 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
         title: newLibTitle.trim(),
         topic_category: newLibTopic.trim(),
         library_type: activeTier,
+        club_code: clubId,
       });
       setLibraries(prev => [created, ...prev]);
       setSuccessMsg(`Library "${created.title}" established in ${activeTier.toUpperCase()} tier.`);

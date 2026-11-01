@@ -59,7 +59,14 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
   useEffect(() => {
     let active = true;
     async function loadClubs() {
-      if (canonicalClubs && canonicalClubs.length > 0 && !canonicalClubs.some(c => c.id.startsWith('NDLI-EMP01-'))) {
+      const isSample = (c: InstituteClub) =>
+        c.id.startsWith('NDLI-EMP01-') ||
+        c.id.startsWith('CLB-') ||
+        c.id.startsWith('SAMPLE-') ||
+        c.name.includes('(SAMPLE)') ||
+        c.name.toLowerCase().includes('sample');
+
+      if (canonicalClubs && canonicalClubs.length > 0 && !canonicalClubs.some(isSample)) {
         if (active) setCanonicalClubList(canonicalClubs);
         return;
       }
@@ -67,7 +74,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
       try {
         const list = await fetchCanonicalClubs();
         if (active) {
-          const genuine = list.filter(c => !c.id.startsWith('NDLI-EMP01-'));
+          const genuine = list.filter(c => !isSample(c));
           setCanonicalClubList(genuine);
         }
       } catch {

@@ -59,7 +59,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       .finally(() => setTelemetryLoading(false));
   }, []);
 
-  // Chartered verified clubs for the public directory (excluding test samples or suspended)
+  // Approved verified clubs for the public directory (excluding test samples or suspended)
   const canonicalClubs = clubs.filter(c => c.status !== 'Suspended' && !c.isSample && !c.name.includes('(SAMPLE)'));
 
   // Extract unique states for filter - sorted alphabetically across all States & UTs
@@ -187,11 +187,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span>{t("Branch 1: Public Institutional Discovery")}</span>
             </div>
             <h2 className="text-2xl font-extrabold text-[#103125] tracking-tight">
-              {t("National Directory of Chartered NDLI Clubs")}
-                                      </h2>
+              {t("National Directory of Approved NDLI Clubs")}
+            </h2>
             <p className="text-xs text-[#5A7366] mt-0.5">
-              {t("Search authorized university and college chapters across India. View public showcase profiles and campus passkeys.")}
-                                      </p>
+              {t("Search approved university and college clubs across India. View public showcase profiles and campus passkeys.")}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -200,7 +200,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               className="px-3.5 py-1.5 rounded-xl border border-[#E2ECE7] bg-white text-xs font-bold text-[#2E4A3E] hover:bg-[#F4F8F6] flex items-center space-x-1.5 shadow-2xs"
             >
               <ListTree className="h-3.5 w-3.5 text-[#0D7751]" />
-              <span>{t("Full Institution Directory")}</span>
+              <span>{t("Institution Registry")}</span>
             </button>
             <button
               onClick={onVerifyCertificates}
@@ -210,7 +210,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span>{t("Public Certificate Verifier")}</span>
             </button>
             <span className="text-xs font-bold text-[#103125] bg-[#E9F5EF] px-3 py-1.5 rounded-lg border border-[#0D7751]/20">
-              {filteredClubs.length} {t("Chartered Chapters")}
+              {filteredClubs.length} {t("Approved Clubs")}
             </span>
           </div>
         </div>

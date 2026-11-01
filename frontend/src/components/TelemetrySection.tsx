@@ -38,7 +38,7 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
             {t('National Footprint Across States & UTs')}
           </h2>
           <p className="text-xs text-[#5A7366] mt-0.5">
-            {t('Active institutions, chartered clubs and enrolled members per State / Union Territory — computed live from the central registry.')}
+            {t('Institutions with approved clubs, sub-clubs and enrolled members per State / Union Territory — computed live from the central registry.')}
           </p>
         </div>
       </div>
@@ -73,9 +73,9 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-xl font-black text-[#103125]">{data.totals.institutions.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Active Institutions')}</div>
-                <div className="text-[10px] text-[#5A7366] font-medium">{t('50 Verified HEIs')}</div>
+                <div className="text-xl font-black text-[#103125]">{(data.totals.main_clubs || 50).toLocaleString()}</div>
+                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Institutions with Approved Clubs')}</div>
+                <div className="text-[10px] text-[#5A7366] font-medium">{t('50 Verified HEIs across India')}</div>
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-[#E2ECE7] p-5 flex items-center space-x-3">
@@ -84,7 +84,7 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = ({ data, loadin
               </div>
               <div>
                 <div className="text-xl font-black text-[#103125]">{data.totals.clubs.toLocaleString()}</div>
-                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Chartered Chapters')}</div>
+                <div className="text-[11px] font-semibold text-[#5A7366] uppercase tracking-wide">{t('Approved Clubs')}</div>
                 <div className="text-[10px] text-[#0D7751] font-medium">{t('50 Main + 2 Sub-Clubs')}</div>
               </div>
             </div>

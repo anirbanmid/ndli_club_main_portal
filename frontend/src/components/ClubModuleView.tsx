@@ -1237,7 +1237,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </div>
               <div className="pt-2">
                 <span className="text-xs font-extrabold px-3 py-1 bg-[#E9F5EF] text-[#0D7751] rounded-full border border-[#0D7751]/30">
-                  {t("Chartered Campus Chapter")}
+                  {t("Approved Campus Club")}
                 </span>
               </div>
             </div>

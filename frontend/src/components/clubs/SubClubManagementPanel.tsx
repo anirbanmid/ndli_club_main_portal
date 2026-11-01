@@ -119,7 +119,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
             </div>
             <div>
               <div className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">
-                Total Chartered Units
+                Total Approved Club Units
               </div>
               <div className="text-2xl font-black text-white flex items-center space-x-2">
                 <span>{totalClubsCount}</span>
@@ -249,7 +249,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
             <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white">
               <h3 className="text-xl font-bold">Form Disciplinary Sub-Club</h3>
               <p className="text-xs text-emerald-200 mt-0.5">
-                Chartered directly by Main Club Authorities
+                Approved directly by Main Club Authorities
               </p>
             </div>
 

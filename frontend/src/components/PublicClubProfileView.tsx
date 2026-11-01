@@ -50,7 +50,7 @@ export const PublicClubProfileView: React.FC<PublicClubProfileViewProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold text-[#0D7751] bg-[#E9F5EF] px-3 py-1 rounded-full border border-[#0D7751]/20 flex items-center gap-1">
             <ShieldCheck className="h-3.5 w-3.5" />
-            <span>{t("Chartered by IIT Kharagpur (Zone:")} {t(club.zone)})</span>
+            <span>{t("Approved by IIT Kharagpur (Zone:")} {t(club.zone)})</span>
           </span>
 
           <button

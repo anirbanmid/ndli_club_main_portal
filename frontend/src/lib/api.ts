@@ -48,6 +48,8 @@ export interface TelemetryTotals {
   states: number;
   institutions: number;
   clubs: number;
+  main_clubs?: number;
+  sub_clubs?: number;
   members: number;
   activities?: number;
   certificates?: number;

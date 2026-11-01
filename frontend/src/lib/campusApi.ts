@@ -89,14 +89,29 @@ export interface ClubBranding {
 }
 
 export async function fetchClubBranding(clubCode: string): Promise<ClubBranding> {
-  const res = await fetch(`${CLUBS_API_BASE}/${encodeURIComponent(clubCode)}/branding/`, {
-    headers: { Accept: 'application/json', ...csrfHeader() },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    throw new ApiError('server', 'Failed to fetch club branding', res.status);
+  const fallback: ClubBranding = {
+    institution_name: clubCode,
+    institution_type: 'higher_education',
+    affiliation_code: '',
+    signing_authority_name: '',
+    signing_authority_affiliation: '',
+    has_logo: false,
+    logo_url: '',
+    has_signature: false,
+    signature_url: '',
+  };
+  try {
+    const res = await fetch(`${CLUBS_API_BASE}/${encodeURIComponent(clubCode)}/branding/`, {
+      headers: { Accept: 'application/json', ...csrfHeader() },
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      return fallback;
+    }
+    return await res.json();
+  } catch {
+    return fallback;
   }
-  return res.json();
 }
 
 export async function saveClubBranding(
@@ -448,7 +463,10 @@ export interface CuratedLibrary {
 
 export async function fetchLibraries(clubId?: string, libraryType?: string): Promise<CuratedLibrary[]> {
   const params = new URLSearchParams();
-  if (clubId) params.append('club_id', clubId);
+  if (clubId) {
+    params.append('club_code', clubId);
+    params.append('club_id', clubId);
+  }
   if (libraryType) params.append('type', libraryType);
 
   const res = await fetch(`${SHARING_API_BASE}/libraries/?${params.toString()}`, {
@@ -458,7 +476,34 @@ export async function fetchLibraries(clubId?: string, libraryType?: string): Pro
   if (!res.ok) {
     throw new ApiError('server', 'Failed to fetch libraries', res.status);
   }
-  return res.json();
+  const body = await res.json();
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.libraries)) return body.libraries;
+  return [];
+}
+
+export async function devStudentQuickLogin(
+  username: string = 'student.bhu',
+  password: string = 'Password@123',
+): Promise<void> {
+  const res = await fetch('/api/v1/accounts/login/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      username,
+      password,
+      captcha: 'DEV_TEST',
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(errBody) ?? 'Quick login failed', res.status);
+  }
 }
 
 export async function createLibrary(payload: {

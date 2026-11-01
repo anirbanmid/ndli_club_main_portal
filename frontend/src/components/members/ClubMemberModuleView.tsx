@@ -38,6 +38,7 @@ import {
   StudentMeResponse,
   SubClub,
   changeStudentPassword,
+  devStudentQuickLogin,
   fetchClubEvents,
   fetchStudentMe,
   fetchSubClubs,
@@ -62,6 +63,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   const [data, setData] = useState<StudentMeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quickLoginBusy, setQuickLoginBusy] = useState<string | null>(null);
 
   // Events state
   const [events, setEvents] = useState<ClubEvent[]>([]);
@@ -153,6 +155,19 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   useEffect(() => {
     void loadMe();
   }, [loadMe]);
+
+  const handleQuickLogin = async (username: string) => {
+    setQuickLoginBusy(username);
+    setError(null);
+    try {
+      await devStudentQuickLogin(username, 'Password@123');
+      await loadMe();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('Quick login failed'));
+    } finally {
+      setQuickLoginBusy(null);
+    }
+  };
 
   const handleParticipate = async (evt: ClubEvent) => {
     setParticipatingId(evt.id);
@@ -273,26 +288,87 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
 
   if (error || !data) {
     return (
-      <div className="max-w-xl mx-auto my-12 p-6 bg-white rounded-3xl border border-rose-200 text-center space-y-4 shadow-sm">
-        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
-          <ShieldAlert className="w-6 h-6" />
+      <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl border border-[#E2ECE7] text-center space-y-6 shadow-sm animate-in fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-[#E9F5EF] text-[#0D7751] flex items-center justify-center mx-auto shadow-inner">
+          <GraduationCap className="w-7 h-7" />
         </div>
-        <h3 className="text-lg font-bold text-ink-900">{t('Unable to Load Member Account')}</h3>
-        <p className="text-xs text-ink-600">{error || t('Student profile not found.')}</p>
-        <div className="flex items-center justify-center gap-3 pt-2">
+        <div className="space-y-1">
+          <h3 className="text-xl font-bold text-[#103125]">{t('Club Member Module (STUDENT)')}</h3>
+          <p className="text-xs text-[#5A7366] max-w-md mx-auto">
+            {error ? error : t('No active student session detected. Use 1-click test sign-in or your institutional credentials.')}
+          </p>
+        </div>
+
+        {/* Quick 1-Click Access for Evaluators & Reviewers */}
+        <div className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] text-left space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#0D7751] flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              {t('Instant 1-Click Test Sign-In')}
+            </span>
+            <span className="text-[11px] font-mono text-[#5A7366]">Password: Password@123</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => void handleQuickLogin('student.bhu')}
+              disabled={Boolean(quickLoginBusy)}
+              className="p-3.5 rounded-xl bg-white border border-[#0D7751]/30 hover:border-[#0D7751] hover:bg-[#E9F5EF] text-left transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#103125]">Banaras Hindu University</span>
+                {quickLoginBusy === 'student.bhu' ? (
+                  <Loader2 className="w-4 h-4 text-[#0D7751] animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                )}
+              </div>
+              <div className="text-[11px] text-[#5A7366] font-mono mt-0.5">student.bhu • CLUB-BHU-008</div>
+              <div className="text-[10px] text-[#0D7751] font-semibold mt-1">Active seeded member (Passkey: BHU-LIB-2026-X89)</div>
+            </button>
+
+            <button
+              onClick={() => void handleQuickLogin('student.iitkgp')}
+              disabled={Boolean(quickLoginBusy)}
+              className="p-3.5 rounded-xl bg-white border border-[#0D7751]/30 hover:border-[#0D7751] hover:bg-[#E9F5EF] text-left transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#103125]">IIT Kharagpur</span>
+                {quickLoginBusy === 'student.iitkgp' ? (
+                  <Loader2 className="w-4 h-4 text-[#0D7751] animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                )}
+              </div>
+              <div className="text-[11px] text-[#5A7366] font-mono mt-0.5">student.iitkgp • CLUB-IITKGP-001</div>
+              <div className="text-[10px] text-[#0D7751] font-semibold mt-1">Active seeded member (Passkey: KGP-LIB-2026-A12)</div>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           {onSignIn && (
             <button
               onClick={onSignIn}
-              className="px-4 py-2 rounded-xl bg-[#0D7751] text-white text-xs font-bold cursor-pointer hover:bg-[#103125] transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#0D7751] text-white text-xs font-bold cursor-pointer hover:bg-[#103125] transition-colors shadow-xs flex items-center space-x-1.5"
             >
-              {t('Sign In to Student Account')}
+              <KeyRound className="w-4 h-4" />
+              <span>{t('Sign In with Custom Credentials')}</span>
             </button>
           )}
+          <a
+            href="/join"
+            className="px-4 py-2.5 rounded-xl border border-[#E2ECE7] bg-white text-[#2E4A3E] text-xs font-bold cursor-pointer hover:bg-[#F4F8F6] transition-colors flex items-center space-x-1.5"
+          >
+            <User className="w-4 h-4 text-[#0D7751]" />
+            <span>{t('Join with Club Passkey')}</span>
+          </a>
           <button
             onClick={() => void loadMe()}
-            className="px-4 py-2 rounded-xl border border-[#E2ECE7] text-[#2E4A3E] text-xs font-bold cursor-pointer hover:bg-[#F4F8F6] transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-[#E2ECE7] bg-white text-[#2E4A3E] text-xs font-bold cursor-pointer hover:bg-[#F4F8F6] transition-colors flex items-center space-x-1.5"
           >
-            {t('Retry')}
+            <RefreshCw className="w-4 h-4 text-[#5A7366]" />
+            <span>{t('Retry')}</span>
           </button>
         </div>
       </div>

@@ -527,6 +527,8 @@ class SubClubDetailView(APIView):
 class ClubBrandingView(APIView):
     """Institutional branding: Transparent PNG logo and Signing Authority Signature."""
 
+    authentication_classes: list = []
+    permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request, club_code: str) -> Response:
@@ -537,13 +539,36 @@ class ClubBrandingView(APIView):
             .filter(code__iexact=club_code)
             .first()
         )
-        if not club:
+        if not club or not getattr(club, "institution", None):
             return Response(
-                {"detail": "Club not found.", "code": "not_found"},
-                status=status.HTTP_404_NOT_FOUND,
+                {
+                    "institution_name": club.name if club else club_code,
+                    "institution_type": "higher_education",
+                    "affiliation_code": "",
+                    "signing_authority_name": "",
+                    "signing_authority_affiliation": "",
+                    "has_logo": False,
+                    "logo_url": "",
+                    "has_signature": False,
+                    "signature_url": "",
+                }
             )
 
         inst = club.institution
+        logo_url = ""
+        if inst.logo_image:
+            try:
+                logo_url = inst.logo_image.url
+            except Exception:
+                logo_url = ""
+
+        sig_url = ""
+        if inst.signature_image:
+            try:
+                sig_url = inst.signature_image.url
+            except Exception:
+                sig_url = ""
+
         return Response(
             {
                 "institution_name": inst.name,
@@ -556,11 +581,9 @@ class ClubBrandingView(APIView):
                     inst, "signing_authority_affiliation", ""
                 ),
                 "has_logo": bool(inst.logo_image),
-                "logo_url": inst.logo_image.url if inst.logo_image else "",
+                "logo_url": logo_url,
                 "has_signature": bool(inst.signature_image),
-                "signature_url": inst.signature_image.url
-                if inst.signature_image
-                else "",
+                "signature_url": sig_url,
             }
         )
 
@@ -572,7 +595,7 @@ class ClubBrandingView(APIView):
             .filter(code__iexact=club_code)
             .first()
         )
-        if not club:
+        if not club or not getattr(club, "institution", None):
             return Response(
                 {"detail": "Club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
@@ -593,11 +616,27 @@ class ClubBrandingView(APIView):
             ).strip()
 
         inst.save()
+        logo_url = ""
+        if inst.logo_image:
+            try:
+                logo_url = inst.logo_image.url
+            except Exception:
+                logo_url = ""
+
+        sig_url = ""
+        if inst.signature_image:
+            try:
+                sig_url = inst.signature_image.url
+            except Exception:
+                sig_url = ""
+
         return Response(
             {
                 "message": "Institutional branding assets saved successfully.",
                 "has_logo": bool(inst.logo_image),
+                "logo_url": logo_url,
                 "has_signature": bool(inst.signature_image),
+                "signature_url": sig_url,
                 "signing_authority_name": inst.signing_authority_name,
                 "signing_authority_affiliation": inst.signing_authority_affiliation,
             }

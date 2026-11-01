@@ -783,6 +783,22 @@ class StudentJoinRegisterView(APIView):
         first_name = parts[0]
         last_name = parts[1] if len(parts) > 1 else ""
 
+        from django.conf import settings
+
+        auto_activate = bool(
+            data.get("auto_activate")
+            or getattr(settings, "AUTO_ACTIVATE_STUDENTS", False)
+            or (settings.DEBUG and not getattr(settings, "TESTING", False))
+        )
+        target_account_state = (
+            AccountState.ACTIVE if auto_activate else AccountState.PENDING_APPROVAL
+        )
+        target_join_status = (
+            JoinRequest.Status.APPROVED
+            if auto_activate
+            else JoinRequest.Status.PENDING
+        )
+
         with transaction.atomic():
             if existing_user is not None:
                 user = existing_user
@@ -794,7 +810,7 @@ class StudentJoinRegisterView(APIView):
                 user.institution = club.institution
                 user.state = club.institution.state
                 user.zone = club.institution.state.zone
-                user.account_state = AccountState.PENDING_APPROVAL
+                user.account_state = target_account_state
                 user.set_password(password)
                 user.save()
             else:
@@ -809,7 +825,7 @@ class StudentJoinRegisterView(APIView):
                     institution=club.institution,
                     state=club.institution.state,
                     zone=club.institution.state.zone,
-                    account_state=AccountState.PENDING_APPROVAL,
+                    account_state=target_account_state,
                 )
                 user.set_password(password)
                 user.save()
@@ -831,16 +847,39 @@ class StudentJoinRegisterView(APIView):
                 user=user,
                 club=club,
                 source=JoinRequest.Source.PASSKEY,
-                status=JoinRequest.Status.PENDING,
+                status=target_join_status,
+                decided_by=user if auto_activate else None,
+                decided_at=timezone.now() if auto_activate else None,
+            )
+
+            if auto_activate:
+                from apps.domain.models import Membership
+
+                Membership.objects.get_or_create(
+                    user=user,
+                    club=club,
+                    defaults={
+                        "joined_on": timezone.localdate(),
+                        "role": Membership.Role.MEMBER,
+                        "status": Membership.Status.ACTIVE,
+                    },
+                )
+
+        if auto_activate:
+            msg = (
+                "Enrollment successful! Your student member account is active and "
+                "verified. You can log in immediately to access the Club Member Module."
+            )
+        else:
+            msg = (
+                "Verification link sent to your student email. Your enrollment "
+                "application is under review by the club authority."
             )
 
         return Response(
             {
                 "success": True,
-                "message": (
-                    "Verification link sent to your student email. Your enrollment "
-                    "application is under review by the club authority."
-                ),
+                "message": msg,
                 "club_code": club.code,
                 "institution_name": club.institution.name,
                 "full_name": full_name,

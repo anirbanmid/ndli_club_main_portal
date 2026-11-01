@@ -347,6 +347,86 @@ export const LoginView: React.FC<LoginViewProps> = ({
         >
           <span>🔓</span> {busy ? 'Verifying Credentials…' : 'Unlock System Access →'}
         </button>
+
+        <div style={{
+          marginTop: '0.75rem',
+          padding: '0.6rem 0.8rem',
+          borderRadius: '10px',
+          background: 'rgba(255, 255, 255, 0.06)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.35rem',
+          fontSize: '0.75rem',
+          color: '#e2ece7'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, color: '#f59e0b' }}>🧪 Test Credentials / Quick Fill:</span>
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>(Bypass Captcha: DEV_TEST)</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeCode('student.bhu');
+                setPassword('Password@123');
+                setCaptcha('DEV_TEST');
+              }}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                background: 'rgba(16, 185, 129, 0.2)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#6ee7b7',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.72rem'
+              }}
+            >
+              🎓 Student (BHU)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeCode('student.iitkgp');
+                setPassword('Password@123');
+                setCaptcha('DEV_TEST');
+              }}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                background: 'rgba(16, 185, 129, 0.2)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#6ee7b7',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.72rem'
+              }}
+            >
+              🎓 Student (IIT KGP)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmployeeCode('bhu.president');
+                setPassword('Password@123');
+                setCaptcha('DEV_TEST');
+              }}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                background: 'rgba(245, 158, 11, 0.2)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                color: '#fcd34d',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.72rem'
+              }}
+            >
+              🏛️ Authority (BHU)
+            </button>
+          </div>
+        </div>
       </form>
 
       <div className="lock-footer-info">

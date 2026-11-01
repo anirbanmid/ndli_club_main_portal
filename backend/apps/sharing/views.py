@@ -10,7 +10,7 @@ from typing import Any
 
 from rest_framework import status
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -28,11 +28,19 @@ from apps.sharing.models import (
 class LibraryListView(APIView):
     """List or create curated libraries (Club, Personal, Community)."""
 
-    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
     def get(self, request: Request) -> Response:
-        club_code = str(request.query_params.get("club_code", "")).strip()
+        club_code = str(
+            request.query_params.get("club_code")
+            or request.query_params.get("club_id")
+            or ""
+        ).strip()
         lib_type = str(request.query_params.get("type", "")).strip()
 
         qs = CuratedLibrary.objects.select_related("club", "owner", "sub_club")
@@ -43,6 +51,11 @@ class LibraryListView(APIView):
         from apps.core.scoping import authenticated_user
 
         user = authenticated_user(request)
+        if not user and not club_code:
+            return Response(
+                {"detail": "Authentication credentials were not provided."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         if lib_type == "club":
             qs = qs.filter(library_type=LibraryType.CLUB)
@@ -146,6 +159,11 @@ class LibraryDetailView(APIView):
     """Inspect, edit, publish to community, or delete a library."""
 
     parser_classes = [JSONParser]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get(self, request: Request, pk: int) -> Response:
         lib = (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -10,9 +10,11 @@ import {
   Link as LinkIcon, 
   Share2, 
   Building2,
-  FileImage
+  FileImage,
+  Search
 } from 'lucide-react';
 import { createClubEvent, SubClub } from '../../lib/campusApi';
+import { fetchCanonicalClubs } from '../../lib/clubRepository';
 import { InstituteClub } from '../../types';
 import { useModalBehavior } from '../../utils/useModalBehavior';
 
@@ -50,6 +52,48 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
 
   // Partner Clubs selection (for multi-club collaboration)
   const [selectedPartnerClubIds, setSelectedPartnerClubIds] = useState<string[]>([]);
+  const [canonicalClubList, setCanonicalClubList] = useState<InstituteClub[]>([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubSearchTerm, setClubSearchTerm] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    async function loadClubs() {
+      if (canonicalClubs && canonicalClubs.length > 0 && !canonicalClubs.some(c => c.id.startsWith('NDLI-EMP01-'))) {
+        if (active) setCanonicalClubList(canonicalClubs);
+        return;
+      }
+      setClubsLoading(true);
+      try {
+        const list = await fetchCanonicalClubs();
+        if (active) {
+          const genuine = list.filter(c => !c.id.startsWith('NDLI-EMP01-'));
+          setCanonicalClubList(genuine);
+        }
+      } catch {
+        if (active) setCanonicalClubList([]);
+      } finally {
+        if (active) setClubsLoading(false);
+      }
+    }
+    loadClubs();
+    return () => {
+      active = false;
+    };
+  }, [canonicalClubs]);
+
+  const allAvailablePartners = canonicalClubList.filter(c => c.id !== clubCode);
+  const filteredPartners = allAvailablePartners.filter(p => {
+    if (!clubSearchTerm.trim()) return true;
+    const q = clubSearchTerm.trim().toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q) ||
+      p.state.toLowerCase().includes(q) ||
+      (p.aisheCode && p.aisheCode.toLowerCase().includes(q)) ||
+      (p.district && p.district.toLowerCase().includes(q))
+    );
+  });
 
   // Conductors list
   const [conductors, setConductors] = useState<{ full_name: string; affiliation: string }[]>([
@@ -404,28 +448,150 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
 
           {/* Multi-Club Collaboration Selection */}
           {scope === 'multi_club' && (
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">
-                Select Partner Clubs for Collaboration Invite
-              </label>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50">
-                {canonicalClubs.filter(c => c.id !== clubCode).map((partner) => (
-                  <label
-                    key={partner.id}
-                    className="flex items-center space-x-2.5 p-2 rounded-xl hover:bg-white text-xs cursor-pointer"
+            <div className="space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="block text-xs font-bold text-gray-800">
+                  Select Partner Clubs for Collaboration Invite
+                </label>
+                <span className="text-[11px] text-gray-500">
+                  {clubsLoading ? (
+                    'Loading canonical clubs...'
+                  ) : (
+                    <span>
+                      Showing <strong>{filteredPartners.length}</strong> of <strong>{allAvailablePartners.length}</strong> canonical clubs{' '}
+                      ({selectedPartnerClubIds.length} selected)
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* Universal Instant Search Bar */}
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={clubSearchTerm}
+                  onChange={(e) => setClubSearchTerm(e.target.value)}
+                  placeholder="Universal search by club name, club code (e.g. CLUB-BHU-008), or state..."
+                  className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-600 outline-none"
+                />
+                {clubSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setClubSearchTerm('')}
+                    className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 cursor-pointer"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedPartnerClubIds.includes(partner.id)}
-                      onChange={() => handleTogglePartnerClub(partner.id)}
-                      className="rounded text-teal-600 focus:ring-teal-500 h-4 w-4"
-                    />
-                    <div>
-                      <span className="font-bold text-gray-800">{partner.name}</span>{' '}
-                      <span className="text-[11px] text-gray-500">({partner.state})</span>
-                    </div>
-                  </label>
-                ))}
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Selected Partners Chips */}
+              {selectedPartnerClubIds.length > 0 && (
+                <div className="p-2 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900">
+                    <span>Selected Partner Clubs ({selectedPartnerClubIds.length}):</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPartnerClubIds([])}
+                      className="text-rose-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+                    {allAvailablePartners
+                      .filter(p => selectedPartnerClubIds.includes(p.id))
+                      .map(p => (
+                        <span
+                          key={p.id}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-100/90 text-emerald-900 text-[11px] font-medium border border-emerald-300"
+                        >
+                          <span className="font-bold">{p.name}</span>
+                          <span className="text-[10px] text-emerald-700 font-mono">({p.id})</span>
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePartnerClub(p.id)}
+                            className="hover:text-rose-700 ml-0.5 cursor-pointer font-bold"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Select Actions */}
+              {filteredPartners.length > 0 && (
+                <div className="flex items-center justify-between text-[11px] pt-0.5 px-0.5">
+                  <span className="text-gray-500 font-medium">Click any club to toggle collaboration invite</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const idsToAdd = filteredPartners.map(p => p.id);
+                      setSelectedPartnerClubIds(prev => Array.from(new Set([...prev, ...idsToAdd])));
+                    }}
+                    className="text-emerald-700 hover:underline font-bold cursor-pointer"
+                  >
+                    Select All {filteredPartners.length} Filtered
+                  </button>
+                </div>
+              )}
+
+              {/* Filtered Canonical Clubs List */}
+              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50 divide-y divide-gray-100">
+                {clubsLoading ? (
+                  <div className="p-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                    <span>Loading canonical NDLI club registry...</span>
+                  </div>
+                ) : filteredPartners.length > 0 ? (
+                  filteredPartners.map((partner) => {
+                    const isSelected = selectedPartnerClubIds.includes(partner.id);
+                    return (
+                      <label
+                        key={partner.id}
+                        className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                          isSelected ? 'bg-emerald-100/60 border border-emerald-300' : 'hover:bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleTogglePartnerClub(partner.id)}
+                            className="rounded text-emerald-700 focus:ring-emerald-600 h-4 w-4 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-bold text-gray-900 truncate">{partner.name}</div>
+                            <div className="text-[11px] text-gray-500 flex items-center gap-2">
+                              <span className="font-mono text-emerald-800 font-semibold">{partner.id}</span>
+                              <span>•</span>
+                              <span>{partner.state}</span>
+                              {partner.category && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-gray-400">{partner.category}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-200/80 px-2 py-0.5 rounded-full shrink-0">
+                            Invited
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })
+                ) : (
+                  <div className="p-6 text-center text-xs text-gray-500 space-y-1">
+                    <div className="font-bold text-gray-700">No canonical clubs matching &ldquo;{clubSearchTerm}&rdquo;</div>
+                    <div className="text-[11px]">Try searching by club code (e.g. CLUB-BHU-008), state, or institution name.</div>
+                  </div>
+                )}
               </div>
             </div>
           )}

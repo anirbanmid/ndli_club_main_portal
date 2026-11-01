@@ -819,6 +819,124 @@ class Command(BaseCommand):
                         },
                     )
 
+            # Seed canonical test student members for seamless testing without SMTP
+            try:
+                from datetime import timedelta
+
+                from django.utils import timezone
+
+                from apps.domain.models import Membership
+                from apps.members.models import StudentMemberProfile
+
+                test_students = [
+                    {
+                        "username": "student.bhu",
+                        "email": "student.bhu@bhu.ac.in",
+                        "first_name": "Aarav",
+                        "last_name": "Sharma",
+                        "club_code": "CLUB-BHU-008",
+                        "department": "Computer Science & Engineering",
+                        "roll_number": "BHU-2026-CS101",
+                        "points": 150,
+                        "badge": "silver",
+                    },
+                    {
+                        "username": "student.iitkgp",
+                        "email": "student.iitkgp@iitkgp.ac.in",
+                        "first_name": "Priya",
+                        "last_name": "Patel",
+                        "club_code": "CLUB-IITKGP-001",
+                        "department": "Electronics & Electrical Comm.",
+                        "roll_number": "KGP-2026-EE202",
+                        "points": 200,
+                        "badge": "gold",
+                    },
+                    {
+                        "username": "student.demo",
+                        "email": "student.demo@ndli.edu",
+                        "first_name": "Rohan",
+                        "last_name": "Verma",
+                        "club_code": "CLUB-BHU-008",
+                        "department": "General Engineering",
+                        "roll_number": "NDLI-2026-STU01",
+                        "points": 100,
+                        "badge": "copper",
+                    },
+                ]
+
+                default_expiry = timezone.localdate() + timedelta(days=365)
+                for st_data in test_students:
+                    target_club = Club.objects.filter(
+                        code__iexact=st_data["club_code"]
+                    ).first()
+                    if not target_club:
+                        target_club = Club.objects.first()
+                    if not target_club:
+                        continue
+
+                    stu_user, _ = User.objects.get_or_create(
+                        username=st_data["username"],
+                        defaults={
+                            "email": st_data["email"],
+                            "first_name": st_data["first_name"],
+                            "last_name": st_data["last_name"],
+                            "category": Category.STUDENT_MEMBER,
+                            "sub_role": SubRole.STUDENT_MEMBER,
+                            "account_state": AccountState.ACTIVE,
+                            "club": target_club,
+                            "institution": target_club.institution,
+                            "state": target_club.institution.state,
+                            "zone": target_club.institution.state.zone,
+                            "is_active": True,
+                        },
+                    )
+                    stu_user.set_password("Password@123")
+                    stu_user.category = Category.STUDENT_MEMBER
+                    stu_user.sub_role = SubRole.STUDENT_MEMBER
+                    stu_user.account_state = AccountState.ACTIVE
+                    stu_user.club = target_club
+                    stu_user.institution = target_club.institution
+                    stu_user.state = target_club.institution.state
+                    stu_user.zone = target_club.institution.state.zone
+                    stu_user.save()
+
+                    fname = str(st_data["first_name"])
+                    gender_val = (
+                        "male"
+                        if "Aarav" in fname or "Rohan" in fname
+                        else "female"
+                    )
+                    StudentMemberProfile.objects.update_or_create(
+                        user=stu_user,
+                        defaults={
+                            "club": target_club,
+                            "gender": gender_val,
+                            "department": st_data["department"],
+                            "roll_number": st_data["roll_number"],
+                            "validity_years": 1,
+                            "valid_until": default_expiry,
+                            "points": st_data["points"],
+                            "badge": st_data["badge"],
+                            "is_suspended_by_coordinator": False,
+                        },
+                    )
+
+                    Membership.objects.get_or_create(
+                        user=stu_user,
+                        club=target_club,
+                        defaults={
+                            "joined_on": timezone.localdate(),
+                            "role": Membership.Role.MEMBER,
+                            "status": Membership.Status.ACTIVE,
+                        },
+                    )
+                self.stdout.write(
+                    "Successfully seeded active canonical student accounts "
+                    "(student.bhu, student.iitkgp, student.demo)."
+                )
+            except Exception as exc:
+                self.stdout.write(f"Notice: Student seeding error: {exc}")
+
         # Run full Ledger Audit & Reconcile
         if has_activities:
             try:

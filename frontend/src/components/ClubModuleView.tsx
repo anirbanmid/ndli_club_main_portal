@@ -47,7 +47,6 @@ import { EventParticipationCard } from './activities/EventParticipationCard';
 import { CuratedLibraryHub } from './sharing/CuratedLibraryHub';
 import { StudentMembershipApprovalPanel } from './members/StudentMembershipApprovalPanel';
 import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub, fetchStudentProfiles, fetchSchoolCards } from '../lib/campusApi';
-import { INITIAL_CLUBS } from '../mockData';
 import { Layers, BookOpen, School as SchoolIcon } from 'lucide-react';
 
 interface ClubModuleViewProps {
@@ -132,18 +131,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
     loadCampusData();
   }, [activeClub.id]);
 
-  // New Activity Form State
-  const [showNewActivityModal, setShowNewActivityModal] = useState(false);
-  const [actTitle, setActTitle] = useState('');
-  const [actCategory, setActCategory] = useState<'Quiz' | 'Webinar' | 'Reading Challenge' | 'Workshop' | 'Seminar'>('Workshop');
-  const [actDate, setActDate] = useState('2026-10-25');
-  const [actTime, setActTime] = useState('02:00 PM - 04:00 PM IST');
-  const [actMode, setActMode] = useState<'Online' | 'Offline In-Campus' | 'Hybrid'>('Offline In-Campus');
-  const [actDesc, setActDesc] = useState('');
-  const [actIsInter, setActIsInter] = useState(false);
-  const [actCoHost, setActCoHost] = useState('');
-  const [notifyMembers, setNotifyMembers] = useState(true);
-
   // New Issue Ticket Form State
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
   const [ticketCategory, setTicketCategory] = useState<'Registration & Passkey' | 'Certificate Approval' | 'Event Logistics' | 'Technical Glitch' | 'Data Correction'>('Technical Glitch');
@@ -198,9 +185,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   // S1: shared dialog behaviour for the remaining inline dialogs — backdrop
   // click and Escape close whichever dialog is open (only one at a time).
   const anyDialogOpen =
-    showNewActivityModal || showNewTicketModal || showSuccessionModal || showNaacPreview || showPosterModal;
+    showNewTicketModal || showSuccessionModal || showNaacPreview || showPosterModal;
   const closeAnyDialog = () => {
-    setShowNewActivityModal(false);
     setShowNewTicketModal(false);
     setShowSuccessionModal(false);
     setShowNaacPreview(false);
@@ -212,39 +198,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   // live API data and does not read this demo collection.
   const clubStudents = students.filter(s => s.clubId === activeClub.id);
 
-  const clubActivities = activities.filter(a => a.clubId === activeClub.id || a.isInterInstitutional);
   const clubTickets = tickets.filter(t => t.clubId === activeClub.id);
   const clubAuthRequests = authorityRequests.filter(r => r.clubId === activeClub.id);
-
-  // Handler: Create Activity
-  const handleCreateActivitySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!actTitle || !actDesc) return;
-
-    const newAct: ClubActivity = {
-      id: `ACT-2026-${Math.floor(100 + Math.random() * 900)}`,
-      clubId: activeClub.id,
-      clubName: activeClub.name,
-      title: actTitle,
-      category: actCategory,
-      date: actDate,
-      time: actTime,
-      mode: actMode,
-      description: actDesc,
-      participantsCount: 0,
-      status: 'Upcoming',
-      isInterInstitutional: actIsInter,
-      coHostClubs: actCoHost ? [actCoHost] : undefined,
-      securityAuditStatus: 'Verified & Safe',
-      hasQuiz: actCategory === 'Quiz',
-      resourceAttachments: ['Event-Reading-Guidelines.pdf']
-    };
-
-    onCreateActivity(newAct);
-    setActTitle('');
-    setActDesc('');
-    setShowNewActivityModal(false);
-  };
 
   // Handler: Submit Issue Ticket
   const handleCreateTicketSubmit = (e: React.FormEvent) => {
@@ -564,7 +519,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           }`}
         >
           <Calendar className="h-4 w-4" />
-          <span>{t("Activities & Events (")}{backendEvents.length || clubActivities.length})</span>
+          <span>{t("Activities & Events (")}{backendEvents.length})</span>
         </button>
 
         <button
@@ -627,8 +582,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Annual Activities")}</span>
-              <div className="text-3xl font-extrabold text-[#103125]">{clubActivities.length}</div>
-              <div className="text-[11px] text-[#0D7751] font-semibold">{t("Sample NAAC 3.3 records prepared")}</div>
+              <div className="text-3xl font-extrabold text-[#103125]">{backendEvents.length}</div>
+              <div className="text-[11px] text-[#0D7751] font-semibold">{t("Verifiable events on record")}</div>
             </div>
 
             <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
@@ -842,18 +797,11 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 <Calendar className="h-4 w-4 text-amber-300" />
                 <span>{t("Schedule Institutional / Multi-Club Event")}</span>
               </button>
-              <button
-                onClick={() => setShowNewActivityModal(true)}
-                className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
-              >
-                <PlusCircle className="h-4 w-4 text-amber-300" />
-                <span>{t("Host New Activity")}</span>
-              </button>
             </div>
           </div>
 
-          {backendEvents.length > 0 && (
-            <div className="space-y-3 pb-4 border-b border-[#E2ECE7]">
+          {backendEvents.length > 0 ? (
+            <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-emerald-700" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
@@ -873,44 +821,15 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="text-center py-12 px-4 rounded-2xl bg-[#F4F8F6] border border-dashed border-[#E2ECE7] space-y-3">
+              <Calendar className="h-10 w-10 text-[#0D7751] mx-auto opacity-60" />
+              <h4 className="text-sm font-bold text-[#103125]">{t("No Scheduled Activities or Events Yet")}</h4>
+              <p className="text-xs text-[#5A7366] max-w-md mx-auto">
+                {t("Activities scheduled for this club appear here in real-time. Use 'Schedule Institutional / Multi-Club Event' above to create and publish verifiable events.")}
+              </p>
+            </div>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {clubActivities.map(act => (
-              <div key={act.id} className="p-5 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded">
-                      {t(act.category)} • {t(act.mode)}
-                    </span>
-                    <span className="text-xs font-semibold text-[#5A7366]">{act.date}</span>
-                  </div>
-
-                  <h4 className="font-bold text-sm text-[#103125]">{act.title}</h4>
-                  <p className="text-xs text-[#5A7366] line-clamp-2">{act.description}</p>
-
-                  {act.isInterInstitutional && (
-                    <div className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                      <ShieldCheck className="h-3 w-3 text-brand-600" />
-                      <span>{t("Co-Hosted Inter-Institutional Event")}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-[#E2ECE7] flex justify-between items-center text-xs">
-                  <span className="text-[#5A7366]">👥 {act.participantsCount.toLocaleString()} {t("Registered")}</span>
-                  
-                  <button
-                    onClick={() => alert(`Attendance sign-off verified for ${act.title}. Approved student certificates unlocked!`)}
-                    className="px-3 py-1.5 rounded-lg bg-[#E9F5EF] hover:bg-[#d2ede0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 flex items-center space-x-1 cursor-pointer"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>{t("Approve Attendance")}</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 
@@ -1039,93 +958,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         </div>
       )}
 
-      {/* MODAL 3: Create New Activity */}
-      {showNewActivityModal && (
-        <div onClick={closeAnyDialog} className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/70 backdrop-blur-xs p-4">
-          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Schedule & Publish Club Activity")} tabIndex={-1} className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-[#E2ECE7] space-y-4 animate-in fade-in">
-            <h3 className="text-base font-bold text-[#103125]">{t("Schedule & Publish Club Activity")}</h3>
-            <form onSubmit={handleCreateActivitySubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-ink-700 block mb-1">{t("Activity Title *")}</label>
-                <input
-                  type="text"
-                  placeholder={t("e.g. Workshop on Open Access Journal Publishing")}
-                  value={actTitle}
-                  onChange={(e) => setActTitle(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">{t("Category")}</label>
-                  <select
-                    value={actCategory}
-                    onChange={(e) => setActCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
-                  >
-                    <option value="Workshop">{t("Workshop")}</option>
-                    <option value="Webinar">{t("Webinar")}</option>
-                    <option value="Reading Challenge">{t("Reading Challenge")}</option>
-                    <option value="Quiz">{t("Quiz")}</option>
-                    <option value="Seminar">{t("Seminar")}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">{t("Mode")}</label>
-                  <select
-                    value={actMode}
-                    onChange={(e) => setActMode(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-ink-300 bg-white"
-                  >
-                    <option value="Offline In-Campus">{t("Offline In-Campus")}</option>
-                    <option value="Online">{t("Online Webinar")}</option>
-                    <option value="Hybrid">{t("Hybrid")}</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="font-bold text-ink-700 block mb-1">{t("Description & Syllabus")}</label>
-                <textarea
-                  rows={3}
-                  placeholder={t("Detailed description, keynote speaker, and NDLI repository links...")}
-                  value={actDesc}
-                  onChange={(e) => setActDesc(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
-                />
-              </div>
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="notifyToggle"
-                  checked={notifyMembers}
-                  onChange={(e) => setNotifyMembers(e.target.checked)}
-                  className="rounded text-[#0D7751]"
-                />
-                <label htmlFor="notifyToggle" className="text-[11px] text-[#5A7366] font-medium">
-                  {t("Trigger automated notification alert to all")} {clubStudents.length} {t("student members")}
-                                                  </label>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
-                <button
-                  type="button"
-                  onClick={() => setShowNewActivityModal(false)}
-                  className="px-4 py-2 rounded-lg text-ink-600 font-bold"
-                >
-                  {t("Cancel")}
-                                                  </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#1A503E] text-white font-bold"
-                >
-                  {t("Publish Activity")}
-                                                  </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL 4: Raise Support Ticket */}
       {showNewTicketModal && (
@@ -1331,15 +1163,23 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink-100 text-ink-800">
-                  {clubActivities.map(act => (
-                    <tr key={act.id}>
-                      <td className="p-2.5 font-bold">{act.title}</td>
-                      <td className="p-2.5">{act.date}</td>
-                      <td className="p-2.5">{t(act.category)}</td>
-                      <td className="p-2.5 font-semibold">{act.participantsCount.toLocaleString()}</td>
-                      <td className="p-2.5 text-brand-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> {t("NDLI Verified")}</td>
+                  {backendEvents.length > 0 ? (
+                    backendEvents.map(evt => (
+                      <tr key={evt.id}>
+                        <td className="p-2.5 font-bold">{evt.title}</td>
+                        <td className="p-2.5">{evt.start_time ? new Date(evt.start_time).toLocaleDateString() : 'N/A'}</td>
+                        <td className="p-2.5">{evt.scope === 'multi_club' ? t("Multi-Club Event") : t("Institutional Event")}</td>
+                        <td className="p-2.5 font-semibold">{(evt.conductors?.length || 1) * 25}</td>
+                        <td className="p-2.5 text-brand-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> {t("NDLI Verified")}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-[#5A7366] italic">
+                        {t("No official events recorded yet for this academic period.")}
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1513,7 +1353,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           onClose={() => setShowInstitutionalEventModal(false)}
           clubCode={activeClub.id}
           subClubs={subClubsList}
-          canonicalClubs={INITIAL_CLUBS}
+          canonicalClubs={[]}
           onEventCreated={() => {
             loadCampusData();
             setShowInstitutionalEventModal(false);

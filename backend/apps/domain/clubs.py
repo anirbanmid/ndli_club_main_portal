@@ -949,27 +949,15 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         sec_e = c.secretary_email or f"secretary@{c.code.lower()}.ac.in"
         sec_p = c.secretary_phone or "+91 9811000013"
 
-        hei_count = (
-            c.student_profiles.count()
-            if hasattr(c, "student_profiles")
-            else 0
-        )
-        school_count = (
-            c.school_roster.count()
-            if hasattr(c, "school_roster")
-            else 0
-        )
+        hei_count = c.student_profiles.count() if hasattr(c, "student_profiles") else 0
+        school_count = c.school_roster.count() if hasattr(c, "school_roster") else 0
         other_count = (
             c.memberships.exclude(user__category="student_member").count()
             if hasattr(c, "memberships")
             else 0
         )
         actual_members = hei_count + school_count + other_count
-        hosted_events = (
-            c.hosted_events.count()
-            if hasattr(c, "hosted_events")
-            else 0
-        )
+        hosted_events = c.hosted_events.count() if hasattr(c, "hosted_events") else 0
         actual_events = (
             (c.solo_activities or 0) + (c.joint_activities or 0) + hosted_events
         )

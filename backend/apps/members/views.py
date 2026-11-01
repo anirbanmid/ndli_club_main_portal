@@ -842,7 +842,6 @@ class StudentJoinRegisterView(APIView):
         )
 
 
-
 def _calculate_profile_completeness(profile: Any) -> int:
     checks = [
         bool(profile.avatar),
@@ -856,9 +855,7 @@ def _calculate_profile_completeness(profile: Any) -> int:
     return int(round((sum(checks) / float(len(checks))) * 100))
 
 
-def _compute_gamification(
-    profile: Any, user: Any
-) -> tuple[int, str, int, int, int]:
+def _compute_gamification(profile: Any, user: Any) -> tuple[int, str, int, int, int]:
     from apps.activities.models import EventAttendance
     from apps.certificates.models import Certificate
     from apps.sharing.models import CuratedLibrary
@@ -989,8 +986,7 @@ class StudentMemberMeView(APIView):
                         "passkey": passkey,
                     },
                     "sub_clubs": [
-                        {"id": sc.id, "name": sc.name}
-                        for sc in profile.sub_clubs.all()
+                        {"id": sc.id, "name": sc.name} for sc in profile.sub_clubs.all()
                     ],
                 },
                 "stats": {
@@ -1185,4 +1181,3 @@ class StudentMemberMePasswordView(APIView):
         user.set_password(new_password)
         user.save(update_fields=["password"])
         return Response({"message": "Password updated successfully.", "success": True})
-

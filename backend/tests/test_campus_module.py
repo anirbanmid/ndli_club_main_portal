@@ -703,6 +703,7 @@ class CampusModuleTests(TestCase):
 
         # Verify validity expiration rejection
         from datetime import timedelta
+
         prof.valid_until = timezone.localdate() - timedelta(days=1)
         prof.save(update_fields=["valid_until"])
 
@@ -957,9 +958,7 @@ class CampusModuleTests(TestCase):
         self.assertEqual(len(data["participants"]), 3)
 
         # Verify attendances created
-        self.assertEqual(
-            EventAttendance.objects.filter(event=event).count(), 3
-        )
+        self.assertEqual(EventAttendance.objects.filter(event=event).count(), 3)
 
         # Verify deterministic UID format: SCH-[State]-[Club]-[Class]-[Serial]
         for p in data["participants"]:
@@ -1025,7 +1024,9 @@ class CampusModuleTests(TestCase):
             self.assertIn("Student UID", sample_cert)
 
     def test_event_certificate_approval_saves_and_signs_certificates(self) -> None:
-        """Verify EventCertificateApprovalView creates signed, persisted Certificate records."""
+        """Verify EventCertificateApprovalView creates signed, persisted
+        Certificate records.
+        """
         from apps.certificates import services
         from apps.members.models import SchoolStudentRoster
 
@@ -1077,8 +1078,11 @@ class CampusModuleTests(TestCase):
         self.assertEqual(data["issued_count"], 1)
 
         # 3. Verify Certificate record was saved to DB and signed
-        cert = Certificate.objects.filter(club=self.club, event_ref=event.event_ref).first()
+        cert = Certificate.objects.filter(
+            club=self.club, event_ref=event.event_ref
+        ).first()
         self.assertIsNotNone(cert)
+        assert cert is not None
         self.assertEqual(cert.recipient_name, "Pooja Sen")
         self.assertEqual(cert.student_uid, "SCH-TEST-UID-001")
         self.assertTrue(cert.hmac_tag)
@@ -1093,7 +1097,9 @@ class CampusModuleTests(TestCase):
         self.assertIsNotNone(att.approved_at)
 
     def test_event_certificates_zip_download_zero_attendees(self) -> None:
-        """Verify downloading certificate zip for event with 0 attendees returns valid zip with manifest."""
+        """Verify downloading certificate zip for event with 0 attendees
+        returns valid zip with manifest.
+        """
         now = timezone.now()
         event = ClubEvent.objects.create(
             event_ref="EVT-EMPTY-ZIP",
@@ -1120,7 +1126,9 @@ class CampusModuleTests(TestCase):
             self.assertIn("certificate_id,student_uid,recipient_name", manifest_text)
 
     def test_event_participant_upload_ragged_csv(self) -> None:
-        """Verify CSV with ragged columns (missing fields / None values) and non-ASCII chars is parsed safely."""
+        """Verify CSV with ragged columns (missing fields / None values) and
+        non-ASCII chars is parsed safely.
+        """
         from apps.members.models import SchoolStudentRoster
 
         now = timezone.now()
@@ -1155,8 +1163,8 @@ class CampusModuleTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertEqual(data["enrolled_count"], 2)
-        roster = SchoolStudentRoster.objects.filter(club=self.club, full_name="Rohan Mukherjee").first()
+        roster = SchoolStudentRoster.objects.filter(
+            club=self.club, full_name="Rohan Mukherjee"
+        ).first()
         self.assertIsNotNone(roster)
-
-
-
+        assert roster is not None

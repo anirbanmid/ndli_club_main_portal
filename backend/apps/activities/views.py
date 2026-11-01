@@ -1498,14 +1498,10 @@ class EventCertificatesZipDownloadView(APIView):
                     else "HEI-STUDENT"
                 )
                 student_cls = (
-                    att.school_student.student_class
-                    if att.school_student
-                    else "N/A"
+                    att.school_student.student_class if att.school_student else "N/A"
                 )
                 student_sec = (
-                    att.school_student.section
-                    if att.school_student
-                    else "N/A"
+                    att.school_student.section if att.school_student else "N/A"
                 )
 
                 cert_id = format_certificate_id(random_certificate_id_body())
@@ -1561,9 +1557,7 @@ class EventCertificatesZipDownloadView(APIView):
                 safe_name = "".join(
                     c for c in student_name if c.isalnum() or c in (" ", "_", "-")
                 ).strip()
-                zf.writestr(
-                    f"certificates/{student_uid}_{safe_name}.txt", cert_content
-                )
+                zf.writestr(f"certificates/{student_uid}_{safe_name}.txt", cert_content)
 
             manifest_csv_buffer = io.StringIO()
             fieldnames = [
@@ -1589,4 +1583,3 @@ class EventCertificatesZipDownloadView(APIView):
         )
         response["Content-Length"] = len(zip_bytes)
         return response
-

@@ -126,4 +126,3 @@ urlpatterns += [
         name="school-cards-list",
     ),
 ]
-

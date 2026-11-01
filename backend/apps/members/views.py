@@ -16,7 +16,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -545,7 +545,7 @@ class SchoolCardsListView(APIView):
 class StudentProfileListView(APIView):
     """List existing student members with filters for Year, Dept, Gender, Sub-Club."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
         from django.db.models import Q
@@ -554,15 +554,20 @@ class StudentProfileListView(APIView):
         from apps.members.models import StudentMemberProfile
 
         actor = request.user
-        is_auth = getattr(actor, "is_authenticated", False)
-        actor_category = getattr(actor, "category", None) if is_auth else None
+        if not getattr(actor, "is_authenticated", False):
+            return Response(
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        actor_category = getattr(actor, "category", None)
         try:
-            actor_club = getattr(actor, "club", None) if is_auth else None
+            actor_club = getattr(actor, "club", None)
         except Exception:
             actor_club = None
         club_code = str(request.query_params.get("club_code", "")).strip()
 
-        if is_auth and actor_category == Category.STUDENT_MEMBER and not club_code:
+        if actor_category == Category.STUDENT_MEMBER and not club_code:
             return Response(
                 {
                     "detail": "Students cannot access club management rosters.",
@@ -571,7 +576,7 @@ class StudentProfileListView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if is_auth and actor_category == Category.CLUB_ADMIN and actor_club is not None:
+        if actor_category == Category.CLUB_ADMIN and actor_club is not None:
             if club_code and actor_club.code.lower() != club_code.lower():
                 return Response(
                     {

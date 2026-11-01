@@ -6,7 +6,8 @@ import { t } from "../i18n";
    gold (complementary) headings/accents, ink-tinted body text. */
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-gradient-to-b from-ink-950 to-brand-950 text-ink-300 pt-12 pb-8 border-t-2 border-accent-500/70">
+    <footer className="bg-gradient-to-b from-ink-950 to-brand-950 text-ink-300 pt-12 pb-8 border-t-2 border-accent-500/70" aria-labelledby="footer-heading">
+      <h2 id="footer-heading" className="sr-only">{t("Footer Navigation")}</h2>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
           {/* Col 1: Initiative info */}
@@ -28,7 +29,7 @@ export const Footer: React.FC = () => {
 
           {/* Col 2: Quick Links */}
           <div>
-            <h4 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Quick Navigation")}</h4>
+            <h3 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Quick Navigation")}</h3>
             <ul className="space-y-2.5 text-xs text-ink-300 leading-relaxed">
               <li><a href="#explore" className="hover:text-accent-300 transition-colors">{t("Directory of Registered Clubs")}</a></li>
               <li><a href="#guidelines" className="hover:text-accent-300 transition-colors">{t("Club Constitution & Guidelines")}</a></li>
@@ -40,7 +41,7 @@ export const Footer: React.FC = () => {
 
           {/* Col 3: Institutional Roles */}
           <div>
-            <h4 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Club Governance Hierarchy")}</h4>
+            <h3 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Club Governance Hierarchy")}</h3>
             <div className="space-y-2.5 text-xs text-ink-300 leading-relaxed">
               <div className="p-2 rounded-lg bg-white/[0.05] border border-white/10">
                 <span className="font-semibold text-white">{t("1. Patron:")}</span> {t("Head of Institution (VC / Principal)")}
@@ -59,7 +60,7 @@ export const Footer: React.FC = () => {
 
           {/* Col 4: Contact & Nodal Office */}
           <div>
-            <h4 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Central Nodal Office")}</h4>
+            <h3 className="text-xs font-bold text-accent-300 uppercase tracking-wider mb-4">{t("Central Nodal Office")}</h3>
             <ul className="space-y-3 text-xs text-ink-300 leading-relaxed">
               <li className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 text-accent-400 shrink-0 mt-0.5" />

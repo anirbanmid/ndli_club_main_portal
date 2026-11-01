@@ -801,7 +801,7 @@ class Command(BaseCommand):
                             "category": Category.CLUB_ADMIN,
                             "sub_role": SubRole.CLUB_PRESIDENT,
                             "account_state": AccountState.ACTIVE,
-                            "first_name": club.president_name or "Dr. Club President",
+                            "first_name": club.president_name or "",
                             "is_active": True,
                         },
                     )

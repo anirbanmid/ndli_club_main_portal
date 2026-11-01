@@ -218,6 +218,7 @@ export interface ClubEvent {
   start_time: string;
   end_time: string;
   joining_link?: string;
+  participants_count?: number;
   sub_clubs?: { id: number; name: string }[];
   conductors?: EventConductor[];
   collaborations?: {

@@ -106,41 +106,33 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
     authorities: rawAuthorities.length > 0
       ? (rawAuthorities as InstituteClub['authorities'])
       : [
-          {
-            role: 'Patron',
-            name: String(raw.patron_name || 'Prof. Patron Head'),
+          ...(raw.patron_name ? [{
+            role: 'Patron' as const,
+            name: String(raw.patron_name),
             designation: 'Director',
-            email: String(raw.patron_email || `director@${id.toLowerCase()}.example.edu`),
-            phone: '+91 9811000011',
+            email: String(raw.patron_email || ''),
+            phone: String(raw.patron_phone || ''),
             verified: true,
-          },
-          {
-            role: 'President',
-            name: String(raw.president_name || 'Dr. Club President'),
+          }] : []),
+          ...(raw.president_name ? [{
+            role: 'President' as const,
+            name: String(raw.president_name),
             designation: 'Head Librarian',
-            email: String(raw.president_email || `librarian@${id.toLowerCase()}.example.edu`),
-            phone: '+91 9811000012',
+            email: String(raw.president_email || ''),
+            phone: String(raw.president_phone || ''),
             verified: true,
-          },
-          {
-            role: 'Secretary',
-            name: String(raw.secretary_name || 'Prof. Secretary Lead'),
+          }] : []),
+          ...(raw.secretary_name ? [{
+            role: 'Secretary' as const,
+            name: String(raw.secretary_name),
             designation: 'Faculty Lead',
-            email: String(raw.secretary_email || `secretary@${id.toLowerCase()}.example.edu`),
-            phone: '+91 9811000013',
+            email: String(raw.secretary_email || ''),
+            phone: String(raw.secretary_phone || ''),
             verified: true,
-          },
-          {
-            role: 'Executive Member',
-            name: 'Student Representative',
-            designation: 'Student Representative',
-            email: `student@${id.toLowerCase()}.example.edu`,
-            phone: '+91 9811000014',
-            verified: true,
-          },
+          }] : []),
         ],
-    description: String(raw.description || `Official NDLI Club chapter at ${name}.`),
-    websiteUrl: String(raw.websiteUrl || raw.website_url || 'https://www.sample.ac.in'),
+    description: String(raw.description || (name ? `Official NDLI Club chapter at ${name}.` : '')),
+    websiteUrl: String(raw.websiteUrl || raw.website_url || ''),
     registrationNo: String(raw.registrationNo || raw.registration_no || raw.reg_no || `NDLI/CLUB/${id}`),
     dateOfApproval: String(raw.dateOfApproval || raw.date_of_approval || '2021-04-12'),
     lastRenewalDate: String(raw.lastRenewalDate || raw.last_renewal_date || 'None (Initial)'),
@@ -170,10 +162,8 @@ export async function fetchCanonicalClubs(): Promise<InstituteClub[]> {
     if (response.ok) {
       const data = await response.json();
       const rawList: Record<string, unknown>[] = data.clubs || data.results || [];
-      if (rawList.length > 0) {
-        const parsed = rawList.map(normalizeBackendClub);
-        return applyRenewalOverrides(parsed);
-      }
+      const parsed = rawList.map(normalizeBackendClub);
+      return applyRenewalOverrides(parsed);
     }
   } catch {
     /* try fallback endpoint */
@@ -190,10 +180,8 @@ export async function fetchCanonicalClubs(): Promise<InstituteClub[]> {
     if (response.ok) {
       const data = await response.json();
       const rawList: Record<string, unknown>[] = data.clubs || data.results || [];
-      if (rawList.length > 0) {
-        const parsed = rawList.map(normalizeBackendClub);
-        return applyRenewalOverrides(parsed);
-      }
+      const parsed = rawList.map(normalizeBackendClub);
+      return applyRenewalOverrides(parsed);
     }
   } catch {
     /* network unavailable */

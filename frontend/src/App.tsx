@@ -141,8 +141,11 @@ export function App({ ssrLocation }: AppProps = {}) {
   useEffect(() => {
     let mounted = true;
     void fetchCanonicalClubs().then((canonicalClubs) => {
-      if (mounted && canonicalClubs && canonicalClubs.length > 0) {
+      if (mounted && canonicalClubs) {
         setClubs(canonicalClubs);
+        if (canonicalClubs.length > 0) {
+          setActiveClub(canonicalClubs[0]);
+        }
       }
     });
 

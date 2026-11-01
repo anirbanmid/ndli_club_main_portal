@@ -405,13 +405,15 @@ class EmployeeClubsExportCSVView(APIView):
                     c.get("date_of_approval", ""),
                     c.get("last_renewal_date", ""),
                     c.get("upcoming_renewal_date", ""),
-                    c.get("patron_name", "Prof. Patron Head"),
+                    c.get("patron_name", ""),
                     c.get("patron_email", ""),
-                    c.get("president_name", "Dr. Club President"),
+                    c.get("president_name", ""),
                     c.get("president_email", ""),
-                    c.get("secretary_name", "Prof. Secretary Lead"),
+                    c.get("secretary_name", ""),
                     c.get("secretary_email", ""),
-                    "+91 9434000000",
+                    c.get("patron_phone", "")
+                    or c.get("president_phone", "")
+                    or c.get("secretary_phone", ""),
                     str(c.get("member_count", 0)),
                     str(c.get("solo_activities", 0)),
                     str(c.get("joint_activities", 0)),
@@ -680,6 +682,7 @@ class ClubEventListCreateView(APIView):
                     "is_window_open": is_window_open,
                     "window_start": window_start,
                     "window_end": window_end,
+                    "participants_count": evt.attendees.count(),
                     "conductors": [
                         {"id": c.id, "name": c.full_name, "affiliation": c.affiliation}
                         for c in evt.conductors.all()
@@ -868,6 +871,7 @@ class ClubEventDetailView(APIView):
                 "description": evt.description,
                 "scope": evt.scope,
                 "status": evt.status,
+                "participants_count": evt.attendees.count(),
                 "start_time": evt.start_time,
                 "end_time": evt.end_time,
             }

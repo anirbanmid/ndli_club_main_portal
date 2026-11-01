@@ -68,11 +68,6 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleQuickKey = (key: string) => {
-    setPasskeyInput(key);
-    setErrorMsg('');
-  };
-
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -177,28 +172,6 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               </p>
             </div>
 
-            {/* Quick Demo Test Keys */}
-            <div className="bg-ink-50 border border-ink-200 rounded-xl p-2.5 text-xs">
-              <span className="text-ink-600 font-semibold block mb-1">
-                {t('Quick Demo Institutional Passkeys:')}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleQuickKey('IITKGP-NDL-9021')}
-                  className="px-2 py-0.5 rounded bg-white border border-ink-300 font-mono text-[11px] font-bold text-brand-700 hover:bg-brand-50"
-                >
-                  {t('IIT Kharagpur (IITKGP-NDL-9021)')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickKey('IITB-NDL-4412')}
-                  className="px-2 py-0.5 rounded bg-white border border-ink-300 font-mono text-[11px] font-bold text-brand-700 hover:bg-brand-50"
-                >
-                  {t('IIT Bombay (IITB-NDL-4412)')}
-                </button>
-              </div>
-            </div>
 
             <div className="space-y-3 text-xs">
               <div>

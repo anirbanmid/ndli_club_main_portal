@@ -939,15 +939,15 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         except Exception:
             computed_status = "Active"
 
-        patron_n = c.patron_name or "Prof. Patron Head"
-        patron_e = c.patron_email or f"director@{c.code.lower()}.ac.in"
-        patron_p = c.patron_phone or "+91 9811000011"
-        pres_n = c.president_name or "Dr. Club President"
-        pres_e = c.president_email or f"librarian@{c.code.lower()}.ac.in"
-        pres_p = c.president_phone or "+91 9811000012"
-        sec_n = c.secretary_name or "Prof. Secretary Lead"
-        sec_e = c.secretary_email or f"secretary@{c.code.lower()}.ac.in"
-        sec_p = c.secretary_phone or "+91 9811000013"
+        patron_n = c.patron_name or ""
+        patron_e = c.patron_email or ""
+        patron_p = c.patron_phone or ""
+        pres_n = c.president_name or ""
+        pres_e = c.president_email or ""
+        pres_p = c.president_phone or ""
+        sec_n = c.secretary_name or ""
+        sec_e = c.secretary_email or ""
+        sec_p = c.secretary_phone or ""
 
         hei_count = (
             c.student_profiles.filter(user__account_state="active").count()
@@ -1009,45 +1009,58 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             "email": f"club.{c.code.lower()}@ndli.edu",
             "description": f"Official NDLI Club chapter at {club_name}.",
             "authorities": [
-                {
-                    "role": "Patron",
-                    "name": patron_n,
-                    "designation": "Director",
-                    "email": patron_e,
-                    "phone": patron_p,
-                    "verified": True,
-                },
-                {
-                    "role": "President",
-                    "name": pres_n,
-                    "designation": "Librarian & Nodal Officer",
-                    "email": pres_e,
-                    "phone": pres_p,
-                    "verified": True,
-                },
-                {
-                    "role": "Secretary",
-                    "name": sec_n,
-                    "designation": "Faculty Advisor",
-                    "email": sec_e,
-                    "phone": sec_p,
-                    "verified": True,
-                },
-                {
-                    "role": "Executive Member",
-                    "name": "Student Representative",
-                    "designation": "Student Representative",
-                    "email": f"student@{c.code.lower()}.ac.in",
-                    "phone": "+91 9811000014",
-                    "verified": True,
-                },
+                *(
+                    [
+                        {
+                            "role": "Patron",
+                            "name": patron_n,
+                            "designation": "Director",
+                            "email": patron_e,
+                            "phone": patron_p,
+                            "verified": True,
+                        }
+                    ]
+                    if patron_n
+                    else []
+                ),
+                *(
+                    [
+                        {
+                            "role": "President",
+                            "name": pres_n,
+                            "designation": "Librarian & Nodal Officer",
+                            "email": pres_e,
+                            "phone": pres_p,
+                            "verified": True,
+                        }
+                    ]
+                    if pres_n
+                    else []
+                ),
+                *(
+                    [
+                        {
+                            "role": "Secretary",
+                            "name": sec_n,
+                            "designation": "Faculty Advisor",
+                            "email": sec_e,
+                            "phone": sec_p,
+                            "verified": True,
+                        }
+                    ]
+                    if sec_n
+                    else []
+                ),
             ],
             "patron_name": patron_n,
             "patron_email": patron_e,
+            "patron_phone": patron_p,
             "president_name": pres_n,
             "president_email": pres_e,
+            "president_phone": pres_p,
             "secretary_name": sec_n,
             "secretary_email": sec_e,
+            "secretary_phone": sec_p,
         }
         unified.append(club_dict)
 

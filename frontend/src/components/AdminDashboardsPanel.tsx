@@ -548,7 +548,6 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
   // Telemetrics calculations
   const totalClubs = dashboard?.total_clubs ?? 0;
   const totalActivities = dashboard?.total_activities ?? 0;
-  const activeOfficers = dashboard?.active_officers ?? 7;
   const attentionCount = renewalAttention?.total_attention_count ?? (dashboard?.renewal_attention ?? 0);
   const overdueCount = renewalAttention?.overdue_count ?? 0;
   const expiringCount = renewalAttention?.expiring_soon_count ?? 0;
@@ -607,13 +606,14 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       const tickets = Number(bk.os_tickets || 0);
       const online = Number(bk.online_training || 0);
       const offline = Number(bk.offline_training || 0);
-      const sum = phone + tickets + online + offline || 1;
+      const actualSum = phone + tickets + online + offline;
+      const divisor = actualSum || 1;
       return {
-        phoneCalls: { count: phone, pct: Math.round((phone / sum) * 100) },
-        ticketsClosed: { count: tickets, pct: Math.round((tickets / sum) * 100) },
-        onlineTraining: { count: online, pct: Math.round((online / sum) * 100) },
-        offlineTraining: { count: offline, pct: Math.round((offline / sum) * 100) },
-        total: sum,
+        phoneCalls: { count: phone, pct: actualSum > 0 ? Math.round((phone / divisor) * 100) : 0 },
+        ticketsClosed: { count: tickets, pct: actualSum > 0 ? Math.round((tickets / divisor) * 100) : 0 },
+        onlineTraining: { count: online, pct: actualSum > 0 ? Math.round((online / divisor) * 100) : 0 },
+        offlineTraining: { count: offline, pct: actualSum > 0 ? Math.round((offline / divisor) * 100) : 0 },
+        total: actualSum,
       };
     }
     const offs = ratings?.officers ?? [];
@@ -629,13 +629,14 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
       offlineTraining += Number(o.offline_training ?? 0);
     });
 
-    const sum = phoneCalls + ticketsClosed + onlineTraining + offlineTraining || 1;
+    const actualSum = phoneCalls + ticketsClosed + onlineTraining + offlineTraining;
+    const divisor = actualSum || 1;
     return {
-      phoneCalls: { count: phoneCalls, pct: Math.round((phoneCalls / sum) * 100) },
-      ticketsClosed: { count: ticketsClosed, pct: Math.round((ticketsClosed / sum) * 100) },
-      onlineTraining: { count: onlineTraining, pct: Math.round((onlineTraining / sum) * 100) },
-      offlineTraining: { count: offlineTraining, pct: Math.round((offlineTraining / sum) * 100) },
-      total: sum,
+      phoneCalls: { count: phoneCalls, pct: actualSum > 0 ? Math.round((phoneCalls / divisor) * 100) : 0 },
+      ticketsClosed: { count: ticketsClosed, pct: actualSum > 0 ? Math.round((ticketsClosed / divisor) * 100) : 0 },
+      onlineTraining: { count: onlineTraining, pct: actualSum > 0 ? Math.round((onlineTraining / divisor) * 100) : 0 },
+      offlineTraining: { count: offlineTraining, pct: actualSum > 0 ? Math.round((offlineTraining / divisor) * 100) : 0 },
+      total: actualSum,
     };
   }, [dashboard?.support_type_breakdown, ratings?.officers]);
 
@@ -1708,7 +1709,7 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           {/* Contribution Share Ribbon */}
           {(() => {
             const offs = ratings?.officers ?? [];
-            const grandTotal = offs.reduce((acc, o) => acc + (o.total_activities || 1), 0) || 1;
+            const grandTotal = offs.reduce((acc, o) => acc + (o.total_activities || 0), 0);
             const shades = [
               'bg-[#0D7751]',
               'bg-[#1E5F8C]',
@@ -1721,8 +1722,10 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
             return (
               <div className="space-y-1.5">
                 <div className="w-full h-4 rounded-xl overflow-hidden flex shadow-2xs">
-                  {offs.map((o, i) => {
-                    const share = ((o.total_activities || 1) / grandTotal) * 100;
+                  {grandTotal > 0 && offs.map((o, i) => {
+                    const actCount = o.total_activities || 0;
+                    if (actCount <= 0) return null;
+                    const share = (actCount / grandTotal) * 100;
                     return (
                       <div
                         key={String(o.emp_id ?? i)}

@@ -1169,7 +1169,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                         <td className="p-2.5 font-bold">{evt.title}</td>
                         <td className="p-2.5">{evt.start_time ? new Date(evt.start_time).toLocaleDateString() : 'N/A'}</td>
                         <td className="p-2.5">{evt.scope === 'multi_club' ? t("Multi-Club Event") : t("Institutional Event")}</td>
-                        <td className="p-2.5 font-semibold">{(evt.conductors?.length || 1) * 25}</td>
+                        <td className="p-2.5 font-semibold">{evt.participants_count ?? 0}</td>
                         <td className="p-2.5 text-brand-700 font-bold"><Check className="h-3.5 w-3.5 inline -mt-0.5" /> {t("NDLI Verified")}</td>
                       </tr>
                     ))

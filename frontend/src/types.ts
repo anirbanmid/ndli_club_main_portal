@@ -31,6 +31,8 @@ export interface ClubAuthority {
 
 export interface InstituteClub {
   id: string; // e.g. CLUB-IITKGP-001
+  code?: string;
+  isSample?: boolean;
   aisheCode: string;
   name: string;
   state: string;

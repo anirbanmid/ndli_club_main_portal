@@ -53,7 +53,10 @@ export async function fetchSubClubs(clubCode: string): Promise<SubClub[]> {
   if (!res.ok) {
     throw new ApiError('server', 'Failed to fetch sub-clubs', res.status);
   }
-  return res.json();
+  const body = await res.json();
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.sub_clubs)) return body.sub_clubs;
+  return [];
 }
 
 export async function createSubClub(clubCode: string, payload: SubClubInput): Promise<SubClub> {

@@ -309,7 +309,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
             <span className="text-[11px] font-mono text-[#5A7366]">Password: Password@123</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
               onClick={() => void handleQuickLogin('student.bhu')}
               disabled={Boolean(quickLoginBusy)}
@@ -342,6 +342,23 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
               </div>
               <div className="text-[11px] text-[#5A7366] font-mono mt-0.5">student.iitkgp • CLUB-IITKGP-001</div>
               <div className="text-[10px] text-[#0D7751] font-semibold mt-1">Active seeded member (Passkey: KGP-LIB-2026-A12)</div>
+            </button>
+
+            <button
+              onClick={() => void handleQuickLogin('student.du')}
+              disabled={Boolean(quickLoginBusy)}
+              className="p-3.5 rounded-xl bg-white border border-[#0D7751]/30 hover:border-[#0D7751] hover:bg-[#E9F5EF] text-left transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#103125]">University of Delhi</span>
+                {quickLoginBusy === 'student.du' ? (
+                  <Loader2 className="w-4 h-4 text-[#0D7751] animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                )}
+              </div>
+              <div className="text-[11px] text-[#5A7366] font-mono mt-0.5">student.du • CLUB-DU-007</div>
+              <div className="text-[10px] text-[#0D7751] font-semibold mt-1">Active seeded member (Passkey: DU-LIB-2026-D07)</div>
             </button>
           </div>
         </div>

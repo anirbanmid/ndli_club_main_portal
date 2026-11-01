@@ -852,6 +852,17 @@ class Command(BaseCommand):
                         "badge": "gold",
                     },
                     {
+                        "username": "student.du",
+                        "email": "student.du@du.ac.in",
+                        "first_name": "Aakash",
+                        "last_name": "Verma",
+                        "club_code": "CLUB-DU-007",
+                        "department": "Faculty of Mathematical Sciences",
+                        "roll_number": "DU-2026-CS303",
+                        "points": 120,
+                        "badge": "silver",
+                    },
+                    {
                         "username": "student.demo",
                         "email": "student.demo@ndli.edu",
                         "first_name": "Rohan",

@@ -60,7 +60,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
     let active = true;
     async function loadClubs() {
       const isSample = (c: InstituteClub) =>
-        c.id.startsWith('NDLI-EMP01-') ||
+        Boolean(c.isSample) ||
         c.id.startsWith('CLB-') ||
         c.id.startsWith('SAMPLE-') ||
         c.name.includes('(SAMPLE)') ||
@@ -89,7 +89,9 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
     };
   }, [canonicalClubs]);
 
-  const allAvailablePartners = canonicalClubList.filter(c => c.id !== clubCode);
+  const allAvailablePartners = canonicalClubList.filter(
+    c => c.id.toLowerCase() !== clubCode.toLowerCase() && c.code?.toLowerCase() !== clubCode.toLowerCase()
+  );
   const filteredPartners = allAvailablePartners.filter(p => {
     if (!clubSearchTerm.trim()) return true;
     const q = clubSearchTerm.trim().toLowerCase();

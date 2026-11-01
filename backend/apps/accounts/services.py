@@ -288,7 +288,14 @@ def club_login(
     Provisional accounts cannot log in until approved (T7 pin); the account
     side of the F1 wizard resume is exposed to the M4 wizard only.
     """
-    user = authenticate(request, username=username, password=password)
+    clean_username = username.strip()
+    user = authenticate(request, username=clean_username, password=password)
+    if user is None:
+        matched = User.objects.filter(email__iexact=clean_username).first()
+        if not matched:
+            matched = User.objects.filter(username__iexact=clean_username).first()
+        if matched:
+            user = authenticate(request, username=matched.username, password=password)
     if user is None:
         raise AuthenticationFailed("Invalid username or password.")
     profile = _require_club_login_eligible(user)
@@ -401,7 +408,14 @@ def password_login(
     """
     if not consume_captcha(request, captcha):
         raise ValidationError("The captcha answer is not valid.")
-    user = authenticate(request, username=username, password=password)
+    clean_username = username.strip()
+    user = authenticate(request, username=clean_username, password=password)
+    if user is None:
+        matched = User.objects.filter(email__iexact=clean_username).first()
+        if not matched:
+            matched = User.objects.filter(username__iexact=clean_username).first()
+        if matched:
+            user = authenticate(request, username=matched.username, password=password)
     if user is None:
         raise AuthenticationFailed("Invalid username or password.")
     profile = user if isinstance(user, User) else None

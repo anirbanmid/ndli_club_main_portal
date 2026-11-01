@@ -299,6 +299,10 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentBranch('admin_module');
                   setCurrentTab('admin_overview');
                 }}
+                onGoToStudentModule={() => {
+                  setCurrentBranch('student_module');
+                  setCurrentTab('student_home');
+                }}
                 onVerifyCertificates={() => setCurrentTab('verify')}
                 onOpenDirectory={() => setCurrentTab('directory')}
               />
@@ -513,6 +517,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   activities={activities}
                   tickets={tickets}
                   authorityRequests={authorityRequests}
+                  canonicalClubs={clubs}
                   isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
                   authenticatedAuthority={authenticatedAuthority}
                   onAuthoritySignIn={() => {

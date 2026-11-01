@@ -1306,3 +1306,192 @@ class CampusModuleTests(TestCase):
         for club_dict in data["clubs"]:
             self.assertIsInstance(club_dict["member_count"], int)
             self.assertGreaterEqual(club_dict["member_count"], 0)
+
+    def test_canonical_clubs_activity_counts_ssot_zero_without_events(self) -> None:
+        """Verify get_all_canonical_clubs enforces SSOT: all activity counts
+        (eventsConducted, soloSessions, jointSessions) are 0 when no real events
+        or non-approval activity logs exist. Approval logs (e.g. 'Club Approval')
+        are strictly excluded from activity counts.
+        """
+        from apps.activities.models import (
+            APPROVAL_LOG_TYPES,
+            ActivityLog,
+            SupportType,
+        )
+        from apps.domain.clubs import get_all_canonical_clubs
+
+        # Ensure an approval log exists for self.club
+        ActivityLog.objects.create(
+            employee=self.authority_user,
+            club_code=self.club.code,
+            support_type=SupportType.CLUB_APPROVAL,
+            notes="Club Approval Auto-Heal",
+        )
+        self.assertIn(SupportType.CLUB_APPROVAL, APPROVAL_LOG_TYPES)
+
+        clubs = get_all_canonical_clubs()
+        self.assertGreaterEqual(len(clubs), 1)
+        self_club_entry = next((c for c in clubs if c["code"] == self.club.code), None)
+        self.assertIsNotNone(self_club_entry)
+        assert self_club_entry is not None
+
+        # Approval log must not be counted!
+        self.assertEqual(self_club_entry["eventsConducted"], 0)
+        self.assertEqual(self_club_entry["events_conducted"], 0)
+        self.assertEqual(self_club_entry["soloSessions"], 0)
+        self.assertEqual(self_club_entry["jointSessions"], 0)
+        self.assertEqual(self_club_entry["solo_activities"], 0)
+        self.assertEqual(self_club_entry["joint_activities"], 0)
+
+        # Now create a real event and verify counts reflect it
+        event = ClubEvent.objects.create(
+            event_ref="EVT-TEST-SSOT-01",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="Real Event",
+            start_time=timezone.now() - timedelta(hours=2),
+            end_time=timezone.now() - timedelta(hours=1),
+            status=EventStatus.COMPLETED,
+            created_by=self.authority_user,
+        )
+
+        clubs_after = get_all_canonical_clubs()
+        self_club_after = next(
+            (c for c in clubs_after if c["code"] == self.club.code), None
+        )
+        assert self_club_after is not None
+        self.assertEqual(self_club_after["eventsConducted"], 1)
+        self.assertEqual(self_club_after["events_conducted"], 1)
+        self.assertEqual(self_club_after["soloSessions"], 1)
+        self.assertEqual(self_club_after["jointSessions"], 0)
+        self.assertEqual(self_club_after["solo_activities"], 1)
+        self.assertEqual(self_club_after["joint_activities"], 0)
+
+        # Clean up event
+        event.delete()
+
+
+
+    def test_sub_club_list_view_resolution_and_allow_any(self) -> None:
+        """Verify SubClubListView returns 200 without authentication and resolves
+        clubs by club code, slug (e.g. bhu-main), or ID.
+        """
+        bhu_inst, _ = Institution.objects.get_or_create(
+            code="INST-BHU-TEST-008",
+            defaults={
+                "legacy_id": "LEGACY-BHU-TEST-008",
+                "name": "Banaras Hindu University",
+                "state": self.state,
+                "district": self.district,
+                "institution_type": Institution.Type.HIGHER_EDUCATION,
+            },
+        )
+        bhu_club, _ = Club.objects.get_or_create(
+            code="CLUB-BHU-008",
+            defaults={
+                "name": "Banaras Hindu University",
+                "institution": bhu_inst,
+                "status": Club.Status.ACTIVE,
+            },
+        )
+        from apps.domain.models import SubClub
+
+        if not SubClub.objects.filter(club=bhu_club).exists():
+            SubClub.objects.create(
+                club=bhu_club,
+                code="CLUB-BHU-008-SUB-TEST",
+                name="BHU Test Sub-Club",
+                discipline="Computer Science",
+                created_by=self.authority_user,
+            )
+
+        # Unauthenticated client request by code
+        anon_client = Client()
+        resp_code = anon_client.get(
+            f"/api/v1/clubs/{bhu_club.code}/subclubs/", HTTP_HOST="localhost"
+        )
+        self.assertEqual(resp_code.status_code, 200)
+        data_code = resp_code.json()
+        self.assertIn("sub_clubs", data_code)
+        self.assertGreaterEqual(len(data_code["sub_clubs"]), 1)
+
+        # Unauthenticated client request by slug
+        resp_slug = anon_client.get(
+            "/api/v1/clubs/bhu-main/subclubs/", HTTP_HOST="localhost"
+        )
+        self.assertEqual(resp_slug.status_code, 200)
+        data_slug = resp_slug.json()
+        self.assertIn("sub_clubs", data_slug)
+        self.assertGreaterEqual(len(data_slug["sub_clubs"]), 1)
+
+        # Unauthenticated client request by PK
+        resp_pk = anon_client.get(
+            f"/api/v1/clubs/{bhu_club.id}/subclubs/", HTTP_HOST="localhost"
+        )
+        self.assertEqual(resp_pk.status_code, 200)
+        data_pk = resp_pk.json()
+        self.assertIn("sub_clubs", data_pk)
+        self.assertGreaterEqual(len(data_pk["sub_clubs"]), 1)
+
+    def test_student_test_accounts_login_and_state(self) -> None:
+        """Verify seeded test student accounts exist with active state and
+        can authenticate with DEV_TEST captcha bypass using username and email.
+        """
+        from django.core.management import call_command
+
+        from apps.accounts.models import AccountState, User
+
+        call_command("seed_all_states")
+
+        test_accounts = [
+            ("student.bhu", "student.bhu@bhu.ac.in"),
+            ("student.iitkgp", "student.iitkgp@iitkgp.ac.in"),
+            ("student.du", "student.du@du.ac.in"),
+        ]
+
+        for username, email in test_accounts:
+            user = User.objects.filter(username=username).first()
+            self.assertIsNotNone(
+                user, f"Test account {username} must exist in the database."
+            )
+            assert user is not None
+            self.assertTrue(user.is_active)
+            self.assertEqual(user.account_state, AccountState.ACTIVE)
+            self.assertFalse(user.must_change_password)
+
+            # Test login via username
+            anon_client = Client()
+            resp_user = anon_client.post(
+                "/api/v1/accounts/login/",
+                data={
+                    "username": username,
+                    "password": "Password@123",
+                    "captcha": "DEV_TEST",
+                },
+                content_type="application/json",
+                HTTP_HOST="localhost",
+            )
+            self.assertEqual(
+                resp_user.status_code,
+                200,
+                f"Login failed for {username}: {resp_user.content.decode()}",
+            )
+
+            # Test login via email
+            resp_email = anon_client.post(
+                "/api/v1/accounts/login/",
+                data={
+                    "username": email,
+                    "password": "Password@123",
+                    "captcha": "DEV_TEST",
+                },
+                content_type="application/json",
+                HTTP_HOST="localhost",
+            )
+            self.assertEqual(
+                resp_email.status_code,
+                200,
+                f"Login failed for {email}: {resp_email.content.decode()}",
+            )
+
+

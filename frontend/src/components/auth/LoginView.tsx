@@ -408,6 +408,26 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <button
               type="button"
               onClick={() => {
+                setEmployeeCode('student.du');
+                setPassword('Password@123');
+                setCaptcha('DEV_TEST');
+              }}
+              style={{
+                padding: '0.3rem 0.6rem',
+                borderRadius: '6px',
+                background: 'rgba(16, 185, 129, 0.2)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#6ee7b7',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.72rem'
+              }}
+            >
+              🎓 Student (DU)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setEmployeeCode('bhu.president');
                 setPassword('Password@123');
                 setCaptcha('DEV_TEST');

@@ -71,6 +71,7 @@ interface ClubModuleViewProps {
   onSubmitAuthorityChange: (req: AuthorityChangeRequest) => void;
   onClaimCertificate: (cert: CertificateData) => void;
   onViewPublicProfile: (club: InstituteClub) => void;
+  canonicalClubs?: InstituteClub[];
 }
 
 export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
@@ -81,6 +82,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   authorityRequests,
   isAuthorityAuthenticated = false,
   authenticatedAuthority = null,
+  canonicalClubs = [],
   onAuthoritySignIn,
   onAuthorityQuickSignIn,
   onAuthoritySignOut,
@@ -1353,7 +1355,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           onClose={() => setShowInstitutionalEventModal(false)}
           clubCode={activeClub.id}
           subClubs={subClubsList}
-          canonicalClubs={[]}
+          canonicalClubs={canonicalClubs}
           onEventCreated={() => {
             loadCampusData();
             setShowInstitutionalEventModal(false);

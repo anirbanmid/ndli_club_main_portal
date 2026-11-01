@@ -380,16 +380,57 @@ class CanonicalClubsListView(APIView):
         return Response({"clubs": clubs, "count": len(clubs)})
 
 
+def _resolve_club_for_subclubs(club_code: str):
+    from django.db.models import Q
+
+    from apps.domain.models import Club
+
+    club_code_clean = str(club_code).strip()
+    # 1. Match by code (e.g. CLUB-BHU-008)
+    club = Club.objects.filter(code__iexact=club_code_clean).first()
+    if club:
+        return club
+
+    # 2. Match by primary key
+    if club_code_clean.isdigit():
+        club = Club.objects.filter(pk=int(club_code_clean)).first()
+        if club:
+            return club
+
+    # 3. Match by legacy ID, institution code, or registration number
+    club = (
+        Club.objects.filter(
+            Q(institution__legacy_id__iexact=club_code_clean)
+            | Q(institution__code__iexact=club_code_clean)
+            | Q(registration_no__iexact=club_code_clean)
+        ).first()
+    )
+    if club:
+        return club
+
+    # 4. Match by slug token (e.g. 'bhu-main', 'bhu')
+    slug_token = (
+        club_code_clean.lower()
+        .replace("-main", "")
+        .replace("_main", "")
+        .replace("-", "")
+        .replace("_", "")
+    )
+    return Club.objects.filter(
+        Q(code__icontains=slug_token) | Q(name__icontains=slug_token)
+    ).first()
+
+
 class SubClubListView(APIView):
     """List or create disciplinary sub-clubs under an HEI main club."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = [JSONParser]
 
     def get(self, request: Request, club_code: str) -> Response:
-        from apps.domain.models import Club, SubClub
+        from apps.domain.models import SubClub
 
-        club = Club.objects.filter(code__iexact=club_code).first()
+        club = _resolve_club_for_subclubs(club_code)
         if not club:
             return Response(
                 {"detail": "Club not found.", "code": "club_not_found"},
@@ -415,9 +456,9 @@ class SubClubListView(APIView):
     def post(self, request: Request, club_code: str) -> Response:
         import secrets
 
-        from apps.domain.models import Club, SubClub
+        from apps.domain.models import SubClub
 
-        club = Club.objects.filter(code__iexact=club_code).first()
+        club = _resolve_club_for_subclubs(club_code)
         if not club:
             return Response(
                 {"detail": "Club not found.", "code": "club_not_found"},

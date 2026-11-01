@@ -197,9 +197,30 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         )
         actual_members = hei_count + school_count + other_count
         hosted_events = c.hosted_events.count() if hasattr(c, "hosted_events") else 0
-        actual_events = (
-            (c.solo_activities or 0) + (c.joint_activities or 0) + hosted_events
+        partner_events = (
+            c.event_partnerships.filter(status="accepted").count()
+            if hasattr(c, "event_partnerships")
+            else 0
         )
+        from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
+        activity_logs_count = (
+            ActivityLog.objects.filter(club_code=c.code)
+            .exclude(support_type__in=APPROVAL_LOG_TYPES)
+            .count()
+        )
+
+        solo_events = (
+            c.hosted_events.filter(scope="institutional").count()
+            if hasattr(c, "hosted_events")
+            else 0
+        )
+        joint_events = (
+            c.hosted_events.filter(scope="multi_club").count()
+            if hasattr(c, "hosted_events")
+            else 0
+        ) + partner_events
+
+        actual_events = hosted_events + partner_events + activity_logs_count
 
         club_name = inst.name if inst else c.name
         is_univ = "University" in club_name or "IIT" in c.code or "IISc" in club_name
@@ -221,10 +242,10 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             "member_count": actual_members,
             "eventsConducted": actual_events,
             "events_conducted": actual_events,
-            "soloSessions": c.solo_activities or 0,
-            "jointSessions": c.joint_activities or 0,
-            "solo_activities": c.solo_activities or 0,
-            "joint_activities": c.joint_activities or 0,
+            "soloSessions": solo_events,
+            "jointSessions": joint_events,
+            "solo_activities": solo_events,
+            "joint_activities": joint_events,
             "establishedDate": doa,
             "dateOfApproval": doa,
             "date_of_approval": doa,

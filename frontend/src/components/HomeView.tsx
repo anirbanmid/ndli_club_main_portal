@@ -24,6 +24,7 @@ interface HomeViewProps {
   onRegisterInstitute: () => void;
   onGoToClubModule: () => void;
   onGoToAdminModule: () => void;
+  onGoToStudentModule: () => void;
   onVerifyCertificates: () => void;
   onOpenDirectory: () => void;
 }
@@ -35,6 +36,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onRegisterInstitute,
   onGoToClubModule,
   onGoToAdminModule,
+  onGoToStudentModule,
   onVerifyCertificates,
   onOpenDirectory,
 }) => {
@@ -331,16 +333,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="max-w-3xl mb-8 space-y-2">
             <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">
               {t("Unified National Learning Architecture")}
-                                      </span>
+            </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {t("Three Seamless Modules Powering NDLI Club 2.0")}
-                                      </h2>
+              {t("Four Seamless Modules Powering NDLI Club 2.0")}
+            </h2>
             <p className="text-xs sm:text-sm text-brand-200/90 leading-relaxed">
-              {t("Replacing the legacy portal with an enterprise-grade triple-branch platform.")}
-                                      </p>
+              {t("Replacing the legacy portal with an enterprise-grade quadruple-branch platform.")}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3">
               <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-bold">
                 1
@@ -348,7 +350,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <h3 className="font-bold text-lg text-white">{t("Public Portal & Discovery")}</h3>
               <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("National discovery, live activity calendars, GIGW 3.0 accessibility, and instant cryptographic certificate verification engine.")}
-                                            </p>
+              </p>
             </div>
 
             <div 
@@ -364,7 +366,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </h3>
               <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("Student onboarding via Passkey or Bulk CSV, annual NAAC 3.3 activity logs, grievance ticketing, and the Inter-Club Sharing Shield.")}
-                                            </p>
+              </p>
             </div>
 
             <div 
@@ -380,7 +382,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </h3>
               <p className="text-xs text-brand-200/80 leading-relaxed">
                 {t("6-zone regional governance with 7 officers (EMP01–EMP07), institutional approvals, authority transition sanctioning, and forensic legacy data healing.")}
-                                            </p>
+              </p>
+            </div>
+
+            <div 
+              onClick={onGoToStudentModule}
+              className="bg-white/5 border border-white/10 p-6 rounded-2xl space-y-3 cursor-pointer hover-lift hover:bg-white/10 hover:border-amber-400/40 transition-all group"
+            >
+              <div className="h-10 w-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-bold group-hover:scale-105 transition-transform">
+                4
+              </div>
+              <h3 className="font-bold text-lg text-white flex items-center justify-between">
+                <span>{t("Club Member Module (STUDENT)")}</span>
+                <ArrowRight className="h-4 w-4 text-amber-300" />
+              </h3>
+              <p className="text-xs text-brand-200/80 leading-relaxed">
+                {t("Personal learning dashboard for enrolled scholars. Participate in activities, manage disciplinary sub-clubs, and curate digital libraries.")}
+              </p>
             </div>
           </div>
         </div>

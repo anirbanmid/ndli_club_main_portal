@@ -49,6 +49,8 @@ export interface TelemetryTotals {
   institutions: number;
   clubs: number;
   members: number;
+  activities?: number;
+  certificates?: number;
 }
 
 export interface TelemetryPayload {

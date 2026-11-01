@@ -125,15 +125,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* Demonstration Telemetry Counters (SAMPLE ONLY — live counters ship with the data platform) */}
+        {/* Live National Registry Telemetry Summary */}
         <div className="relative mt-12 max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 bg-[#103125]/80 backdrop-blur-md p-6 rounded-2xl border border-brand-800/40 shadow-xl">
-          <div className="absolute -top-3 right-4 bg-amber-400 text-[#103125] text-[11px] font-black px-2.5 py-1 rounded-full shadow">{t("SAMPLE ONLY — DEMO FIGURES")}</div>
           <div className="text-center">
             <div className="flex items-center justify-center space-x-1.5 text-brand-300 mb-1">
               <Building2 className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Active Clubs")}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-amber-300">324</div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-300">
+              {telemetry?.totals?.clubs ? telemetry.totals.clubs.toLocaleString() : clubs.length.toLocaleString()}
+            </div>
             <div className="text-[11px] text-brand-200">{t("Across 6 Zonal Regions")}</div>
           </div>
 
@@ -143,7 +144,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span className="text-xs font-bold uppercase tracking-wider">{t("Total Members Till Date")}</span>
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white">
-              {telemetry?.totals?.members ? telemetry.totals.members.toLocaleString() : '12,800'}
+              {telemetry?.totals?.members !== undefined ? telemetry.totals.members.toLocaleString() : '0'}
             </div>
             <div className="text-[11px] text-brand-200">{t("Total enrolled till date")}</div>
           </div>
@@ -153,8 +154,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Calendar className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Co-Curriculars")}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white">486</div>
-            <div className="text-[11px] text-brand-200">{t("Sample NAAC 3.3 Logs")}</div>
+            <div className="text-2xl sm:text-3xl font-black text-white">
+              {telemetry?.totals?.activities !== undefined ? telemetry.totals.activities.toLocaleString() : '0'}
+            </div>
+            <div className="text-[11px] text-brand-200">{t("Verified NAAC 3.3 Logs")}</div>
           </div>
 
           <div className="text-center border-l border-brand-900/60">
@@ -162,7 +165,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <Award className="h-4 w-4" />
               <span className="text-xs font-bold uppercase tracking-wider">{t("Certificates")}</span>
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-amber-300">3,910</div>
+            <div className="text-2xl sm:text-3xl font-black text-amber-300">
+              {telemetry?.totals?.certificates !== undefined ? telemetry.totals.certificates.toLocaleString() : '0'}
+            </div>
             <div className="text-[11px] text-brand-200">{t("QR-Verified Micro-Credentials")}</div>
           </div>
         </div>

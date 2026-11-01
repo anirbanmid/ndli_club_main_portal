@@ -8,24 +8,35 @@ import {
   Award, 
   Lock, 
   ExternalLink, 
-  ShieldCheck
+  FileText,
+  Download,
+  UploadCloud,
+  X
 } from 'lucide-react';
 import { 
   ClubEvent, 
   participateInEvent, 
   approveEventCertificates,
-  fetchConductorCertificate 
+  fetchConductorCertificate,
+  respondCollaboration,
+  retryEventCollaboration,
+  uploadEventParticipants,
+  downloadEventCertificatesZipUrl
 } from '../../lib/campusApi';
 
 interface EventParticipationCardProps {
   event: ClubEvent;
   isAuthority: boolean;
+  currentClubCode?: string;
+  isSchool?: boolean;
   onRefresh: () => void;
 }
 
 export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
   event,
   isAuthority,
+  currentClubCode,
+  isSchool = false,
   onRefresh,
 }) => {
   const [participateBusy, setParticipateBusy] = useState(false);
@@ -42,6 +53,17 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
   // Conductor certificate viewer state
   const [conductorCertData, setConductorCertData] = useState<any | null>(null);
 
+  // Collaboration action state
+  const [collabBusyId, setCollabBusyId] = useState<number | null>(null);
+  const [collabMessage, setCollabMessage] = useState<string | null>(null);
+
+  // School participant upload state
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadResult, setUploadResult] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Dynamic window calculation (10 mins before to 20 mins after start)
   const [now, setNow] = useState(Date.now());
 
@@ -57,7 +79,6 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
 
   const isWindowOpen = now >= windowStartMs && now <= windowEndMs;
   const isBeforeWindow = now < windowStartMs;
-  const isWindowClosed = now > windowEndMs;
   const isEventOver = now >= endTimeMs;
 
   const formatCountdown = (targetMs: number) => {
@@ -115,6 +136,56 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
       setConductorCertData(data);
     } catch (err: any) {
       alert(err.message || 'Failed to load conductor certificate.');
+    }
+  };
+
+  const handleRespondCollab = async (collabId: number, action: 'accept' | 'reject') => {
+    try {
+      setCollabBusyId(collabId);
+      setCollabMessage(null);
+      const res = await respondCollaboration(collabId, action);
+      setCollabMessage(res.message);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update collaboration');
+    } finally {
+      setCollabBusyId(null);
+    }
+  };
+
+  const handleRetryCollab = async (collabId: number) => {
+    try {
+      setCollabBusyId(collabId);
+      setCollabMessage(null);
+      const res = await retryEventCollaboration(collabId);
+      setCollabMessage(res.message);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || 'Retry failed');
+    } finally {
+      setCollabBusyId(null);
+    }
+  };
+
+  const handleUploadParticipants = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadFile) return;
+
+    try {
+      setUploadBusy(true);
+      setUploadError(null);
+      setUploadResult(null);
+      const res = await uploadEventParticipants(event.id, uploadFile);
+      setUploadResult(`Enrolled ${res.enrolled_count} participants and generated attendance records!`);
+      setTimeout(() => {
+        setUploadModalOpen(false);
+        setUploadResult(null);
+      }, 2000);
+      onRefresh();
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload participants');
+    } finally {
+      setUploadBusy(false);
     }
   };
 
@@ -198,6 +269,89 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
         )}
       </div>
 
+      {/* Collaborations Section */}
+      {event.collaborations && event.collaborations.length > 0 && (
+        <div className="pt-2 border-t border-gray-100 space-y-2">
+          <div className="text-xs font-bold text-gray-700 flex items-center justify-between">
+            <span>Inter-Institutional Collaboration Partners:</span>
+            {collabMessage && (
+              <span className="text-[11px] text-teal-700 font-semibold">{collabMessage}</span>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            {event.collaborations.map((col) => {
+              const partnerCode = col.partner_club || col.partner_club_id;
+              const isPartnerViewing =
+                Boolean(currentClubCode && partnerCode && currentClubCode.toLowerCase() === partnerCode.toLowerCase());
+              const isHostViewing =
+                Boolean(currentClubCode && event.host_club && currentClubCode.toLowerCase() === event.host_club.toLowerCase());
+
+              return (
+                <div
+                  key={col.id}
+                  className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 flex flex-wrap items-center justify-between gap-2 text-xs"
+                >
+                  <div>
+                    <span className="font-bold text-gray-800">{col.partner_club_name || partnerCode}</span>
+                    <span
+                      className={`ml-2 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        col.status === 'accepted'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : col.status === 'rejected'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {col.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Partner club accepting / rejecting */}
+                    {isPartnerViewing && (col.status === 'invited' || col.status === 'pending') && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={collabBusyId === col.id}
+                          onClick={() => handleRespondCollab(col.id, 'accept')}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          disabled={collabBusyId === col.id}
+                          onClick={() => handleRespondCollab(col.id, 'reject')}
+                          className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {/* Host club retrying if rejected (max 1 retry) */}
+                    {isHostViewing && col.status === 'rejected' && (
+                      col.retry_count < 1 ? (
+                        <button
+                          type="button"
+                          disabled={collabBusyId === col.id}
+                          onClick={() => handleRetryCollab(col.id)}
+                          className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+                        >
+                          Resend Request (1 Retry Limit)
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 italic">Retry limit reached</span>
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Notifications */}
       {participateResult && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center space-x-2">
@@ -232,80 +386,180 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
           </button>
         </div>
 
-        {/* Authority Approve Certificates Action */}
-        {isAuthority && isEventOver && (
-          <button
-            type="button"
-            onClick={() => setIsApprovalModalOpen(true)}
-            className="py-2 px-4 bg-gradient-to-r from-[#103125] to-[#1A503E] text-white hover:from-[#0d281e] hover:to-[#154233] rounded-xl font-bold text-xs shadow-md shadow-emerald-950/20 flex items-center space-x-1.5 cursor-pointer"
-          >
-            <Award className="h-4 w-4 text-amber-300" />
-            <span>Approve Certificates</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* School post-event actions */}
+          {isAuthority && isSchool && (
+            <>
+              <button
+                type="button"
+                onClick={() => setUploadModalOpen(true)}
+                className="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-xs flex items-center space-x-1 cursor-pointer"
+              >
+                <UploadCloud className="h-3.5 w-3.5" />
+                <span>Upload Attendance CSV</span>
+              </button>
+              <a
+                href={downloadEventCertificatesZipUrl(event.id)}
+                download
+                className="py-2 px-3 bg-[#1A503E] hover:bg-[#103125] text-white rounded-xl font-bold text-xs flex items-center space-x-1 cursor-pointer"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download Certificates (ZIP)</span>
+              </a>
+            </>
+          )}
+
+          {/* Authority Approve Certificates Action */}
+          {isAuthority && isEventOver && (
+            <button
+              type="button"
+              onClick={() => setIsApprovalModalOpen(true)}
+              className="py-2 px-4 bg-gradient-to-r from-[#103125] to-[#1A503E] text-white hover:from-[#0d281e] hover:to-[#154233] rounded-xl font-bold text-xs shadow-md shadow-emerald-950/20 flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Award className="h-4 w-4 text-amber-300" />
+              <span>Approve Certificates</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Password-Gated Certificate Approval Modal */}
-      {isApprovalModalOpen && (
+      {/* School Post-Event Participant CSV Upload Modal */}
+      {uploadModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in"
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-emerald-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white">
-              <div className="flex items-center space-x-2 text-xs font-bold text-amber-300 uppercase tracking-wider mb-1">
-                <ShieldCheck className="h-4 w-4" />
-                <span>Re-Authentication Security Gate</span>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold">Upload School Event Attendees</h3>
+                <p className="text-xs text-emerald-100">Enrolls attendees & assigns deterministic UIDs</p>
               </div>
-              <h3 className="text-lg font-bold">Approve Participation Certificates</h3>
-              <p className="text-xs text-emerald-200 mt-0.5">
-                Authority verification required before cryptographic certificate dispatch.
-              </p>
+              <button
+                type="button"
+                onClick={() => setUploadModalOpen(false)}
+                className="text-white hover:text-emerald-200 p-1 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            <form onSubmit={handleApproveCertificates} className="p-6 space-y-4">
-              {approvalSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center space-x-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
-                  <span>{approvalSuccess}</span>
+            <form onSubmit={handleUploadParticipants} className="p-6 space-y-4 text-xs">
+              {uploadError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-semibold">
+                  {uploadError}
                 </div>
               )}
-
-              {approvalError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  <span>{approvalError}</span>
+              {uploadResult && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-semibold">
+                  {uploadResult}
                 </div>
               )}
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Authority Account Password <span className="text-rose-500">*</span>
+                  Participant CSV File
+                </label>
+                <p className="text-[11px] text-gray-500 mb-2">
+                  Columns: Full Name, Gender, Class, Section, Guardian Phone (optional)
+                </p>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  required
+                  className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setUploadModalOpen(false)}
+                  className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadBusy || !uploadFile}
+                  className="py-2 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl disabled:opacity-60 flex items-center space-x-1.5"
+                >
+                  {uploadBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Process & Enroll</span>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Password-Gated Certificate Approval Modal */}
+      {isApprovalModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white relative">
+              <button
+                onClick={() => setIsApprovalModalOpen(false)}
+                className="absolute top-5 right-5 text-emerald-200 hover:text-white p-1 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="flex items-center space-x-2 text-xs font-bold text-amber-300 uppercase tracking-wider mb-1">
+                <Lock className="h-3.5 w-3.5" />
+                <span>Identity Verification Challenge</span>
+              </div>
+              <h3 className="text-lg font-bold">Approve Participation Certificates</h3>
+              <p className="text-xs text-emerald-100/90 mt-0.5">
+                Re-enter your authority password to authorize cryptographic digital signing.
+              </p>
+            </div>
+
+            <form onSubmit={handleApproveCertificates} className="p-6 space-y-4 text-xs">
+              {approvalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-semibold flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                  <span>{approvalError}</span>
+                </div>
+              )}
+
+              {approvalSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-semibold flex items-center space-x-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
+                  <span>{approvalSuccess}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Authority Password <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="password"
                   value={passwordConfirm}
                   onChange={(e) => setPasswordConfirm(e.target.value)}
-                  placeholder="Enter your login password to confirm identity"
+                  placeholder="Enter your login password"
                   required
-                  autoFocus
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none"
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none"
                 />
               </div>
 
-              <div className="flex space-x-3 pt-3 border-t border-gray-100">
+              <div className="flex space-x-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsApprovalModalOpen(false)}
-                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition-all"
+                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={approvalBusy}
-                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center justify-center space-x-2"
+                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   {approvalBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Approve & Sign</span>}
                 </button>
@@ -328,7 +582,7 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
                 <h3 className="text-lg font-bold">Event Conductor Certificate</h3>
                 <p className="text-xs text-amber-100">Official Landscape Certificate &bull; NDLI Portal</p>
               </div>
-              <button onClick={() => setConductorCertData(null)} className="text-white">✕</button>
+              <button onClick={() => setConductorCertData(null)} className="text-white cursor-pointer">✕</button>
             </div>
             <div className="p-6 space-y-4 text-xs">
               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">

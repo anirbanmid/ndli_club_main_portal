@@ -9,7 +9,8 @@ import {
   AlertCircle, 
   Link as LinkIcon, 
   Share2, 
-  Building2
+  Building2,
+  FileImage
 } from 'lucide-react';
 import { createClubEvent, SubClub } from '../../lib/campusApi';
 import { InstituteClub } from '../../types';
@@ -39,7 +40,12 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
   const [endTime, setEndTime] = useState('');
   const [joiningLink, setJoiningLink] = useState('');
 
+  // Poster & 300KB Check
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string>('');
+
   // Sub-Clubs selection (for institutional events)
+  const [allSubClubs, setAllSubClubs] = useState(true);
   const [selectedSubClubIds, setSelectedSubClubIds] = useState<number[]>([]);
 
   // Partner Clubs selection (for multi-club collaboration)
@@ -83,34 +89,72 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 300 * 1024) {
+      setErrorMsg('Event poster exceeds the maximum 300KB limit.');
+      return;
+    }
+    setErrorMsg(null);
+    setPosterFile(file);
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPosterPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPosterPreview('');
+    }
+  };
+
+  const handleSave = async (publish: boolean) => {
     if (!title.trim() || !description.trim() || !startTime || !endTime) {
       setErrorMsg('Title, description, and event timing are required.');
       return;
     }
 
-    const validConductors = conductors.filter(c => c.full_name.trim() !== '');
+    const validConductors = conductors
+      .filter(c => c.full_name.trim() !== '')
+      .map(c => ({ name: c.full_name.trim(), affiliation: c.affiliation.trim() }));
 
     setBusy(true);
     setErrorMsg(null);
 
     try {
-      await createClubEvent({
-        title: title.trim(),
-        description: description.trim(),
-        scope,
-        start_time: startTime,
-        end_time: endTime,
-        joining_link: joiningLink.trim() || undefined,
-        sub_club_ids: scope === 'institutional' ? selectedSubClubIds : undefined,
-        conductors: validConductors.length > 0 ? validConductors : undefined,
-      });
+      const formData = new FormData();
+      formData.append('club_code', clubCode);
+      formData.append('title', title.trim());
+      formData.append('description', description.trim());
+      formData.append('scope', scope);
+      formData.append('start_time', startTime);
+      formData.append('end_time', endTime);
+      formData.append('publish', publish ? 'true' : 'false');
+      if (joiningLink.trim()) formData.append('joining_link', joiningLink.trim());
+      if (posterFile) formData.append('poster', posterFile);
 
+      if (scope === 'institutional') {
+        if (!allSubClubs && selectedSubClubIds.length > 0) {
+          formData.append('sub_club_ids', JSON.stringify(selectedSubClubIds));
+        }
+      } else if (scope === 'multi_club') {
+        if (selectedPartnerClubIds.length > 0) {
+          formData.append('partner_clubs', JSON.stringify(selectedPartnerClubIds));
+        }
+      }
+
+      if (validConductors.length > 0) {
+        formData.append('conductors', JSON.stringify(validConductors));
+      }
+
+      await createClubEvent(formData);
       onEventCreated();
       onClose();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to schedule event.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save event.';
+      setErrorMsg(msg);
     } finally {
       setBusy(false);
     }
@@ -127,7 +171,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
         <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white shrink-0 relative">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 text-emerald-200 hover:text-white p-1 rounded-full transition-colors"
+            className="absolute top-5 right-5 text-emerald-200 hover:text-white p-1 rounded-full transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -142,7 +186,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
           {errorMsg && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start space-x-2.5">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
@@ -157,7 +201,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               <button
                 type="button"
                 onClick={() => setScope('institutional')}
-                className={`p-3 rounded-2xl border text-left transition-all ${
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                   scope === 'institutional'
                     ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-bold ring-2 ring-emerald-500/20'
                     : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:bg-gray-100'
@@ -175,7 +219,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               <button
                 type="button"
                 onClick={() => setScope('multi_club')}
-                className={`p-3 rounded-2xl border text-left transition-all ${
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                   scope === 'multi_club'
                     ? 'border-teal-600 bg-teal-50/70 text-teal-950 font-bold ring-2 ring-teal-500/20'
                     : 'border-gray-200 bg-gray-50/50 text-gray-600 hover:bg-gray-100'
@@ -203,7 +247,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. National Reading Olympiad & AI Workshop"
               required
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none"
             />
           </div>
 
@@ -217,8 +261,41 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               rows={3}
               placeholder="Outline event agenda, speaker topics, and learning objectives..."
               required
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none resize-none"
+              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none resize-none"
             />
+          </div>
+
+          {/* Event Poster Upload with 300KB Check */}
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <FileImage className="h-3.5 w-3.5 text-emerald-700" />
+                <span>Event Poster (Optional, Max 300KB)</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-normal">PNG / JPEG / PDF</span>
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,application/pdf"
+                onChange={handlePosterChange}
+                className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 cursor-pointer"
+              />
+              {posterFile && (
+                <button
+                  type="button"
+                  onClick={() => { setPosterFile(null); setPosterPreview(''); }}
+                  className="text-xs text-rose-600 hover:underline shrink-0 font-medium cursor-pointer"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {posterPreview && (
+              <div className="mt-2 p-2 border border-emerald-100 rounded-xl bg-emerald-50/30 inline-block">
+                <img src={posterPreview} alt="Poster Preview" className="h-20 object-contain rounded" />
+              </div>
+            )}
           </div>
 
           {/* Timing: Start & End */}
@@ -277,26 +354,51 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
 
           {/* Sub-Clubs Scope Selection */}
           {scope === 'institutional' && subClubs.length > 0 && (
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2">
-                Participating Sub-Clubs (Leave empty for All Sub-Clubs)
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-gray-700">
+                Participating Sub-Clubs Scope
               </label>
-              <div className="flex flex-wrap gap-2">
-                {subClubs.map((sub) => (
-                  <button
-                    key={sub.id}
-                    type="button"
-                    onClick={() => handleToggleSubClub(sub.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                      selectedSubClubIds.includes(sub.id)
-                        ? 'bg-emerald-700 text-white border-emerald-800'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {sub.name} ({sub.code})
-                  </button>
-                ))}
+              <div className="flex items-center gap-4 mb-2">
+                <label className="flex items-center space-x-2 text-xs font-semibold text-gray-800 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="subClubScope"
+                    checked={allSubClubs}
+                    onChange={() => { setAllSubClubs(true); setSelectedSubClubIds([]); }}
+                    className="text-emerald-700 focus:ring-emerald-600"
+                  />
+                  <span>Main Club (All Sub-Clubs Included)</span>
+                </label>
+                <label className="flex items-center space-x-2 text-xs font-semibold text-gray-800 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="subClubScope"
+                    checked={!allSubClubs}
+                    onChange={() => setAllSubClubs(false)}
+                    className="text-emerald-700 focus:ring-emerald-600"
+                  />
+                  <span>Specific Sub-Clubs Only</span>
+                </label>
               </div>
+
+              {!allSubClubs && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {subClubs.map((sub) => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => handleToggleSubClub(sub.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                        selectedSubClubIds.includes(sub.id)
+                          ? 'bg-emerald-700 text-white border-emerald-800'
+                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {sub.name} ({sub.code})
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -342,7 +444,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               <button
                 type="button"
                 onClick={handleAddConductor}
-                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold inline-flex items-center space-x-1"
+                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold inline-flex items-center space-x-1 cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add</span>
@@ -369,7 +471,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
                   <button
                     type="button"
                     onClick={() => handleRemoveConductor(idx)}
-                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -377,24 +479,36 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
               </div>
             ))}
           </div>
+        </div>
 
-          <div className="pt-4 flex justify-end space-x-3 border-t border-gray-100">
+        {/* Modal Footer with Save as Draft vs Publish */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-2.5 px-4 bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={onClose}
-              className="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition-all"
+              disabled={busy}
+              onClick={() => handleSave(false)}
+              className="py-2.5 px-4 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-xs transition-all disabled:opacity-60 flex items-center space-x-1.5 cursor-pointer shadow-xs"
             >
-              Cancel
+              <span>Save as Draft</span>
             </button>
             <button
-              type="submit"
+              type="button"
               disabled={busy}
-              className="py-2.5 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center space-x-2"
+              onClick={() => handleSave(true)}
+              className="py-2.5 px-6 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center space-x-2 cursor-pointer"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Publish Event</span>}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

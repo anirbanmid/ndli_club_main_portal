@@ -74,6 +74,57 @@ export async function createSubClub(clubCode: string, payload: SubClubInput): Pr
   return res.json();
 }
 
+// --- Institutional Branding (Logo & Signature) ------------------------------
+
+export interface ClubBranding {
+  institution_name: string;
+  institution_type: 'higher_education' | 'school';
+  affiliation_code: string;
+  signing_authority_name: string;
+  signing_authority_affiliation: string;
+  has_logo: boolean;
+  logo_url: string;
+  has_signature: boolean;
+  signature_url: string;
+}
+
+export async function fetchClubBranding(clubCode: string): Promise<ClubBranding> {
+  const res = await fetch(`${CLUBS_API_BASE}/${encodeURIComponent(clubCode)}/branding/`, {
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new ApiError('server', 'Failed to fetch club branding', res.status);
+  }
+  return res.json();
+}
+
+export async function saveClubBranding(
+  clubCode: string,
+  formData: FormData,
+): Promise<{
+  message: string;
+  has_logo: boolean;
+  has_signature: boolean;
+  signing_authority_name: string;
+  signing_authority_affiliation: string;
+}> {
+  const res = await fetch(`${CLUBS_API_BASE}/${encodeURIComponent(clubCode)}/branding/`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: formData,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to save branding', res.status);
+  }
+  return body;
+}
+
 // --- School Offline Roster & Tangible Identity ------------------------------
 
 export interface SchoolStudentCard {
@@ -156,9 +207,10 @@ export interface ClubEvent {
   conductors?: EventConductor[];
   collaborations?: {
     id: number;
-    partner_club_id: string;
-    partner_club_name: string;
-    status: 'pending' | 'accepted' | 'rejected';
+    partner_club?: string;
+    partner_club_id?: string;
+    partner_club_name?: string;
+    status: 'invited' | 'pending' | 'accepted' | 'rejected';
     retry_count: number;
   }[];
   is_attendance_open?: boolean;
@@ -166,6 +218,7 @@ export interface ClubEvent {
 }
 
 export interface CreateEventInput {
+  club_code?: string;
   title: string;
   description: string;
   scope: 'institutional' | 'multi_club';
@@ -173,7 +226,9 @@ export interface CreateEventInput {
   end_time: string;
   joining_link?: string;
   sub_club_ids?: number[];
-  conductors?: { full_name: string; affiliation: string }[];
+  conductors?: { name: string; full_name?: string; affiliation: string }[];
+  publish?: boolean;
+  partner_clubs?: string[];
 }
 
 export async function fetchClubEvents(clubId?: string): Promise<ClubEvent[]> {
@@ -190,16 +245,19 @@ export async function fetchClubEvents(clubId?: string): Promise<ClubEvent[]> {
   return res.json();
 }
 
-export async function createClubEvent(payload: CreateEventInput): Promise<ClubEvent> {
+export async function createClubEvent(payload: CreateEventInput | FormData): Promise<ClubEvent> {
+  const isFormData = payload instanceof FormData;
   const res = await fetch(`${ACTIVITIES_API_BASE}/events/`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...csrfHeader(),
-    },
+    headers: isFormData
+      ? { Accept: 'application/json', ...csrfHeader() }
+      : {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...csrfHeader(),
+        },
     credentials: 'include',
-    body: JSON.stringify(payload),
+    body: isFormData ? payload : JSON.stringify(payload),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -260,6 +318,63 @@ export async function respondCollaboration(collabId: number, action: 'accept' | 
     throw new ApiError('server', detailMessage(body) ?? 'Failed to respond to collaboration', res.status);
   }
   return body;
+}
+
+export async function retryEventCollaboration(collabId: number): Promise<{
+  id: number;
+  partner_club: string;
+  status: string;
+  retry_count: number;
+  message: string;
+}> {
+  const res = await fetch(`${ACTIVITIES_API_BASE}/events/collaborations/${collabId}/retry/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({}),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to resend collaboration request', res.status);
+  }
+  return body;
+}
+
+export async function uploadEventParticipants(
+  eventId: number,
+  file: File,
+): Promise<{
+  success: boolean;
+  message: string;
+  enrolled_count: number;
+  created_attendances: number;
+  participants: Array<{ student_uid: string; full_name: string; class: string; section: string }>;
+}> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${ACTIVITIES_API_BASE}/events/${eventId}/upload-participants/`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: formData,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to upload participants', res.status);
+  }
+  return body;
+}
+
+export function downloadEventCertificatesZipUrl(eventId: number): string {
+  return `${ACTIVITIES_API_BASE}/events/${eventId}/download-certificates-zip/`;
 }
 
 export async function approveEventCertificates(

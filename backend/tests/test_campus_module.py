@@ -15,8 +15,10 @@ Covers:
 from __future__ import annotations
 
 import base64
+import io
 import json
 import os
+import zipfile
 from datetime import timedelta
 from unittest import mock
 
@@ -27,6 +29,8 @@ from django.utils import timezone
 from apps.accounts.models import AccountState, Category, SubRole, User
 from apps.activities.models import (
     ClubEvent,
+    EventAttendance,
+    EventCollaboration,
     EventConductor,
     EventScope,
     EventStatus,
@@ -846,4 +850,178 @@ class CampusModuleTests(TestCase):
         )
         self.assertEqual(re_reg.status_code, 201)
         self.assertTrue(re_reg.json()["success"])
+
+    # -------------------------------------------------------------------------
+    # 10. Multi-Club Collaboration Retry Limit (Max 1 Retry)
+    # -------------------------------------------------------------------------
+    def test_event_collaboration_retry_limit(self) -> None:
+        partner_inst = Institution.objects.create(
+            code="INST-IIT-DELHI",
+            legacy_id="LEG-IITD-01",
+            name="IIT Delhi",
+            state=self.state,
+            district=self.district,
+            institution_type="higher_education",
+        )
+        partner_club = Club.objects.create(
+            code="CLB-DL-IITD-01",
+            name="IIT Delhi NDLI Club",
+            institution=partner_inst,
+            status=Club.Status.ACTIVE,
+        )
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-COLLAB-01",
+            host_club=self.club,
+            scope=EventScope.MULTI_CLUB,
+            title="Joint Tech Symposium",
+            start_time=now + timedelta(days=2),
+            end_time=now + timedelta(days=2, hours=3),
+            status=EventStatus.DRAFT,
+            created_by=self.authority_user,
+        )
+        collab = EventCollaboration.objects.create(
+            event=event,
+            partner_club=partner_club,
+            status=EventCollaboration.Status.REJECTED,
+            retry_count=0,
+        )
+
+        self.client.force_login(self.authority_user)
+
+        # 1. First retry succeeds
+        resp = self.client.post(
+            f"/api/v1/activities/events/collaborations/{collab.id}/retry/"
+        )
+        self.assertEqual(resp.status_code, 200)
+        collab.refresh_from_db()
+        self.assertEqual(collab.status, EventCollaboration.Status.INVITED)
+        self.assertEqual(collab.retry_count, 1)
+
+        # 2. Cannot retry while in INVITED state
+        resp_invalid = self.client.post(
+            f"/api/v1/activities/events/collaborations/{collab.id}/retry/"
+        )
+        self.assertEqual(resp_invalid.status_code, 400)
+        self.assertEqual(resp_invalid.json()["code"], "invalid_state")
+
+        # 3. Second retry fails with retry_limit_reached
+        collab.status = EventCollaboration.Status.REJECTED
+        collab.save(update_fields=["status"])
+
+        resp_limit = self.client.post(
+            f"/api/v1/activities/events/collaborations/{collab.id}/retry/"
+        )
+        self.assertEqual(resp_limit.status_code, 400)
+        self.assertEqual(resp_limit.json()["code"], "retry_limit_reached")
+
+    # -------------------------------------------------------------------------
+    # 11. School Participant Upload & Deterministic Student UIDs
+    # -------------------------------------------------------------------------
+    def test_school_participant_upload_and_deterministic_uids(self) -> None:
+        from apps.members.models import SchoolStudentRoster
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-SCH-UPLOAD",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="School Science Quiz",
+            start_time=now - timedelta(hours=1),
+            end_time=now + timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        csv_content = (
+            "Full Name,Gender,Class,Section,Guardian Phone\n"
+            "Aarav Sharma,male,X,A,9876543210\n"
+            "Priya Singh,female,X,B,9876543211\n"
+            "Rohan Das,male,IX,A,9876543212\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "participants.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.authority_user)
+        resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/upload-participants/",
+            data={"file": csv_file},
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["enrolled_count"], 3)
+        self.assertEqual(len(data["participants"]), 3)
+
+        # Verify attendances created
+        self.assertEqual(
+            EventAttendance.objects.filter(event=event).count(), 3
+        )
+
+        # Verify deterministic UID format: SCH-[State]-[Club]-[Class]-[Serial]
+        for p in data["participants"]:
+            self.assertTrue(p["student_uid"].startswith("SCH-DE-CLBD"))
+
+        roster_count = SchoolStudentRoster.objects.filter(club=self.club).count()
+        self.assertGreaterEqual(roster_count, 3)
+
+    # -------------------------------------------------------------------------
+    # 12. Bulk Event Certificates ZIP Download with Embedded UIDs
+    # -------------------------------------------------------------------------
+    def test_event_certificates_zip_download(self) -> None:
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-SCH-CERT",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="School Annual Essay Contest",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+
+        csv_content = (
+            "Full Name,Gender,Class,Section,Guardian Phone\n"
+            "Ananya Sen,female,VIII,A,9876543215\n"
+            "Kabir Verma,male,VIII,B,9876543216\n"
+        )
+        csv_file = SimpleUploadedFile(
+            "participants.csv",
+            csv_content.encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.authority_user)
+        self.client.post(
+            f"/api/v1/activities/events/{event.id}/upload-participants/",
+            data={"file": csv_file},
+        )
+
+        # Download ZIP
+        zip_resp = self.client.get(
+            f"/api/v1/activities/events/{event.id}/download-certificates-zip/"
+        )
+        self.assertEqual(zip_resp.status_code, 200)
+        self.assertIn("application/zip", zip_resp["Content-Type"])
+
+        # Inspect ZIP contents
+        with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as zf:
+            namelist = zf.namelist()
+            self.assertIn("manifest.csv", namelist)
+            cert_files = [f for f in namelist if f.startswith("certificates/")]
+            self.assertEqual(len(cert_files), 2)
+
+            manifest_text = zf.read("manifest.csv").decode("utf-8")
+            self.assertIn("Ananya Sen", manifest_text)
+            self.assertIn("Kabir Verma", manifest_text)
+            self.assertIn("SCH-DE-CLBD", manifest_text)
+
+            sample_cert = zf.read(cert_files[0]).decode("utf-8")
+            self.assertIn("HMAC Tag (V2)", sample_cert)
+            self.assertIn("Student UID", sample_cert)
+
 

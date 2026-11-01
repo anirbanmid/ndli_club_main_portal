@@ -118,6 +118,23 @@ def state_breakdown() -> dict[str, Any]:
         totals["sub_clubs"] += sub_c
         totals["members"] += row["members"]
 
+    try:
+        from apps.activities.models import ClubEvent
+
+        total_activities = ClubEvent.objects.count()
+    except Exception:
+        total_activities = 0
+
+    try:
+        from apps.certificates.models import Certificate
+
+        total_certificates = Certificate.objects.count()
+    except Exception:
+        total_certificates = 0
+
+    totals["activities"] = total_activities
+    totals["certificates"] = total_certificates
+
     return {"states": states, "totals": totals}
 
 

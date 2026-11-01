@@ -240,7 +240,7 @@ class Club(models.Model):
     date_of_approval = models.DateField(null=True, blank=True)
     last_renewal_date = models.DateField(null=True, blank=True)
     upcoming_renewal_date = models.DateField(null=True, blank=True)
-    member_count = models.PositiveIntegerField(default=1000)
+    member_count = models.PositiveIntegerField(default=0)
     solo_activities = models.PositiveIntegerField(default=0)
     joint_activities = models.PositiveIntegerField(default=0)
     patron_name = models.CharField(max_length=128, blank=True, default="")

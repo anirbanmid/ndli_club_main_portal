@@ -39,15 +39,15 @@ import {
 } from '../types';
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from "../i18n";
-import { RosterManager } from './roster/RosterManager';
 import { SubClubManagementPanel } from './clubs/SubClubManagementPanel';
 import { SchoolBulkUploadPanel } from './members/SchoolBulkUploadPanel';
+import { InstitutionalBrandingPanel } from './clubs/InstitutionalBrandingPanel';
 import { InstitutionalEventModal } from './activities/InstitutionalEventModal';
 import { EventParticipationCard } from './activities/EventParticipationCard';
 import { CuratedLibraryHub } from './sharing/CuratedLibraryHub';
 import { StudentMembershipApprovalPanel } from './members/StudentMembershipApprovalPanel';
-import { ClubMemberModuleView } from './members/ClubMemberModuleView';
 import { fetchClubEvents, ClubEvent, fetchSubClubs, SubClub, fetchStudentProfiles } from '../lib/campusApi';
+import { INITIAL_CLUBS } from '../mockData';
 import { Layers, BookOpen, School as SchoolIcon } from 'lucide-react';
 
 interface ClubModuleViewProps {
@@ -93,7 +93,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   onViewPublicProfile,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'roster' | 'membership_approval' | 'activities' | 'tickets' | 'succession' | 'shield' | 'student_dash' | 'subclubs' | 'school_roster' | 'libraries'
+    'overview' | 'membership_approval' | 'subclubs' | 'school_roster' | 'activities' | 'libraries' | 'tickets' | 'succession'
   >('overview');
 
   // Campus Events & Sub-Clubs state
@@ -521,81 +521,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <span>{activeClub.category === 'School' ? t("School Roster & Bulk Upload") : t("Membership Approval & Roster")}</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('roster')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'roster'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-          }`}
-        >
-          <Users className="h-4 w-4" />
-          <span>{t("Student Roster (")}{clubStudents.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('activities')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'activities'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-          }`}
-        >
-          <Calendar className="h-4 w-4" />
-          <span>{t("Activities & Workshops (")}{clubActivities.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('shield')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'shield'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-          }`}
-        >
-          <ShieldCheck className="h-4 w-4 text-brand-400" />
-          <span>{t("Inter-Club Shield")}</span>
-          <span className="bg-[#B45309] text-white text-[11px] px-1.5 py-0.2 rounded font-black">{t("CROSS-CAMPUS")}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('tickets')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'tickets'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-          }`}
-        >
-          <LifeBuoy className="h-4 w-4" />
-          <span>{t("Support Desk (")}{clubTickets.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('succession')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-            activeTab === 'succession'
-              ? 'bg-[#1A503E] text-white shadow-xs'
-              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
-          }`}
-        >
-          <Lock className="h-4 w-4" />
-          <span>{t("Authority Succession")}</span>
-        </button>
-
-        {activeClub.category !== 'School' && (
-          <button
-            onClick={() => setActiveTab('student_dash')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
-              activeTab === 'student_dash'
-                ? 'bg-[#B45309] text-white shadow-xs'
-                : 'text-[#B45309] hover:bg-amber-50'
-            }`}
-          >
-            <Award className="h-4 w-4" />
-            <span>{t("Student View")}</span>
-          </button>
-        )}
-
         {activeClub.category !== 'School' && (
           <button
             onClick={() => setActiveTab('subclubs')}
@@ -625,6 +550,18 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         )}
 
         <button
+          onClick={() => setActiveTab('activities')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            activeTab === 'activities'
+              ? 'bg-[#1A503E] text-white shadow-xs'
+              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+          }`}
+        >
+          <Calendar className="h-4 w-4" />
+          <span>{t("Activities & Events (")}{backendEvents.length || clubActivities.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('libraries')}
           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
             activeTab === 'libraries'
@@ -635,20 +572,49 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <BookOpen className="h-4 w-4 text-emerald-400" />
           <span>{t("3-Tier NDLI Libraries")}</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('tickets')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            activeTab === 'tickets'
+              ? 'bg-[#1A503E] text-white shadow-xs'
+              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+          }`}
+        >
+          <LifeBuoy className="h-4 w-4" />
+          <span>{t("Support Desk (")}{clubTickets.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('succession')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 whitespace-nowrap ${
+            activeTab === 'succession'
+              ? 'bg-[#1A503E] text-white shadow-xs'
+              : 'text-[#2E4A3E] hover:bg-[#F4F8F6]'
+          }`}
+        >
+          <Lock className="h-4 w-4" />
+          <span>{t("Authority Succession")}</span>
+        </button>
       </div>
 
       {/* TAB 1: 360° Overview & NAAC Metrics */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-2">
+            <div className="bg-white p-5 rounded-2xl border border-[#E2ECE7] shadow-xs space-y-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Total Members Till Date")}</span>
-              <div className="text-xl font-extrabold text-[#103125]">
+              <div className="text-3xl font-extrabold text-[#103125]">
                 {memberStats
-                  ? `${memberStats.total.toLocaleString()} (Active ${memberStats.active.toLocaleString()} + Inactive ${memberStats.inactive.toLocaleString()})`
-                  : `${clubStudents.length.toLocaleString()} (Active ${clubStudents.filter((s) => s.status === 'Active').length} + Inactive ${clubStudents.filter((s) => s.status !== 'Active').length})`}
+                  ? memberStats.total.toLocaleString()
+                  : clubStudents.length.toLocaleString()}
               </div>
-              <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1">
+              <div className="text-xs text-[#5A7366] font-medium">
+                {memberStats
+                  ? `(${memberStats.active.toLocaleString()} ${t("Active")} + ${memberStats.inactive.toLocaleString()} ${t("Inactive")})`
+                  : `(${clubStudents.filter((s) => s.status === 'Active').length.toLocaleString()} ${t("Active")} + ${clubStudents.filter((s) => s.status !== 'Active').length.toLocaleString()} ${t("Inactive")})`}
+              </div>
+              <div className="text-[11px] text-[#0D7751] font-semibold flex items-center gap-1 pt-1 border-t border-[#E2ECE7]/50 mt-1">
                 <span>{t("Passkey:")} {activeClub.passkey}</span>
               </div>
             </div>
@@ -826,6 +792,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Institutional Branding (Transparent PNG Logo & Signing Signature) */}
+          <InstitutionalBrandingPanel
+            clubCode={activeClub.id}
+            isReadOnly={!isAuthorityAuthenticated}
+          />
         </div>
       )}
 
@@ -841,9 +813,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <StudentMembershipApprovalPanel clubCode={activeClub.id} isMainAuthority={true} />
         )
       )}
-
-      {/* TAB 2b: Student Roster (M5-D4) — legacy API-backed manager. */}
-      {activeTab === 'roster' && <RosterManager />}
 
       {/* TAB 3: Activities & Workshops */}
       {activeTab === 'activities' && (
@@ -890,7 +859,9 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                   <EventParticipationCard
                     key={evt.id}
                     event={evt}
-                    isAuthority={isAuthorityAuthenticated}
+                    isAuthority={Boolean(isAuthorityAuthenticated)}
+                    currentClubCode={activeClub.id}
+                    isSchool={activeClub.category === 'School'}
                     onRefresh={loadCampusData}
                   />
                 ))}
@@ -925,7 +896,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                   
                   <button
                     onClick={() => alert(`Attendance sign-off verified for ${act.title}. Approved student certificates unlocked!`)}
-                    className="px-3 py-1.5 rounded-lg bg-[#E9F5EF] hover:bg-[#d2ede0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 flex items-center space-x-1"
+                    className="px-3 py-1.5 rounded-lg bg-[#E9F5EF] hover:bg-[#d2ede0] text-[#0D7751] text-xs font-bold border border-[#0D7751]/30 flex items-center space-x-1 cursor-pointer"
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     <span>{t("Approve Attendance")}</span>
@@ -933,83 +904,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: Inter-Institutional Resource & Activity Sharing Shield (Requirement 3c.vii) */}
-      {activeTab === 'shield' && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
-          <div className="border-b border-[#E2ECE7] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-brand-800 bg-brand-50 px-3 py-1 rounded-full border border-brand-200 mb-2">
-                <ShieldCheck className="h-4 w-4 text-brand-600" />
-                <span>{t("Inter-Institutional Cyber Security Protocol Shield")}</span>
-              </div>
-              <h3 className="text-xl font-bold text-[#103125]">
-                {t("Cross-Campus Collaboration & Resource Network")}
-                                            </h3>
-              <p className="text-xs text-[#5A7366] mt-0.5 max-w-2xl">
-                {t("Removing physical barriers across India: Co-host activities with partner universities and share curated research notes behind strict content moderation and cybersecurity gates.")}
-                                            </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setActIsInter(true);
-                setShowNewActivityModal(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all"
-            >
-              <Share2 className="h-4 w-4" />
-              <span>{t("Co-Host Cross-Campus Event")}</span>
-            </button>
-          </div>
-
-          {/* Security Architecture Notice */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
-              <span className="font-bold text-brand-900 block">{t("1. Sandboxed Content Gate")}</span>
-              <p className="text-ink-600 text-[11px]">{t("All shared documents & external webinar links pass through automated security scanners before public broadcast.")}</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
-              <span className="font-bold text-brand-900 block">{t("2. Federated Student Access")}</span>
-              <p className="text-ink-600 text-[11px]">{t("Enrolled students from co-hosting colleges join without separate account creation or data disclosure.")}</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-1.5">
-              <span className="font-bold text-brand-900 block">{t("3. Academic Compliance")}</span>
-              <p className="text-ink-600 text-[11px]">{t("Monitored by IIT Kharagpur zonal coordinators with content moderation and review on every shared item.")}</p>
-            </div>
-          </div>
-
-          {/* Cross-Campus Activities Feed */}
-          <div className="space-y-3 pt-2">
-            <h4 className="font-bold text-sm text-[#103125]">{t("Active Nationwide Shared Initiatives:")}</h4>
-            <div className="space-y-3">
-              {activities.filter(a => a.isInterInstitutional).map(act => (
-                <div key={act.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-bold text-brand-800 bg-brand-100 px-2 py-0.5 rounded">
-                        {t("Co-Hosted by:")} {act.clubName}
-                      </span>
-                      <span className="text-[11px] text-brand-700 font-bold bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                        {t("✓ Shield Verified")}
-                                                        </span>
-                    </div>
-                    <div className="font-bold text-sm text-[#103125]">{act.title}</div>
-                    <div className="text-xs text-[#5A7366]">{act.date} • {t(act.mode)} • {act.participantsCount.toLocaleString()} {t("Participants")}</div>
-                  </div>
-
-                  <button
-                    onClick={() => alert(`Your club (${activeClub.name}) has sent a co-hosting handshake request for ${act.title}.`)}
-                    className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E2ECE7] hover:bg-ink-50 text-xs font-bold text-[#103125] transition-all shadow-2xs"
-                  >
-                    {t("Request Co-Host Partnership")}
-                                            </button>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}
@@ -1136,28 +1030,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                                                 </div>
             )}
           </div>
-        </div>
-      )}
-
-      {/* TAB 7: Dedicated Student Member Module View (Campus Specification §5) */}
-      {activeTab === 'student_dash' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-4 py-2.5 rounded-2xl text-xs text-amber-900 font-bold">
-            <span className="flex items-center space-x-2">
-              <Sparkles className="h-4 w-4 text-amber-600" />
-              <span>{t("Authority Preview: Live Student Member Portal View")}</span>
-            </span>
-            <button
-              onClick={() => setActiveTab('overview')}
-              className="text-amber-800 underline hover:text-amber-950 font-bold cursor-pointer"
-            >
-              {t("Return to Club Dashboard")}
-            </button>
-          </div>
-          <ClubMemberModuleView
-            onSignOut={onAuthoritySignOut}
-            onViewPublicProfile={() => onViewPublicProfile(activeClub)}
-          />
         </div>
       )}
 
@@ -1635,7 +1507,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           onClose={() => setShowInstitutionalEventModal(false)}
           clubCode={activeClub.id}
           subClubs={subClubsList}
-          canonicalClubs={[]}
+          canonicalClubs={INITIAL_CLUBS}
           onEventCreated={() => {
             loadCampusData();
             setShowInstitutionalEventModal(false);

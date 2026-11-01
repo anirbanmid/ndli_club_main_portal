@@ -688,7 +688,9 @@ class ClubEventListCreateView(APIView):
                         {
                             "id": col.id,
                             "partner_club": col.partner_club.code,
+                            "partner_club_name": col.partner_club.name,
                             "status": col.status,
+                            "retry_count": col.retry_count,
                         }
                         for col in evt.collaborations.all()
                     ],
@@ -751,6 +753,18 @@ class ClubEventListCreateView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        poster = request.FILES.get("poster")
+        if poster and poster.size > 300 * 1024:
+            return Response(
+                {
+                    "detail": "Event poster size exceeds 300KB limit.",
+                    "code": "file_too_large",
+                },
+                status=400,
+            )
+
+        publish_flag = data.get("publish") in (True, "true", "True", 1, "1")
+
         event = ClubEvent.objects.create(
             event_ref=event_ref,
             host_club=club,
@@ -758,23 +772,68 @@ class ClubEventListCreateView(APIView):
             title=title,
             description=description,
             joining_link=str(data.get("joining_link", "")).strip(),
-            poster=request.FILES.get("poster"),
+            poster=poster,
             start_time=start_time_raw,
             end_time=end_time_raw,
-            status=EventStatus.DRAFT
-            if not data.get("publish")
-            else EventStatus.PUBLISHED,
+            status=EventStatus.PUBLISHED if publish_flag else EventStatus.DRAFT,
             created_by=user,
         )
 
+        # Scoping sub-clubs
+        sub_club_ids = data.get("sub_club_ids")
+        if sub_club_ids:
+            if isinstance(sub_club_ids, str):
+                import json
+
+                try:
+                    sub_club_ids = json.loads(sub_club_ids)
+                except Exception:
+                    sub_club_ids = []
+            if isinstance(sub_club_ids, list) and sub_club_ids:
+                event.all_sub_clubs = False
+                event.target_sub_clubs.set(sub_club_ids)
+                event.save(update_fields=["all_sub_clubs"])
+
+        # Multi-club collaboration partners
+        partner_codes = data.get("partner_clubs", [])
+        if isinstance(partner_codes, str):
+            import json
+
+            try:
+                partner_codes = json.loads(partner_codes)
+            except Exception:
+                partner_codes = [partner_codes]
+        if isinstance(partner_codes, list) and partner_codes:
+            from apps.activities.models import EventCollaboration
+
+            for code in partner_codes:
+                p_club = Club.objects.filter(code__iexact=str(code).strip()).first()
+                if p_club and p_club != club:
+                    EventCollaboration.objects.get_or_create(
+                        event=event,
+                        partner_club=p_club,
+                        defaults={
+                            "status": EventCollaboration.Status.INVITED,
+                            "retry_count": 0,
+                        },
+                    )
+
         # Conductors
         conductors_data = data.get("conductors", [])
+        if isinstance(conductors_data, str):
+            import json
+
+            try:
+                conductors_data = json.loads(conductors_data)
+            except Exception:
+                conductors_data = []
         if isinstance(conductors_data, list):
             for c in conductors_data:
-                if isinstance(c, dict) and c.get("name"):
+                name = c.get("name") or c.get("full_name")
+                if isinstance(c, dict) and name:
                     EventConductor.objects.create(
                         event=event,
-                        full_name=str(c.get("name", "")).strip(),
+                        full_name=str(name).strip(),
                         affiliation=str(c.get("affiliation", "")).strip(),
                     )
 
@@ -1165,3 +1224,360 @@ class EventConductorCertificateView(APIView):
 
     def post(self, request: Request, event_id: int, conductor_id: int) -> Response:
         return self.get(request, event_id, conductor_id)
+
+
+class EventCollaborationRetryView(APIView):
+    """Resend a rejected collaboration invite (strictly 1 retry limit)."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request, collab_id: int) -> Response:
+        from apps.activities.models import EventCollaboration
+
+        collab = (
+            EventCollaboration.objects.select_related("event", "partner_club")
+            .filter(pk=collab_id)
+            .first()
+        )
+        if not collab:
+            return Response(
+                {"detail": "Collaboration not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if collab.status != EventCollaboration.Status.REJECTED:
+            return Response(
+                {
+                    "detail": "Only rejected collaboration requests can be resent.",
+                    "code": "invalid_state",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if collab.retry_count >= 1:
+            return Response(
+                {
+                    "detail": "Maximum 1 retry allowed for collaboration requests.",
+                    "code": "retry_limit_reached",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        collab.status = EventCollaboration.Status.INVITED
+        collab.retry_count += 1
+        collab.responded_at = None
+        collab.responded_by = None
+        collab.save(
+            update_fields=["status", "retry_count", "responded_at", "responded_by"]
+        )
+
+        return Response(
+            {
+                "id": collab.id,
+                "partner_club": collab.partner_club.name,
+                "status": collab.status,
+                "retry_count": collab.retry_count,
+                "message": (
+                    f"Collaboration request resent to {collab.partner_club.name}."
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class EventParticipantUploadView(APIView):
+    """Bulk upload participant CSV for a School event (or HEI event).
+
+    Accepts CSV multipart or JSON list with columns:
+    Full Name, Gender, Class, Section (optional Guardian Phone).
+    Matches or creates SchoolStudentRoster records for the event's host club,
+    and creates EventAttendance records linked to the event.
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def post(self, request: Request, pk: int) -> Response:
+        import csv
+        import io
+        import re
+
+        from django.utils import timezone
+
+        from apps.activities.models import ClubEvent, EventAttendance
+        from apps.members.models import SchoolStudentRoster
+
+        evt = (
+            ClubEvent.objects.select_related("host_club__institution__state")
+            .filter(pk=pk)
+            .first()
+        )
+        if not evt:
+            return Response(
+                {"detail": "Event not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        rows = []
+        if "file" in request.FILES:
+            uploaded_file = request.FILES["file"]
+            try:
+                decoded = uploaded_file.read().decode("utf-8-sig")
+            except Exception:
+                decoded = uploaded_file.read().decode("latin-1")
+            reader = csv.DictReader(io.StringIO(decoded))
+            for raw_row in reader:
+                norm = {
+                    k.strip().lower().replace(" ", "_"): v.strip()
+                    for k, v in raw_row.items()
+                    if k
+                }
+                rows.append(norm)
+        elif "participants" in request.data and isinstance(
+            request.data["participants"], list
+        ):
+            rows = request.data["participants"]
+        else:
+            return Response(
+                {
+                    "detail": "CSV file or participants list is required.",
+                    "code": "missing_data",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not rows:
+            return Response(
+                {
+                    "detail": "No participant rows found in upload.",
+                    "code": "empty_upload",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        club = evt.host_club
+        state_code = (
+            club.institution.state.code
+            if club.institution and club.institution.state
+            else "IN"
+        )
+        clean_state = re.sub(r"[^A-Za-z0-9]", "", state_code).upper()[:2]
+        clean_club = re.sub(r"[^A-Za-z0-9]", "", club.code).upper()[:4]
+
+        created_attendances = 0
+        students_added = []
+        now = timezone.now()
+
+        for r in rows:
+            name = r.get("full_name") or r.get("name") or r.get("fullname", "")
+            gender = r.get("gender", "Other")
+            s_class = r.get("class") or r.get("student_class", "Standard")
+            sec = r.get("section", "A")
+            phone = r.get("guardian_phone") or r.get("phone", "")
+
+            if not name:
+                continue
+
+            clean_cls = re.sub(r"[^A-Za-z0-9]", "", str(s_class)).upper()[:3]
+            clean_sec = re.sub(r"[^A-Za-z0-9]", "", str(sec)).upper()[:2]
+            existing_count = SchoolStudentRoster.objects.filter(club=club).count()
+            serial = f"{existing_count + 1:03d}"
+            deterministic_uid = (
+                f"SCH-{clean_state}-{clean_club}-{clean_cls}{clean_sec}-{serial}"
+            )
+
+            student, _ = SchoolStudentRoster.objects.get_or_create(
+                club=club,
+                full_name=name,
+                student_class=str(s_class),
+                section=str(sec),
+                defaults={
+                    "student_uid": deterministic_uid,
+                    "gender": gender,
+                    "guardian_phone": phone,
+                    "batch_year": now.year,
+                    "is_active": True,
+                },
+            )
+
+            attendance, att_created = EventAttendance.objects.get_or_create(
+                event=evt,
+                school_student=student,
+                defaults={"is_approved": True, "approved_at": now},
+            )
+            if att_created:
+                created_attendances += 1
+            students_added.append(
+                {
+                    "student_uid": student.student_uid,
+                    "full_name": student.full_name,
+                    "class": student.student_class,
+                    "section": student.section,
+                }
+            )
+
+        return Response(
+            {
+                "success": True,
+                "message": (
+                    f"Successfully enrolled {len(students_added)} participants"
+                    f" for event {evt.event_ref}."
+                ),
+                "enrolled_count": len(students_added),
+                "created_attendances": created_attendances,
+                "participants": students_added,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class EventCertificatesZipDownloadView(APIView):
+    """Download bundled ZIP containing verifiable participation certificates."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, pk: int) -> HttpResponse:
+        import csv
+        import io
+        import zipfile
+
+        from django.utils import timezone
+
+        from apps.activities.models import ClubEvent, EventAttendance
+        from apps.certificates.ids import (
+            format_certificate_id,
+            random_certificate_id_body,
+        )
+        from apps.certificates.models import Certificate, CertificateCategory
+        from apps.certificates.signing import active_key_id, sign_certificate
+
+        evt = (
+            ClubEvent.objects.select_related("host_club__institution")
+            .filter(pk=pk)
+            .first()
+        )
+        if not evt:
+            return HttpResponse("Event not found", status=404)
+
+        attendances = EventAttendance.objects.filter(event=evt).select_related(
+            "school_student", "user"
+        )
+        if not attendances.exists():
+            return HttpResponse("No attendees found for this event", status=400)
+
+        now = timezone.now()
+        key_id = active_key_id()
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            manifest_rows = []
+
+            for att in attendances:
+                att.is_approved = True
+                att.approved_at = now
+                att.save(update_fields=["is_approved", "approved_at"])
+
+                student_name = (
+                    att.school_student.full_name
+                    if att.school_student
+                    else (att.user.username if att.user else "Participant")
+                )
+                student_uid = (
+                    att.school_student.student_uid
+                    if att.school_student
+                    else "HEI-STUDENT"
+                )
+                student_cls = (
+                    att.school_student.student_class
+                    if att.school_student
+                    else "N/A"
+                )
+                student_sec = (
+                    att.school_student.section
+                    if att.school_student
+                    else "N/A"
+                )
+
+                cert_id = format_certificate_id(random_certificate_id_body())
+                cert = Certificate(
+                    certificate_id=cert_id,
+                    hmac_key_id=key_id,
+                    holder=att.user,
+                    recipient_name=student_name,
+                    student_uid=student_uid,
+                    club=evt.host_club,
+                    event_ref=evt.event_ref,
+                    event_title=evt.title,
+                    event_date=evt.start_time.date(),
+                    category=CertificateCategory.PARTICIPATION,
+                    issue_date=now.date(),
+                )
+                cert.hmac_tag = sign_certificate(cert)
+                cert.save()
+
+                manifest_rows.append(
+                    {
+                        "certificate_id": cert.certificate_id,
+                        "student_uid": student_uid,
+                        "recipient_name": student_name,
+                        "class": student_cls,
+                        "section": student_sec,
+                        "event_ref": evt.event_ref,
+                        "event_title": evt.title,
+                        "issue_date": str(cert.issue_date),
+                        "hmac_tag": cert.hmac_tag,
+                    }
+                )
+
+                cert_content = (
+                    "============================================================\n"
+                    "NATIONAL DIGITAL LIBRARY OF INDIA (NDLI) CLUB CERTIFICATE\n"
+                    "============================================================\n"
+                    f"Certificate ID : {cert.certificate_id}\n"
+                    f"Student UID    : {student_uid}\n"
+                    f"Recipient Name : {student_name}\n"
+                    f"Class / Section: {student_cls} - {student_sec}\n"
+                    f"Institution    : {evt.host_club.institution.name}\n"
+                    f"Club Code      : {evt.host_club.code}\n"
+                    f"Event Reference: {evt.event_ref}\n"
+                    f"Event Title    : {evt.title}\n"
+                    f"Issue Date     : {cert.issue_date}\n"
+                    f"Verification   : https://club.ndli.gov.in/verify?cid={cert.certificate_id}\n"
+                    f"HMAC Tag (V2)  : {cert.hmac_tag}\n"
+                    "============================================================\n"
+                    "Valid digital credential verified under the "
+                    "NDLI National Framework.\n"
+                )
+                safe_name = "".join(
+                    c for c in student_name if c.isalnum() or c in (" ", "_", "-")
+                ).strip()
+                zf.writestr(
+                    f"certificates/{student_uid}_{safe_name}.txt", cert_content
+                )
+
+            manifest_csv_buffer = io.StringIO()
+            fieldnames = [
+                "certificate_id",
+                "student_uid",
+                "recipient_name",
+                "class",
+                "section",
+                "event_ref",
+                "event_title",
+                "issue_date",
+                "hmac_tag",
+            ]
+            writer = csv.DictWriter(manifest_csv_buffer, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(manifest_rows)
+            zf.writestr("manifest.csv", manifest_csv_buffer.getvalue())
+
+        zip_bytes = zip_buffer.getvalue()
+        response = HttpResponse(zip_bytes, content_type="application/zip")
+        response["Content-Disposition"] = (
+            f'attachment; filename="certificates_{evt.event_ref}.zip"'
+        )
+        response["Content-Length"] = len(zip_bytes)
+        return response
+

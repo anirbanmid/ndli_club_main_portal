@@ -784,12 +784,12 @@ export const DashboardsPanel: React.FC<{ zoneCode: string }> = ({ zoneCode }) =>
           label={t('Total Members Till Date')}
           value={
             dashboard && dashboard.total_members !== undefined
-              ? `${dashboard.total_members.toLocaleString()} (Active ${(dashboard.active_members ?? 0).toLocaleString()} + Inactive ${(dashboard.inactive_members ?? 0).toLocaleString()})`
+              ? dashboard.total_members.toLocaleString()
               : '—'
           }
           desc={
             dashboard && dashboard.active_members !== undefined
-              ? `${t('Active')}: ${(dashboard.active_members ?? 0).toLocaleString()} + ${t('Inactive')}: ${(dashboard.inactive_members ?? 0).toLocaleString()}`
+              ? `(${(dashboard.active_members ?? 0).toLocaleString()} ${t('Active')} + ${(dashboard.inactive_members ?? 0).toLocaleString()} ${t('Inactive')})`
               : t('HEI student members + school tangible roster')
           }
           badge={

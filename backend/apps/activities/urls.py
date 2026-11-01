@@ -68,6 +68,21 @@ urlpatterns += [
         name="event-collab-respond",
     ),
     path(
+        "events/collaborations/<int:collab_id>/retry/",
+        views.EventCollaborationRetryView.as_view(),
+        name="event-collab-retry",
+    ),
+    path(
+        "events/<int:pk>/upload-participants/",
+        views.EventParticipantUploadView.as_view(),
+        name="event-upload-participants",
+    ),
+    path(
+        "events/<int:pk>/download-certificates-zip/",
+        views.EventCertificatesZipDownloadView.as_view(),
+        name="event-download-certificates-zip",
+    ),
+    path(
         "events/<int:pk>/approve-certificates/",
         views.EventCertificateApprovalView.as_view(),
         name="event-approve-certificates",

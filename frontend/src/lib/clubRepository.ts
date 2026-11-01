@@ -100,8 +100,8 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
     category: (raw.category as InstituteClub['category']) || 'Autonomous Institute',
     passkey: String(raw.passkey || `${id}-NDL-001`),
     status: (raw.status as InstituteClub['status']) || 'Active',
-    memberCount: Number(raw.memberCount ?? raw.member_count ?? 1800),
-    eventsConducted: Number(raw.eventsConducted ?? raw.events_conducted ?? 15),
+    memberCount: Number(raw.memberCount ?? raw.member_count ?? 0),
+    eventsConducted: Number(raw.eventsConducted ?? raw.events_conducted ?? 0),
     establishedDate: String(raw.establishedDate ?? raw.established_date ?? raw.date_of_approval ?? '2021-04-12'),
     authorities: rawAuthorities.length > 0
       ? (rawAuthorities as InstituteClub['authorities'])
@@ -145,8 +145,8 @@ function normalizeBackendClub(raw: Record<string, unknown>): InstituteClub {
     dateOfApproval: String(raw.dateOfApproval || raw.date_of_approval || '2021-04-12'),
     lastRenewalDate: String(raw.lastRenewalDate || raw.last_renewal_date || 'None (Initial)'),
     nextRenewalDate: String(raw.nextRenewalDate || raw.next_renewal_date || raw.upcoming_renewal_date || '2026-04-12'),
-    soloSessions: Number(raw.soloSessions ?? raw.solo_activities ?? 10),
-    jointSessions: Number(raw.jointSessions ?? raw.joint_activities ?? 5),
+    soloSessions: Number(raw.soloSessions ?? raw.solo_activities ?? 0),
+    jointSessions: Number(raw.jointSessions ?? raw.joint_activities ?? 0),
   };
 }
 

@@ -40,15 +40,15 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
   const [selectedZone, setSelectedZone] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Filter only active chartered clubs
-  const activeClubs = clubs.filter(c => c.status === 'Active');
+  // Approved verified clubs for the institutional chapters directory (excluding test samples or suspended)
+  const canonicalClubs = clubs.filter(c => c.status !== 'Suspended' && !c.isSample && !c.name.includes('(SAMPLE)'));
 
-  // Unique filter sets
-  const states = ['All', ...Array.from(new Set(activeClubs.map(c => c.state))).sort()];
+  // Unique filter sets across all approved institutional chapters
+  const states = ['All', ...Array.from(new Set(canonicalClubs.map(c => c.state))).filter(Boolean).sort()];
   const zones: ('All' | RegionalZone)[] = ['All', 'North', 'Central', 'West', 'East', 'North East', 'South'];
   const categories = ['All', 'University', 'College', 'Autonomous Institute', 'School'];
 
-  const filteredClubs = activeClubs.filter(club => {
+  const filteredClubs = canonicalClubs.filter(club => {
     const matchesSearch = 
       club.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       club.aisheCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,7 +136,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
               {t("Filter Institutional Chapters")}
             </h2>
             <span className="text-xs font-bold text-[#0D7751] bg-[#E9F5EF] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
-              {filteredClubs.length} {t("of")} {activeClubs.length} {t("Chapters")}
+              {filteredClubs.length} {t("of")} {canonicalClubs.length} {t("Chapters")}
             </span>
           </div>
 

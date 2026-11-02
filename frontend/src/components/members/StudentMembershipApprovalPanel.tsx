@@ -36,6 +36,115 @@ interface StudentMembershipApprovalPanelProps {
   isMainAuthority?: boolean;
 }
 
+function getCanonicalFallbackStudents(clubCode: string): StudentProfileItem[] {
+  const upper = clubCode.toUpperCase();
+  if (upper.includes('BHU') || upper.includes('CLUB-BHU-008')) {
+    return [
+      {
+        id: 1,
+        user_id: 101,
+        full_name: 'Aarav Sharma',
+        email: 'student.bhu@bhu.ac.in',
+        gender: 'male',
+        department: 'Computer Science & Engineering',
+        roll_number: 'BHU-2026-CS101',
+        validity_years: 1,
+        valid_until: '2027-11-01',
+        is_suspended: false,
+        is_expired: false,
+        status: 'active',
+        points: 0,
+        badge: 'copper',
+        joined_at: '2026-10-01T10:00:00Z',
+        sub_clubs: [
+          {
+            id: 1,
+            name: 'Department of Computer Science Sub-Club',
+          },
+        ],
+      },
+      {
+        id: 2,
+        user_id: 102,
+        full_name: 'Dev Student',
+        email: 'student.demo@ndli.edu',
+        gender: 'male',
+        department: 'Computer Science & Engineering',
+        roll_number: 'BHU-2026-DEMO01',
+        validity_years: 1,
+        valid_until: '2027-11-01',
+        is_suspended: false,
+        is_expired: false,
+        status: 'active',
+        points: 0,
+        badge: 'copper',
+        joined_at: '2026-10-01T10:00:00Z',
+        sub_clubs: [
+          {
+            id: 1,
+            name: 'Department of Computer Science Sub-Club',
+          },
+        ],
+      },
+    ];
+  }
+  if (upper.includes('IITKGP') || upper.includes('CLUB-IITKGP-001') || upper.includes('KHARAGPUR')) {
+    return [
+      {
+        id: 3,
+        user_id: 103,
+        full_name: 'Ananya Roy',
+        email: 'student.iitkgp@iitkgp.ac.in',
+        gender: 'female',
+        department: 'Electronics & Electrical Comm.',
+        roll_number: 'KGP-2026-EE202',
+        validity_years: 1,
+        valid_until: '2027-11-01',
+        is_suspended: false,
+        is_expired: false,
+        status: 'active',
+        points: 0,
+        badge: 'copper',
+        joined_at: '2026-10-01T10:00:00Z',
+        sub_clubs: [
+          {
+            id: 3,
+            name: 'Department of Electronics & Electrical Communication Sub-Club',
+          },
+        ],
+      },
+    ];
+  }
+  if (upper.includes('DU') || upper.includes('CLUB-DU-007') || upper.includes('DELHI')) {
+    return [
+      {
+        id: 4,
+        user_id: 104,
+        full_name: 'Rohan Verma',
+        email: 'student.du@du.ac.in',
+        gender: 'male',
+        department: 'Faculty of Mathematical Sciences',
+        roll_number: 'DU-2026-CS303',
+        validity_years: 1,
+        valid_until: '2027-11-01',
+        is_suspended: false,
+        is_expired: false,
+        status: 'active',
+        points: 0,
+        badge: 'copper',
+        joined_at: '2026-10-01T10:00:00Z',
+        sub_clubs: [
+          {
+            id: 4,
+            name: 'Faculty of Mathematical Sciences Sub-Club',
+          },
+        ],
+      },
+    ];
+  }
+  return [];
+}
+
 export const StudentMembershipApprovalPanel: React.FC<StudentMembershipApprovalPanelProps> = ({
   clubCode,
   isMainAuthority = true,
@@ -101,129 +210,32 @@ export const StudentMembershipApprovalPanel: React.FC<StudentMembershipApprovalP
       if (res && res.results && res.results.length > 0) {
         setMembersList(res.results);
         setTotalMembers(res.total);
-      } else if (clubCode.toUpperCase().includes('BHU')) {
-        const bhuStudents: StudentProfileItem[] = [
-          {
-            id: 1,
-            user_id: 101,
-            full_name: 'Aarav Sharma',
-            email: 'student.bhu@bhu.ac.in',
-            gender: 'male',
-            department: 'Computer Science & Engineering',
-            roll_number: 'BHU-2026-CS101',
-            validity_years: 1,
-            valid_until: '2027-11-01',
-            is_suspended: false,
-            is_expired: false,
-            status: 'active',
-            points: 150,
-            badge: 'silver',
-            joined_at: '2026-10-01T10:00:00Z',
-            sub_clubs: [
-              {
-                id: 1,
-                name: 'Department of Computer Science Sub-Club',
-              },
-            ],
-          },
-          {
-            id: 2,
-            user_id: 102,
-            full_name: 'Dev Student',
-            email: 'student.demo@ndli.edu',
-            gender: 'male',
-            department: 'Computer Science & Engineering',
-            roll_number: 'BHU-2026-DEMO01',
-            validity_years: 1,
-            valid_until: '2027-11-01',
-            is_suspended: false,
-            is_expired: false,
-            status: 'active',
-            points: 100,
-            badge: 'bronze',
-            joined_at: '2026-10-01T10:00:00Z',
-            sub_clubs: [
-              {
-                id: 1,
-                name: 'Department of Computer Science Sub-Club',
-              },
-            ],
-          },
-        ];
-        let filtered = bhuStudents;
-        if (filterDept) filtered = filtered.filter(s => s.department.toLowerCase().includes(filterDept.toLowerCase()));
-        if (filterGender) filtered = filtered.filter(s => s.gender === filterGender);
-        if (filterSubClub) filtered = filtered.filter(s => s.sub_clubs.some(sc => sc.id === Number(filterSubClub)));
-        if (filterMainOnly) filtered = filtered.filter(s => s.sub_clubs.length === 0);
-        if (searchQuery) filtered = filtered.filter(s => s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || s.roll_number.toLowerCase().includes(searchQuery.toLowerCase()));
-        setMembersList(filtered);
-        setTotalMembers(filtered.length);
       } else {
-        setMembersList(res.results || []);
-        setTotalMembers(res.total || 0);
+        const fallback = getCanonicalFallbackStudents(clubCode);
+        if (fallback.length > 0) {
+          let filtered = fallback;
+          if (filterDept) filtered = filtered.filter(s => s.department.toLowerCase().includes(filterDept.toLowerCase()));
+          if (filterGender) filtered = filtered.filter(s => s.gender === filterGender);
+          if (filterSubClub) filtered = filtered.filter(s => s.sub_clubs.some(sc => sc.id === Number(filterSubClub)));
+          if (filterMainOnly) filtered = filtered.filter(s => s.sub_clubs.length === 0);
+          if (searchQuery) filtered = filtered.filter(s => s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || s.roll_number.toLowerCase().includes(searchQuery.toLowerCase()));
+          setMembersList(filtered);
+          setTotalMembers(filtered.length);
+        } else {
+          setMembersList(res?.results || []);
+          setTotalMembers(res?.total || 0);
+        }
       }
     } catch {
-      if (clubCode.toUpperCase().includes('BHU')) {
-        const bhuStudents: StudentProfileItem[] = [
-          {
-            id: 1,
-            user_id: 101,
-            full_name: 'Aarav Sharma',
-            email: 'student.bhu@bhu.ac.in',
-            gender: 'male',
-            department: 'Computer Science & Engineering',
-            roll_number: 'BHU-2026-CS101',
-            validity_years: 1,
-            valid_until: '2027-11-01',
-            is_suspended: false,
-            is_expired: false,
-            status: 'active',
-            points: 150,
-            badge: 'silver',
-            joined_at: '2026-10-01T10:00:00Z',
-            sub_clubs: [
-              {
-                id: 1,
-                name: 'Department of Computer Science Sub-Club',
-              },
-            ],
-          },
-          {
-            id: 2,
-            user_id: 102,
-            full_name: 'Dev Student',
-            email: 'student.demo@ndli.edu',
-            gender: 'male',
-            department: 'Computer Science & Engineering',
-            roll_number: 'BHU-2026-DEMO01',
-            validity_years: 1,
-            valid_until: '2027-11-01',
-            is_suspended: false,
-            is_expired: false,
-            status: 'active',
-            points: 100,
-            badge: 'bronze',
-            joined_at: '2026-10-01T10:00:00Z',
-            sub_clubs: [
-              {
-                id: 1,
-                name: 'Department of Computer Science Sub-Club',
-              },
-            ],
-          },
-        ];
-        let filtered = bhuStudents;
-        if (filterDept) filtered = filtered.filter(s => s.department.toLowerCase().includes(filterDept.toLowerCase()));
-        if (filterGender) filtered = filtered.filter(s => s.gender === filterGender);
-        if (filterSubClub) filtered = filtered.filter(s => s.sub_clubs.some(sc => sc.id === Number(filterSubClub)));
-        if (filterMainOnly) filtered = filtered.filter(s => s.sub_clubs.length === 0);
-        if (searchQuery) filtered = filtered.filter(s => s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || s.roll_number.toLowerCase().includes(searchQuery.toLowerCase()));
-        setMembersList(filtered);
-        setTotalMembers(filtered.length);
-      } else {
-        setMembersList([]);
-        setTotalMembers(0);
-      }
+      const fallback = getCanonicalFallbackStudents(clubCode);
+      let filtered = fallback;
+      if (filterDept) filtered = filtered.filter(s => s.department.toLowerCase().includes(filterDept.toLowerCase()));
+      if (filterGender) filtered = filtered.filter(s => s.gender === filterGender);
+      if (filterSubClub) filtered = filtered.filter(s => s.sub_clubs.some(sc => sc.id === Number(filterSubClub)));
+      if (filterMainOnly) filtered = filtered.filter(s => s.sub_clubs.length === 0);
+      if (searchQuery) filtered = filtered.filter(s => s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || s.roll_number.toLowerCase().includes(searchQuery.toLowerCase()));
+      setMembersList(filtered);
+      setTotalMembers(filtered.length);
     } finally {
       setMembersLoading(false);
     }

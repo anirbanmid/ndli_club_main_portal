@@ -45,6 +45,8 @@ import {
   participateInEvent,
   updateStudentMe,
   updateStudentMeSubClubs,
+  fetchMyEventCertificate,
+  MyEventCertificateResponse,
 } from '../../lib/campusApi';
 import { CuratedLibraryHub } from '../sharing/CuratedLibraryHub';
 
@@ -72,6 +74,9 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   const [participateNotice, setParticipateNotice] = useState<{ id: number; msg: string } | null>(
     null,
   );
+  const [viewCertData, setViewCertData] = useState<MyEventCertificateResponse | null>(null);
+  const [digiLockerModalCert, setDigiLockerModalCert] = useState<MyEventCertificateResponse | null>(null);
+  const [certLoadingId, setCertLoadingId] = useState<number | null>(null);
 
   // Available Sub-clubs for selection
   const [availableSubClubs, setAvailableSubClubs] = useState<SubClub[]>([]);
@@ -182,6 +187,42 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
       setParticipateNotice({ id: evt.id, msg });
     } finally {
       setParticipatingId(null);
+    }
+  };
+
+  const handleCheckAndDownloadCert = async (evt: ClubEvent) => {
+    setCertLoadingId(evt.id);
+    try {
+      const res = await fetchMyEventCertificate(evt.id);
+      if (res.approved) {
+        setViewCertData(res);
+      } else if (res.status === 'pending_approval') {
+        alert(t('Your attendance is recorded! Participation certificate is awaiting authority sign-off.'));
+      } else {
+        alert(t('No attendance record found for this session. Participation must be logged during the 30-minute window.'));
+      }
+    } catch {
+      alert(t('Unable to verify certificate status. Please try again.'));
+    } finally {
+      setCertLoadingId(null);
+    }
+  };
+
+  const handleSaveToDigiLocker = async (evt: ClubEvent) => {
+    setCertLoadingId(evt.id);
+    try {
+      const res = await fetchMyEventCertificate(evt.id);
+      if (res.approved) {
+        setDigiLockerModalCert(res);
+      } else if (res.status === 'pending_approval') {
+        alert(t('DigiLocker linking will activate as soon as your club authority approves the event certificate.'));
+      } else {
+        alert(t('Only verified event certificates can be linked to your DigiLocker locker.'));
+      }
+    } catch {
+      alert(t('DigiLocker service unavailable.'));
+    } finally {
+      setCertLoadingId(null);
     }
   };
 
@@ -822,29 +863,25 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
 
                         {/* Certificates & DigiLocker Actions */}
                         <button
-                          onClick={() => {
-                            alert(
-                              t(
-                                `Certificate for ${evt.title} will download once attendance is approved by the Club Authority.`,
-                              ),
-                            );
-                          }}
-                          className="py-2 px-3 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] font-bold text-xs flex items-center gap-1 cursor-pointer"
+                          type="button"
+                          disabled={certLoadingId === evt.id}
+                          onClick={() => void handleCheckAndDownloadCert(evt)}
+                          className="py-2 px-3 rounded-xl border border-[#E2ECE7] hover:bg-[#F4F8F6] text-[#2E4A3E] font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
                           title={t('Download Participation Certificate')}
                         >
-                          <Download className="w-3.5 h-3.5 text-[#0D7751]" />
+                          {certLoadingId === evt.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0D7751]" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5 text-[#0D7751]" />
+                          )}
                           <span>{t('Certificate')}</span>
                         </button>
 
                         <button
-                          onClick={() => {
-                            alert(
-                              t(
-                                'DigiLocker Integration: Certificate linked to your official Aadhaar DigiLocker locker upon authority approval.',
-                              ),
-                            );
-                          }}
-                          className="py-2 px-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                          type="button"
+                          disabled={certLoadingId === evt.id}
+                          onClick={() => void handleSaveToDigiLocker(evt)}
+                          className="py-2 px-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
                           title={t('Save to DigiLocker')}
                         >
                           <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
@@ -1242,6 +1279,153 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
             isAuthority={false}
             isStudent={true}
           />
+        </div>
+      )}
+
+      {/* Student Verifiable Participation Certificate Modal */}
+      {viewCertData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-emerald-300 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white flex items-center justify-between print:hidden">
+              <div className="flex items-center space-x-2">
+                <Award className="h-5 w-5 text-amber-300" />
+                <h3 className="text-base font-bold">{t('Verifiable Participation Certificate')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewCertData(null)}
+                className="text-white hover:text-emerald-200 cursor-pointer p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-8 sm:p-10 bg-[#FFFEF9] border-8 border-double border-[#103125]/20 m-4 rounded-2xl space-y-6 text-center text-gray-800">
+              <div className="space-y-1">
+                <div className="text-[10px] uppercase tracking-[0.25em] font-extrabold text-[#1A503E]">
+                  National Digital Library of India (NDLI) Club
+                </div>
+                <div className="text-[10px] text-gray-500 font-semibold">
+                  Ministry of Education, Government of India
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#103125] pt-2">
+                  Certificate of Participation
+                </h2>
+              </div>
+
+              <p className="text-xs text-gray-600 italic">This is proudly presented to</p>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-gray-900 border-b border-gray-300 pb-1 max-w-md mx-auto">
+                {viewCertData.recipient_name}
+              </div>
+
+              <p className="text-xs text-gray-600 max-w-lg mx-auto leading-relaxed">
+                for active participation and successful completion of the academic event{' '}
+                <strong className="text-gray-900 font-bold">"{viewCertData.event_title}"</strong> conducted at{' '}
+                <strong className="text-gray-900">{viewCertData.institution_name}</strong> on{' '}
+                {viewCertData.event_date}.
+              </p>
+
+              <div className="pt-6 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-left text-[11px]">
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Certificate ID</span>
+                  <span className="font-mono font-bold text-gray-900">{viewCertData.certificate_id}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Issue Date</span>
+                  <span className="font-semibold text-gray-800">{viewCertData.issue_date}</span>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">HMAC Signature</span>
+                  <span className="font-mono text-[9px] text-gray-600 truncate block max-w-[150px]">
+                    {viewCertData.hmac_tag}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 print:hidden">
+              <span className="text-[11px] text-gray-500 font-mono">
+                Cryptographically signed & verified under NDLI National Framework
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-[#1A503E] hover:bg-[#103125] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Print / Save PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewCertData(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DigiLocker Confirmation Modal */}
+      {digiLockerModalCert && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-blue-200 overflow-hidden text-center p-6 space-y-4">
+            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto text-blue-700">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <div className="space-y-1">
+              <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider border border-blue-200">
+                National DigiLocker Repository
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-900">{t('Certificate Saved to DigiLocker')}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                {t('Your verifiable certificate has been permanently issued to your Aadhaar-linked DigiLocker account.')}
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 text-left text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Document URI:</span>
+                <span className="font-mono font-bold text-blue-900">
+                  in.gov.ndli.cert.{digiLockerModalCert.certificate_id}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Recipient Name:</span>
+                <span className="font-bold text-gray-800">{digiLockerModalCert.recipient_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Issuer:</span>
+                <span className="font-medium text-gray-700">NDLI Ministry of Education</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Status:</span>
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Legally Valid Credential (IT Act 2000)</span>
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDigiLockerModalCert(null)}
+              className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
         </div>
       )}
     </div>

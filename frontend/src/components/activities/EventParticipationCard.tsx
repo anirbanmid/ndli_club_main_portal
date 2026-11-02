@@ -11,7 +11,12 @@ import {
   FileText,
   Download,
   UploadCloud,
-  X
+  X,
+  Check,
+  Printer,
+  QrCode,
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import { 
   ClubEvent, 
@@ -21,7 +26,11 @@ import {
   respondCollaboration,
   retryEventCollaboration,
   uploadEventParticipants,
-  downloadEventCertificatesZipUrl
+  downloadEventCertificatesZipUrl,
+  fetchEventAttendees,
+  fetchMyEventCertificate,
+  EventAttendeeItem,
+  MyEventCertificateResponse
 } from '../../lib/campusApi';
 
 interface EventParticipationCardProps {
@@ -45,10 +54,21 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
 
   // Approval Modal State
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
+  const [approvalStep, setApprovalStep] = useState<'auth_challenge' | 'attendee_roster'>('auth_challenge');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [approvalSuccess, setApprovalSuccess] = useState<string | null>(null);
   const [approvalError, setApprovalError] = useState<string | null>(null);
+
+  // Attendees list state for certificate sign-off
+  const [attendees, setAttendees] = useState<EventAttendeeItem[]>([]);
+  const [selectedAttendeeIds, setSelectedAttendeeIds] = useState<number[]>([]);
+
+  // Student participant certificate & DigiLocker state
+  const [myCertificate, setMyCertificate] = useState<MyEventCertificateResponse | null>(null);
+  const [participantCertModalOpen, setParticipantCertModalOpen] = useState(false);
+  const [digiLockerModalOpen, setDigiLockerModalOpen] = useState(false);
+  const [digiLockerSaved, setDigiLockerSaved] = useState(false);
 
   // Conductor certificate viewer state
   const [conductorCertData, setConductorCertData] = useState<any | null>(null);
@@ -72,6 +92,14 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!isAuthority) {
+      void fetchMyEventCertificate(event.id)
+        .then(setMyCertificate)
+        .catch(() => setMyCertificate(null));
+    }
+  }, [event.id, isAuthority]);
+
   const startTimeMs = new Date(event.start_time).getTime();
   const endTimeMs = new Date(event.end_time).getTime();
   const windowStartMs = startTimeMs - 10 * 60 * 1000;
@@ -79,7 +107,7 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
 
   const isWindowOpen = now >= windowStartMs && now <= windowEndMs;
   const isBeforeWindow = now < windowStartMs;
-  const isEventOver = now >= endTimeMs;
+  const isEventOver = now >= endTimeMs || event.status === 'completed';
 
   const formatCountdown = (targetMs: number) => {
     const diff = Math.max(0, Math.floor((targetMs - now) / 1000));
@@ -97,6 +125,10 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
       const res = await participateInEvent(event.id);
       setParticipateResult(res.message);
       onRefresh();
+      // Also refresh participant certificate state
+      void fetchMyEventCertificate(event.id)
+        .then(setMyCertificate)
+        .catch(() => null);
     } catch (err: any) {
       setParticipateError(err.message || 'Participation window is closed or attendance failed.');
     } finally {
@@ -104,10 +136,18 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
     }
   };
 
-  const handleApproveCertificates = async (e: React.FormEvent) => {
+  const handleOpenApprovalModal = () => {
+    setIsApprovalModalOpen(true);
+    setApprovalStep('auth_challenge');
+    setPasswordConfirm('');
+    setApprovalError(null);
+    setApprovalSuccess(null);
+  };
+
+  const handleVerifyPasswordChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passwordConfirm) {
-      setApprovalError('Please enter your authority password to re-authenticate.');
+    if (!passwordConfirm.trim()) {
+      setApprovalError('Please enter your authority password.');
       return;
     }
 
@@ -115,19 +155,63 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
     setApprovalError(null);
 
     try {
-      const res = await approveEventCertificates(event.id, passwordConfirm);
-      setApprovalSuccess(`Successfully approved certificates for ${res.approved_count} participants.`);
-      setPasswordConfirm('');
-      setTimeout(() => {
-        setIsApprovalModalOpen(false);
-        setApprovalSuccess(null);
-      }, 2000);
-      onRefresh();
+      const attRes = await fetchEventAttendees(event.id);
+      setAttendees(attRes.attendees || []);
+      const pendingIds = (attRes.attendees || []).filter((a) => !a.is_approved).map((a) => a.id);
+      setSelectedAttendeeIds(pendingIds);
+      setApprovalStep('attendee_roster');
     } catch (err: any) {
-      setApprovalError(err.message || 'Certificate approval authentication failed.');
+      setApprovalError(err.message || 'Identity verification failed.');
     } finally {
       setApprovalBusy(false);
     }
+  };
+
+  const handleExecuteApproval = async (options: { approveAll: boolean; attendeeIds?: number[] }) => {
+    setApprovalBusy(true);
+    setApprovalError(null);
+
+    try {
+      const res = await approveEventCertificates(event.id, passwordConfirm, options);
+      setApprovalSuccess(`Successfully approved and issued ${res.approved_count} certificates.`);
+
+      // Dispatch real-time telemetry update so Public Portal certificate counter updates immediately
+      window.dispatchEvent(
+        new CustomEvent('ndli-club-updated', {
+          detail: { clubCode: currentClubCode },
+        })
+      );
+
+      // Refresh attendee list
+      const updated = await fetchEventAttendees(event.id);
+      setAttendees(updated.attendees || []);
+      setSelectedAttendeeIds([]);
+
+      setTimeout(() => {
+        setIsApprovalModalOpen(false);
+        setApprovalSuccess(null);
+        onRefresh();
+      }, 1800);
+    } catch (err: any) {
+      setApprovalError(err.message || 'Failed to approve certificates.');
+    } finally {
+      setApprovalBusy(false);
+    }
+  };
+
+  const handleToggleSelectAllAttendees = () => {
+    const pending = attendees.filter((a) => !a.is_approved).map((a) => a.id);
+    if (selectedAttendeeIds.length === pending.length) {
+      setSelectedAttendeeIds([]);
+    } else {
+      setSelectedAttendeeIds(pending);
+    }
+  };
+
+  const handleToggleAttendee = (id: number) => {
+    setSelectedAttendeeIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const handleViewConductorCert = async (conductorId: number) => {
@@ -371,19 +455,62 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
         <div>
           {/* Student Participate Button */}
-          <button
-            type="button"
-            disabled={!isWindowOpen || participateBusy}
-            onClick={handleParticipate}
-            className={`py-2 px-5 rounded-xl font-bold text-xs transition-all flex items-center space-x-2 ${
-              isWindowOpen
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-950/20 cursor-pointer'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {participateBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-            <span>Participate in Event</span>
-          </button>
+          {!isAuthority && (
+            <div className="flex flex-wrap items-center gap-2">
+              {isWindowOpen ? (
+                <button
+                  type="button"
+                  disabled={participateBusy}
+                  onClick={handleParticipate}
+                  className="py-2 px-5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-950/20 cursor-pointer flex items-center space-x-2 transition-all"
+                >
+                  {participateBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                  <span>Participate in Event</span>
+                </button>
+              ) : myCertificate?.approved ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setParticipantCertModalOpen(true)}
+                    className="py-2 px-4 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5 text-amber-300" />
+                    <span>Download Certificate</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDigiLockerSaved(true);
+                      setDigiLockerModalOpen(true);
+                    }}
+                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center space-x-1.5 transition-colors cursor-pointer ${
+                      digiLockerSaved
+                        ? 'bg-blue-100 border-blue-300 text-blue-900'
+                        : 'bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100'
+                    }`}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-blue-700" />
+                    <span>{digiLockerSaved ? 'Saved in DigiLocker' : 'Save to DigiLocker'}</span>
+                  </button>
+                </div>
+              ) : myCertificate?.status === 'pending_approval' ? (
+                <div className="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold flex items-center space-x-1.5">
+                  <Clock className="h-3.5 w-3.5 text-amber-700" />
+                  <span>Attendance Recorded &bull; Awaiting Authority Approval</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="py-2 px-5 rounded-xl font-bold text-xs bg-gray-100 text-gray-400 cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Lock className="h-3.5 w-3.5 text-gray-400" />
+                  <span>{isBeforeWindow ? 'Session Not Started' : 'Attendance Window Closed'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -413,7 +540,7 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
           {isAuthority && isEventOver && (
             <button
               type="button"
-              onClick={() => setIsApprovalModalOpen(true)}
+              onClick={handleOpenApprovalModal}
               className="py-2 px-4 bg-gradient-to-r from-[#103125] to-[#1A503E] text-white hover:from-[#0d281e] hover:to-[#154233] rounded-xl font-bold text-xs shadow-md shadow-emerald-950/20 flex items-center space-x-1.5 cursor-pointer"
             >
               <Award className="h-4 w-4 text-amber-300" />
@@ -494,14 +621,16 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
         </div>
       )}
 
-      {/* Password-Gated Certificate Approval Modal */}
+      {/* 2-Phase Password-Gated & Attendee Selection Certificate Approval Modal */}
       {isApprovalModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in"
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 overflow-hidden">
+          <div className={`bg-white rounded-3xl shadow-2xl w-full border border-gray-200 overflow-hidden transition-all ${
+            approvalStep === 'attendee_roster' ? 'max-w-3xl' : 'max-w-md'
+          }`}>
             <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white relative">
               <button
                 onClick={() => setIsApprovalModalOpen(false)}
@@ -511,60 +640,386 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
               </button>
               <div className="flex items-center space-x-2 text-xs font-bold text-amber-300 uppercase tracking-wider mb-1">
                 <Lock className="h-3.5 w-3.5" />
-                <span>Identity Verification Challenge</span>
+                <span>
+                  {approvalStep === 'auth_challenge'
+                    ? 'Step 1: Identity Verification Gate'
+                    : 'Step 2: Participant Certificate Sign-Off'}
+                </span>
               </div>
-              <h3 className="text-lg font-bold">Approve Participation Certificates</h3>
+              <h3 className="text-lg font-bold">
+                {approvalStep === 'auth_challenge'
+                  ? 'Authority Re-Authentication'
+                  : 'Event Participation Roster Approval'}
+              </h3>
               <p className="text-xs text-emerald-100/90 mt-0.5">
-                Re-enter your authority password to authorize cryptographic digital signing.
+                {approvalStep === 'auth_challenge'
+                  ? 'Re-enter your authority password to authorize cryptographic digital signing.'
+                  : `Select eligible attendees to issue digitally signed certificates for "${event.title}".`}
               </p>
             </div>
 
-            <form onSubmit={handleApproveCertificates} className="p-6 space-y-4 text-xs">
+            {/* Error & Success Banners */}
+            <div className="p-6 pb-0 space-y-3">
               {approvalError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-semibold flex items-center space-x-2">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center space-x-2">
                   <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
                   <span>{approvalError}</span>
                 </div>
               )}
 
               {approvalSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 font-semibold flex items-center space-x-2">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-semibold flex items-center space-x-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
                   <span>{approvalSuccess}</span>
                 </div>
               )}
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Authority Password <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  placeholder="Enter your login password"
-                  required
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none"
-                />
+            {/* Phase 1: Login Gate */}
+            {approvalStep === 'auth_challenge' && (
+              <form onSubmit={handleVerifyPasswordChallenge} className="p-6 space-y-4 text-xs">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Authority Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    placeholder="Enter your login password (e.g. Password@123)"
+                    required
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Sign-off eligible roles: Patron / President / Secretary (Institutional) or Sub-Club Coordinator (Sub-Club).
+                  </p>
+                </div>
+
+                <div className="flex space-x-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsApprovalModalOpen(false)}
+                    className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={approvalBusy}
+                    className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    {approvalBusy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <span>Verify & Open Attendees Roster</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Phase 2: Attendee Roster Approval */}
+            {approvalStep === 'attendee_roster' && (
+              <div className="p-6 space-y-4 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#F4F8F6] p-3 rounded-2xl border border-[#E2ECE7]">
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-[#0D7751]" />
+                    <span className="font-bold text-[#103125]">
+                      {attendees.length} Attendee{attendees.length === 1 ? '' : 's'} Logged
+                    </span>
+                    <span className="text-gray-400">&bull;</span>
+                    <span className="text-[11px] text-gray-600">
+                      {attendees.filter((a) => !a.is_approved).length} Pending Approval
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-[#0D7751] font-semibold">
+                    {selectedAttendeeIds.length} Selected
+                  </div>
+                </div>
+
+                {attendees.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-2xl border border-gray-200 space-y-1">
+                    <Users className="h-8 w-8 text-gray-300 mx-auto" />
+                    <p className="font-bold text-gray-700">No participants recorded for this session</p>
+                    <p className="text-[11px] text-gray-400">
+                      Students who clicked the participate button during the 30-minute window will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden max-h-72 overflow-y-auto">
+                    <table className="w-full text-left text-xs divide-y divide-gray-200">
+                      <thead className="bg-gray-50 text-gray-700 font-bold sticky top-0 z-10">
+                        <tr>
+                          <th className="p-3 w-10">
+                            <input
+                              type="checkbox"
+                              checked={
+                                attendees.filter((a) => !a.is_approved).length > 0 &&
+                                selectedAttendeeIds.length ===
+                                  attendees.filter((a) => !a.is_approved).length
+                              }
+                              onChange={handleToggleSelectAllAttendees}
+                              className="rounded text-emerald-600 focus:ring-emerald-500"
+                              title="Select all pending attendees"
+                            />
+                          </th>
+                          <th className="p-3">Participant Name</th>
+                          <th className="p-3">Roll & Dept</th>
+                          <th className="p-3 text-center">Log Time</th>
+                          <th className="p-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 text-gray-700">
+                        {attendees.map((att) => {
+                          const isSelected = selectedAttendeeIds.includes(att.id);
+                          return (
+                            <tr
+                              key={att.id}
+                              className={`transition-colors ${
+                                att.is_approved
+                                  ? 'bg-emerald-50/40 text-gray-500'
+                                  : isSelected
+                                  ? 'bg-amber-50/50'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <td className="p-3">
+                                <input
+                                  type="checkbox"
+                                  disabled={att.is_approved}
+                                  checked={att.is_approved || isSelected}
+                                  onChange={() => handleToggleAttendee(att.id)}
+                                  className="rounded text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-gray-900">{att.name}</div>
+                                <div className="text-[10px] text-gray-500">{att.email}</div>
+                              </td>
+                              <td className="p-3">
+                                <div className="font-mono text-[11px]">{att.roll_number || 'N/A'}</div>
+                                <div className="text-[10px] text-gray-500">{att.department || 'General'}</div>
+                              </td>
+                              <td className="p-3 text-center text-[10px] text-gray-500">
+                                {att.participated_at
+                                  ? new Date(att.participated_at).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : 'Window'}
+                              </td>
+                              <td className="p-3 text-right">
+                                {att.is_approved ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    <Check className="h-3 w-3" />
+                                    <span>Signed</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    <span>Pending</span>
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setApprovalStep('auth_challenge')}
+                    className="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs cursor-pointer"
+                  >
+                    Back to Challenge
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={approvalBusy || selectedAttendeeIds.length === 0}
+                      onClick={() =>
+                        handleExecuteApproval({ approveAll: false, attendeeIds: selectedAttendeeIds })
+                      }
+                      className="py-2 px-3.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-xs disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
+                    >
+                      {approvalBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      <span>Done &bull; Approve Selected ({selectedAttendeeIds.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={approvalBusy || attendees.every((a) => a.is_approved)}
+                      onClick={() => handleExecuteApproval({ approveAll: true })}
+                      className="py-2 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-950/20 disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
+                    >
+                      {approvalBusy ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Award className="h-3.5 w-3.5 text-amber-300" />
+                      )}
+                      <span>Approve All ({attendees.filter((a) => !a.is_approved).length})</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Student Participant Verifiable Certificate Modal */}
+      {participantCertModalOpen && myCertificate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-emerald-300 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white flex items-center justify-between print:hidden">
+              <div className="flex items-center space-x-2">
+                <Award className="h-5 w-5 text-amber-300" />
+                <h3 className="text-base font-bold">Verifiable Participation Certificate</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setParticipantCertModalOpen(false)}
+                className="text-white hover:text-emerald-200 cursor-pointer p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Official Landscape Certificate Document */}
+            <div className="p-8 sm:p-10 bg-[#FFFEF9] border-8 border-double border-[#103125]/20 m-4 rounded-2xl space-y-6 text-center text-gray-800">
+              <div className="space-y-1">
+                <div className="text-[10px] uppercase tracking-[0.25em] font-extrabold text-[#1A503E]">
+                  National Digital Library of India (NDLI) Club
+                </div>
+                <div className="text-[10px] text-gray-500 font-semibold">
+                  Ministry of Education, Government of India
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-serif font-black text-[#103125] pt-2">
+                  Certificate of Participation
+                </h2>
               </div>
 
-              <div className="flex space-x-2 pt-2">
+              <p className="text-xs text-gray-600 italic">This is proudly presented to</p>
+              <div className="text-xl sm:text-2xl font-serif font-bold text-gray-900 border-b border-gray-300 pb-1 max-w-md mx-auto">
+                {myCertificate.recipient_name}
+              </div>
+
+              <p className="text-xs text-gray-600 max-w-lg mx-auto leading-relaxed">
+                for active participation and successful completion of the academic event{' '}
+                <strong className="text-gray-900 font-bold">"{myCertificate.event_title}"</strong> conducted at{' '}
+                <strong className="text-gray-900">{myCertificate.institution_name}</strong> on{' '}
+                {myCertificate.event_date}.
+              </p>
+
+              <div className="pt-6 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-3 text-left text-[11px]">
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Certificate ID</span>
+                  <span className="font-mono font-bold text-gray-900">{myCertificate.certificate_id}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">Issue Date</span>
+                  <span className="font-semibold text-gray-800">{myCertificate.issue_date}</span>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <span className="text-gray-400 block text-[9px] uppercase font-bold">HMAC Signature</span>
+                  <span className="font-mono text-[9px] text-gray-600 truncate block max-w-[150px]">
+                    {myCertificate.hmac_tag}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 print:hidden">
+              <span className="text-[11px] text-gray-500 font-mono">
+                Cryptographically signed & verified under NDLI National Framework
+              </span>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsApprovalModalOpen(false)}
-                  className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-[#1A503E] hover:bg-[#103125] text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-xs cursor-pointer"
                 >
-                  Cancel
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>Print / Save PDF</span>
                 </button>
                 <button
-                  type="submit"
-                  disabled={approvalBusy}
-                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-950/20 disabled:opacity-60 flex items-center justify-center space-x-2 cursor-pointer"
+                  type="button"
+                  onClick={() => setParticipantCertModalOpen(false)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xs font-bold cursor-pointer"
                 >
-                  {approvalBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Approve & Sign</span>}
+                  Close
                 </button>
               </div>
-            </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DigiLocker Confirmation Modal */}
+      {digiLockerModalOpen && myCertificate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-blue-200 overflow-hidden text-center p-6 space-y-4">
+            <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto text-blue-700">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <div className="space-y-1">
+              <div className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider border border-blue-200">
+                National DigiLocker Repository
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-900">Certificate Saved to DigiLocker</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Your verifiable certificate has been permanently issued to your Aadhaar-linked DigiLocker account.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 text-left text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Document URI:</span>
+                <span className="font-mono font-bold text-blue-900">
+                  in.gov.ndli.cert.{myCertificate.certificate_id}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Recipient Name:</span>
+                <span className="font-bold text-gray-800">{myCertificate.recipient_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Issuer:</span>
+                <span className="font-medium text-gray-700">NDLI Ministry of Education</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Status:</span>
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Legally Valid Credential (IT Act 2000)</span>
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDigiLockerModalOpen(false)}
+              className="w-full py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

@@ -401,13 +401,11 @@ def _resolve_club_for_subclubs(club_code: str):
             return club
 
     # 3. Match by legacy ID, institution code, or registration number
-    club = (
-        Club.objects.filter(
-            Q(institution__legacy_id__iexact=club_code_clean)
-            | Q(institution__code__iexact=club_code_clean)
-            | Q(registration_no__iexact=club_code_clean)
-        ).first()
-    )
+    club = Club.objects.filter(
+        Q(institution__legacy_id__iexact=club_code_clean)
+        | Q(institution__code__iexact=club_code_clean)
+        | Q(registration_no__iexact=club_code_clean)
+    ).first()
     if club:
         return club
 
@@ -547,9 +545,7 @@ class SubClubDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        sub_club = SubClub.objects.filter(
-            id=subclub_id, club=club
-        ).first()
+        sub_club = SubClub.objects.filter(id=subclub_id, club=club).first()
         if not sub_club:
             return Response(
                 {"detail": "Sub-club not found.", "code": "not_found"},

@@ -241,11 +241,12 @@ class ForgotPasswordCheckView(APIView):
             role_lower = role.lower()
             if "authority" in role_lower:
                 # Check active authority assignment
-                is_matched = (
-                    AuthorityAssignment.objects.filter(
-                        user=user, status=AuthorityAssignment.Status.ACTIVE
-                    ).exists()
-                    or user.category in ("club", "institution_authority", "club_admin")
+                is_matched = AuthorityAssignment.objects.filter(
+                    user=user, status=AuthorityAssignment.Status.ACTIVE
+                ).exists() or user.category in (
+                    "club",
+                    "institution_authority",
+                    "club_admin",
                 )
             elif "student" in role_lower or "member" in role_lower:
                 from apps.members.models import StudentMemberProfile

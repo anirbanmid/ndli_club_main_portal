@@ -88,6 +88,16 @@ urlpatterns += [
         name="event-approve-certificates",
     ),
     path(
+        "events/<int:pk>/attendees/",
+        views.EventAttendeesListView.as_view(),
+        name="event-attendees",
+    ),
+    path(
+        "events/<int:pk>/my-certificate/",
+        views.EventMyCertificateView.as_view(),
+        name="event-my-certificate",
+    ),
+    path(
         "events/<int:event_id>/conductors/<int:conductor_id>/certificate/",
         views.EventConductorCertificateView.as_view(),
         name="conductor-certificate",

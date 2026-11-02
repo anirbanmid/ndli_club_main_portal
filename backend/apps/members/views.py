@@ -793,9 +793,7 @@ class StudentJoinRegisterView(APIView):
             AccountState.ACTIVE if auto_activate else AccountState.PENDING_APPROVAL
         )
         target_join_status = (
-            JoinRequest.Status.APPROVED
-            if auto_activate
-            else JoinRequest.Status.PENDING
+            JoinRequest.Status.APPROVED if auto_activate else JoinRequest.Status.PENDING
         )
 
         with transaction.atomic():
@@ -908,7 +906,6 @@ def _compute_gamification(profile: Any, user: Any) -> tuple[int, str, int, int, 
     from apps.sharing.models import CuratedLibrary
 
     completeness = _calculate_profile_completeness(profile)
-    subclubs_count = profile.sub_clubs.count()
 
     events_attended = EventAttendance.objects.filter(user=user).count()
     certs_count = (
@@ -920,11 +917,10 @@ def _compute_gamification(profile: Any, user: Any) -> tuple[int, str, int, int, 
     ).count()
 
     points = (
-        50
-        + (50 if completeness >= 70 else 0)
-        + (subclubs_count * 25)
-        + (events_attended * 50)
+        (events_attended * 50)
+        + (certs_count * 50)
         + (community_libs * 50)
+        + (50 if completeness >= 100 else 0)
     )
 
     if points >= 500:

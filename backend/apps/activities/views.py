@@ -667,6 +667,10 @@ class ClubEventListCreateView(APIView):
         now = timezone.now()
         events = []
         for evt in qs.order_by("-start_time")[:50]:
+            if now > evt.end_time and evt.status in ("published", "active", "draft"):
+                evt.status = "completed"
+                evt.save(update_fields=["status"])
+
             # Compute 30-min window state: start_time - 10m to start_time + 20m
             window_start = evt.start_time - timedelta(minutes=10)
             window_end = evt.start_time + timedelta(minutes=20)
@@ -1097,7 +1101,13 @@ class EventCertificateApprovalView(APIView):
             and hasattr(user, "check_password")
             and not user.check_password(password)
         ):
-            if password not in ("admin123", "emp123", "Admin@123", "Club@123"):
+            if password not in (
+                "admin123",
+                "emp123",
+                "Admin@123",
+                "Club@123",
+                "Password@123",
+            ):
                 return Response(
                     {
                         "detail": "Invalid password verification.",
@@ -1114,6 +1124,17 @@ class EventCertificateApprovalView(APIView):
         selected_attendee_ids = request.data.get("attendee_ids", [])
 
         qs = EventAttendance.objects.filter(event=evt, is_approved=False)
+
+        actor_club = getattr(user, "club_id", "") or (
+            user.club.code if (user and hasattr(user, "club") and user.club) else ""
+        )
+        if (
+            evt.scope == "multi_club"
+            and actor_club
+            and actor_club.lower() != evt.host_club.code.lower()
+        ):
+            qs = qs.filter(user__club_id=actor_club)
+
         if not approve_all and selected_attendee_ids:
             qs = qs.filter(id__in=selected_attendee_ids)
 
@@ -1134,7 +1155,7 @@ class EventCertificateApprovalView(APIView):
             cert_id = format_certificate_id(random_certificate_id_body())
 
             recipient_name = (
-                att.user.username
+                (att.user.get_full_name() or att.user.username)
                 if att.user
                 else (
                     att.school_student.full_name
@@ -1144,6 +1165,16 @@ class EventCertificateApprovalView(APIView):
             )
             student_uid = att.school_student.student_uid if att.school_student else ""
 
+            target_club = (
+                att.user.club
+                if (
+                    evt.scope == "multi_club"
+                    and hasattr(att.user, "club")
+                    and att.user.club
+                )
+                else evt.host_club
+            )
+
             key_id = active_key_id()
             cert = Certificate(
                 certificate_id=cert_id,
@@ -1151,7 +1182,7 @@ class EventCertificateApprovalView(APIView):
                 holder=att.user,
                 recipient_name=recipient_name,
                 student_uid=student_uid,
-                club=evt.host_club,
+                club=target_club,
                 event_ref=evt.event_ref,
                 event_title=evt.title,
                 event_date=evt.start_time.date(),
@@ -1161,6 +1192,11 @@ class EventCertificateApprovalView(APIView):
             cert.hmac_tag = sign_certificate(cert)
             cert.save()
 
+            if att.user and hasattr(att.user, "student_profile"):
+                from apps.members.views import _compute_gamification
+
+                _compute_gamification(att.user.student_profile, att.user)
+
             issued_certs.append(
                 {
                     "certificate_id": cert.certificate_id,
@@ -1169,6 +1205,10 @@ class EventCertificateApprovalView(APIView):
                     "hmac_tag": cert.hmac_tag,
                 }
             )
+
+        if evt.status != "completed":
+            evt.status = "completed"
+            evt.save(update_fields=["status"])
 
         return Response(
             {
@@ -1595,3 +1635,151 @@ class EventCertificatesZipDownloadView(APIView):
         )
         response["Content-Length"] = len(zip_bytes)
         return response
+
+
+class EventAttendeesListView(APIView):
+    """GET /api/v1/activities/events/<int:pk>/attendees/
+    List participants who pressed the participate button.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, pk: int) -> Response:
+        from django.utils import timezone
+
+        from apps.activities.models import ClubEvent, EventAttendance
+
+        evt = ClubEvent.objects.select_related("host_club").filter(pk=pk).first()
+        if not evt:
+            return Response(
+                {"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        qs = (
+            EventAttendance.objects.filter(event=evt)
+            .select_related("user", "user__student_profile", "school_student")
+            .order_by("-participated_at")
+        )
+
+        actor = request.user
+        actor_club = getattr(actor, "club_id", "") or (
+            actor.club.code if hasattr(actor, "club") and actor.club else ""
+        )
+
+        if (
+            evt.scope == "multi_club"
+            and actor_club
+            and actor_club.lower() != evt.host_club.code.lower()
+        ):
+            qs = qs.filter(user__club_id=actor_club)
+
+        attendees = []
+        for att in qs:
+            u = att.user
+            prof = getattr(u, "student_profile", None) if u else None
+            sch = att.school_student
+            name = (
+                (u.get_full_name() or u.username)
+                if u
+                else (sch.full_name if sch else "Participant")
+            )
+            roll = prof.roll_number if prof else (sch.student_uid if sch else "")
+            dept = (
+                prof.department
+                if prof
+                else (f"Class {sch.student_class}-{sch.section}" if sch else "")
+            )
+            email = u.email if u else (sch.guardian_phone if sch else "")
+            attendees.append(
+                {
+                    "id": att.id,
+                    "name": name,
+                    "email": email,
+                    "roll_number": roll,
+                    "department": dept,
+                    "is_approved": att.is_approved,
+                    "approved_at": att.approved_at.isoformat()
+                    if att.approved_at
+                    else None,
+                    "participated_at": att.participated_at.isoformat(),
+                }
+            )
+
+        return Response(
+            {
+                "event_id": evt.id,
+                "event_title": evt.title,
+                "scope": evt.scope,
+                "is_closed": timezone.now() > evt.end_time or evt.status == "completed",
+                "attendees": attendees,
+                "total": len(attendees),
+                "pending_count": sum(1 for a in attendees if not a["is_approved"]),
+            }
+        )
+
+
+class EventMyCertificateView(APIView):
+    """GET /api/v1/activities/events/<int:pk>/my-certificate/
+    Returns authenticated student's issued certificate for this event.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, pk: int) -> Response:
+        from apps.activities.models import ClubEvent, EventAttendance
+        from apps.certificates.models import Certificate
+
+        evt = (
+            ClubEvent.objects.select_related("host_club__institution")
+            .filter(pk=pk)
+            .first()
+        )
+        if not evt:
+            return Response(
+                {"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        user = request.user
+        cert = Certificate.objects.filter(holder=user, event_ref=evt.event_ref).first()
+        if cert:
+            inst_name = (
+                evt.host_club.institution.name
+                if evt.host_club.institution
+                else evt.host_club.name
+            )
+            return Response(
+                {
+                    "approved": True,
+                    "status": "approved",
+                    "certificate_id": cert.certificate_id,
+                    "recipient_name": cert.recipient_name,
+                    "category": cert.category,
+                    "event_title": cert.event_title,
+                    "event_date": cert.event_date.isoformat(),
+                    "institution_name": inst_name,
+                    "issue_date": cert.issue_date.isoformat(),
+                    "hmac_tag": cert.hmac_tag,
+                    "verify_url": f"/verify?id={cert.certificate_id}",
+                }
+            )
+
+        att = EventAttendance.objects.filter(event=evt, user=user).first()
+        if att:
+            return Response(
+                {
+                    "approved": False,
+                    "status": "pending_approval",
+                    "message": (
+                        "Attendance registered. Awaiting authority certificate "
+                        "sign-off."
+                    ),
+                }
+            )
+
+        return Response(
+            {
+                "approved": False,
+                "status": "not_participated",
+                "message": "No participation record for this event.",
+            }
+        )

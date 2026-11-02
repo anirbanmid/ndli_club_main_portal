@@ -415,8 +415,11 @@ export function downloadEventCertificatesZipUrl(eventId: number): string {
 export async function approveEventCertificates(
   eventId: number,
   passwordConfirm: string,
-  studentIds?: number[],
-): Promise<{ success: boolean; approved_count: number }> {
+  options?: { approveAll?: boolean; attendeeIds?: number[] } | number[],
+): Promise<{ success: boolean; approved_count: number; message?: string; certificates?: any[] }> {
+  const approveAll = Array.isArray(options) ? false : (options?.approveAll ?? (!options?.attendeeIds || options.attendeeIds.length === 0));
+  const attendeeIds = Array.isArray(options) ? options : (options?.attendeeIds || []);
+
   const res = await fetch(`${ACTIVITIES_API_BASE}/events/${eventId}/approve-certificates/`, {
     method: 'POST',
     headers: {
@@ -426,13 +429,77 @@ export async function approveEventCertificates(
     },
     credentials: 'include',
     body: JSON.stringify({
+      password: passwordConfirm,
       password_confirm: passwordConfirm,
-      student_ids: studentIds,
+      approve_all: approveAll,
+      attendee_ids: attendeeIds,
     }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError('server', detailMessage(body) ?? 'Certificate approval failed', res.status);
+  }
+  return {
+    ...body,
+    approved_count: body.issued_count ?? body.approved_count ?? 0,
+    success: true,
+  };
+}
+
+export interface EventAttendeeItem {
+  id: number;
+  name: string;
+  email: string;
+  roll_number: string;
+  department: string;
+  is_approved: boolean;
+  approved_at: string | null;
+  participated_at: string;
+}
+
+export async function fetchEventAttendees(eventId: number): Promise<{
+  event_id: number;
+  event_title: string;
+  scope: string;
+  is_closed: boolean;
+  attendees: EventAttendeeItem[];
+  total: number;
+  pending_count: number;
+}> {
+  const res = await fetch(`${ACTIVITIES_API_BASE}/events/${eventId}/attendees/`, {
+    headers: { Accept: 'application/json' },
+    credentials: 'include',
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to load attendees', res.status);
+  }
+  return body;
+}
+
+export interface MyEventCertificateResponse {
+  approved: boolean;
+  status: 'approved' | 'pending_approval' | 'not_participated';
+  certificate_id?: string;
+  recipient_name?: string;
+  category?: string;
+  event_title?: string;
+  event_date?: string;
+  institution_name?: string;
+  issue_date?: string;
+  hmac_tag?: string;
+  verify_url?: string;
+  message?: string;
+}
+
+export async function fetchMyEventCertificate(eventId: number): Promise<MyEventCertificateResponse> {
+  const res = await fetch(`${ACTIVITIES_API_BASE}/events/${eventId}/my-certificate/`, {
+    headers: { Accept: 'application/json' },
+    credentials: 'include',
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to check certificate', res.status);
   }
   return body;
 }

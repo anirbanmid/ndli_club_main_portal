@@ -725,7 +725,7 @@ class CampusModuleTests(TestCase):
         self.assertEqual(me_resp.status_code, 200)
         me_data = me_resp.json()
         self.assertEqual(me_data["profile"]["roll_number"], "2024CSB1042")
-        self.assertGreaterEqual(me_data["stats"]["points"], 50)
+        self.assertEqual(me_data["stats"]["points"], 0)
         self.assertEqual(me_data["stats"]["badge"], "copper")
 
         # 6. Sub-Clubs & Coordinator Permission Testing
@@ -1370,8 +1370,6 @@ class CampusModuleTests(TestCase):
         # Clean up event
         event.delete()
 
-
-
     def test_sub_club_list_view_resolution_and_allow_any(self) -> None:
         """Verify SubClubListView returns 200 without authentication and resolves
         clubs by club code, slug (e.g. bhu-main), or ID.
@@ -1449,9 +1447,7 @@ class CampusModuleTests(TestCase):
             HTTP_HOST="localhost",
         )
         self.assertEqual(patch_resp.status_code, 200)
-        self.assertEqual(
-            patch_resp.json().get("coordinator_phone"), "+91 9876543210"
-        )
+        self.assertEqual(patch_resp.json().get("coordinator_phone"), "+91 9876543210")
 
     def test_student_test_accounts_login_and_state(self) -> None:
         """Verify seeded test student accounts and bhu.president exist from migrations
@@ -1511,5 +1507,3 @@ class CampusModuleTests(TestCase):
                 200,
                 f"Login failed for {email}: {resp_email.content.decode()}",
             )
-
-

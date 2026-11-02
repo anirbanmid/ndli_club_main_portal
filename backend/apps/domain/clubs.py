@@ -124,6 +124,7 @@ def get_club_dates(code: str, created_at: Any) -> tuple[str, str, str]:
 
 CANONICAL_INSTITUTIONAL_CLUBS: list[dict[str, Any]] = []
 
+
 def get_all_canonical_clubs() -> list[dict[str, Any]]:
     """Return all canonical clubs directly from relational database.
 
@@ -147,9 +148,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
         clean_zone = zn.replace(" Zone", "").strip() or "North"
         doa = str(c.date_of_approval) if c.date_of_approval else ""
         last_ren = str(c.last_renewal_date) if c.last_renewal_date else "None (Initial)"
-        upcoming_ren = (
-            str(c.upcoming_renewal_date) if c.upcoming_renewal_date else ""
-        )
+        upcoming_ren = str(c.upcoming_renewal_date) if c.upcoming_renewal_date else ""
 
         from datetime import date
 
@@ -203,6 +202,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             else 0
         )
         from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
+
         activity_logs_count = (
             ActivityLog.objects.filter(club_code=c.code)
             .exclude(support_type__in=APPROVAL_LOG_TYPES)

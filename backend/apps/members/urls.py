@@ -86,6 +86,11 @@ urlpatterns += [
         name="student-register",
     ),
     path(
+        "students/check-preapproval/",
+        views.CheckPreapprovalView.as_view(),
+        name="student-check-preapproval",
+    ),
+    path(
         "students/",
         views.StudentProfileListView.as_view(),
         name="student-list",

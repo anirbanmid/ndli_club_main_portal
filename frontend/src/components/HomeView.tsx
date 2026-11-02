@@ -20,7 +20,7 @@ import { fetchTelemetry, TelemetryPayload } from '../lib/api';
 interface HomeViewProps {
   clubs: InstituteClub[];
   onSelectClub: (club: InstituteClub) => void;
-  onJoinWithPasskey: () => void;
+  onJoinWithPasskey: (passkey?: string) => void;
   onRegisterInstitute: () => void;
   onGoToClubModule: () => void;
   onGoToAdminModule: () => void;
@@ -118,7 +118,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
 
             <button
-              onClick={onJoinWithPasskey}
+              onClick={() => onJoinWithPasskey()}
               className="px-6 py-3.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-sm shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center space-x-2 backdrop-blur-md cursor-pointer"
             >
               <span>{t("Students: Join with Passkey")}</span>

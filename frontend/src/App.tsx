@@ -128,6 +128,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   } | null>(null);
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
+  const [passkeyFromUrl, setPasskeyFromUrl] = useState<string>('');
   const [verifyInitialCertId, setVerifyInitialCertId] = useState(initialRoute.certId);
   // M5-D3: showcase slug for /clubs/<slug>/ (deep-linked via route.ts, or set
   // when a card is opened from the showcase index).
@@ -163,6 +164,19 @@ export function App({ ssrLocation }: AppProps = {}) {
       mounted = false;
       unsubscribe();
     };
+  }, []);
+
+  // Read ?passkey= from URL query parameter (QR code scan target)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const passkey = params.get('passkey');
+      if (passkey) {
+        setPasskeyFromUrl(passkey);
+        setIsPasskeyModalOpen(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -290,7 +304,10 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setSelectedClubForPublicProfile(club);
                   setCurrentTab('public_club_profile');
                 }}
-                onJoinWithPasskey={() => setIsPasskeyModalOpen(true)}
+                onJoinWithPasskey={(passkey) => {
+                  setPasskeyFromUrl(passkey ?? '');
+                  setIsPasskeyModalOpen(true);
+                }}
                 onRegisterInstitute={() => setIsBifurcationModalOpen(true)}
                 onGoToClubModule={() => {
                   setCurrentBranch('club_module');
@@ -321,6 +338,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab('club_dashboard');
                 }}
                 onJoinWithPasskey={(passkey) => {
+                  setPasskeyFromUrl(passkey);
                   setIsPasskeyModalOpen(true);
                 }}
               />
@@ -505,6 +523,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab('club_dashboard');
                 }}
                 onJoinWithPasskey={(passkey) => {
+                  setPasskeyFromUrl(passkey);
                   setIsPasskeyModalOpen(true);
                 }}
               />
@@ -723,6 +742,7 @@ export function App({ ssrLocation }: AppProps = {}) {
       <JoinClubModal
         isOpen={isPasskeyModalOpen}
         onClose={() => setIsPasskeyModalOpen(false)}
+        initialPasskey={passkeyFromUrl}
         clubs={clubs}
         onMemberJoined={(_club) => {
           // Application submitted for review; actual count updates upon authority approval

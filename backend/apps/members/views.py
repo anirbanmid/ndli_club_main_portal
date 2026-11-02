@@ -26,11 +26,120 @@ from apps.core import scoping
 from apps.core.scoping import authenticated_user
 
 from . import services
-from .models import JoinRequest
+from .models import JoinRequest, RosterEntry
 from .services import MemberError
 
 #: Status filter allowlist for the roster view (no free-text lookups).
 STATUS_FILTERS = {choice.value for choice in JoinRequest.Status}
+
+
+class CheckPreapprovalView(APIView):
+    """``POST /api/v1/members/check-preapproval/`` — public pre-approval check.
+
+    Used by the student passkey join flow: a student enters passkey + email
+    + full name, and the system checks whether a club authority has
+    pre-approved them via bulk CSV upload (a ``RosterEntry`` row with the
+    same club + email). No authentication is required — this is the public
+    front door of the join flow.
+
+    Returns:
+        200 with ``{"match": true, ...}`` if a pre-approved RosterEntry
+        exists for this club + email (name is also compared when provided).
+        200 with ``{"match": false, ...}`` if no match.
+        400 if the passkey is invalid.
+    """
+
+    permission_classes: list = []
+    authentication_classes: list = []
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        from apps.clubs.services import resolve_passkey
+
+        data = request.data
+        passkey = str(data.get("passkey", "")).strip()
+        email = str(data.get("email", "")).strip().lower()
+        full_name = str(data.get("full_name", "")).strip()
+
+        if not passkey or not email:
+            return Response(
+                {
+                    "detail": "Passkey and email are both required.",
+                    "code": "missing_fields",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Resolve passkey to a club
+        try:
+            passkey_row = resolve_passkey(passkey)
+            club = passkey_row.club
+        except Exception:
+            return Response(
+                {
+                    "detail": "Invalid institutional passkey.",
+                    "code": "invalid_passkey",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Look for a pre-approved RosterEntry matching this club + email
+        entry = (
+            RosterEntry.objects.filter(club=club, email__iexact=email)
+            .select_related("club")
+            .first()
+        )
+
+        if entry is None:
+            return Response(
+                {
+                    "match": False,
+                    "message": (
+                        "No record found. Please create a password and submit "
+                        "for final approval by your institution authority."
+                    ),
+                    "club_code": club.code,
+                    "institution_name": club.institution.name,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Match found — optionally cross-check full name when provided
+        name_matches = True
+        if full_name:
+            name_matches = entry.name.strip().lower() == full_name.strip().lower()
+
+        if not name_matches:
+            return Response(
+                {
+                    "match": False,
+                    "message": (
+                        "No record found with this name. Please create a "
+                        "password and submit for final approval by your "
+                        "institution authority."
+                    ),
+                    "club_code": club.code,
+                    "institution_name": club.institution.name,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {
+                "match": True,
+                "message": (
+                    "Your membership has already been approved by your "
+                    "institution authority. Please create a password for "
+                    "final onboarding."
+                ),
+                "club_code": club.code,
+                "institution_name": club.institution.name,
+                "roster_entry_id": entry.pk,
+                "roster_name": entry.name,
+                "roster_email": entry.email,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 def _error(exc: MemberError) -> Response:
@@ -695,20 +804,18 @@ class StudentJoinRegisterView(APIView):
         password = str(data.get("password", "")).strip()
         department = str(data.get("department", "")).strip()
         roll_number = str(data.get("roll_number", "")).strip()
+        auto_activate = bool(data.get("auto_activate"))
 
         if (
             not passkey
             or not full_name
             or not email
             or not password
-            or not department
-            or not roll_number
         ):
             return Response(
                 {
                     "detail": (
-                        "Passkey, Full Name, Gender, Email, Password, "
-                        "Department, and Roll Number are all required."
+                        "Passkey, Full Name, Email, and Password are all required."
                     ),
                     "code": "missing_fields",
                 },
@@ -745,6 +852,33 @@ class StudentJoinRegisterView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Pre-approval check: has the club authority pre-uploaded this student
+        # via bulk CSV? If yes, auto-activate (no authority approval, no email).
+        preapproved_entry = None
+        try:
+            preapproved_entry = RosterEntry.objects.filter(
+                club=club, email__iexact=email
+            ).first()
+        except Exception:
+            preapproved_entry = None
+
+        # Name cross-check when a full name was provided
+        name_matches = True
+        if preapproved_entry is not None and full_name:
+            name_matches = (
+                preapproved_entry.name.strip().lower()
+                == full_name.strip().lower()
+            )
+
+        from django.conf import settings
+
+        auto_activate = bool(
+            (preapproved_entry is not None and name_matches)
+            or auto_activate
+            or getattr(settings, "AUTO_ACTIVATE_STUDENTS", False)
+            or (settings.DEBUG and not getattr(settings, "TESTING", False))
+        )
 
         existing_user = User.objects.filter(email__iexact=email).first()
         if existing_user is not None:
@@ -784,11 +918,6 @@ class StudentJoinRegisterView(APIView):
 
         from django.conf import settings
 
-        auto_activate = bool(
-            data.get("auto_activate")
-            or getattr(settings, "AUTO_ACTIVATE_STUDENTS", False)
-            or (settings.DEBUG and not getattr(settings, "TESTING", False))
-        )
         target_account_state = (
             AccountState.ACTIVE if auto_activate else AccountState.PENDING_APPROVAL
         )
@@ -828,6 +957,11 @@ class StudentJoinRegisterView(APIView):
                 user.save()
 
             default_expiry = timezone.localdate() + timedelta(days=365)
+            # Use pre-approved roster data when department/roll_number not provided
+            if not department and preapproved_entry is not None:
+                department = preapproved_entry.program or preapproved_entry.name or ''
+            if not roll_number and preapproved_entry is not None:
+                roll_number = preapproved_entry.admission_no or preapproved_entry.email.split('@')[0] or ''
             profile = StudentMemberProfile.objects.create(
                 user=user,
                 club=club,
@@ -863,14 +997,21 @@ class StudentJoinRegisterView(APIView):
                 )
 
         if auto_activate:
-            msg = (
-                "Enrollment successful! Your student member account is active and "
-                "verified. You can log in immediately to access the Club Member Module."
-            )
+            if preapproved_entry is not None and name_matches:
+                msg = (
+                    "Final onboarding complete! Your account is active and "
+                    "verified. You can log in immediately to access the Club "
+                    "Member Module."
+                )
+            else:
+                msg = (
+                    "Enrollment successful! Your student member account is active and "
+                    "verified. You can log in immediately to access the Club Member Module."
+                )
         else:
             msg = (
-                "Verification link sent to your student email. Your enrollment "
-                "application is under review by the club authority."
+                "Your enrollment application has been submitted to the club "
+                "authority for final approval. No email verification is needed."
             )
 
         return Response(

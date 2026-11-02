@@ -8,13 +8,16 @@ import {
   Mail,
   ArrowRight,
   Lock,
-  GraduationCap,
   Sparkles,
 } from 'lucide-react';
 import { InstituteClub } from '../types';
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from '../i18n';
-import { registerStudentMember } from '../lib/campusApi';
+import { registerStudentMember, checkPreapproval } from '../lib/campusApi';
+import type {
+  PreapprovalCheckResponse,
+  StudentJoinPayload,
+} from '../lib/campusApi';
 
 interface JoinClubModalProps {
   isOpen: boolean;
@@ -24,6 +27,8 @@ interface JoinClubModalProps {
   initialPasskey?: string;
 }
 
+type Phase = 'check' | 'password' | 'done';
+
 export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   isOpen,
   onClose,
@@ -31,16 +36,15 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   onMemberJoined,
   initialPasskey = '',
 }) => {
+  const [phase, setPhase] = useState<Phase>('check');
   const [passkeyInput, setPasskeyInput] = useState(initialPasskey);
   const [studentName, setStudentName] = useState('');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [studentEmail, setStudentEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [department, setDepartment] = useState('');
-  const [rollNumber, setRollNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [joinedClub, setJoinedClub] = useState<InstituteClub | null>(null);
+  const [checkResult, setCheckResult] = useState<PreapprovalCheckResponse | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -50,16 +54,15 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   }, [initialPasskey]);
 
   const resetForm = () => {
+    setPhase('check');
     setPasskeyInput('');
     setStudentName('');
-    setGender('male');
     setStudentEmail('');
     setPassword('');
-    setDepartment('');
-    setRollNumber('');
-    setErrorMsg('');
     setSubmitting(false);
+    setErrorMsg('');
     setJoinedClub(null);
+    setCheckResult(null);
     setSuccessNotice(null);
     onClose();
   };
@@ -68,7 +71,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -76,36 +79,60 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
       setErrorMsg(t('Institutional Passkey is required.'));
       return;
     }
-    if (!studentName.trim() || !studentEmail.trim()) {
-      setErrorMsg(t('Full Name and Student Email are required.'));
+    if (!studentName.trim()) {
+      setErrorMsg(t('Full Name is required.'));
       return;
     }
-    if (!password || password.length < 6) {
-      setErrorMsg(t('Password must be at least 6 characters.'));
-      return;
-    }
-    if (!department.trim() || !rollNumber.trim()) {
-      setErrorMsg(t('Department and Roll/Registration Number are required.'));
+    if (!studentEmail.trim()) {
+      setErrorMsg(t('Student Email is required.'));
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await registerStudentMember({
+      const result = await checkPreapproval({
+        passkey: passkeyInput.trim(),
+        email: studentEmail.trim(),
+        full_name: studentName.trim(),
+      });
+      setCheckResult(result);
+      setPhase('password');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('Pre-approval check failed.');
+      setErrorMsg(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    if (!password || password.length < 6) {
+      setErrorMsg(t('Password must be at least 6 characters.'));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const isPreApproved = checkResult?.match === true;
+      const payload: StudentJoinPayload = {
         passkey: passkeyInput.trim(),
         full_name: studentName.trim(),
-        gender,
+        gender: 'other',
         email: studentEmail.trim(),
         password,
-        department: department.trim(),
-        roll_number: rollNumber.trim(),
-      });
+        department: checkResult?.roster_name || '',
+        roll_number: '',
+        auto_activate: isPreApproved,
+      };
+      const res = await registerStudentMember(payload);
 
       const matchedClub =
         clubs.find(
           (c) =>
-            c.passkey.trim().toUpperCase() === passkeyInput.trim().toUpperCase() ||
-            c.id.toLowerCase() === res.club_code.toLowerCase(),
+            c.passkey.trim().toUpperCase() === passkeyInput.trim().toUpperCase(),
         ) || {
           id: res.club_code,
           name: res.institution_name,
@@ -125,8 +152,9 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
       setJoinedClub(matchedClub);
       setSuccessNotice(res.message);
       onMemberJoined(matchedClub, studentName);
+      setPhase('done');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('Failed to submit enrollment application.');
+      const msg = err instanceof Error ? err.message : t('Failed to complete onboarding.');
       setErrorMsg(msg);
     } finally {
       setSubmitting(false);
@@ -154,8 +182,9 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
           <X className="h-5 w-5" />
         </button>
 
-        {!joinedClub ? (
-          <form onSubmit={handleJoin} className="space-y-4">
+        {/* Phase 1: Check passkey + name + email */}
+        {phase === 'check' && (
+          <form onSubmit={handleCheck} className="space-y-4">
             <div className="space-y-1">
               <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-brand-700 bg-brand-50 px-3 py-1 rounded-full">
                 <KeyRound className="h-3.5 w-3.5" />
@@ -166,11 +195,10 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               </h3>
               <p className="text-xs text-ink-600">
                 {t(
-                  "Enter your institution's passkey and personal details. An enrollment application will be submitted to the Club Authority.",
+                  'Enter your institution passkey, name, and email. Your club authority may have pre-approved your membership.',
                 )}
               </p>
             </div>
-
 
             <div className="space-y-3 text-xs">
               <div>
@@ -206,21 +234,6 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="font-bold text-ink-700 block mb-1">{t('Gender *')}</label>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as 'male' | 'female' | 'other')}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500 bg-white"
-                  >
-                    <option value="male">{t('Male')}</option>
-                    <option value="female">{t('Female')}</option>
-                    <option value="other">{t('Other')}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
                   <label className="font-bold text-ink-700 block mb-1">
                     {t('Student Email *')}
                   </label>
@@ -236,54 +249,71 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">
-                    {t('Create Password *')}
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-400" />
-                    <input
-                      type="password"
-                      placeholder={t('Min. 6 chars')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500"
-                    />
-                  </div>
-                </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">
-                    {t('Department / Discipline *')}
-                  </label>
-                  <div className="relative">
-                    <GraduationCap className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-400" />
-                    <input
-                      type="text"
-                      placeholder={t('e.g. Computer Science')}
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      required
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500"
-                    />
-                  </div>
-                </div>
+            {errorMsg && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-medium">
+                {errorMsg}
+              </div>
+            )}
 
-                <div>
-                  <label className="font-bold text-ink-700 block mb-1">
-                    {t('Roll / Reg. No. *')}
-                  </label>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold text-xs shadow-md flex items-center justify-center space-x-2 transition-all cursor-pointer"
+            >
+              <span>{submitting ? t('Checking…') : t('Check')}</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+        )}
+
+        {/* Phase 2: Create password */}
+        {phase === 'password' && (
+          <div className="text-center space-y-4 py-3">
+            <div className="h-16 w-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <KeyRound className="h-10 w-10 text-brand-600" />
+            </div>
+
+            {checkResult?.match ? (
+              <>
+                <h3 className="text-xl font-extrabold text-ink-900">
+                  {t('Membership Pre-Approved')}
+                </h3>
+                <p className="text-xs text-ink-600 max-w-sm mx-auto">
+                  {t(
+                    'Your membership has already been approved by your institution authority. Please create a password for final onboarding.',
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl font-extrabold text-ink-900">
+                  {t('Create Your Password')}
+                </h3>
+                <p className="text-xs text-ink-600 max-w-sm mx-auto">
+                  {t(
+                    'No record found with this name and email. Please create a password and submit for final approval by your institution authority.',
+                  )}
+                </p>
+              </>
+            )}
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-ink-700 block mb-1">
+                  {t('Create Password *')}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-400" />
                   <input
-                    type="text"
-                    placeholder={t('e.g. 24CS1042')}
-                    value={rollNumber}
-                    onChange={(e) => setRollNumber(e.target.value)}
+                    type="password"
+                    placeholder={t('Min. 6 chars')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-ink-300 focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
               </div>
@@ -299,41 +329,46 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               type="submit"
               disabled={submitting}
               className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-bold text-xs shadow-md flex items-center justify-center space-x-2 transition-all cursor-pointer"
+              onClick={handleComplete}
             >
-              <span>{submitting ? t('Verifying...') : t('Verify Passkey & Submit Join Application')}</span>
+              <span>{submitting ? t('Creating…') : checkResult?.match ? t('Complete Onboarding') : t('Submit for Approval')}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
-          </form>
-        ) : (
+          </div>
+        )}
+
+        {/* Phase 3: Done */}
+        {phase === 'done' && (
           <div className="text-center space-y-4 py-3">
             <div className="h-16 w-16 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
               <CheckCircle2 className="h-10 w-10 text-emerald-600" />
             </div>
 
             <h3 className="text-xl font-extrabold text-ink-900">
-              {t('Enrollment Application Submitted!')}
+              {t('Onboarding Complete!')}
             </h3>
-
             <div className="bg-ink-50 border border-ink-200 rounded-2xl p-4 text-left space-y-2">
               <div className="flex items-center space-x-2 text-xs text-ink-600 font-semibold uppercase">
                 <Building2 className="h-4 w-4 text-brand-600" />
                 <span>{t('Affiliated Institutional Chapter')}</span>
               </div>
-              <div className="font-bold text-sm text-ink-900">{joinedClub.name}</div>
+              <div className="font-bold text-sm text-ink-900">{joinedClub?.name || t('Unknown Club')}</div>
               <div className="text-xs text-ink-600">
-                {t('Applicant:')} <strong>{studentName}</strong> (Roll: {rollNumber})
+                {t('Applicant:')} <strong>{studentName}</strong>
               </div>
             </div>
 
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-900 space-y-1">
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-left text-xs text-emerald-900 space-y-1">
               <div className="font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{t('Next Steps')}</span>
               </div>
               <p>
                 {successNotice ||
                   t(
-                    'A verification link has been sent to your email. Your enrollment application is currently under review by the Club Authority.',
+                    checkResult?.match
+                      ? 'Your account is active. You can log in to the Club Member Module immediately.'
+                      : 'Your application is under review by the club authority. You will be notified once approved.',
                   )}
               </p>
             </div>
@@ -350,4 +385,3 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
     </div>
   );
 };
-

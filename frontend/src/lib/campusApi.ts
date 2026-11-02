@@ -775,6 +775,7 @@ export interface StudentJoinPayload {
   password: string;
   department: string;
   roll_number: string;
+  auto_activate?: boolean;
 }
 
 export interface StudentJoinResponse {
@@ -803,6 +804,46 @@ export async function registerStudentMember(
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError('server', detailMessage(body) ?? 'Student registration failed', res.status);
+  }
+  return body;
+}
+
+export interface PreapprovalCheckPayload {
+  passkey: string;
+  email: string;
+  full_name: string;
+}
+
+export interface PreapprovalCheckResponse {
+  match: boolean;
+  message: string;
+  club_code?: string;
+  institution_name?: string;
+  roster_entry_id?: number;
+  roster_name?: string;
+  roster_email?: string;
+}
+
+export async function checkPreapproval(
+  payload: PreapprovalCheckPayload,
+): Promise<PreapprovalCheckResponse> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/check-preapproval/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      'server',
+      detailMessage(body) ?? 'Pre-approval check failed',
+      res.status,
+    );
   }
   return body;
 }

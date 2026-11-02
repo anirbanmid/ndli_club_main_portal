@@ -1165,15 +1165,11 @@ class EventCertificateApprovalView(APIView):
             )
             student_uid = att.school_student.student_uid if att.school_student else ""
 
-            target_club = (
-                att.user.club
-                if (
-                    evt.scope == "multi_club"
-                    and hasattr(att.user, "club")
-                    and att.user.club
-                )
-                else evt.host_club
-            )
+            target_club = evt.host_club
+            if evt.scope == "multi_club" and att.user is not None:
+                user_club = getattr(att.user, "club", None)
+                if user_club is not None:
+                    target_club = user_club
 
             key_id = active_key_id()
             cert = Certificate(

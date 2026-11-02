@@ -13,7 +13,8 @@ import {
   LogIn, 
   ShieldCheck, 
   Filter,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { InstituteClub, RegionalZone } from '../types';
 import { t } from '../i18n';
@@ -67,6 +68,96 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
   };
 
   const hasActiveFilters = searchTerm !== '' || selectedState !== 'All' || selectedZone !== 'All' || selectedCategory !== 'All';
+
+  // Distribute canonical clubs evenly across 3 dynamic auto-scrolling marquee rows
+  const row1Clubs = canonicalClubs.filter((_, idx) => idx % 3 === 0);
+  const row2Clubs = canonicalClubs.filter((_, idx) => idx % 3 === 1);
+  const row3Clubs = canonicalClubs.filter((_, idx) => idx % 3 === 2);
+
+  const renderClubCard = (club: InstituteClub, isMarquee = false, keySuffix = '') => (
+    <div
+      key={`${club.id}${keySuffix}`}
+      className={`${
+        isMarquee ? 'w-80 sm:w-96 shrink-0' : 'w-full'
+      } bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-xl hover:border-[#0D7751]/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden card-glow`}
+    >
+      {/* Top Accent Gradient Bar */}
+      <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-600 via-[#0D7751] to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+      <div className="space-y-3.5">
+        {/* Badges */}
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20 font-mono">
+            {t("AISHE:")} {club.aisheCode}
+          </span>
+          <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
+            <CheckCircle2 className="h-3 w-3 text-brand-700" />
+            <span>{t(club.zone)} {t("Zone")}</span>
+          </span>
+        </div>
+
+        {/* Club / Institute Name */}
+        <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2 leading-snug">
+          {club.name}
+        </h3>
+
+        {/* Location */}
+        <div className="flex items-center space-x-1.5 text-xs text-[#5A7366]">
+          <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          <span>{club.district}, {club.state}</span>
+        </div>
+
+        {/* Key authorities snippet */}
+        <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1.5">
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
+            <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">
+              {club.authorities.find(a => a.role === 'Patron')?.name || t("Nodal Head")}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-[11px]">
+            <span className="text-[#5A7366] font-medium">{t("President:")}</span>
+            <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">
+              {club.authorities.find(a => a.role === 'President')?.name || t("Faculty Advisor")}
+            </span>
+          </div>
+        </div>
+
+        {/* Summary counts */}
+        <div className="grid grid-cols-2 gap-2 text-center pt-1">
+          <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
+            <div className="text-base font-black text-[#103125]">{club.memberCount.toLocaleString()}</div>
+            <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Enrolled")}</div>
+          </div>
+          <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
+            <div className="text-base font-black text-[#0D7751]">{club.eventsConducted}</div>
+            <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Activities")}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-5 pt-4 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onSelectClub(club)}
+          className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-[#1A503E] bg-[#E9F5EF] hover:bg-[#d5eee0] transition-colors flex items-center justify-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer"
+        >
+          <span>{t("Public Profile")}</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onManageClub(club)}
+          className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#1A503E] hover:bg-[#103125] transition-colors flex items-center justify-center space-x-1.5 shadow-xs hover:shadow-md cursor-pointer"
+        >
+          <Lock className="h-3.5 w-3.5 text-amber-300" />
+          <span>{t("Manage Club")}</span>
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in">
@@ -214,85 +305,49 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
         </div>
       </div>
 
-      {/* Clubs Cards Grid */}
-      {filteredClubs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-          {filteredClubs.map(club => (
-            <div
-              key={club.id}
-              className="bg-white rounded-3xl border border-[#E2ECE7] p-6 shadow-xs hover:shadow-xl hover:border-[#0D7751]/50 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden card-glow"
-            >
-              {/* Top Accent Gradient Bar */}
-              <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-600 via-[#0D7751] to-amber-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      {/* Dynamic 3-Row Auto-Scrolling Marquee (Unsearched) or Fixed Filtered Grid (Searched) */}
+      {!hasActiveFilters ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between text-xs text-[#5A7366] px-1">
+            <span className="font-semibold flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              {t("Dynamic Institutional Roster (3 Auto-scrolling chapter tiers • Hover to pause • Use search or filters to isolate specific chapters)")}
+            </span>
+            <span className="text-[11px] font-mono font-bold bg-[#E9F5EF] text-[#0D7751] px-2.5 py-0.5 rounded-full border border-[#0D7751]/20">
+              {canonicalClubs.length} {t("Chapters")}
+            </span>
+          </div>
 
-              <div className="space-y-3.5">
-                {/* Badges */}
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-md bg-[#E9F5EF] text-[#0D7751] border border-[#0D7751]/20 font-mono">
-                    {t("AISHE:")} {club.aisheCode}
-                  </span>
-                  <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-brand-800 bg-brand-50 px-2.5 py-1 rounded-full border border-brand-200">
-                    <CheckCircle2 className="h-3 w-3 text-brand-700" />
-                    <span>{t(club.zone)} {t("Zone")}</span>
-                  </span>
-                </div>
+          <div className="space-y-4 marquee-container relative overflow-hidden py-2">
+            {/* Gradient edge masks for smooth fade */}
+            <div className="absolute inset-y-0 left-0 w-12 sm:w-16 bg-gradient-to-r from-[#F4F8F6] to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-12 sm:w-16 bg-gradient-to-l from-[#F4F8F6] to-transparent z-10 pointer-events-none" />
 
-                {/* Club / Institute Name */}
-                <h3 className="font-bold text-base text-[#103125] group-hover:text-[#1A503E] transition-colors line-clamp-2 leading-snug">
-                  {club.name}
-                </h3>
-
-                {/* Location */}
-                <div className="flex items-center space-x-1.5 text-xs text-[#5A7366]">
-                  <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                  <span>{club.district}, {club.state}</span>
-                </div>
-
-                {/* Key authorities snippet */}
-                <div className="text-xs bg-[#F4F8F6] p-3 rounded-xl border border-[#E2ECE7] space-y-1.5">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-[#5A7366] font-medium">{t("Patron:")}</span>
-                    <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">{club.authorities.find(a => a.role === 'Patron')?.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="text-[#5A7366] font-medium">{t("President:")}</span>
-                    <span className="font-bold text-[#103125] truncate max-w-[160px] text-right">{club.authorities.find(a => a.role === 'President')?.name}</span>
-                  </div>
-                </div>
-
-                {/* Summary counts */}
-                <div className="grid grid-cols-2 gap-2 text-center pt-1">
-                  <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
-                    <div className="text-base font-black text-[#103125]">{club.memberCount.toLocaleString()}</div>
-                    <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Enrolled")}</div>
-                  </div>
-                  <div className="bg-[#F4F8F6] p-2.5 rounded-xl border border-[#E2ECE7]">
-                    <div className="text-base font-black text-[#0D7751]">{club.eventsConducted}</div>
-                    <div className="text-[10px] text-[#5A7366] font-semibold uppercase tracking-wider">{t("Activities")}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-5 pt-4 border-t border-[#E2ECE7] flex flex-col sm:flex-row items-center gap-2">
-                <button
-                  onClick={() => onSelectClub(club)}
-                  className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-[#1A503E] bg-[#E9F5EF] hover:bg-[#d5eee0] transition-colors flex items-center justify-center space-x-1.5 border border-[#0D7751]/30 cursor-pointer"
-                >
-                  <span>{t("Public Profile")}</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-
-                <button
-                  onClick={() => onManageClub(club)}
-                  className="w-full sm:w-1/2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-[#1A503E] hover:bg-[#103125] transition-colors flex items-center justify-center space-x-1.5 shadow-xs hover:shadow-md cursor-pointer"
-                >
-                  <Lock className="h-3.5 w-3.5 text-amber-300" />
-                  <span>{t("Manage Club")}</span>
-                </button>
-              </div>
+            {/* Row 1: Left to right normal marquee */}
+            <div className="marquee-track gap-6 px-4">
+              {[...row1Clubs, ...row1Clubs].map((club, idx) =>
+                renderClubCard(club, true, `-r1-${idx}`)
+              )}
             </div>
-          ))}
+
+            {/* Row 2: Reverse right-to-left marquee */}
+            <div className="marquee-track-reverse gap-6 px-4">
+              {[...row2Clubs, ...row2Clubs].map((club, idx) =>
+                renderClubCard(club, true, `-r2-${idx}`)
+              )}
+            </div>
+
+            {/* Row 3: Left to right smooth pacing marquee */}
+            <div className="marquee-track-slow gap-6 px-4">
+              {[...row3Clubs, ...row3Clubs].map((club, idx) =>
+                renderClubCard(club, true, `-r3-${idx}`)
+              )}
+            </div>
+          </div>
+        </div>
+      ) : filteredClubs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
+          {filteredClubs.map(club => renderClubCard(club, false))}
         </div>
       ) : (
         <div className="bg-white rounded-3xl border border-[#E2ECE7] p-12 text-center space-y-4">
@@ -302,6 +357,7 @@ export const InstitutionalClubsLandingView: React.FC<InstitutionalClubsLandingVi
             {t("Try clearing your search query or selecting a different state or zone from the filter options above.")}
           </p>
           <button
+            type="button"
             onClick={handleResetFilters}
             className="px-4 py-2 rounded-xl bg-[#0D7751] hover:bg-[#103125] text-white text-xs font-bold transition-colors cursor-pointer"
           >

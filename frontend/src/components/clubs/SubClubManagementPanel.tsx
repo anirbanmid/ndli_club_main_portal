@@ -451,14 +451,14 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
       {/* Comprehensive Sub-Club Management & Governance Modal (Requisitions A.a & D.a) */}
       {selectedSubClub && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/65 backdrop-blur-xs animate-in fade-in overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="subclub-modal-title"
         >
-          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-emerald-100 overflow-hidden flex flex-col">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] md:max-h-[88vh] border border-emerald-100 overflow-hidden flex flex-col my-auto animate-in zoom-in-95">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white flex items-start justify-between gap-4">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-4 sm:p-6 text-white flex items-start justify-between gap-4 shrink-0 border-b border-emerald-900/40">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="px-2 py-0.5 rounded-full bg-emerald-700/60 text-emerald-200 text-[10px] font-black uppercase tracking-wider">
@@ -486,7 +486,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-5 text-xs text-gray-700 max-h-[75vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 text-xs text-gray-700 flex-1 min-h-0 overflow-y-auto overscroll-contain">
               {/* Feedback Notice */}
               {coordActionNotice && (
                 <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-900 font-semibold flex items-center gap-2">
@@ -737,7 +737,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="p-3.5 sm:p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -782,19 +782,20 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
       {/* Create Sub-Club Modal */}
       {isCreateOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in overflow-hidden"
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full border border-emerald-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-6 text-white">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] border border-emerald-100 overflow-hidden flex flex-col my-auto animate-in zoom-in-95">
+            <div className="bg-gradient-to-r from-[#103125] to-[#1A503E] p-4 sm:p-6 text-white shrink-0 border-b border-emerald-900/40">
               <h3 className="text-xl font-bold">Form Disciplinary Sub-Club</h3>
               <p className="text-xs text-emerald-200 mt-0.5">
                 Approved directly by Main Club Authorities
               </p>
             </div>
 
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleCreate} className="flex-1 min-h-0 flex flex-col">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Sub-Club Name <span className="text-rose-500">*</span>
@@ -888,7 +889,9 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end space-x-2">
+              </div>
+
+              <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end space-x-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}

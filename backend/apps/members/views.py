@@ -961,7 +961,8 @@ class StudentJoinRegisterView(APIView):
             if not department and preapproved_entry is not None:
                 department = preapproved_entry.program or preapproved_entry.name or ''
             if not roll_number and preapproved_entry is not None:
-                roll_number = preapproved_entry.admission_no or preapproved_entry.email.split('@')[0] or ''
+                email_prefix = preapproved_entry.email.split("@")[0]
+                roll_number = preapproved_entry.admission_no or email_prefix or ""
             profile = StudentMemberProfile.objects.create(
                 user=user,
                 club=club,
@@ -1005,8 +1006,9 @@ class StudentJoinRegisterView(APIView):
                 )
             else:
                 msg = (
-                    "Enrollment successful! Your student member account is active and "
-                    "verified. You can log in immediately to access the Club Member Module."
+                    "Enrollment successful! Your student member account is active "
+                    "and verified. You can log in immediately to access the Club "
+                    "Member Module."
                 )
         else:
             msg = (

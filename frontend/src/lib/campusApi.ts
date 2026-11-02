@@ -203,6 +203,37 @@ export async function uploadSchoolRoster(clubCode: string, file: File): Promise<
   return res.json();
 }
 
+export interface PreApprovalUploadResult {
+  club_code: string;
+  club_name: string;
+  created: number;
+  skipped: number;
+  errors: Array<{ row: number; status: string; reason: string; key: string; data: Record<string, unknown> }>;
+}
+
+export async function uploadHEIBulkPreapproval(
+  clubCode: string,
+  file: File,
+): Promise<PreApprovalUploadResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${MEMBERS_API_BASE}/roster/import/preapprove/`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to upload HEI pre-approval roster', res.status);
+  }
+  return res.json();
+}
+
 export async function fetchSchoolCards(clubCode: string): Promise<SchoolStudentCard[]> {
   const res = await fetch(`${MEMBERS_API_BASE}/school/${encodeURIComponent(clubCode)}/cards/`, {
     headers: { Accept: 'application/json', ...csrfHeader() },

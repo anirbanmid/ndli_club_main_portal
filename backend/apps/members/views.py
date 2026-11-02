@@ -996,6 +996,10 @@ class StudentJoinRegisterView(APIView):
                         "status": Membership.Status.ACTIVE,
                     },
                 )
+                # Link the pre-approved roster entry to the newly created user
+                if preapproved_entry is not None and preapproved_entry.user is None:
+                    preapproved_entry.user = user
+                    preapproved_entry.save(update_fields=["user"])
 
         if auto_activate:
             if preapproved_entry is not None and name_matches:

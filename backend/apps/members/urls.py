@@ -71,6 +71,11 @@ urlpatterns = [
         roster_views.RosterExportView.as_view(),
         name="roster-export",
     ),
+    path(
+        "roster/import/preapprove/",
+        roster_views.RosterPreApprovalUploadView.as_view(),
+        name="roster-preapprove-upload",
+    ),
 ]
 
 

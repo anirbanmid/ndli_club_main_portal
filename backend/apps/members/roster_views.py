@@ -11,6 +11,9 @@ carrying the current row, never a silent overwrite (P2).
 
 from __future__ import annotations
 
+import csv
+import io
+import re
 from typing import Any
 
 from django.db import IntegrityError, transaction
@@ -18,6 +21,7 @@ from django.db.models import F
 from django.http import HttpResponse, StreamingHttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from rest_framework import status
 from rest_framework.exceptions import NotFound
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -31,6 +35,8 @@ from apps.domain.models import Club
 
 from . import roster_csv, services
 from .models import RosterEntry, RosterImportJob
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 #: Single-field inline edit allowlist (status moves via its own endpoint).
 EDITABLE_FIELDS = frozenset(
@@ -580,3 +586,110 @@ class RosterExportView(APIView):
             f'attachment; filename="roster-{club.code}.csv"'
         )
         return response
+
+
+class RosterPreApprovalUploadView(APIView):
+    """POST /api/v1/members/roster/import/preapprove/ - HEI bulk pre-approval.
+
+    Club authorities upload a CSV with "Full Name" and "Email ID" columns.
+    Each row creates a pre-approved RosterEntry linked to the caller's club.
+    Students with matching email + name can self-join via passkey without
+    further authority approval (no email verification needed).
+    """
+
+    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request: Request) -> Response:
+        club = _caller_club(request)
+
+        uploaded = request.FILES.get("file")
+        if uploaded is None:
+            return Response(
+                {"detail": "No CSV file provided.", "code": "missing_file"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            raw = uploaded.read()
+            text = raw.decode("utf-8-sig")
+        except (UnicodeDecodeError, AttributeError):
+            return Response(
+                {"detail": "Unable to read CSV file (UTF-8 required).",
+                 "code": "bad_file"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = csv.DictReader(io.StringIO(text))
+        headers = [h.strip().lower() for h in (reader.fieldnames or [])]
+
+        required = {"full name", "email id"}
+        missing = required - set(headers)
+        if missing:
+            return Response(
+                {"detail": f"Missing required columns: {', '.join(sorted(missing))}.",
+                 "code": "missing_columns"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        created = 0
+        skipped = 0
+        errors = []
+
+        with transaction.atomic():
+            for row_num, row in enumerate(reader, start=2):
+                name = str(row.get("Full Name") or row.get("full name") or "").strip()
+                email = (
+                    str(row.get("Email ID") or row.get("email id") or "")
+                    .strip()
+                    .lower()
+                )
+
+                if not name or not email:
+                    errors.append(f"Row {row_num}: missing name or email")
+                    skipped += 1
+                    continue
+
+                if not EMAIL_RE.match(email):
+                    errors.append(f"Row {row_num}: invalid email '{email}'")
+                    skipped += 1
+                    continue
+
+                if RosterEntry.objects.filter(club=club, email__iexact=email).exists():
+                    errors.append(f"Row {row_num}: duplicate email '{email}'")
+                    skipped += 1
+                    continue
+
+                try:
+                    RosterEntry.objects.create(
+                        club=club,
+                        name=name,
+                        email=email,
+                        role=RosterEntry.Role.MEMBER,
+                        status=RosterEntry.Status.ACTIVE,
+                    )
+                    created += 1
+                except Exception as exc:
+                    errors.append(f"Row {row_num}: {exc}")
+                    skipped += 1
+
+        services._audit(
+            "roster.preapproval.uploaded",
+            request,
+            actor=request.user,
+            object_type="roster_preapproval",
+            club=club.pk,
+            created=created,
+            skipped=skipped,
+        )
+
+        return Response(
+            {
+                "club_code": club.code,
+                "club_name": club.name,
+                "created": created,
+                "skipped": skipped,
+                "errors": errors[:20],
+            },
+            status=status.HTTP_201_CREATED,
+        )

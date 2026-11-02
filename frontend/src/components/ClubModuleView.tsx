@@ -781,7 +781,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
             isAuthority={Boolean(isAuthorityAuthenticated)}
           />
         ) : (
-          <StudentMembershipApprovalPanel clubCode={activeClub.id} isMainAuthority={true} />
+          <StudentMembershipApprovalPanel clubCode={activeClub.id} clubName={activeClub.name} isMainAuthority={true} />
         )
       )}
 

@@ -29,10 +29,14 @@ import {
   removeStudentMember,
   toggleStudentSuspension,
   updateStudentValidity,
+  uploadHEIBulkPreapproval,
+  PreApprovalUploadResult,
 } from '../../lib/campusApi';
+import { HEIBulkPreapprovalPanel } from './HEIBulkPreapprovalPanel';
 
 interface StudentMembershipApprovalPanelProps {
   clubCode: string;
+  clubName: string;
   isMainAuthority?: boolean;
 }
 
@@ -147,6 +151,7 @@ function getCanonicalFallbackStudents(clubCode: string): StudentProfileItem[] {
 
 export const StudentMembershipApprovalPanel: React.FC<StudentMembershipApprovalPanelProps> = ({
   clubCode,
+  clubName,
   isMainAuthority = true,
 }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'existing'>('pending');
@@ -467,6 +472,13 @@ export const StudentMembershipApprovalPanel: React.FC<StudentMembershipApprovalP
 
   return (
     <div className="space-y-6">
+      {/* Bulk Pre-Approval */}
+      <HEIBulkPreapprovalPanel
+        clubCode={clubCode}
+        clubName={clubName}
+        isAuthority={isMainAuthority}
+      />
+
       {/* Notice Banner */}
       {notice && (
         <div

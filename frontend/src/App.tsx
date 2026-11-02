@@ -129,6 +129,7 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [activeCertificate, setActiveCertificate] = useState<CertificateData | null>(null);
   const [isPasskeyModalOpen, setIsPasskeyModalOpen] = useState(false);
   const [passkeyFromUrl, setPasskeyFromUrl] = useState<string>('');
+  const [joinPasskeyFromHash, setJoinPasskeyFromHash] = useState<string>('');
   const [verifyInitialCertId, setVerifyInitialCertId] = useState(initialRoute.certId);
   // M5-D3: showcase slug for /clubs/<slug>/ (deep-linked via route.ts, or set
   // when a card is opened from the showcase index).
@@ -174,6 +175,22 @@ export function App({ ssrLocation }: AppProps = {}) {
       if (passkey) {
         setPasskeyFromUrl(passkey);
         setIsPasskeyModalOpen(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Read #passkey= from URL fragment (QR code scan target on /join/)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash;
+      if (hash) {
+        const params = new URLSearchParams(hash.replace(/^#/, ''));
+        const passkey = params.get('passkey');
+        if (passkey) {
+          setJoinPasskeyFromHash(passkey);
+          setCurrentTab('join');
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -468,7 +485,22 @@ export function App({ ssrLocation }: AppProps = {}) {
 
             {/* M5-D3: passkey/QR self-join door (public, prerendered /join/);
                 the join token rides in the URL fragment and is read on mount. */}
-            {currentTab === 'join' && (
+            {currentTab === 'join' && joinPasskeyFromHash ? (
+              <JoinClubModal
+                isOpen={true}
+                onClose={() => {
+                  setIsPasskeyModalOpen(false);
+                  setJoinPasskeyFromHash('');
+                  setCurrentTab('clubs');
+                }}
+                clubs={clubs}
+                initialPasskey={joinPasskeyFromHash}
+                onMemberJoined={(_club) => {
+                  setCurrentTab('clubs');
+                  setJoinPasskeyFromHash('');
+                }}
+              />
+            ) : (
               <JoinView onBack={() => setCurrentTab('clubs')} />
             )}
 

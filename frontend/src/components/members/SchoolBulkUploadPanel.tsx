@@ -54,6 +54,8 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
   // Search & Filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
+  const [selectedGender, setSelectedGender] = useState('All');
+  const [selectedBatchYear, setSelectedBatchYear] = useState('All');
 
   // Print Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -170,13 +172,22 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
   };
 
   const classes = ['All', ...Array.from(new Set(cards.map(c => c.student_class))).sort()];
+  const genders = ['All', ...Array.from(new Set(cards.map(c => c.gender))).sort()];
+  const batchYears = [
+    'All',
+    ...Array.from(new Set(cards.map(c => c.batch_year)))
+      .sort((a, b) => Number(a) - Number(b)),
+  ];
 
   const filteredCards = cards.filter(c => {
     const matchesSearch =
       c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.student_uid.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesClass = selectedClass === 'All' || c.student_class === selectedClass;
-    return matchesSearch && matchesClass;
+    const matchesGender = selectedGender === 'All' || c.gender === selectedGender;
+    const matchesBatchYear =
+      selectedBatchYear === 'All' || String(c.batch_year) === selectedBatchYear;
+    return matchesSearch && matchesClass && matchesGender && matchesBatchYear;
   });
 
   return (
@@ -435,6 +446,26 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
             >
               {classes.map(c => (
                 <option key={c} value={c}>Class: {c}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedGender}
+              onChange={(e) => setSelectedGender(e.target.value)}
+              className="py-1.5 px-3 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-700"
+            >
+              {genders.map(g => (
+                <option key={g} value={g}>Gender: {g}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedBatchYear}
+              onChange={(e) => setSelectedBatchYear(e.target.value)}
+              className="py-1.5 px-3 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none font-medium text-gray-700"
+            >
+              {batchYears.map(y => (
+                <option key={y} value={y}>Batch: {y}</option>
               ))}
             </select>
           </div>

@@ -273,6 +273,21 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
     }
   };
 
+  const handleDownloadSampleCSV = () => {
+    const csvContent =
+      'Full Name,Gender,Class,Section,Guardian Phone\n' +
+      'Aarav Sharma,Male,IX,A,9876543210\n' +
+      'Ananya Sen,Female,IX,B,9876543211\n' +
+      'Rohit Patel,Male,X,A,9876543212\n';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `NDLI_Event_Participants_Sample_${event.event_ref || event.id}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs hover:shadow-md transition-all space-y-4">
       {/* Top Meta */}
@@ -591,6 +606,14 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
                 <p className="text-[11px] text-gray-500 mb-2">
                   Columns: Full Name, Gender, Class, Section, Guardian Phone (optional)
                 </p>
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleCSV}
+                  className="py-1 px-2 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg font-bold flex items-center space-x-1 cursor-pointer"
+                >
+                  <Download className="h-3 w-3" />
+                  <span>Download Sample CSV</span>
+                </button>
                 <input
                   type="file"
                   accept=".csv,text/csv"

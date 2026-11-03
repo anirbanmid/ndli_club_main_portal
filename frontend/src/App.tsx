@@ -485,23 +485,25 @@ export function App({ ssrLocation }: AppProps = {}) {
 
             {/* M5-D3: passkey/QR self-join door (public, prerendered /join/);
                 the join token rides in the URL fragment and is read on mount. */}
-            {currentTab === 'join' && joinPasskeyFromHash ? (
-              <JoinClubModal
-                isOpen={true}
-                onClose={() => {
-                  setIsPasskeyModalOpen(false);
-                  setJoinPasskeyFromHash('');
-                  setCurrentTab('clubs');
-                }}
-                clubs={clubs}
-                initialPasskey={joinPasskeyFromHash}
-                onMemberJoined={(_club) => {
-                  setCurrentTab('clubs');
-                  setJoinPasskeyFromHash('');
-                }}
-              />
-            ) : (
-              <JoinView onBack={() => setCurrentTab('clubs')} />
+            {currentTab === 'join' && (
+              joinPasskeyFromHash ? (
+                <JoinClubModal
+                  isOpen={true}
+                  onClose={() => {
+                    setIsPasskeyModalOpen(false);
+                    setJoinPasskeyFromHash('');
+                    setCurrentTab('clubs');
+                  }}
+                  clubs={clubs}
+                  initialPasskey={joinPasskeyFromHash}
+                  onMemberJoined={(_club) => {
+                    setCurrentTab('clubs');
+                    setJoinPasskeyFromHash('');
+                  }}
+                />
+              ) : (
+                <JoinView onBack={() => setCurrentTab('clubs')} />
+              )
             )}
 
             {currentTab === 'view_certificate' && activeCertificate && (

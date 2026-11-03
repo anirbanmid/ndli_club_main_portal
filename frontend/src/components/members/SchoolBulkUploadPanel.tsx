@@ -8,13 +8,19 @@ import {
   Loader2, 
   Printer, 
   Users,
-  Search
+  Search,
+  Check,
+  X as XIcon,
 } from 'lucide-react';
 import { 
   uploadSchoolRoster, 
   fetchSchoolCards, 
+  fetchSchoolRosterPending,
+  approveSchoolRoster,
+  rejectSchoolRoster,
   SchoolStudentCard, 
-  SchoolRosterUploadResult 
+  SchoolRosterUploadResult,
+  SchoolRosterPendingEntry,
 } from '../../lib/campusApi';
 import { SchoolMembershipCardPrintModal } from './SchoolMembershipCardPrintModal';
 
@@ -39,6 +45,12 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadResult, setUploadResult] = useState<SchoolRosterUploadResult | null>(null);
 
+  // Pending Approval State
+  const [pendingEntries, setPendingEntries] = useState<SchoolRosterPendingEntry[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [selectedPendingIds, setSelectedPendingIds] = useState<number[]>([]);
+  const [decisionBusy, setDecisionBusy] = useState(false);
+
   // Search & Filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
@@ -59,8 +71,22 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
     }
   };
 
+  const loadPending = async () => {
+    setPendingLoading(true);
+    try {
+      const data = await fetchSchoolRosterPending(clubCode);
+      setPendingEntries(data.entries);
+      setSelectedPendingIds([]);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to fetch pending school roster.');
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadCards();
+    loadPending();
   }, [clubCode]);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
@@ -77,9 +103,10 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
     try {
       const result = await uploadSchoolRoster(clubCode, selectedFile);
       setUploadResult(result);
-      setSuccessMsg(`Successfully processed ${result.total_processed} students with deterministic UIDs.`);
+      setSuccessMsg(`Successfully staged ${result.created_count} students for approval.`);
       setSelectedFile(null);
       await loadCards();
+      await loadPending();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to process school roster CSV.');
     } finally {
@@ -100,6 +127,46 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
     link.download = `NDLI_School_Roster_Sample_${clubCode}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const togglePendingSelection = (id: number) => {
+    setSelectedPendingIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAllPending = () => {
+    const allIds = pendingEntries.map((e) => e.id);
+    if (selectedPendingIds.length === allIds.length && allIds.length > 0) {
+      setSelectedPendingIds([]);
+    } else {
+      setSelectedPendingIds(allIds);
+    }
+  };
+
+  const handleDecision = async (action: 'approve' | 'reject') => {
+    if (selectedPendingIds.length === 0) {
+      setErrorMsg('Please select at least one pending student.');
+      return;
+    }
+
+    setDecisionBusy(true);
+    setErrorMsg(null);
+
+    try {
+      const result =
+        action === 'approve'
+          ? await approveSchoolRoster(clubCode, selectedPendingIds)
+          : await rejectSchoolRoster(clubCode, selectedPendingIds);
+      setSuccessMsg(result.detail);
+      setSelectedPendingIds([]);
+      await loadCards();
+      await loadPending();
+    } catch (err: any) {
+      setErrorMsg(err.message || `Failed to ${action} selected students.`);
+    } finally {
+      setDecisionBusy(false);
+    }
   };
 
   const classes = ['All', ...Array.from(new Set(cards.map(c => c.student_class))).sort()];
@@ -218,6 +285,124 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-start space-x-2.5">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
           <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Pending Approval (Authority Review) */}
+      {isAuthority && pendingEntries.length > 0 && (
+        <div className="bg-white rounded-3xl border border-amber-200 p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100 pb-3">
+            <div className="flex items-center space-x-2">
+              <Users className="h-5 w-5 text-amber-700" />
+              <h3 className="text-base font-bold text-gray-900">
+                Pending Authority Approval ({pendingEntries.length})
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center space-x-2 text-xs font-bold text-gray-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedPendingIds.length === pendingEntries.length &&
+                    pendingEntries.length > 0
+                  }
+                  onChange={toggleSelectAllPending}
+                  className="w-3.5 h-3.5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                />
+                Select All
+              </label>
+              <button
+                onClick={() => handleDecision('approve')}
+                disabled={decisionBusy || selectedPendingIds.length === 0}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                {decisionBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                <span>Approve Selected</span>
+              </button>
+              <button
+                onClick={() => handleDecision('reject')}
+                disabled={decisionBusy || selectedPendingIds.length === 0}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                {decisionBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <XIcon className="h-3.5 w-3.5" />
+                )}
+                <span>Reject Selected</span>
+              </button>
+            </div>
+          </div>
+
+          {pendingLoading ? (
+            <div className="p-10 text-center text-gray-400 flex flex-col items-center justify-center space-y-2">
+              <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+              <span className="text-xs font-medium">Loading pending entries...</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-amber-50 text-amber-700 uppercase tracking-wider font-bold border-y border-amber-100">
+                  <tr>
+                    <th className="py-3 px-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedPendingIds.length === pendingEntries.length &&
+                          pendingEntries.length > 0
+                        }
+                        onChange={toggleSelectAllPending}
+                        className="w-3.5 h-3.5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                      />
+                    </th>
+                    <th className="py-3 px-4">Deterministic UID</th>
+                    <th className="py-3 px-4">Student Name</th>
+                    <th className="py-3 px-4">Class & Section</th>
+                    <th className="py-3 px-4">Gender</th>
+                    <th className="py-3 px-4">Batch</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-amber-50 font-medium text-gray-800">
+                  {pendingEntries.map((entry) => (
+                    <tr
+                      key={entry.student_uid}
+                      className="hover:bg-amber-50/30 transition-colors"
+                    >
+                      <td className="py-3 px-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedPendingIds.includes(entry.id)}
+                          onChange={() => togglePendingSelection(entry.id)}
+                          className="w-3.5 h-3.5 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-emerald-950">
+                        {entry.student_uid}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-gray-900">
+                        {entry.full_name}
+                      </td>
+                      <td className="py-3 px-4">
+                        Class {entry.student_class} - {entry.section}
+                      </td>
+                      <td className="py-3 px-4">{entry.gender}</td>
+                      <td className="py-3 px-4 font-mono">{entry.batch_year}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-amber-600 text-center">
+            Staged students are NOT visible as members until explicitly approved.
+            Approved students appear in Enrolled School Members and are eligible for
+            printable cards.
+          </p>
         </div>
       )}
 

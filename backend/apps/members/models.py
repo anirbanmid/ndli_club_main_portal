@@ -323,7 +323,17 @@ class StudentMemberProfile(models.Model):
 
 
 class SchoolStudentRoster(models.Model):
-    """Offline roster entry for School students with Deterministic Tangible Identity."""
+    """Offline roster entry for School students with Deterministic Tangible Identity.
+
+    CSV uploads stage entries as ``PENDING`` — they are NOT active members until
+    a club authority explicitly approves them (school item 1). Only ``APPROVED``
+    entries are returnable as printable cards / roster members.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending Approval"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
 
     club = models.ForeignKey(
         Club,
@@ -337,6 +347,12 @@ class SchoolStudentRoster(models.Model):
     section = models.CharField(max_length=16)
     guardian_phone = models.CharField(max_length=32, blank=True, default="")
     batch_year = models.PositiveIntegerField(default=2026)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

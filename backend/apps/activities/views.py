@@ -1456,6 +1456,7 @@ class EventParticipantUploadView(APIView):
                     "gender": gender,
                     "guardian_phone": phone,
                     "batch_year": now.year,
+                    "status": SchoolStudentRoster.Status.APPROVED,
                     "is_active": True,
                 },
             )

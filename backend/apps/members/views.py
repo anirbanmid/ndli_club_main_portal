@@ -608,6 +608,122 @@ class SchoolRosterUploadView(APIView):
         return Response(result, status=status.HTTP_201_CREATED)
 
 
+class SchoolRosterPendingListView(APIView):
+    """``GET /api/v1/members/school/<club_code>/pending/`` — staged (not yet
+    approved) school roster entries awaiting authority approval."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, club_code: str) -> Response:
+        from apps.domain.models import Club
+        from apps.members.models import SchoolStudentRoster
+
+        club = (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        entries = (
+            SchoolStudentRoster.objects.filter(club=club, status="pending")
+            .order_by("student_class", "section", "full_name")
+        )
+        return Response(
+            {
+                "club_code": club.code,
+                "club_name": club.name,
+                "pending_count": entries.count(),
+                "entries": [
+                    {
+                        "id": e.id,
+                        "student_uid": e.student_uid,
+                        "full_name": e.full_name,
+                        "gender": e.gender,
+                        "student_class": e.student_class,
+                        "section": e.section,
+                        "guardian_phone": e.guardian_phone,
+                        "batch_year": e.batch_year,
+                        "created_at": (
+                            e.created_at.isoformat() if e.created_at else None
+                        ),
+                    }
+                    for e in entries
+                ],
+            }
+        )
+
+
+class _SchoolRosterDecisionView(APIView):
+    """Base for approve/reject: toggle status + is_active on entry IDs."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _resolve_club(self, club_code: str):
+        from apps.domain.models import Club
+
+        return (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+
+    def _apply(self, request, club_code: str, target_status: str) -> Response:
+        from apps.members.models import SchoolStudentRoster
+
+        club = self._resolve_club(club_code)
+        if not club:
+            return Response(
+                {"detail": "Club not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        entry_ids = request.data.get("entry_ids", [])
+        if not isinstance(entry_ids, list) or not entry_ids:
+            return Response(
+                {
+                    "detail": "entry_ids (non-empty list) is required.",
+                    "code": "missing_entry_ids",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        qs = SchoolStudentRoster.objects.filter(
+            club=club, id__in=entry_ids, status="pending"
+        )
+        is_approved = target_status == "approved"
+        updated = qs.update(status=target_status, is_active=is_approved)
+
+        return Response(
+            {
+                "club_code": club.code,
+                "status": target_status,
+                "requested": len(entry_ids),
+                "updated": updated,
+                "detail": f"{updated} entr"
+                f"{'y' if updated == 1 else 'ies'} {target_status}d.",
+            }
+        )
+
+
+class SchoolRosterApproveView(_SchoolRosterDecisionView):
+    """Approve pending school roster entries."""
+
+    def post(self, request: Request, club_code: str) -> Response:
+        return self._apply(request, club_code, "approved")
+
+
+class SchoolRosterRejectView(_SchoolRosterDecisionView):
+    """Reject pending school roster entries."""
+
+    def post(self, request: Request, club_code: str) -> Response:
+        return self._apply(request, club_code, "rejected")
+
+
 class SchoolCardsListView(APIView):
     """List school membership cards with deterministic UIDs for printing."""
 

@@ -351,7 +351,30 @@ class CampusModuleTests(TestCase):
         self.assertTrue(uids[0].startswith(f"SCH-{self.state.code[:2]}"))
         self.assertIn("IXB", uids[0])
 
-        # Retrieve printable cards
+        # Entries are staged PENDING — no active cards until approved
+        cards_before = self.client.get(
+            f"/api/v1/members/school/{school_club.code}/cards/"
+        )
+        self.assertEqual(cards_before.json()["total"], 0)
+
+        # Approve both pending entries via authority endpoint
+        pending_resp = self.client.get(
+            f"/api/v1/members/school/{school_club.code}/pending/"
+        )
+        self.assertEqual(pending_resp.status_code, 200)
+        pending = pending_resp.json()
+        self.assertEqual(pending["pending_count"], 2)
+        entry_ids = [e["id"] for e in pending["entries"]]
+
+        approve_resp = self.client.post(
+            f"/api/v1/members/school/{school_club.code}/approve/",
+            data=json.dumps({"entry_ids": entry_ids}),
+            content_type="application/json",
+        )
+        self.assertEqual(approve_resp.status_code, 200)
+        self.assertEqual(approve_resp.json()["updated"], 2)
+
+        # Retrieve printable cards — now both approved entries are active
         cards_resp = self.client.get(
             f"/api/v1/members/school/{school_club.code}/cards/"
         )

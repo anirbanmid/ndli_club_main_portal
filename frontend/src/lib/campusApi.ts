@@ -203,6 +203,81 @@ export async function uploadSchoolRoster(clubCode: string, file: File): Promise<
   return res.json();
 }
 
+export interface SchoolRosterPendingEntry {
+  id: number;
+  student_uid: string;
+  full_name: string;
+  gender: string;
+  student_class: string;
+  section: string;
+  guardian_phone: string;
+  batch_year: number;
+  created_at: string | null;
+}
+
+export interface SchoolRosterPendingList {
+  club_code: string;
+  club_name: string;
+  pending_count: number;
+  entries: SchoolRosterPendingEntry[];
+}
+
+export interface SchoolRosterDecisionResult {
+  club_code: string;
+  status: string;
+  requested: number;
+  updated: number;
+  detail: string;
+}
+
+export async function fetchSchoolRosterPending(clubCode: string): Promise<SchoolRosterPendingList> {
+  const res = await fetch(`${MEMBERS_API_BASE}/school/${encodeURIComponent(clubCode)}/pending/`, {
+    headers: { Accept: 'application/json', ...csrfHeader() },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to fetch pending school roster', res.status);
+  }
+  return res.json();
+}
+
+export async function approveSchoolRoster(
+  clubCode: string,
+  entryIds: number[],
+): Promise<SchoolRosterDecisionResult> {
+  return schoolRosterDecision(clubCode, entryIds, 'approve');
+}
+
+export async function rejectSchoolRoster(
+  clubCode: string,
+  entryIds: number[],
+): Promise<SchoolRosterDecisionResult> {
+  return schoolRosterDecision(clubCode, entryIds, 'reject');
+}
+
+async function schoolRosterDecision(
+  clubCode: string,
+  entryIds: number[],
+  action: 'approve' | 'reject',
+): Promise<SchoolRosterDecisionResult> {
+  const res = await fetch(`${MEMBERS_API_BASE}/school/${encodeURIComponent(clubCode)}/${action}/`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ entry_ids: entryIds }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError('server', detailMessage(body) ?? `Failed to ${action} school roster`, res.status);
+  }
+  return res.json();
+}
+
 export interface PreApprovalUploadResult {
   club_code: string;
   club_name: string;

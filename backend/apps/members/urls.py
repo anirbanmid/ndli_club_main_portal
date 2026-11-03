@@ -131,6 +131,21 @@ urlpatterns += [
         name="school-roster-upload",
     ),
     path(
+        "school/<str:club_code>/pending/",
+        views.SchoolRosterPendingListView.as_view(),
+        name="school-roster-pending",
+    ),
+    path(
+        "school/<str:club_code>/approve/",
+        views.SchoolRosterApproveView.as_view(),
+        name="school-roster-approve",
+    ),
+    path(
+        "school/<str:club_code>/reject/",
+        views.SchoolRosterRejectView.as_view(),
+        name="school-roster-reject",
+    ),
+    path(
         "school/<str:club_code>/cards/",
         views.SchoolCardsListView.as_view(),
         name="school-cards-list",

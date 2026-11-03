@@ -288,7 +288,8 @@ def process_school_roster_csv(
             section=section,
             guardian_phone=phone,
             batch_year=batch_year,
-            is_active=True,
+            status=SchoolStudentRoster.Status.PENDING,
+            is_active=False,
         )
         created_entries.append(
             {

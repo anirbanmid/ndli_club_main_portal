@@ -137,9 +137,32 @@ class CheckPreapprovalView(APIView):
                 "roster_entry_id": entry.pk,
                 "roster_name": entry.name,
                 "roster_email": entry.email,
+                # Cross-institution check: is this email already a member
+                # at any OTHER institution?
+                "cross_institution_match": _find_cross_institution_match(email, club),
             },
             status=status.HTTP_200_OK,
         )
+
+
+def _find_cross_institution_match(email: str, current_club) -> dict | None:
+    """Check if ``email`` is already a member at any club OTHER than
+    ``current_club``. Returns match info dict or ``None``."""
+    from apps.members.models import StudentMemberProfile
+
+    profile = (
+        StudentMemberProfile.objects.select_related("club", "club__institution")
+        .filter(user__email__iexact=email)
+        .exclude(club=current_club)
+        .first()
+    )
+    if profile is None:
+        return None
+    return {
+        "club_code": profile.club.code,
+        "club_name": profile.club.name,
+        "institution_name": profile.club.institution.name,
+    }
 
 
 def _error(exc: MemberError) -> Response:
@@ -1147,6 +1170,121 @@ class StudentJoinRegisterView(APIView):
                 "profile_id": profile.id,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+class TerminateMembershipView(APIView):
+    """``POST /api/v1/members/students/terminate-membership/`` — hard-delete a
+    student's membership at a specific (old) institution.
+
+    Used during cross-institution transfer: when a student's email is already
+    a member at another institution, they consent to terminate that membership
+    before onboarding into the new institution.
+
+    Hard-deletes (no soft-delete): ``StudentMemberProfile``, ``Membership``,
+    and ``JoinRequest`` for the (user, old-club) pair. The ``User`` account is
+    preserved so the student can authenticate at the new institution.
+    """
+
+    permission_classes: list = []
+    authentication_classes: list = []
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request) -> Response:
+        from django.db import transaction
+
+        from apps.accounts.models import User
+        from apps.domain.models import Club, Membership
+        from apps.members.models import JoinRequest, StudentMemberProfile
+
+        data = request.data
+        email = str(data.get("email", "")).strip().lower()
+        club_code = str(data.get("club_code", "")).strip()
+
+        if not email or not club_code:
+            return Response(
+                {
+                    "detail": "Email and club_code are both required.",
+                    "code": "missing_fields",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Resolve the old club
+        club = (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+        if not club:
+            return Response(
+                {
+                    "detail": f"Club '{club_code}' not found.",
+                    "code": "club_not_found",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Find the user by email
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            return Response(
+                {
+                    "detail": f"No account found with email '{email}'.",
+                    "code": "user_not_found",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Verify a membership actually exists at this club before deleting
+        profile_exists = StudentMemberProfile.objects.filter(
+            user=user, club=club
+        ).exists()
+        membership_exists = Membership.objects.filter(
+            user=user, club=club
+        ).exists()
+        if not profile_exists and not membership_exists:
+            return Response(
+                {
+                    "detail": (
+                        f"No membership found for '{email}' at "
+                        f"{club.name} ({club_code})."
+                    ),
+                    "code": "no_membership",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        with transaction.atomic():
+            # Hard-delete all membership-related records at the old club
+            StudentMemberProfile.objects.filter(user=user, club=club).delete()
+            Membership.objects.filter(user=user, club=club).delete()
+            JoinRequest.objects.filter(user=user, club=club).delete()
+
+        services._audit(
+            "student.membership.terminated",
+            request,
+            actor=user,
+            object_type="student_membership",
+            club=club.pk,
+            email=email,
+            old_club_code=club_code,
+            old_institution=club.institution.name,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": (
+                    f"Your membership at {club.name} ({club_code}) has been "
+                    "terminated. You can now proceed with onboarding at your "
+                    "new institution."
+                ),
+                "email": email,
+                "terminated_club_code": club.code,
+                "terminated_institution": club.institution.name,
+            },
+            status=status.HTTP_200_OK,
         )
 
 

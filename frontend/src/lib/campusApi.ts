@@ -928,6 +928,11 @@ export interface PreapprovalCheckResponse {
   roster_entry_id?: number;
   roster_name?: string;
   roster_email?: string;
+  cross_institution_match?: {
+    club_code: string;
+    club_name: string;
+    institution_name: string;
+  } | null;
 }
 
 export async function checkPreapproval(
@@ -948,6 +953,39 @@ export async function checkPreapproval(
     throw new ApiError(
       'server',
       detailMessage(body) ?? 'Pre-approval check failed',
+      res.status,
+    );
+  }
+  return body;
+}
+
+export interface TerminateMembershipResult {
+  success: boolean;
+  message: string;
+  email: string;
+  terminated_club_code: string;
+  terminated_institution: string;
+}
+
+export async function terminateMembership(
+  email: string,
+  clubCode: string,
+): Promise<TerminateMembershipResult> {
+  const res = await fetch(`${MEMBERS_API_BASE}/students/terminate-membership/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ email, club_code: clubCode }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError(
+      'server',
+      detailMessage(body) ?? 'Failed to terminate membership',
       res.status,
     );
   }

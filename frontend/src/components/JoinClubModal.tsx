@@ -3,6 +3,7 @@ import {
   KeyRound,
   X,
   CheckCircle2,
+  AlertTriangle,
   Building2,
   User,
   Mail,
@@ -13,10 +14,11 @@ import {
 import { InstituteClub } from '../types';
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from '../i18n';
-import { registerStudentMember, checkPreapproval } from '../lib/campusApi';
+import { registerStudentMember, checkPreapproval, terminateMembership } from '../lib/campusApi';
 import type {
   PreapprovalCheckResponse,
   StudentJoinPayload,
+  TerminateMembershipResult,
 } from '../lib/campusApi';
 
 interface JoinClubModalProps {
@@ -27,7 +29,7 @@ interface JoinClubModalProps {
   initialPasskey?: string;
 }
 
-type Phase = 'check' | 'password' | 'done';
+type Phase = 'check' | 'cross_institution_confirm' | 'password' | 'done';
 
 export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   isOpen,
@@ -46,6 +48,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
   const [joinedClub, setJoinedClub] = useState<InstituteClub | null>(null);
   const [checkResult, setCheckResult] = useState<PreapprovalCheckResponse | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [crossInstitutionBusy, setCrossInstitutionBusy] = useState(false);
 
   React.useEffect(() => {
     if (initialPasskey) {
@@ -64,6 +67,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
     setJoinedClub(null);
     setCheckResult(null);
     setSuccessNotice(null);
+    setCrossInstitutionBusy(false);
     onClose();
   };
 
@@ -96,7 +100,14 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
         full_name: studentName.trim(),
       });
       setCheckResult(result);
-      setPhase('password');
+
+      if (result.cross_institution_match) {
+        // Email already exists as a member at another institution.
+        // Require explicit YES/NO before proceeding.
+        setPhase('cross_institution_confirm');
+      } else {
+        setPhase('password');
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('Pre-approval check failed.');
       setErrorMsg(msg);
@@ -159,6 +170,31 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleCrossInstitutionConfirm = async () => {
+    const match = checkResult?.cross_institution_match;
+    if (!match || !studentEmail.trim()) return;
+
+    setCrossInstitutionBusy(true);
+    setErrorMsg('');
+    try {
+      await terminateMembership(studentEmail.trim(), match.club_code);
+      // Termination succeeded — proceed to password phase for new institution
+      setPhase('password');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t('Failed to terminate previous membership.');
+      setErrorMsg(msg);
+    } finally {
+      setCrossInstitutionBusy(false);
+    }
+  };
+
+  const handleCrossInstitutionCancel = () => {
+    setErrorMsg(
+      t('Onboarding cancelled. You cannot join this institution while an active membership exists elsewhere.'),
+    );
+    setPhase('check');
   };
 
   return (
@@ -267,6 +303,52 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
               <ArrowRight className="h-4 w-4" />
             </button>
           </form>
+        )}
+
+        {/* Phase 1.5: Cross-Institution Termination Confirmation */}
+        {phase === 'cross_institution_confirm' && (
+          <div className="text-center space-y-4 py-3">
+            <div className="h-16 w-16 bg-rose-100 text-rose-700 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="h-10 w-10 text-rose-600" />
+            </div>
+
+            <h3 className="text-xl font-extrabold text-ink-900">
+              {t('Existing Membership Found')}
+            </h3>
+            <p className="text-xs text-ink-600 max-w-sm mx-auto leading-relaxed">
+              {`This email is already registered as a member at ${checkResult?.cross_institution_match?.institution_name ?? ''} (${checkResult?.cross_institution_match?.club_name ?? ''}).`}
+            </p>
+            <p className="text-xs text-ink-600 max-w-sm mx-auto leading-relaxed">
+              {t('To join this new institution, your previous membership must be terminated first. This action cannot be undone.')}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={handleCrossInstitutionConfirm}
+                disabled={crossInstitutionBusy}
+                className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
+              >
+                {crossInstitutionBusy ? (
+                  <span className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                <span>{t('Yes, Terminate & Join')}</span>
+              </button>
+              <button
+                onClick={handleCrossInstitutionCancel}
+                className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-gray-100 hover:bg-gray-200 text-ink-700 font-bold text-xs transition-all cursor-pointer"
+              >
+                {t('No, Cancel Onboarding')}
+              </button>
+            </div>
+
+            {errorMsg && (
+              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 p-2.5 rounded-lg font-medium">
+                {errorMsg}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Phase 2: Create password */}

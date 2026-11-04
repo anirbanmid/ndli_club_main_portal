@@ -96,6 +96,11 @@ urlpatterns += [
         name="student-check-preapproval",
     ),
     path(
+        "students/terminate-membership/",
+        views.TerminateMembershipView.as_view(),
+        name="student-terminate-membership",
+    ),
+    path(
         "students/",
         views.StudentProfileListView.as_view(),
         name="student-list",

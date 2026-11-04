@@ -110,7 +110,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         fetchSubClubs(activeClub.id).catch(() => []),
         fetchStudentProfiles({ club_code: activeClub.id }).catch(() => null),
         activeClub.category === 'School'
-          ? fetchSchoolCards(activeClub.id).catch(() => [])
+          ? fetchSchoolCards(activeClub.id).then(res => res.cards).catch(() => [])
           : Promise.resolve([]),
       ]);
       setBackendEvents(evts);

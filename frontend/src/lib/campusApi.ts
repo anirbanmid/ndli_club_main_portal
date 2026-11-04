@@ -309,7 +309,13 @@ export async function uploadHEIBulkPreapproval(
   return res.json();
 }
 
-export async function fetchSchoolCards(clubCode: string): Promise<SchoolStudentCard[]> {
+export interface SchoolRosterCardsResponse {
+  school_name: string;
+  cards: SchoolStudentCard[];
+  total: number;
+}
+
+export async function fetchSchoolCards(clubCode: string): Promise<SchoolRosterCardsResponse> {
   const res = await fetch(`${MEMBERS_API_BASE}/school/${encodeURIComponent(clubCode)}/cards/`, {
     headers: { Accept: 'application/json', ...csrfHeader() },
     credentials: 'include',

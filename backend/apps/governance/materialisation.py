@@ -210,6 +210,7 @@ def materialise_charter(
         legacy_id=f"onb-{draft.id}"[:64],
         aishe_code=aishe,
         name=application.institution_name,
+        institution_type=application.institution_type,
         state=state,
         district=district,
         status=Institution.Status.ACTIVE,

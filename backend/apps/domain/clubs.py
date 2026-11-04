@@ -224,6 +224,13 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
 
         club_name = inst.name if inst else c.name
         is_univ = "University" in club_name or "IIT" in c.code or "IISc" in club_name
+        is_school = getattr(inst, "institution_type", "") == "school"
+        if is_school:
+            club_category = "School"
+        elif is_univ:
+            club_category = "University"
+        else:
+            club_category = "Autonomous Institute"
         club_dict: dict[str, Any] = {
             "id": c.code,
             "club_id": c.code,
@@ -235,7 +242,7 @@ def get_all_canonical_clubs() -> list[dict[str, Any]]:
             "state": st,
             "district": dist or f"{st} Central",
             "zone": clean_zone,
-            "category": "University" if is_univ else "Autonomous Institute",
+            "category": club_category,
             "passkey": f"{c.code}-NDL-001",
             "status": computed_status,
             "memberCount": actual_members,

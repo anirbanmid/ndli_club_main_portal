@@ -9,8 +9,6 @@ from datetime import date
 from django.contrib.auth.hashers import make_password
 from django.db import migrations
 
-from apps.domain.integrity import LedgerIntegrityEngine
-
 
 def _get_officer(User, state_code: str):
     """Resolve the zone officer for a state."""
@@ -210,14 +208,20 @@ def seed_dummy_schools(apps, schema_editor):
             },
         )
 
-        # 5. ActivityLog via LedgerIntegrityEngine (SSOT gate + KPI source)
+        # 5. ActivityLog via historical model (SSOT gate + KPI source)
+        # Use apps.get_model() to avoid cross-model-state ForeignKey mismatch
+        # between historical User and current ActivityLog classes.
+        ActivityLog = apps.get_model("activities", "ActivityLog")
         officer = _get_officer(User, item["state_code"])
         if officer:
-            LedgerIntegrityEngine.ensure_club_approval_log(
-                club,
-                officer=officer,
+            ActivityLog.objects.create(
+                employee_id=officer.pk,
+                support_type="Club Approval",
+                club_code=club.code,
+                priority_flag=True,
+                notes=f"Approved new NDLI Club: {inst.name} ({club.code})",
+                call_count=1,
                 timestamp=item["doa"],
-                strict_gate=False,
             )
 
         created.append(

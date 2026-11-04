@@ -1367,6 +1367,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           clubCode={activeClub.id}
           subClubs={subClubsList}
           canonicalClubs={canonicalClubs}
+          isSchool={activeClub.category === 'School'}
           onEventCreated={() => {
             loadCampusData();
             setShowInstitutionalEventModal(false);

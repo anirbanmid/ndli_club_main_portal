@@ -25,6 +25,7 @@ interface InstitutionalEventModalProps {
   subClubs: SubClub[];
   canonicalClubs: InstituteClub[];
   onEventCreated: () => void;
+  isSchool?: boolean;
 }
 
 export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = ({
@@ -34,6 +35,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
   subClubs,
   canonicalClubs,
   onEventCreated,
+  isSchool = false,
 }) => {
   const [scope, setScope] = useState<'institutional' | 'multi_club'>('institutional');
   const [title, setTitle] = useState('');
@@ -410,7 +412,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
           </div>
 
           {/* Sub-Clubs Scope Selection */}
-          {scope === 'institutional' && subClubs.length > 0 && (
+          {!isSchool && scope === 'institutional' && subClubs.length > 0 && (
             <div className="space-y-2">
               <label className="block text-xs font-bold text-gray-700">
                 Participating Sub-Clubs Scope

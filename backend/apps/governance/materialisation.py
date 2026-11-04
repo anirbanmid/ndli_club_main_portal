@@ -220,6 +220,7 @@ def materialise_charter(
         institution=institution,
         name=application.club_name,
         status=Club.Status.ACTIVE,
+        date_of_approval=formation_date,
     )
 
     holder = None

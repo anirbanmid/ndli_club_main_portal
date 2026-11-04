@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from django.contrib.auth.hashers import make_password
 from django.db import migrations
 
 from apps.domain.integrity import LedgerIntegrityEngine
@@ -191,10 +192,12 @@ def seed_dummy_schools(apps, schema_editor):
                 "institution": inst,
                 "state": state,
                 "zone": state.zone,
+                "password": make_password(DEMO_PASSWORD),
             },
         )
-        pres_user.set_password(DEMO_PASSWORD)
-        pres_user.save()
+        if not pres_created:
+            pres_user.password = make_password(DEMO_PASSWORD)
+            pres_user.save(update_fields=["password"])
 
         # 4. AuthorityAssignment
         AuthorityAssignment.objects.update_or_create(

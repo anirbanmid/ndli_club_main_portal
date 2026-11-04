@@ -271,7 +271,7 @@ export const InstitutionalEventModal: React.FC<InstitutionalEventModalProps> = (
                   <span>Institutional Event</span>
                 </div>
                 <p className="text-[11px] font-normal text-gray-500 mt-1">
-                  Main Club and departmental Sub-Clubs.
+                  {isSchool ? 'Whole institution event.' : 'Main Club and departmental Sub-Clubs.'}
                 </p>
               </button>
 

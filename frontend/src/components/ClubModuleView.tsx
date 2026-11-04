@@ -807,7 +807,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                 className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
               >
                 <Calendar className="h-4 w-4 text-amber-300" />
-                <span>{t("Schedule Institutional / Multi-Club Event")}</span>
+                <span>{activeClub.category === 'School' ? t("Schedule Event") : t("Schedule Institutional / Multi-Club Event")}</span>
               </button>
             </div>
           </div>
@@ -838,7 +838,9 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               <Calendar className="h-10 w-10 text-[#0D7751] mx-auto opacity-60" />
               <h4 className="text-sm font-bold text-[#103125]">{t("No Scheduled Activities or Events Yet")}</h4>
               <p className="text-xs text-[#5A7366] max-w-md mx-auto">
-                {t("Activities scheduled for this club appear here in real-time. Use 'Schedule Institutional / Multi-Club Event' above to create and publish verifiable events.")}
+                {activeClub.category === 'School'
+                  ? t("Activities scheduled for this club appear here in real-time. Use 'Schedule Event' above to create and publish events.")
+                  : t("Activities scheduled for this club appear here in real-time. Use 'Schedule Institutional / Multi-Club Event' above to create and publish verifiable events.")}
               </p>
             </div>
           )}

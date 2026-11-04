@@ -147,7 +147,7 @@ def seed_dummy_schools(apps, schema_editor):
                 "aishe_code": item["aishe_code"],
                 "state": state,
                 "district": district,
-                "status": Institution.Status.ACTIVE,
+                "status": "active",
             },
         )
 
@@ -158,7 +158,7 @@ def seed_dummy_schools(apps, schema_editor):
                 "institution": inst,
                 "name": item["club_name"],
                 "registration_no": item["reg_no"],
-                "status": Club.Status.ACTIVE,
+                "status": "active",
                 "date_of_approval": item["doa"],
                 "last_renewal_date": item["doa"],
                 "upcoming_renewal_date": date(
@@ -203,7 +203,7 @@ def seed_dummy_schools(apps, schema_editor):
             tier="President",
             defaults={
                 "from_date": item["doa"],
-                "status": AuthorityAssignment.Status.ACTIVE,
+                "status": "active",
             },
         )
 

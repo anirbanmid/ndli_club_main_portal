@@ -65,7 +65,7 @@ export const SchoolBulkUploadPanel: React.FC<SchoolBulkUploadPanelProps> = ({
     setErrorMsg(null);
     try {
       const data = await fetchSchoolCards(clubCode);
-      setCards(data);
+      setCards(data.cards || []);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to fetch school student roster.');
     } finally {

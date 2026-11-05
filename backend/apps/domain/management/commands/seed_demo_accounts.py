@@ -28,22 +28,20 @@ written to the immutable AuditLog via apps.audit.services.record().
 from __future__ import annotations
 
 from datetime import date
-from django.apps import apps
-from django.core.management.base import BaseCommand, CommandError
+
 from django.contrib.auth.hashers import make_password
-from django.utils import timezone
+from django.core.management.base import BaseCommand, CommandError
 
-from apps.accounts.models import User, AccountState, Category, SubRole
-from apps.domain.models import Club, Institution, AuthorityAssignment
-from apps.members.models import Membership, StudentMemberProfile
+from apps.accounts.models import AccountState, Category, SubRole, User
 from apps.audit import services as audit_services
-
+from apps.domain.models import AuthorityAssignment, Club, Institution, Membership
+from apps.members.models import StudentMemberProfile
 
 # --- Demo account specifications -------------------------------------------
 
 # Each HEI admin maps to an existing canonical institution + club
 # (seeded by 0004_seed_canonical_institutional_clubs migration).
-HEI_ADMINS = [
+HEI_ADMINS: list[dict[str, object]] = [
     {
         "username": "demo.pres.dati",
         "email": "demo.pres.dati@ndli.gov.in",
@@ -78,7 +76,7 @@ HEI_ADMINS = [
 
 # Each HEI student member maps to an existing canonical HEI institution + club.
 # Student/club member dashboards belong ONLY to HEI students per §G.a.
-HEI_STUDENT_MEMBERS = [
+HEI_STUDENT_MEMBERS: list[dict[str, object]] = [
     {
         "username": "demo.member.dati",
         "email": "demo.member.dati@ndli.gov.in",
@@ -168,7 +166,9 @@ def _audit_demo(
     )
 
 
-def _create_or_update_hei_admin(spec: dict, created_list: list) -> None:
+def _create_or_update_hei_admin(
+    spec: dict, created_list: list[dict[str, str | bool]]
+) -> None:
     """Create or update a HEI Central Admin demo account."""
     inst, club, state, zone = _resolve_domain(spec)
 
@@ -264,7 +264,9 @@ def _create_or_update_hei_admin(spec: dict, created_list: list) -> None:
     )
 
 
-def _create_or_update_hei_student_member(spec: dict, created_list: list) -> None:
+def _create_or_update_hei_student_member(
+    spec: dict, created_list: list[dict[str, str | bool]]
+) -> None:
     """Create or update a HEI Student Member demo account."""
     inst, club, state, zone = _resolve_domain(spec)
 
@@ -375,7 +377,7 @@ def _create_or_update_hei_student_member(spec: dict, created_list: list) -> None
     )
 
 
-def _clean_demo_data() -> None:
+def _clean_demo_data() -> int:
     """Delete all demo account data created by this command."""
     demo_emails = [
         "demo.pres.dati@ndli.gov.in",
@@ -424,33 +426,37 @@ class Command(BaseCommand):
         if options["clean"]:
             deleted = _clean_demo_data()
             self.stdout.write(
-                self.style.SUCCESS(f"Demo account data cleaned ({deleted} user(s) deleted).")
+                self.style.SUCCESS(
+                    f"Demo account data cleaned ({deleted} user(s) deleted)."
+                )
             )
             return
 
-        created = []
+        created: list[dict[str, str | bool]] = []
 
         # --- HEI Central Admins ---
         for spec in HEI_ADMINS:
             self.stdout.write(
-                f"\nCreating HEI Central Admin: {spec['first_name']} {spec['last_name']} "
+                f"\nCreating HEI Central Admin: "
+                f"{spec['first_name']} {spec['last_name']} "
                 f"({spec['email']})"
             )
             try:
                 _create_or_update_hei_admin(spec, created)
             except CommandError as exc:
-                raise CommandError(f"Failed to create {spec['email']}: {exc}")
+                raise CommandError(f"Failed to create {spec['email']}: {exc}") from exc
 
         # --- HEI Student Members ---
         for spec in HEI_STUDENT_MEMBERS:
             self.stdout.write(
-                f"\nCreating HEI Student Member: {spec['first_name']} {spec['last_name']} "
+                f"\nCreating HEI Student Member: "
+                f"{spec['first_name']} {spec['last_name']} "
                 f"({spec['email']})"
             )
             try:
                 _create_or_update_hei_student_member(spec, created)
             except CommandError as exc:
-                raise CommandError(f"Failed to create {spec['email']}: {exc}")
+                raise CommandError(f"Failed to create {spec['email']}: {exc}") from exc
 
         self.stdout.write("\n" + "=" * 60)
         self.stdout.write(self.style.SUCCESS("ALL DEMO ACCOUNTS PROCESSED"))
@@ -473,7 +479,8 @@ class Command(BaseCommand):
             self.style.WARNING(
                 "NOTE: These are DEMO accounts. Clean before client handover "
                 "using: python manage.py seed_demo_accounts --clean\n"
-                "School access: use president.{springdale,shreevidya,sunrise,greenvalley,bvb}@school.test "
+                "School access: "
+                "president.{springdale,shreevidya,sunrise,greenvalley,bvb}@school.test "
                 "/ Dummy123456 (from 0012_seed_dummy_schools)"
             )
         )

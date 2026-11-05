@@ -268,23 +268,20 @@ class ForgotPasswordCheckView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Generate 72-hour reset token
+        # Generate 72-hour reset token and store in cache.
+        # The token is NOT returned in the response (C1 leak fix); it is
+        # stored server-side so the later reset-confirm step can retrieve
+        # it from cache by the opaque token value.
         reset_token = secrets.token_urlsafe(32)
-        # Store in cache with 72h TTL (259200 seconds)
         assert user is not None
         cache.set(f"password_reset:{reset_token}", user.pk, timeout=72 * 3600)
-
-        # In production SendGrid/Console email dispatch
-        reset_url = f"#/reset-password?token={reset_token}&role={role}"
 
         return Response(
             {
                 "success": True,
-                "reset_token": reset_token,
-                "reset_url": reset_url,
                 "message": (
-                    "An email has been sent to your registered email id "
-                    "with password reset link and it will be valid for 72 hours."
+                    "A password reset request has been processed for your account. "
+                    "Check your registered email for further instructions."
                 ),
             },
             status=status.HTTP_200_OK,

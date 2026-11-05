@@ -547,7 +547,8 @@ class CampusModuleTests(TestCase):
             "No database found, please register yourself first.",
         )
 
-        # 2. Registered Authority -> Dispatch 72-hour reset token
+        # 2. Registered Authority -> Dispatch 72-hour reset token (C1 leak fix:
+        # token is stored server-side in cache, NOT returned in the response).
         reg_resp = self.client.post(
             "/api/v1/accounts/password/forgot-check/",
             data={
@@ -557,14 +558,22 @@ class CampusModuleTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(reg_resp.status_code, 200)
-        reset_token = reg_resp.json()["reset_token"]
-        self.assertTrue(reset_token)
+        # reset_token is deliberately absent from the response;
 
         # 3. Confirm password reset
+        # Deploy a known token into cache so the confirm step can retrieve it.
+        import secrets
+
+        from django.core.cache import cache
+
+        authority_user = User.objects.get(email="pres.diat@delhi.ac.in")
+        token = secrets.token_urlsafe(32)
+        cache.set(f"password_reset:{token}", authority_user.pk, timeout=72 * 3600)
+
         confirm_resp = self.client.post(
             "/api/v1/accounts/password/reset-confirm/",
             data={
-                "reset_token": reset_token,
+                "reset_token": token,
                 "new_password": "FreshNewPassword@2026!",
             },
             content_type="application/json",

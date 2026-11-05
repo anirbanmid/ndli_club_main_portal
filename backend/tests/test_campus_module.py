@@ -586,6 +586,27 @@ class CampusModuleTests(TestCase):
         self.assertTrue(self.authority_user.check_password("FreshNewPassword@2026!"))
 
         # 4. Central Admin Emergency Reset
+        from apps.accounts import crypto
+        from apps.accounts.totp import new_totp_secret
+
+        # Enable TOTP on the target user so verify_totp_code works.
+        secret = new_totp_secret()
+        crypto.seal(secret)  # just to ensure the crypto layer works;
+        # provision_totp handles the sealing internally in production;
+        # here we directly set the encrypted secret and enable TOTP.
+        target_user = User.objects.get(email="pres.diat@delhi.ac.in")
+        target_user.totp_secret_encrypted = crypto.seal(secret)
+        target_user.totp_enabled = True
+        target_user.totp_last_counter = None
+        target_user.save(
+            update_fields=[
+                "totp_secret_encrypted",
+                "totp_enabled",
+                "totp_last_counter",
+                "updated_at",
+            ]
+        )
+
         admin_user = User.objects.create(
             username="central.admin",
             email="central.admin@ndli.gov.in",
@@ -596,12 +617,17 @@ class CampusModuleTests(TestCase):
         )
         self.client.force_login(admin_user)
 
+        # Generate a valid 6-digit TOTP code for the target user's secret.
+        import pyotp
+        totp = pyotp.TOTP(secret, interval=30)
+        valid_totp_code = totp.now()
+
         emerg_resp = self.client.post(
             "/api/v1/accounts/emergency-reset/",
             data={
                 "target_email": "pres.diat@delhi.ac.in",
                 "temp_password": "EmergencyResetPass@2026!",
-                "totp_code": "123456",
+                "totp_code": valid_totp_code,
             },
             content_type="application/json",
         )

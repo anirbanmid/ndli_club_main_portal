@@ -351,7 +351,8 @@ class CentralAdminEmergencyResetView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
-        from apps.accounts.models import User
+        from apps.accounts.models import Category, SubRole, User
+        from apps.accounts.totp import verify_totp_code
 
         target_email = str(request.data.get("target_email", "")).strip().lower()
         totp_code = str(request.data.get("totp_code", "")).strip()
@@ -363,18 +364,33 @@ class CentralAdminEmergencyResetView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Verify TOTP code (6-digit digits or emergency master pin)
-        if totp_code not in ("123456", "999999", "888888") and len(totp_code) != 6:
+        # Role gate: only central admin may invoke this gate.
+        # Checked before the target lookup so a non-central caller cannot
+        # enumerate account existence from a 404/403 difference.
+        requesting_user = request.user
+        requesting_is_central = (
+            requesting_user.category == Category.IIT_KGP_ADMIN
+            and requesting_user.sub_role == SubRole.CENTRAL_ADMIN
+        )
+        if not requesting_is_central:
             return Response(
-                {"detail": "Invalid TOTP verification code."},
+                {"detail": "Permission denied. Central admin privilege required."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         target_user = User.objects.filter(email__iexact=target_email).first()
-        if not target_user:
+
+        if target_user is None:
             return Response(
-                {"detail": "Authority account not found."},
+                {"detail": "No account found for the given email."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Verify TOTP code using the stored secret (RFC 6238, replay-window 1).
+        if not verify_totp_code(target_user, totp_code):
+            return Response(
+                {"detail": "Invalid TOTP verification code."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         target_user.set_password(temp_password)

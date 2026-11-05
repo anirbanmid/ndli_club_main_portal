@@ -4,5 +4,6 @@
 - ``dev``   local development (SQLite fallback, zero-setup tests)
 - ``prod``  production (requires PostgreSQL via DATABASE_URL)
 
-Select with DJANGO_SETTINGS_MODULE (default: config.settings.dev).
+Select with DJANGO_SETTINGS_MODULE. Entry points own their default:
+``manage.py`` -> dev, ``config.wsgi`` / ``config.asgi`` -> prod.
 """

@@ -55,9 +55,15 @@ DATABASES = {
 }
 
 # Production always uses Redis for cache and Celery.
+#
+# The backend is ResilientRedisCache, not stock RedisCache: this process has
+# no shell access and migrations run on deploy, so a Redis outage must degrade
+# to a process-local cache and log an ERROR rather than turn every throttled
+# view (login, public telemetry/directory/verify) into an HTTP 500. See
+# apps/core/cache.py for the degradation contract.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "BACKEND": "apps.core.cache.ResilientRedisCache",
         "LOCATION": env("REDIS_URL", "redis://redis:6379/0"),
     }
 }

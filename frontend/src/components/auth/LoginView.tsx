@@ -348,8 +348,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <span>🔓</span> {busy ? 'Verifying Credentials…' : 'Unlock System Access →'}
         </button>
 
-        {/* Development-only: hidden in production builds (import.meta.env.DEV). */}
-        {import.meta.env.DEV && (
+        {/* Development-only: hidden in production builds (import.meta.env.DEV).
+            CI e2e builds set VITE_SHOW_TEST_PANELS=1 so the hermetic Playwright
+            suite can still exercise the quick-fill flow. */}
+        {(import.meta.env.DEV || import.meta.env.VITE_SHOW_TEST_PANELS === '1') && (
         <div style={{
           marginTop: '0.75rem',
           padding: '0.6rem 0.8rem',

@@ -178,7 +178,10 @@ jobs:
         run: npm ci
       - name: Build
         working-directory: frontend
-        run: npm run build
+        # VITE_SHOW_TEST_PANELS=1 keeps the dev-only quick-fill panels in the
+        # bundle so the hermetic e2e suite can exercise them; production builds
+        # (render/lighthouse/axe jobs) run plain `npm run build` without it.
+        run: VITE_SHOW_TEST_PANELS=1 npm run build
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium

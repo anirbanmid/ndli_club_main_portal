@@ -341,8 +341,9 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
         </div>
 
         {/* Quick 1-Click Access for Evaluators & Reviewers — development-only,
-            hidden in production builds (import.meta.env.DEV). */}
-        {import.meta.env.DEV && (
+            hidden in production builds (import.meta.env.DEV). CI e2e builds set
+            VITE_SHOW_TEST_PANELS=1 so Playwright can exercise this flow. */}
+        {(import.meta.env.DEV || import.meta.env.VITE_SHOW_TEST_PANELS === '1') && (
         <div className="p-6 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] text-left space-y-4 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-[#0D7751] flex items-center gap-1.5">

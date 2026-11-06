@@ -569,13 +569,8 @@ class VerifyEmployeePasswordView(APIView):
                     "message": "Password verified successfully.",
                 }
             )
-        if pwd in ("admin123", "emp123", "employee123", "Admin@123"):
-            return Response(
-                {
-                    "success": True,
-                    "message": "Password verified successfully.",
-                }
-            )
+        # No hardcoded master-password fallback (SEC-fix): only the
+        # authenticated employee's real password verifies.
         return Response({"detail": "Incorrect employee password."}, status=400)
 
 
@@ -1095,26 +1090,22 @@ class EventCertificateApprovalView(APIView):
                 status=400,
             )
 
+        # The actor must re-enter their OWN account password. No hardcoded
+        # master passwords: verification fails closed when there is no user,
+        # no password checker, or the password does not match (SEC-fix).
         user = authenticated_user(request)
         if (
-            user
-            and hasattr(user, "check_password")
-            and not user.check_password(password)
+            user is None
+            or not hasattr(user, "check_password")
+            or not user.check_password(password)
         ):
-            if password not in (
-                "admin123",
-                "emp123",
-                "Admin@123",
-                "Club@123",
-                "Password@123",
-            ):
-                return Response(
-                    {
-                        "detail": "Invalid password verification.",
-                        "code": "invalid_credentials",
-                    },
-                    status=403,
-                )
+            return Response(
+                {
+                    "detail": "Invalid password verification.",
+                    "code": "invalid_credentials",
+                },
+                status=403,
+            )
 
         evt = ClubEvent.objects.select_related("host_club").filter(pk=pk).first()
         if not evt:

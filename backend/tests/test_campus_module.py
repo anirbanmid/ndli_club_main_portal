@@ -1124,11 +1124,21 @@ class CampusModuleTests(TestCase):
         )
         self.assertIn(unauth_resp.status_code, (401, 403))
 
+        # 1b. Authenticated but WRONG password must be rejected — the old
+        # hardcoded master-password backdoor (admin123/Club@123/...) is gone.
+        self.client.force_login(self.authority_user)
+        wrong_resp = self.client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "Club@123", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertEqual(wrong_resp.status_code, 403)
+
         # 2. Authenticated request with password challenge
         self.client.force_login(self.authority_user)
         resp = self.client.post(
             f"/api/v1/activities/events/{event.id}/approve-certificates/",
-            data={"password": "Club@123", "approve_all": True},
+            data={"password": "PresPass@2026!", "approve_all": True},
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 200)

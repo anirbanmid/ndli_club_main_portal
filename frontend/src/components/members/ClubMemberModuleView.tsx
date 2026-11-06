@@ -340,7 +340,9 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
           </p>
         </div>
 
-        {/* Quick 1-Click Access for Evaluators & Reviewers */}
+        {/* Quick 1-Click Access for Evaluators & Reviewers — development-only,
+            hidden in production builds (import.meta.env.DEV). */}
+        {import.meta.env.DEV && (
         <div className="p-6 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] text-left space-y-4 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-[#0D7751] flex items-center gap-1.5">
@@ -403,6 +405,7 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
             </button>
           </div>
         </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           {onSignIn && (

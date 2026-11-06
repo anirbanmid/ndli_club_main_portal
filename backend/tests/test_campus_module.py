@@ -1519,10 +1519,17 @@ class CampusModuleTests(TestCase):
 
     def test_student_test_accounts_login_and_state(self) -> None:
         """Verify seeded test student accounts and bhu.president exist from migrations
-        with active state and can authenticate with DEV_TEST captcha bypass using
-        username and email.
+        with active state and can authenticate with a real session captcha
+        (the DEV_TEST bypass is DEBUG-only) using username and email.
         """
         from apps.accounts.models import AccountState, User
+
+        def fresh_captcha(client: Client) -> str:
+            """Mint a live challenge and read its answer from the test session."""
+            client.get("/api/v1/accounts/captcha/")
+            row = client.session.get("login_captcha")
+            assert isinstance(row, dict), "captcha challenge was not issued"
+            return str(row["answer"])
 
         test_accounts = [
             ("student.bhu", "student.bhu@bhu.ac.in"),
@@ -1548,7 +1555,7 @@ class CampusModuleTests(TestCase):
                 data={
                     "username": username,
                     "password": "Password@123",
-                    "captcha": "DEV_TEST",
+                    "captcha": fresh_captcha(anon_client),
                 },
                 content_type="application/json",
                 HTTP_HOST="localhost",
@@ -1565,7 +1572,7 @@ class CampusModuleTests(TestCase):
                 data={
                     "username": email,
                     "password": "Password@123",
-                    "captcha": "DEV_TEST",
+                    "captcha": fresh_captcha(anon_client),
                 },
                 content_type="application/json",
                 HTTP_HOST="localhost",
@@ -1575,3 +1582,24 @@ class CampusModuleTests(TestCase):
                 200,
                 f"Login failed for {email}: {resp_email.content.decode()}",
             )
+
+    def test_dev_test_captcha_bypass_is_debug_only(self) -> None:
+        """The DEV_TEST captcha bypass must never work with DEBUG=False.
+
+        Production runs DEBUG=False, so the anti-bot gate cannot be skipped
+        from the public login form; local development (DEBUG=True) keeps the
+        convenience bypass.
+        """
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.test import RequestFactory, override_settings
+
+        from apps.accounts.captcha import consume_captcha, issue_captcha
+
+        request = RequestFactory().get("/api/v1/accounts/login/")
+        request.session = SessionStore()
+        issue_captcha(request)  # a live challenge exists in the session
+
+        with override_settings(DEBUG=False):
+            self.assertFalse(consume_captcha(request, "DEV_TEST"))
+        with override_settings(DEBUG=True):
+            self.assertTrue(consume_captcha(request, "DEV_TEST"))

@@ -348,6 +348,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <span>🔓</span> {busy ? 'Verifying Credentials…' : 'Unlock System Access →'}
         </button>
 
+        {/* Development-only: hidden in production builds (import.meta.env.DEV). */}
+        {import.meta.env.DEV && (
         <div style={{
           marginTop: '0.75rem',
           padding: '0.6rem 0.8rem',
@@ -447,6 +449,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </button>
           </div>
         </div>
+        )}
       </form>
 
       <div className="lock-footer-info">

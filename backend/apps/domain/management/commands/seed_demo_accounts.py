@@ -23,6 +23,11 @@ Usage:
 Single source of truth: this is the ONLY command that creates demo accounts.
 It is idempotent (safe to run multiple times). Every account creation is
 written to the immutable AuditLog via apps.audit.services.record().
+
+Demo accounts are created with must_change_password=False: they are
+development-phase test credentials (repo-public by design, purged at client
+handover) and must have FULL functional access from first login — the
+frontend has no forced password-change redirect.
 """
 
 from __future__ import annotations
@@ -187,7 +192,7 @@ def _create_or_update_hei_admin(
             "state": state,
             "zone": zone,
             "password": make_password(spec["password"]),
-            "must_change_password": True,
+            "must_change_password": False,
         },
     )
 
@@ -203,7 +208,7 @@ def _create_or_update_hei_admin(
         user.state = state
         user.zone = zone
         user.password = make_password(spec["password"])
-        user.must_change_password = True
+        user.must_change_password = False
         user.save(
             update_fields=[
                 "email",
@@ -285,7 +290,7 @@ def _create_or_update_hei_student_member(
             "state": state,
             "zone": zone,
             "password": make_password(spec["password"]),
-            "must_change_password": True,
+            "must_change_password": False,
         },
     )
 
@@ -300,7 +305,7 @@ def _create_or_update_hei_student_member(
         user.state = state
         user.zone = zone
         user.password = make_password(spec["password"])
-        user.must_change_password = True
+        user.must_change_password = False
         user.save(
             update_fields=[
                 "email",

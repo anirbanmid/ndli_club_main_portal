@@ -216,6 +216,12 @@ class ForgotPasswordCheckView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            early = _throttled("reset_request", 3, request)
+            if early:
+                return early
         import secrets
 
         from django.core.cache import cache
@@ -296,6 +302,12 @@ class PasswordResetConfirmView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            early = _throttled("reset_confirm", 10, request)
+            if early:
+                return early
         from django.core.cache import cache
 
         from apps.accounts.models import User
@@ -329,6 +341,19 @@ class PasswordResetConfirmView(APIView):
             return Response(
                 {"detail": "User record not found.", "code": "user_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            from rest_framework.exceptions import ValidationError
+
+            from apps.accounts.passwords import validate_password_strength
+
+            validate_password_strength(new_password)
+        except ValidationError as exc:
+            raw = exc.detail if isinstance(exc.detail, (list, tuple)) else [exc.detail]
+            return Response(
+                {"detail": " ".join(str(m) for m in raw), "code": "weak_password"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         user.set_password(new_password)

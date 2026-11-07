@@ -464,6 +464,12 @@ class SubClubListView(APIView):
         return Response({"sub_clubs": data, "count": len(data)})
 
     def post(self, request: Request, club_code: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            early = _throttled("subclub_create", 10, request)
+            if early:
+                return early
         import secrets
 
         from apps.domain.models import SubClub
@@ -538,6 +544,12 @@ class SubClubDetailView(APIView):
     parser_classes = [JSONParser]
 
     def patch(self, request: Request, club_code: str, subclub_id: int) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            early = _throttled("subclub_update", 10, request)
+            if early:
+                return early
         from apps.domain.models import SubClub
 
         club = _resolve_club_for_subclubs(club_code)
@@ -655,6 +667,12 @@ class ClubBrandingView(APIView):
         )
 
     def post(self, request: Request, club_code: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            early = _throttled("branding_update", 10, request)
+            if early:
+                return early
         from apps.domain.models import Club
 
         club = (

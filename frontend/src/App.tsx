@@ -65,6 +65,9 @@ export function App({ ssrLocation }: AppProps = {}) {
   );
   const [loginSourceBranch, setLoginSourceBranch] = useState<BranchType>('landing');
   const [loginSourceTab, setLoginSourceTab] = useState<string>('home');
+  // Explicit sign-in clicks must show the gate even with a live session;
+  // only the /login/?next= URL door (M5-D1) auto-resumes an existing session.
+  const [loginResume, setLoginResume] = useState<boolean>(initialRoute.tab === 'login');
   // Admin module is login-gated (owner 2026-10-26: "like the previous project").
   // The gate probes the real session: a signed-in iit_kgp_admin skips it.
   const [adminAuthed, setAdminAuthed] = useState(false);
@@ -293,6 +296,7 @@ export function App({ ssrLocation }: AppProps = {}) {
         onOpenLogin={() => {
           setLoginSourceBranch(currentBranch);
           setLoginSourceTab(currentTab === 'login' ? 'home' : currentTab);
+          setLoginResume(false);
           setCurrentBranch('landing');
           setCurrentTab('login');
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -363,6 +367,7 @@ export function App({ ssrLocation }: AppProps = {}) {
             {currentTab === 'login' && (
               <LoginView
                 initialNext={initialRoute.next}
+                resumeSession={loginResume}
                 onDismiss={() => {
                   setCurrentBranch(loginSourceBranch);
                   setCurrentTab(loginSourceTab || 'home');
@@ -525,6 +530,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                 }}
                 onAuthoritySignIn={() => {
                   setLoginSourceBranch('club_module');
+                  setLoginResume(false);
                   setCurrentBranch('landing');
                   setCurrentTab('login');
                 }}
@@ -566,6 +572,7 @@ export function App({ ssrLocation }: AppProps = {}) {
                   authenticatedAuthority={authenticatedAuthority}
                   onAuthoritySignIn={() => {
                     setLoginSourceBranch('club_module');
+                    setLoginResume(false);
                     setCurrentBranch('landing');
                     setCurrentTab('login');
                   }}

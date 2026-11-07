@@ -35,6 +35,10 @@ interface LoginViewProps {
   initialNext?: string;
   onNavigate?: (route: AppRoute) => void;
   onSignedIn?: (session: SessionPayload) => void;
+  /** When false, a live session must NOT auto-dismiss this gate: explicit
+   *  sign-in clicks expect a visible form. Only the /login/?next= URL door
+   *  (M5-D1) auto-resumes an existing session. */
+  resumeSession?: boolean;
   fullViewport?: boolean;
   onDismiss?: () => void;
 }
@@ -63,6 +67,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onNavigate,
   onSignedIn,
   fullViewport = true,
+  resumeSession = true,
   onDismiss,
 }) => {
   const [employeeCode, setEmployeeCode] = useState('');
@@ -108,6 +113,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   }, [returnTo, onNavigate]);
 
   useEffect(() => {
+    if (!resumeSession) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -124,7 +130,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [onSignedIn, returnToInterruptedRoute]);
+  }, [onSignedIn, returnToInterruptedRoute, resumeSession]);
 
   const handleSignIn = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();

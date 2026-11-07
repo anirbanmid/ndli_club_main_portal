@@ -1,0 +1,13 @@
+# M3/B-1: exclude secrets, caches, and build artifacts from Docker context
+.git
+.env*
+.venv
+node_modules
+dist
+**/__pycache__
+*.pyc
+backend/db.sqlite3
+backend/var
+backend/media
+*.log
+.openclaw

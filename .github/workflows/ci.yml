@@ -23,6 +23,10 @@ on:
     branches: [main]
   pull_request:
 
+# B-7: least-privilege — CI only needs read access to the repo.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint (ruff)
@@ -147,7 +151,7 @@ jobs:
         run: npm run build
       - name: Install synced Chrome + ChromeDriver (pinned)
         run: |
-          npx --yes browser-driver-manager install chrome@155.0.8059.84
+          npx --yes browser-driver-manager@2.0.1 install chrome@155.0.8059.84
           echo "CHROME_PATH=$HOME/.browser-driver-manager/chrome/linux-155.0.8059.84/chrome-linux64/chrome" >> "$GITHUB_ENV"
           echo "AXE_CHROMEDRIVER=$HOME/.browser-driver-manager/chromedriver/linux-155.0.8059.84/chromedriver-linux64/chromedriver" >> "$GITHUB_ENV"
       - name: Serve build and run axe accessibility check

@@ -167,18 +167,8 @@ export function App({ ssrLocation }: AppProps = {}) {
     };
   }, []);
 
-  // Read ?passkey= from URL query parameter (QR code scan target)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const passkey = params.get('passkey');
-      if (passkey) {
-        setPasskeyFromUrl(passkey);
-        setIsPasskeyModalOpen(true);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // A-7: ?passkey= query branch REMOVED (was an XSS/open-redirect vector).
+  // Only the fragment reader (#passkey=) below is used for QR code scans.
 
   // Read #passkey= from URL fragment (QR code scan target on /join/)
   useEffect(() => {
@@ -580,6 +570,8 @@ export function App({ ssrLocation }: AppProps = {}) {
                     setCurrentTab('login');
                   }}
                   onAuthorityQuickSignIn={async (authority) => {
+                    // A-1: only send hardcoded creds in dev/test builds
+                    if (!import.meta.env.DEV && import.meta.env.VITE_SHOW_TEST_PANELS !== '1') return;
                     setAuthenticatedClubId(authority.clubId);
                     setAuthenticatedAuthority(authority);
                     try {

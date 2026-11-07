@@ -709,7 +709,7 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
                     type="password"
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
-                    placeholder="Enter your login password (e.g. Password@123)"
+                    placeholder="Enter your login password"
                     required
                     className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-600 outline-none"
                   />

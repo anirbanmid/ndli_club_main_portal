@@ -6,11 +6,9 @@
  * STATE itself never lives on the client (P4: the server draft is the single
  * source; the client keeps only what the current step needs).
  *
- * localStorage (not sessionStorage) so a browser restart can still resume —
- * the server bounds the capability anyway: the draft's resume token expires
- * after 72 hours (services.RESUME_TOKEN_TTL_HOURS) and every later step
- * re-validates it. Cleared on submit, on a 404/410 verdict, and on explicit
- * "start a new wizard".
+ * A-8: sessionStorage (not localStorage) so the token dies with the tab —
+ * the server bounds the capability anyway (72h TTL). Cleared on submit,
+ * on a 404/410 verdict, and on explicit "start a new wizard".
  */
 
 export interface ResumeCapability {
@@ -24,7 +22,7 @@ const RESUME_KEY = 'ndli.onboarding.resume';
 export function saveResumeCapability(capability: ResumeCapability): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(RESUME_KEY, JSON.stringify(capability));
+    window.sessionStorage.setItem(RESUME_KEY, JSON.stringify(capability));
   } catch {
     // Storage unavailable — resume then works only via a pasted token (the
     // server draft still survives; nothing is lost, P5).
@@ -35,7 +33,7 @@ export function saveResumeCapability(capability: ResumeCapability): void {
 export function peekResumeCapability(): ResumeCapability | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(RESUME_KEY);
+    const raw = window.sessionStorage.getItem(RESUME_KEY);
     if (raw === null) return null;
     const parsed: unknown = JSON.parse(raw);
     if (
@@ -46,7 +44,7 @@ export function peekResumeCapability(): ResumeCapability | null {
     ) {
       return parsed as ResumeCapability;
     }
-    window.localStorage.removeItem(RESUME_KEY);
+    window.sessionStorage.removeItem(RESUME_KEY);
     return null;
   } catch {
     return null;
@@ -57,7 +55,7 @@ export function peekResumeCapability(): ResumeCapability | null {
 export function clearResumeCapability(): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem(RESUME_KEY);
+    window.sessionStorage.removeItem(RESUME_KEY);
   } catch {
     // Ignore: a stale capability is refused by the server anyway.
   }

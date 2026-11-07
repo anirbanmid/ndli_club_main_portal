@@ -12,10 +12,23 @@ const RETURN_TO_KEY = 'ndli.auth.returnTo';
 
 /**
  * Open-redirect guard: local absolute paths only ("/x"), never "//host",
- * never backslashes, never absolute URLs.
+ * never backslashes, never absolute URLs. A-5: rejects control chars and
+ * normalises through ``new URL`` to verify same-origin.
  */
 export function isSafeLocalPath(path: string): boolean {
-  return path.startsWith('/') && !path.startsWith('//') && !path.includes('\\');
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return false;
+  // Reject control characters (tab, newline, CR, DEL) used to bypass checks
+  for (const ch of path) {
+    const code = ch.charCodeAt(0);
+    if (code <= 0x20 || code === 0x7f) return false;
+  }
+  // Normalise and verify same-origin
+  try {
+    const u = new URL(path, window.location.origin);
+    return u.origin === window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
 /** Remember the route a login interrupted. Unsafe paths are dropped. */

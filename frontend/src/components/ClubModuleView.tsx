@@ -342,8 +342,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </button>
 
               <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
-                {/* NOTE FOR CLIENT HANDOVER: Remove this quick demo sign-in block prior to client handover */}
-                {onAuthorityQuickSignIn && presidentAuth && (
+                {/* A-1: Demo Sign In gated to dev-only builds */}
+                {(import.meta.env.DEV || import.meta.env.VITE_SHOW_TEST_PANELS === '1') && onAuthorityQuickSignIn && presidentAuth && (
                   <button
                     onClick={() => onAuthorityQuickSignIn({
                       name: presidentAuth.name,

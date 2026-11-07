@@ -315,6 +315,8 @@ class ActivityExportCSVView(APIView):
         except (PermissionError, LookupError):
             target = request.user
 
+        from apps.members.roster_csv import neutralize_cell
+
         rows = ActivityLog.objects.filter(employee=target).order_by("-timestamp")
         response = HttpResponse(content_type="text/csv")
         fn = f"activity_log_{target.username}.csv"
@@ -334,7 +336,7 @@ class ActivityExportCSVView(APIView):
         )
         for r in rows:
             writer.writerow(
-                [
+                [neutralize_cell(v) for v in [
                     str(r.activity_id),
                     r.timestamp.isoformat(),
                     r.support_type,
@@ -342,7 +344,7 @@ class ActivityExportCSVView(APIView):
                     "1" if r.priority_flag else "0",
                     r.club_code,
                     r.notes,
-                ]
+                ]]
             )
         return response
 
@@ -391,10 +393,12 @@ class EmployeeClubsExportCSVView(APIView):
                 "joint_activities_count",
             ]
         )
+        from apps.members.roster_csv import neutralize_cell
+
         clubs = get_all_canonical_clubs()
         for c in clubs:
             writer.writerow(
-                [
+                [neutralize_cell(v) for v in [
                     c["club_id"],
                     c.get("registration_no") or c.get("registrationNo", ""),
                     c.get("institution_name") or c.get("name", ""),
@@ -417,7 +421,7 @@ class EmployeeClubsExportCSVView(APIView):
                     str(c.get("member_count", 0)),
                     str(c.get("solo_activities", 0)),
                     str(c.get("joint_activities", 0)),
-                ]
+                ]]
             )
         return response
 
@@ -785,13 +789,29 @@ class ClubEventListCreateView(APIView):
 
         publish_flag = data.get("publish") in (True, "true", "True", 1, "1")
 
+        joining_link = str(data.get("joining_link", "")).strip()
+        if joining_link:
+            from django.core.exceptions import ValidationError
+            from django.core.validators import URLValidator
+
+            try:
+                URLValidator(schemes=["http", "https"])(joining_link)
+            except ValidationError:
+                return Response(
+                    {
+                        "detail": "joining_link must be a valid http(s) URL.",
+                        "code": "invalid_joining_link",
+                    },
+                    status=400,
+                )
+
         event = ClubEvent.objects.create(
             event_ref=event_ref,
             host_club=club,
             scope=scope,
             title=title,
             description=description,
-            joining_link=str(data.get("joining_link", "")).strip(),
+            joining_link=joining_link,
             poster=poster,
             start_time=start_time_raw,
             end_time=end_time_raw,
@@ -1624,7 +1644,10 @@ class EventCertificatesZipDownloadView(APIView):
             ]
             writer = csv.DictWriter(manifest_csv_buffer, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(manifest_rows)
+            from apps.members.roster_csv import neutralize_cell
+
+            for row in manifest_rows:
+                writer.writerow({k: neutralize_cell(v) for k, v in row.items()})
             zf.writestr("manifest.csv", manifest_csv_buffer.getvalue())
 
         zip_bytes = zip_buffer.getvalue()

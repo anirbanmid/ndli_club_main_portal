@@ -41,6 +41,19 @@ interface EventParticipationCardProps {
   onRefresh: () => void;
 }
 
+/** A-6: joining_link is external input — only render http(s) URLs as href
+ *  (javascript:/data:/vbscript: etc. are dropped; server validates too, this
+ *  is render-time defense in depth). */
+function safeJoiningHref(link?: string): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
   event,
   isAuthority,
@@ -107,6 +120,7 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
 
   const isWindowOpen = now >= windowStartMs && now <= windowEndMs;
   const isBeforeWindow = now < windowStartMs;
+  const joinHref = safeJoiningHref(event.joining_link);
   const isEventOver = now >= endTimeMs || event.status === 'completed';
 
   const formatCountdown = (targetMs: number) => {
@@ -337,9 +351,9 @@ export const EventParticipationCard: React.FC<EventParticipationCardProps> = ({
             <Calendar className="h-3.5 w-3.5 text-emerald-700" />
             <span>{new Date(event.start_time).toLocaleString()}</span>
           </div>
-          {event.joining_link && (
+          {joinHref && (
             <a
-              href={event.joining_link}
+              href={joinHref}
               target="_blank"
               rel="noreferrer"
               className="text-emerald-700 hover:text-emerald-900 font-bold flex items-center space-x-1 hover:underline truncate"

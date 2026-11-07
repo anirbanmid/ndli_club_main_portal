@@ -49,11 +49,14 @@ if (!fs.existsSync(bundle) || sha256(bundle) !== BUNDLE_SHA) {
 if (sha256(bundle) !== BUNDLE_SHA) { console.error("STOP: bundle sha256 mismatch"); process.exit(1); }
 console.log("vendor assets OK (sha256 verified)");
 
-// 3) swagger-init.js = the init currently inline on the live page (captured verbatim)
-const live = await (await fetch("https://ndli-club-portal.onrender.com/api/docs/")).text();
-const blocks = [...live.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-if (blocks.length === 0) { console.error("STOP: no inline script found on live page"); process.exit(1); }
-writeLF(path.join(dir, "swagger-init.js"), blocks[blocks.length - 1]);
+// 3) swagger-init.js is vendored in-repo + hash-pinned (B-8: the old step
+// scraped the LIVE production /api/docs/ page for the init script - an
+// unpinned supply-chain hole, and that page is behind the admin gate now).
+const INIT_SHA = "72ab32cf4b1f1d55c8098e9cef470ffff987ecb545ad545c1ff3cb66b7ed4475";
+const initFile = path.join(dir, "swagger-init.js");
+if (!fs.existsSync(initFile)) { console.error("STOP: swagger-init.js missing - restore it from git (vendored, not generated)"); process.exit(1); }
+if (sha256(initFile) !== INIT_SHA) { console.error("STOP: swagger-init.js sha256 mismatch"); process.exit(1); }
+console.log("swagger-init.js OK (vendored, sha256 verified - no live fetch)");
 
 // 4) template + test pins
 writeLF("backend/apps/core/templates/core/api_docs.html", "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <title>NDLI Club Main Portal API</title>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <link rel=\"icon\" href=\"/static/swagger-ui/favicon-32x32.png\">\n    <link rel=\"stylesheet\" href=\"/static/swagger-ui/swagger-ui.css\">\n    <style>\n      html { box-sizing: border-box; overflow-y: scroll; }\n      *, *:after, *:before { box-sizing: inherit; }\n      body { background: #fafafa; margin: 0; }\n    </style>\n  </head>\n  <body>\n    <!-- M4H: CSP-clean API docs. All assets are same-origin (vendored\n         swagger-ui-dist 5.34.0 under apps/core/static/swagger-ui/) and the\n         init lives in an external file — no inline script, no CDN. The P0\n         Content-Security-Policy (script-src 'self') is untouched. -->\n    <div id=\"swagger-ui\"></div>\n    <script src=\"/static/swagger-ui/swagger-ui-bundle.js\"></script>\n    <script src=\"/static/swagger-ui/swagger-ui-standalone-preset.js\"></script>\n    <script src=\"/static/swagger-ui/swagger-init.js\"></script>\n  </body>\n</html>\n");

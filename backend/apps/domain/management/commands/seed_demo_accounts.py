@@ -6,7 +6,11 @@ and MUST be cleaned before client handover.
 
 Creates the minimum set of accounts needed when no email server is deployed:
 
-    * 2 HEI Central Admin accounts (ACTIVE, no email verification needed)
+    * 2 institution Club Admin accounts (ACTIVE) — category ``club_admin``,
+      sub-role ``club_president``: BHU + IIT Kharagpur club dashboards with
+      full read+edit inside their own club scope. NOT central admin (owner
+      fix 2026-11-08: the first demo pair was wrongly scoped as IIT Kgp
+      Central Admin and is purged by this command on every run).
     * 2 HEI Student Member accounts (ACTIVE, no email verification needed)
 
 Schools do NOT have individual student dashboards per requirements §G.a
@@ -44,38 +48,45 @@ from apps.members.models import StudentMemberProfile
 
 # --- Demo account specifications -------------------------------------------
 
-# Each HEI admin maps to an existing canonical institution + club
+# Each club admin maps to an existing canonical institution + club
 # (seeded by 0004_seed_canonical_institutional_clubs migration).
-HEI_ADMINS: list[dict[str, object]] = [
+#
+# SCOPE FIX 2026-11-08 (owner): the first demo pair was created with
+# category IIT_KGP_ADMIN / sub-role CENTRAL_ADMIN and therefore logged into
+# the IIT Kgp CENTRAL ADMIN dashboard — an unwanted duplicate of the real
+# central-admin login and a security/ambiguity risk. The pair below is
+# category CLUB_ADMIN / sub-role CLUB_PRESIDENT: full read+edit of the OWN
+# club's dashboard (BHU + IIT Kharagpur), never the admin module.
+CLUB_ADMINS: list[dict[str, object]] = [
     {
-        "username": "demo.pres.dati",
-        "email": "demo.pres.dati@ndli.gov.in",
-        "password": "DemoHEI1!2026",
-        "first_name": "Demo President",
-        "last_name": "DATI",
-        "category": Category.IIT_KGP_ADMIN,
-        "sub_role": SubRole.CENTRAL_ADMIN,
-        "institution_code": "INST-DATI-001",
-        "club_code": "NDLI-EMP01-002",
-        "state_code": "DELHI",
+        "username": "demo.club.bhu",
+        "email": "demo.club.bhu@ndli.gov.in",
+        "password": "DemoClub1!2026",
+        "first_name": "Demo Club",
+        "last_name": "BHU",
+        "category": Category.CLUB_ADMIN,
+        "sub_role": SubRole.CLUB_PRESIDENT,
+        "institution_code": "INST-BHU-008",
+        "club_code": "CLUB-BHU-008",
+        "state_code": "UTTAR_PRADESH",
         "zone_code": "NORTH",
         "authority_tier": AuthorityAssignment.Tier.PRESIDENT,
-        "authority_from": date(2026, 11, 5),
+        "authority_from": date(2026, 11, 8),
     },
     {
-        "username": "demo.pres.iitkgp",
-        "email": "demo.pres.iitkgp@ndli.gov.in",
-        "password": "DemoHEI2!2026",
-        "first_name": "Demo President",
+        "username": "demo.club.iitkgp",
+        "email": "demo.club.iitkgp@ndli.gov.in",
+        "password": "DemoClub2!2026",
+        "first_name": "Demo Club",
         "last_name": "IITKGP",
-        "category": Category.IIT_KGP_ADMIN,
-        "sub_role": SubRole.CENTRAL_ADMIN,
+        "category": Category.CLUB_ADMIN,
+        "sub_role": SubRole.CLUB_PRESIDENT,
         "institution_code": "INST-IITKGP-001",
         "club_code": "CLUB-IITKGP-001",
         "state_code": "WEST_BENGAL",
         "zone_code": "EAST",
         "authority_tier": AuthorityAssignment.Tier.PRESIDENT,
-        "authority_from": date(2026, 11, 5),
+        "authority_from": date(2026, 11, 8),
     },
 ]
 
@@ -171,10 +182,10 @@ def _audit_demo(
     )
 
 
-def _create_or_update_hei_admin(
+def _create_or_update_club_admin(
     spec: dict, created_list: list[dict[str, str | bool]]
 ) -> None:
-    """Create or update a HEI Central Admin demo account."""
+    """Create or update an institution Club Admin demo account."""
     inst, club, state, zone = _resolve_domain(spec)
 
     user, was_created = User.objects.get_or_create(
@@ -239,7 +250,7 @@ def _create_or_update_hei_admin(
     )
 
     _audit_demo(
-        action="demo.hei_admin.create",
+        action="demo.club_admin.create",
         actor_label="seed_demo_accounts",
         object_type="user",
         object_id=user.username,
@@ -258,7 +269,7 @@ def _create_or_update_hei_admin(
 
     created_list.append(
         {
-            "type": "HEI Central Admin",
+            "type": "Club Admin",
             "username": user.username,
             "email": user.email,
             "password": spec["password"],
@@ -382,11 +393,46 @@ def _create_or_update_hei_student_member(
     )
 
 
+def _purge_legacy_central_admin_demos() -> list[str]:
+    """Delete the wrongly-scoped demo pair (owner fix 2026-11-08).
+
+    ``demo.pres.dati`` / ``demo.pres.iitkgp`` were created as IIT Kgp
+    Central Admins and logged into the central-admin dashboard — an
+    unwanted duplicate login surface. Removed on every create run so
+    existing databases converge; every deletion is audited.
+    """
+    removed: list[str] = []
+    for username in ("demo.pres.dati", "demo.pres.iitkgp"):
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            continue
+        detail = {
+            "email": user.email,
+            "legacy_category": str(user.category),
+            "legacy_sub_role": str(user.sub_role),
+            "demo": True,
+        }
+        user.delete()
+        removed.append(username)
+        _audit_demo(
+            action="demo.legacy_scope.revoke",
+            actor_label="seed_demo_accounts",
+            object_type="user",
+            object_id=username,
+            detail=detail,
+        )
+    return removed
+
+
 def _clean_demo_data() -> int:
     """Delete all demo account data created by this command."""
     demo_emails = [
+        # Legacy wrongly-scoped pair (central-admin scope, purged on sight).
         "demo.pres.dati@ndli.gov.in",
         "demo.pres.iitkgp@ndli.gov.in",
+        # Current pair.
+        "demo.club.bhu@ndli.gov.in",
+        "demo.club.iitkgp@ndli.gov.in",
         "demo.member.dati@ndli.gov.in",
         "demo.member.iitkgp@ndli.gov.in",
     ]
@@ -412,7 +458,8 @@ def _clean_demo_data() -> int:
 
 class Command(BaseCommand):
     help = (
-        "Create demo accounts (2 HEI Central Admin + 2 HEI Student Member) "
+        "Create demo accounts (2 institution Club Admin + "
+        "2 HEI Student Member) "
         "for portal verification without an email server. "
         "Demo test data — clean before client handover. "
         "Schools do NOT have individual student dashboards; school access is "
@@ -439,15 +486,23 @@ class Command(BaseCommand):
 
         created: list[dict[str, str | bool]] = []
 
-        # --- HEI Central Admins ---
-        for spec in HEI_ADMINS:
+        # The wrongly-scoped central-admin demo pair must not survive.
+        for username in _purge_legacy_central_admin_demos():
             self.stdout.write(
-                f"\nCreating HEI Central Admin: "
+                self.style.WARNING(
+                    f"Removed legacy wrongly-scoped demo account: {username}"
+                )
+            )
+
+        # --- Institution Club Admins (club dashboard, own club scope) ---
+        for spec in CLUB_ADMINS:
+            self.stdout.write(
+                f"\nCreating Club Admin: "
                 f"{spec['first_name']} {spec['last_name']} "
                 f"({spec['email']})"
             )
             try:
-                _create_or_update_hei_admin(spec, created)
+                _create_or_update_club_admin(spec, created)
             except CommandError as exc:
                 raise CommandError(f"Failed to create {spec['email']}: {exc}") from exc
 

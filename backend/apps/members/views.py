@@ -928,12 +928,20 @@ class StudentJoinRegisterView(APIView):
         from datetime import timedelta
 
         from django.db import transaction
-        from django.db.models import Q
 
         from apps.accounts.models import AccountState, Category, SubRole, User
+
+        # C4(e): per-IP throttle to prevent mass enrollment / brute-force
+        from apps.accounts.throttles import client_ip, sliding_window_allow
         from apps.clubs import services as club_services
-        from apps.domain.models import Club
         from apps.members.models import JoinRequest, StudentMemberProfile
+
+        if not sliding_window_allow(f"members:register:{client_ip(request)}", 10, 60):
+            return Response(
+                {"detail": "Too many attempts. Try again in a minute.",
+                 "code": "throttled"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
         data = request.data
         passkey = str(data.get("passkey", "")).strip()
@@ -943,7 +951,8 @@ class StudentJoinRegisterView(APIView):
         password = str(data.get("password", "")).strip()
         department = str(data.get("department", "")).strip()
         roll_number = str(data.get("roll_number", "")).strip()
-        auto_activate = bool(data.get("auto_activate"))
+        # C4(b): activation is NEVER client-controlled — the server derives it
+        # from the roster pre-approval / settings below.
 
         if (
             not passkey
@@ -964,21 +973,14 @@ class StudentJoinRegisterView(APIView):
         if gender not in ("male", "female", "other"):
             gender = "other"
 
-        # Resolve Club via Passkey
+        # Resolve Club via Passkey ONLY (C4c): the previous fallback accepted a
+        # public club/institution code as an enrollment credential.
         club = None
         try:
             passkey_row = club_services.resolve_passkey(passkey)
             club = passkey_row.club
         except Exception:
-            club = (
-                Club.objects.filter(
-                    Q(code__iexact=passkey) | Q(institution__code__iexact=passkey)
-                )
-                .select_related(
-                    "institution", "institution__state", "institution__state__zone"
-                )
-                .first()
-            )
+            passkey_row = None
 
         if not club:
             return Response(
@@ -1014,7 +1016,6 @@ class StudentJoinRegisterView(APIView):
 
         auto_activate = bool(
             (preapproved_entry is not None and name_matches)
-            or auto_activate
             or getattr(settings, "AUTO_ACTIVATE_STUDENTS", False)
             or (settings.DEBUG and not getattr(settings, "TESTING", False))
         )
@@ -1023,6 +1024,20 @@ class StudentJoinRegisterView(APIView):
         if existing_user is not None:
             from apps.domain.models import Membership
 
+            # C4(a): hard-fail for any non-student account — blocks privileged
+            # account takeover via re-registration.  Students without an active
+            # membership are allowed (cross-institution transfer re-registration).
+            if existing_user.category != Category.STUDENT_MEMBER:
+                return Response(
+                    {
+                        "detail": (
+                            "An active account with this email address is already "
+                            "registered in a club."
+                        ),
+                        "code": "email_exists",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             has_active_membership = Membership.objects.filter(
                 user=existing_user, status=Membership.Status.ACTIVE
             ).exists()
@@ -1040,6 +1055,23 @@ class StudentJoinRegisterView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+        # C4(d): enforce password policy before any set_password call
+        from apps.accounts.passwords import validate_password_strength
+
+        try:
+            validate_password_strength(password)
+        except Exception:
+            return Response(
+                {
+                    "detail": (
+                        "Password does not meet strength requirements. "
+                        "Minimum 10 characters with mixed character types."
+                    ),
+                    "code": "weak_password",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         username = email
         if (
@@ -1194,19 +1226,41 @@ class TerminateMembershipView(APIView):
         from django.db import transaction
 
         from apps.accounts.models import User
+        from apps.accounts.throttles import client_ip, sliding_window_allow
+        from apps.clubs import services as club_services
         from apps.domain.models import Club, Membership
         from apps.members.models import JoinRequest, StudentMemberProfile
+
+        # C5: per-IP throttle
+        if not sliding_window_allow(f"members:terminate:{client_ip(request)}", 10, 60):
+            return Response(
+                {"detail": "Too many attempts. Try again in a minute.",
+                 "code": "throttled"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
         data = request.data
         email = str(data.get("email", "")).strip().lower()
         club_code = str(data.get("club_code", "")).strip()
+        # C5: require the NEW club's passkey as identity proof
+        new_club_passkey = str(data.get("passkey", "")).strip()
 
-        if not email or not club_code:
+        if not email or not club_code or not new_club_passkey:
             return Response(
                 {
-                    "detail": "Email and club_code are both required.",
+                    "detail": "Email, club_code, and passkey are all required.",
                     "code": "missing_fields",
                 },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # C5: resolve new club passkey — reject if invalid
+        try:
+            new_passkey_row = club_services.resolve_passkey(new_club_passkey)
+            new_club = new_passkey_row.club
+        except Exception:
+            return Response(
+                {"detail": "Invalid passkey.", "code": "invalid_passkey"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -1216,23 +1270,29 @@ class TerminateMembershipView(APIView):
             .filter(code__iexact=club_code)
             .first()
         )
+
+        # C5: unify all not-found paths into a single 404 (no enumeration)
         if not club:
             return Response(
-                {
-                    "detail": f"Club '{club_code}' not found.",
-                    "code": "club_not_found",
-                },
+                {"detail": "Membership not found.", "code": "membership_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # C5: reject when new club == old club (no self-termination)
+        if club.pk == new_club.pk:
+            return Response(
+                {
+                    "detail": "Cannot terminate membership at the same club.",
+                    "code": "same_club",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Find the user by email
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
             return Response(
-                {
-                    "detail": f"No account found with email '{email}'.",
-                    "code": "user_not_found",
-                },
+                {"detail": "Membership not found.", "code": "membership_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -1245,13 +1305,7 @@ class TerminateMembershipView(APIView):
         ).exists()
         if not profile_exists and not membership_exists:
             return Response(
-                {
-                    "detail": (
-                        f"No membership found for '{email}' at "
-                        f"{club.name} ({club_code})."
-                    ),
-                    "code": "no_membership",
-                },
+                {"detail": "Membership not found.", "code": "membership_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

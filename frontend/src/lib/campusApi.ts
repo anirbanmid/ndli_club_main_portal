@@ -976,6 +976,7 @@ export interface TerminateMembershipResult {
 export async function terminateMembership(
   email: string,
   clubCode: string,
+  passkey: string,
 ): Promise<TerminateMembershipResult> {
   const res = await fetch(`${MEMBERS_API_BASE}/students/terminate-membership/`, {
     method: 'POST',
@@ -985,7 +986,7 @@ export async function terminateMembership(
       ...csrfHeader(),
     },
     credentials: 'include',
-    body: JSON.stringify({ email, club_code: clubCode }),
+    body: JSON.stringify({ email, club_code: clubCode, passkey }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {

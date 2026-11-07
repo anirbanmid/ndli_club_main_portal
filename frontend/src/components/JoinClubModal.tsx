@@ -120,8 +120,8 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
     e.preventDefault();
     setErrorMsg('');
 
-    if (!password || password.length < 6) {
-      setErrorMsg(t('Password must be at least 6 characters.'));
+    if (!password || password.length < 10) {
+      setErrorMsg(t('Password must be at least 10 characters.'));
       return;
     }
 
@@ -179,7 +179,7 @@ export const JoinClubModal: React.FC<JoinClubModalProps> = ({
     setCrossInstitutionBusy(true);
     setErrorMsg('');
     try {
-      await terminateMembership(studentEmail.trim(), match.club_code);
+      await terminateMembership(studentEmail.trim(), match.club_code, passkeyInput.trim());
       // Termination succeeded — proceed to password phase for new institution
       setPhase('password');
     } catch (err: unknown) {

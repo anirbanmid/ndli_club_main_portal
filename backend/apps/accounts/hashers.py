@@ -94,9 +94,9 @@ class PBKDF2ClientHasher(PBKDF2PasswordHasher):
     """PBKDF2-HMAC-SHA256 password hasher — the CLIENT password standard.
 
     Owner 2026-10-27 (previous-project parity): "Passwords encrypted using
-    PBKDF2-HMAC-SHA256 with 100,000 rounds and 16-byte random salts."
+    PBKDF2-HMAC-SHA256 with 600,000 rounds and 16-byte random salts."
 
-    * 100,000 rounds pinned in code (``iterations``).
+    * 600,000 rounds pinned in code (``iterations``).
     * 16-byte random salts: ``salt_entropy = 128`` bits exactly — Django's
       ``BasePasswordHasher.salt()`` maps that to a CSPRNG salt.
     * Wire format is the stock ``pbkdf2_sha256$<rounds>$<salt>$<b64 digest>``
@@ -112,7 +112,7 @@ class PBKDF2ClientHasher(PBKDF2PasswordHasher):
     are untouched.
     """
 
-    iterations = 100_000
+    iterations = 600_000  # L1 (2026-11-08): OWASP 600k for PBKDF2-SHA256
     salt_entropy = 128  # exactly 16 random bytes (client standard)
 
     def harden_runtime(self, password: str, encoded: str) -> None:  # noqa: ARG002

@@ -15,13 +15,21 @@ import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403 - settings module style
-from .base import ALLOWED_HOSTS, env, env_list  # noqa: F401
+from .base import ALLOWED_HOSTS, SECRET_KEY, env, env_list  # noqa: F401
 
 DEBUG = False
 
-if SECRET_KEY == "dev-only-insecure-secret-key":  # noqa: F405 - imported from base
+# B-5 (settings batch 2026-11-08): fail closed on any placeholder or weak
+# key - .env.example used to ship "change-me-in-production" and sailed past
+# the old single-value guard. Short keys are rejected outright.
+if (
+    SECRET_KEY == "dev-only-insecure-secret-key"
+    or SECRET_KEY == "change-me-in-production"
+    or len(SECRET_KEY) < 32
+):
     raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY must be set when using config.settings.prod."
+        "DJANGO_SECRET_KEY must be set to a strong unique value (>= 32 "
+        "characters) when using config.settings.prod."
     )
 
 if not ALLOWED_HOSTS:

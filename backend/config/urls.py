@@ -10,6 +10,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from apps.accounts.policies import CategoryGate
 from apps.core import frontend as core_frontend
 from apps.core import views as core_views
 
@@ -53,14 +54,24 @@ urlpatterns = [
     path("health/", core_views.liveness, name="health-liveness"),
     path("health/ready/", core_views.readiness, name="health-readiness"),
     # OpenAPI schema (JSON/YAML) and interactive documentation.
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    # L2 (settings batch 2026-11-08): gated behind the admin module - the
+    # audit flagged this pair as a public unthrottled endpoint inventory.
+    # CategoryGate returns itself on call, so a configured instance works as
+    # a DRF permission class.
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(permission_classes=[CategoryGate("admin")]),
+        name="schema",
+    ),
     path(
         "api/docs/",
         # M4H: CSP-clean template (vendored swagger-ui, external init script).
         # The stock drf-spectacular page needs cdn.jsdelivr.net + inline JS,
         # both blocked by the P0 script-src 'self' policy (blank page bug).
         SpectacularSwaggerView.as_view(
-            url_name="schema", template_name="core/api_docs.html"
+            url_name="schema",
+            template_name="core/api_docs.html",
+            permission_classes=[CategoryGate("admin")],
         ),
         name="schema-swagger-ui",
     ),

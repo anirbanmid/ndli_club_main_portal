@@ -222,14 +222,19 @@ SPECTACULAR_SETTINGS = {
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", False)
+# L3/B-3 (settings batch 2026-11-08): no deploy path runs config.settings.prod
+# (audit B-3), so the Secure flags are forced on whenever DEBUG is False and
+# the env vars may only widen, never weaken, that guarantee.
+SESSION_COOKIE_SECURE = (not DEBUG) or env_bool("SESSION_COOKIE_SECURE", False)
+CSRF_COOKIE_SECURE = (not DEBUG) or env_bool("CSRF_COOKIE_SECURE", False)
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "no-referrer"
 
 # Password hashing — CLIENT STANDARD (owner 2026-10-27, previous-project
-# parity): PBKDF2-HMAC-SHA256, 100,000 rounds, 16-byte random salts.
+# parity): PBKDF2-HMAC-SHA256, 600,000 rounds (L1 bump 2026-11-08, was 100,000), 16-byte random salts.
 # PBKDF2ClientHasher is PRIMARY (set_password default + migration target);
 # Argon2id (M1-era) stays for verification and re-hashes to the standard on
 # the next successful login (its must_update is True).

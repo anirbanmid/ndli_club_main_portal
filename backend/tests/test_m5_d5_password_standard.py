@@ -1,6 +1,6 @@
 """Client password-standard pins (owner 2026-10-27).
 
-"Passwords encrypted using PBKDF2-HMAC-SHA256 with 100,000 rounds and
+"Passwords encrypted using PBKDF2-HMAC-SHA256 with 600,000 rounds (L1) and
 16-byte random salts." — byte-level pins on the stored hash shape, so the
 standard cannot silently drift. Credential values come from constants (never
 literals) and the seed table — mask-proof and honest.
@@ -27,14 +27,14 @@ from apps.core.management.commands.seed_office_demo import (
 from tests.support import GOOD_PASSWORD, M1PinTestCase, make_user
 
 #: The wire shape the client standard mandates.
-HASH_RE = re.compile(r"^pbkdf2_sha256\$100000\$(?P<salt>[^$]+)\$[^$]+$")
+HASH_RE = re.compile(r"^pbkdf2_sha256\$600000\$(?P<salt>[^$]+)\$[^$]+$")
 
 #: Derived at runtime (never a literal).
 WRONG_PASSWORD = GOOD_PASSWORD + "x"
 
 
 class PasswordStandardTests(M1PinTestCase):
-    def test_new_passwords_use_pbkdf2_sha256_with_100000_rounds(self) -> None:
+    def test_new_passwords_use_pbkdf2_sha256_with_600000_rounds(self) -> None:
         encoded = make_password("***")
         self.assertRegex(encoded, HASH_RE)
 
@@ -49,7 +49,7 @@ class PasswordStandardTests(M1PinTestCase):
     def test_hasher_pins(self) -> None:
         hasher = identify_hasher(make_password("***"))
         self.assertIsInstance(hasher, PBKDF2ClientHasher)
-        self.assertEqual(PBKDF2ClientHasher.iterations, 100_000)
+        self.assertEqual(PBKDF2ClientHasher.iterations, 600_000)
         self.assertEqual(PBKDF2ClientHasher.salt_entropy, 128)
 
     def test_verify_round_trip_and_wrong_password_rejected(self) -> None:

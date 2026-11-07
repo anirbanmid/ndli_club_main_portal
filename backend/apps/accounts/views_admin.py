@@ -26,16 +26,19 @@ from datetime import date, timedelta
 from typing import Any
 
 import pyotp
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.services import validate_password_strength
 from apps.activities.models import ActivityLog, SupportType
 from apps.audit.services import record as audit_record
 from apps.domain.models import Club, OfficerAssignment, State, Zone
@@ -295,6 +298,19 @@ class EmployeeCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # M6 (settings batch 2026-11-08): admin-created passwords must pass
+        # the same policy as self-service (audit M6, create path).
+        try:
+            validate_password_strength(password)
+        except (ValidationError, DRFValidationError) as exc:
+            return Response(
+                {
+                    "error": "Password does not meet the password policy.",
+                    "details": getattr(exc, "messages", None) or str(exc),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if User.objects.filter(username=emp_id).exists():
             return Response(
                 {"error": f"Employee ID '{emp_id}' already exists."},
@@ -415,6 +431,17 @@ class EmployeeUpdateView(APIView):
             officer.last_name = parts[1] if len(parts) > 1 else ""
 
         if password:
+            # M6: password updates run the same policy (audit M6 :417-418).
+            try:
+                validate_password_strength(password)
+            except (ValidationError, DRFValidationError) as exc:
+                return Response(
+                    {
+                        "error": "Password does not meet the password policy.",
+                        "details": getattr(exc, "messages", None) or str(exc),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             officer.set_password(password)
 
         if zone_input:
@@ -647,6 +674,18 @@ class AdminClubPasswordResetView(APIView):
 
         custom_pwd = str(request.data.get("custom_password", "")).strip()
         if custom_pwd and len(custom_pwd) >= 8:
+            # M6: club reset accepted any 8+ char string; run the real policy
+            # (PASSWORD_MIN_LENGTH is 10 - audit M6 :648-654).
+            try:
+                validate_password_strength(custom_pwd)
+            except (ValidationError, DRFValidationError) as exc:
+                return Response(
+                    {
+                        "error": "Password does not meet the password policy.",
+                        "details": getattr(exc, "messages", None) or str(exc),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             temp_password = custom_pwd
         else:
             chars = string.ascii_letters + string.digits + "!@#$%^&*"

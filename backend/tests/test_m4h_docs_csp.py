@@ -14,6 +14,9 @@ from pathlib import Path
 
 from django.test import TestCase
 
+from apps.accounts.models import Category, SubRole
+from tests.support import make_user
+
 _SWAGGER_DIR = (
     Path(__file__).resolve().parents[1] / "apps" / "core" / "static" / "swagger-ui"
 )
@@ -22,7 +25,21 @@ _SWAGGER_DIR = (
 class ApiDocsCspTests(TestCase):
     """``/api/docs/`` must render under ``script-src 'self'``."""
 
+    def _gated_session(self) -> None:
+        """L2 (2026-11-08): docs moved behind CategoryGate("admin") - log a
+        compliant admin (fresh password + in-session MFA) to see the page."""
+        user = make_user(
+            username="docsadmin01",
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.CENTRAL_ADMIN,
+        )
+        self.client.force_login(user)
+        session = self.client.session
+        session["mfa_verified"] = True
+        session.save()
+
     def test_docs_page_uses_same_origin_assets_only(self) -> None:
+        self._gated_session()
         response = self.client.get("/api/docs/")
         self.assertEqual(response.status_code, 200)
         body = response.content.decode()
@@ -33,6 +50,7 @@ class ApiDocsCspTests(TestCase):
         self.assertNotIn("cdn.jsdelivr.net", body)
 
     def test_docs_page_has_no_inline_script(self) -> None:
+        self._gated_session()
         response = self.client.get("/api/docs/")
         body = response.content.decode()
         self.assertEqual(response.status_code, 200)
@@ -63,6 +81,7 @@ class ApiDocsCspTests(TestCase):
         self.assertIn("SwaggerUIBundle(", init)
         self.assertIn("/api/schema/", init)
 
-    def test_schema_still_public(self) -> None:
+    def test_schema_is_no_longer_public(self) -> None:
+        # L2 (2026-11-08): the audit flagged the public unthrottled schema.
         response = self.client.get("/api/schema/")
-        self.assertEqual(response.status_code, 200)
+        self.assertIn(response.status_code, (401, 403))

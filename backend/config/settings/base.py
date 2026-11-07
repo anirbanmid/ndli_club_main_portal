@@ -187,6 +187,11 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# M3: media file storage — uploaded files (avatars, logos, signatures, posters)
+# are stored here and served as attachment with nosniff (see core/urls.py).
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # M3-A6 single-origin: the built frontend (Vite dist + M3-7 pre-rendered
 # shells) served by Django. Sibling of backend/ in the repository layout.
 FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"

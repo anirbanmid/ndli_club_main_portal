@@ -158,3 +158,20 @@ def serve_static(request: HttpRequest, path: str) -> HttpResponseBase:
     if target is None:
         raise Http404
     return _respond(request, target, FILE_CACHE)
+
+
+@require_http_methods(["GET", "HEAD"])
+def serve_media(request: HttpRequest, path: str) -> HttpResponseBase:
+    """Serve uploaded media with ``attachment`` disposition + ``nosniff`` (M3).
+
+    Forces download to prevent inline rendering of malicious uploads.
+    """
+    root = Path(settings.MEDIA_ROOT)
+    target = _contained(root, path)
+    if target is None:
+        raise Http404
+    response = FileResponse(target.open("rb"), as_attachment=True)
+    response["Cache-Control"] = "private, max-age=3600"
+    response["ETag"] = _etag(target)
+    response["X-Content-Type-Options"] = "nosniff"
+    return response

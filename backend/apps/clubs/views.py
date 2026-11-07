@@ -697,8 +697,14 @@ class ClubBrandingView(APIView):
 
         inst = club.institution
         if "logo_image" in request.FILES:
+            from apps.core.uploads import validate_png_upload
+
+            validate_png_upload(request.FILES["logo_image"])
             inst.logo_image = request.FILES["logo_image"]
         if "signature_image" in request.FILES:
+            from apps.core.uploads import validate_png_upload
+
+            validate_png_upload(request.FILES["signature_image"])
             inst.signature_image = request.FILES["signature_image"]
         if "signing_authority_name" in request.data:
             inst.signing_authority_name = str(

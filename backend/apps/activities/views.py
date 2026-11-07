@@ -495,6 +495,19 @@ class PISignatureSettingsView(APIView):
                 sig_img_b64 = sig_img_b64.split(",", 1)[1]
             try:
                 img_bytes = base64.b64decode(sig_img_b64)
+                # M3: validate decoded bytes are a real image
+                import io
+
+                from PIL import Image
+
+                img = Image.open(io.BytesIO(img_bytes))
+                img.verify()
+                if len(img_bytes) > 2 * 1024 * 1024:
+                    return Response(
+                        {"detail": "Signature image exceeds 2 MB limit.",
+                         "code": "file_too_large"},
+                        status=400,
+                    )
                 with open(sig_file, "wb") as f:
                     f.write(img_bytes)
             except Exception as e:
@@ -507,6 +520,15 @@ class PISignatureSettingsView(APIView):
             uploaded = request.FILES.get("signature_file") or request.FILES.get(
                 "signature_image"
             )
+            # M3: validate uploaded file
+            from apps.core.uploads import validate_png_upload
+
+            try:
+                validate_png_upload(uploaded)
+            except Exception as exc:
+                return Response(
+                    {"detail": str(exc), "code": "invalid_upload"}, status=400
+                )
             with open(sig_file, "wb") as f:
                 for chunk in uploaded.chunks():
                     f.write(chunk)
@@ -786,6 +808,16 @@ class ClubEventListCreateView(APIView):
                 },
                 status=400,
             )
+        if poster:
+            from apps.core.uploads import validate_image_upload
+
+            try:
+                validate_image_upload(poster, max_bytes=300 * 1024)
+            except Exception as exc:
+                return Response(
+                    {"detail": str(exc), "code": "invalid_upload"},
+                    status=400,
+                )
 
         publish_flag = data.get("publish") in (True, "true", "True", 1, "1")
 

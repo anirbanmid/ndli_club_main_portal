@@ -510,6 +510,9 @@ class StudentProfileDetailView(APIView):
         if "social_x" in data:
             profile.social_x = str(data["social_x"]).strip()
         if "avatar" in request.FILES:
+            from apps.core.uploads import validate_image_upload
+
+            validate_image_upload(request.FILES["avatar"])
             profile.avatar = request.FILES["avatar"]
 
         profile.save()
@@ -1622,6 +1625,9 @@ class StudentMemberMeView(APIView):
         if "social_x" in data:
             profile.social_x = str(data["social_x"]).strip()
         if "avatar" in request.FILES:
+            from apps.core.uploads import validate_image_upload
+
+            validate_image_upload(request.FILES["avatar"])
             profile.avatar = request.FILES["avatar"]
 
         profile.save()

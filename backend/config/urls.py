@@ -79,6 +79,9 @@ urlpatterns = [
     path("api/v1/", include((API_URLPATTERNS, "api"))),
     # Collected admin static files (P0: path-contained serving).
     path("static/<path:path>", core_frontend.serve_static, name="static-root"),
+    # M3: uploaded media served with attachment + nosniff (prevents inline
+    # rendering of malicious uploads).
+    path("media/<path:path>", core_frontend.serve_media, name="media-root"),
     # M3-A6 single-origin: everything else is the built frontend. The catch-all
     # is parameterised (and last) so it never shadows /api/, /admin/, /health/.
     re_path(r"^(?P<path>.*)$", core_frontend.serve_frontend, name="spa"),

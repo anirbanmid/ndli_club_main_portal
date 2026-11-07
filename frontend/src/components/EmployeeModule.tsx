@@ -435,8 +435,11 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     const capInput = securityCaptchaInput.trim().toUpperCase();
     const pwdInput = securityPasswordInput.trim();
 
-    if (!capInput && !pwdInput) {
-      setSecurityError('Security confirmation required: Please type the CAPTCHA code above OR enter your login password.');
+    // A-4: always require server-side password verification — the client-only
+    // CAPTCHA is decorative and must never be the sole gate.
+    if (!pwdInput) {
+      setSecurityError('Security confirmation required: Please enter your login password.');
+      setSecurityBusy(false);
       return;
     }
 
@@ -444,23 +447,13 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     setSecurityError(null);
 
     try {
-      // 1. Password Verification Option
-      if (pwdInput) {
-        try {
-          await verifyEmployeePassword(pwdInput);
-        } catch (err) {
-          setSecurityError(err instanceof Error ? err.message : 'Incorrect password entered.');
-          setSecurityBusy(false);
-          return;
-        }
-      } else if (capInput) {
-        // 2. CAPTCHA Verification Option
-        if (capInput !== securityCaptchaCode) {
-          setSecurityError('Incorrect CAPTCHA code. Please try again or confirm with password.');
-          generateSecurityCaptcha();
-          setSecurityBusy(false);
-          return;
-        }
+      // Password Verification (server-side)
+      try {
+        await verifyEmployeePassword(pwdInput);
+      } catch (err) {
+        setSecurityError(err instanceof Error ? err.message : 'Incorrect password entered.');
+        setSecurityBusy(false);
+        return;
       }
 
       // Security Passed -> Commit Renewal to Server

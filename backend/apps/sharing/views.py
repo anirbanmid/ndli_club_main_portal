@@ -197,7 +197,10 @@ class LibraryDetailView(APIView):
 
         # H7: anonymous/unpublished library read — only allow for owner or
         # published-to-community libraries
-        if not lib.is_published_to_community and lib.owner != authenticated_user(request):
+        if (
+            not lib.is_published_to_community
+            and lib.owner != authenticated_user(request)
+        ):
             from apps.members.views import _is_main_club_authority
 
             if not _is_main_club_authority(authenticated_user(request), lib.club):
@@ -382,7 +385,9 @@ class ResourceLinkDeleteView(APIView):
         if resource.library.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(authenticated_user(request), resource.library.club):
+            if not _is_main_club_authority(
+                authenticated_user(request), resource.library.club
+            ):
                 return Response(
                     {"detail": "Permission denied.", "code": "forbidden"},
                     status=status.HTTP_403_FORBIDDEN,

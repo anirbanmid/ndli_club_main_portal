@@ -150,3 +150,25 @@ class ResilientRedisCache(RedisCache):
 
     def clear(self) -> None:
         self._run("clear")
+
+    def probe_primary(self) -> bool:
+        """True only when the REAL Redis answers a round-trip.
+
+        This is the hook ``/health/ready/`` uses to keep its documented
+        promise: the process-local fallback must never make a dead Redis
+        look alive — a degraded window is an outage the probes must see.
+        """
+        if not self._primary_usable():
+            return False
+        try:
+            super().set("healthcheck", "ok", 5)
+            ok = super().get("healthcheck") == "ok"
+        except Exception:  # noqa: BLE001 - a probe must never raise
+            self._retry_after = time.monotonic() + RETRY_COOLDOWN_SECONDS
+            logger.error(
+                "cache primary probe failed; /health/ready/ reports cache down",
+                exc_info=True,
+            )
+            return False
+        self._retry_after = 0.0
+        return ok

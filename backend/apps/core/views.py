@@ -33,8 +33,14 @@ def readiness(request: HttpRequest) -> JsonResponse:
         checks["database"] = False
 
     try:
-        cache.set("healthcheck", "ok", timeout=5)
-        checks["cache"] = cache.get("healthcheck") == "ok"
+        probe = getattr(cache, "probe_primary", None)
+        if callable(probe):
+            # ResilientRedisCache: answer from the REAL store only — the
+            # process-local fallback must never make a dead Redis look alive.
+            checks["cache"] = bool(probe())
+        else:
+            cache.set("healthcheck", "ok", timeout=5)
+            checks["cache"] = cache.get("healthcheck") == "ok"
     except Exception:  # noqa: BLE001 - probe must never raise
         checks["cache"] = False
 

@@ -234,7 +234,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "no-referrer"
 
 # Password hashing — CLIENT STANDARD (owner 2026-10-27, previous-project
-# parity): PBKDF2-HMAC-SHA256, 600,000 rounds (L1 bump 2026-11-08, was 100,000), 16-byte random salts.
+# parity): PBKDF2-HMAC-SHA256, 600,000 rounds (L1 bump 2026-11-08, was
+# 100,000), 16-byte random salts.
 # PBKDF2ClientHasher is PRIMARY (set_password default + migration target);
 # Argon2id (M1-era) stays for verification and re-hashes to the standard on
 # the next successful login (its must_update is True).

@@ -337,6 +337,17 @@ class CampusModuleTests(TestCase):
             "students.csv", csv_content.encode("utf-8"), content_type="text/csv"
         )
 
+        # H4: roster upload is scoped to the school club's own authority
+        school_auth = User.objects.create(
+            username="pres.kolkata-model",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_PRESIDENT,
+            account_state=AccountState.ACTIVE,
+            club=school_club,
+            is_active=True,
+        )
+        self.client.force_login(school_auth)
+
         upload_resp = self.client.post(
             f"/api/v1/members/school/{school_club.code}/upload/",
             data={"file": csv_file},
@@ -1438,9 +1449,9 @@ class CampusModuleTests(TestCase):
         # Clean up event
         event.delete()
 
-    def test_sub_club_list_view_resolution_and_allow_any(self) -> None:
-        """Verify SubClubListView returns 200 without authentication and resolves
-        clubs by club code, slug (e.g. bhu-main), or ID.
+    def test_sub_club_list_view_resolution_and_authz(self) -> None:
+        """Sub-club listing resolves clubs by code, slug (e.g. bhu-main), or ID
+        for authenticated users; anonymous access is denied and pinned (H6).
         """
         bhu_inst, _ = Institution.objects.get_or_create(
             code="INST-BHU-TEST-008",
@@ -1476,6 +1487,15 @@ class CampusModuleTests(TestCase):
         resp_code = anon_client.get(
             f"/api/v1/clubs/{bhu_club.code}/subclubs/", HTTP_HOST="localhost"
         )
+        # H6 pin: anonymous access is denied (DRF answers 403 for anonymous
+        # under SessionAuthentication - no WWW-Authenticate header).
+        self.assertIn(resp_code.status_code, (401, 403))
+
+        # Authenticated request by code
+        self.client.force_login(User.objects.get(username="emp01_delhi"))
+        resp_code = self.client.get(
+            f"/api/v1/clubs/{bhu_club.code}/subclubs/", HTTP_HOST="localhost"
+        )
         self.assertEqual(resp_code.status_code, 200)
         data_code = resp_code.json()
         self.assertIn("sub_clubs", data_code)
@@ -1487,7 +1507,7 @@ class CampusModuleTests(TestCase):
         self.assertIn("member_count", sub_item)
 
         # Unauthenticated client request by slug
-        resp_slug = anon_client.get(
+        resp_slug = self.client.get(
             "/api/v1/clubs/bhu-main/subclubs/", HTTP_HOST="localhost"
         )
         self.assertEqual(resp_slug.status_code, 200)
@@ -1496,7 +1516,7 @@ class CampusModuleTests(TestCase):
         self.assertGreaterEqual(len(data_slug["sub_clubs"]), 1)
 
         # Unauthenticated client request by PK
-        resp_pk = anon_client.get(
+        resp_pk = self.client.get(
             f"/api/v1/clubs/{bhu_club.id}/subclubs/", HTTP_HOST="localhost"
         )
         self.assertEqual(resp_pk.status_code, 200)
@@ -1508,7 +1528,15 @@ class CampusModuleTests(TestCase):
         subclub_obj = SubClub.objects.filter(club=bhu_club).first()
         self.assertIsNotNone(subclub_obj)
         assert subclub_obj is not None
-        patch_resp = anon_client.patch(
+        anon_patch = anon_client.patch(
+            f"/api/v1/clubs/bhu-main/subclubs/{subclub_obj.id}/",
+            data={"coordinator_phone": "+91 9876543210"},
+            content_type="application/json",
+            HTTP_HOST="localhost",
+        )
+        self.assertIn(anon_patch.status_code, (401, 403))
+
+        patch_resp = self.client.patch(
             f"/api/v1/clubs/bhu-main/subclubs/{subclub_obj.id}/",
             data={"coordinator_phone": "+91 9876543210"},
             content_type="application/json",

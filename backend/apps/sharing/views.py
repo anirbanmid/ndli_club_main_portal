@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
+from apps.core.scoping import authenticated_user
 from apps.domain.models import Club
 from apps.sharing.models import (
     CuratedLibrary,
@@ -196,10 +197,10 @@ class LibraryDetailView(APIView):
 
         # H7: anonymous/unpublished library read — only allow for owner or
         # published-to-community libraries
-        if not lib.is_published_to_community and lib.owner != request.user:
+        if not lib.is_published_to_community and lib.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(request.user, lib.club):
+            if not _is_main_club_authority(authenticated_user(request), lib.club):
                 return Response(
                     {"detail": "Library not found.", "code": "not_found"},
                     status=status.HTTP_404_NOT_FOUND,
@@ -247,10 +248,10 @@ class LibraryDetailView(APIView):
             )
 
         # H7: owner check — only library owner or club authority can edit
-        if lib.owner != request.user:
+        if lib.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(request.user, lib.club):
+            if not _is_main_club_authority(authenticated_user(request), lib.club):
                 return Response(
                     {"detail": "Permission denied.", "code": "forbidden"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -283,10 +284,10 @@ class LibraryDetailView(APIView):
             )
 
         # H7: owner check — only library owner or club authority can delete
-        if lib.owner != request.user:
+        if lib.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(request.user, lib.club):
+            if not _is_main_club_authority(authenticated_user(request), lib.club):
                 return Response(
                     {"detail": "Permission denied.", "code": "forbidden"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -313,10 +314,10 @@ class ResourceLinkCreateView(APIView):
             )
 
         # H7: owner check — only library owner or club authority can add resources
-        if lib.owner != request.user:
+        if lib.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(request.user, lib.club):
+            if not _is_main_club_authority(authenticated_user(request), lib.club):
                 return Response(
                     {"detail": "Permission denied.", "code": "forbidden"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -378,10 +379,10 @@ class ResourceLinkDeleteView(APIView):
             )
 
         # H7: owner check — only library owner or club authority can delete resources
-        if resource.library.owner != request.user:
+        if resource.library.owner != authenticated_user(request):
             from apps.members.views import _is_main_club_authority
 
-            if not _is_main_club_authority(request.user, resource.library.club):
+            if not _is_main_club_authority(authenticated_user(request), resource.library.club):
                 return Response(
                     {"detail": "Permission denied.", "code": "forbidden"},
                     status=status.HTTP_403_FORBIDDEN,

@@ -628,7 +628,7 @@ class SchoolRosterUploadView(APIView):
             .filter(code__iexact=club_code)
             .first()
         )
-        if not club or not _is_main_club_authority(request.user, club):
+        if not club or not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -681,7 +681,7 @@ class SchoolRosterPendingListView(APIView):
             )
 
         # H4: require main-club authority for pending roster read
-        if not _is_main_club_authority(request.user, club):
+        if not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -741,7 +741,7 @@ class _SchoolRosterDecisionView(APIView):
             )
 
         # H4: require main-club authority for roster approve/reject
-        if not _is_main_club_authority(request.user, club):
+        if not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -810,7 +810,7 @@ class SchoolCardsListView(APIView):
             )
 
         # H4: require main-club authority for school cards
-        if not _is_main_club_authority(request.user, club):
+        if not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,

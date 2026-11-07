@@ -32,6 +32,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.policies import CLUB_AUTHORITY_GATE
 from apps.accounts.throttles import client_ip, sliding_window_allow
+from apps.core.scoping import authenticated_user
 from apps.governance.renewals import record_payload, request_renewal
 from apps.governance.services import GovernanceError
 
@@ -556,7 +557,7 @@ class SubClubDetailView(APIView):
         # H6: require club authority for sub-club edit
         from apps.members.views import _is_main_club_authority
 
-        if not _is_main_club_authority(request.user, club):
+        if not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Club authority required."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -670,7 +671,7 @@ class ClubBrandingView(APIView):
         # H6: require club authority for branding changes
         from apps.members.views import _is_main_club_authority
 
-        if not _is_main_club_authority(request.user, club):
+        if not _is_main_club_authority(authenticated_user(request), club):
             return Response(
                 {"detail": "Club authority required."},
                 status=status.HTTP_403_FORBIDDEN,

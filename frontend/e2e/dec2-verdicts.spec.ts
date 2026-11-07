@@ -43,10 +43,12 @@ function draft(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** Seed the one thing the wizard persists across reloads (onboardingResume). */
+/** Seed the one thing the wizard persists across reloads (onboardingResume).
+ *  A-8: the capability lives in sessionStorage (token dies with the tab) —
+ *  seed the same store the app reads or resume is silently skipped. */
 async function seedCapability(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    window.localStorage.setItem(
+    window.sessionStorage.setItem(
       'ndli.onboarding.resume',
       JSON.stringify({ token: 'e2e-resume-token', draftId: 'dft-e2e-1' }),
     );

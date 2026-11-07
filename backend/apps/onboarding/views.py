@@ -162,6 +162,12 @@ class IdentityView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request, draft_id: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("identity", 10, request)
+            if blocked:
+                return blocked
         draft = _draft_or_error(request)
         if isinstance(draft, Response):
             return draft
@@ -185,6 +191,12 @@ class AuthorityUpsertView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request, draft_id: str, role: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("authority_upsert", 10, request)
+            if blocked:
+                return blocked
         draft = _draft_or_error(request)
         if isinstance(draft, Response):
             return draft
@@ -308,6 +320,12 @@ class DocumentDownloadView(APIView):
     authentication_classes: list = []
 
     def get(self, request: Request, draft_id: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("doc_download", 10, request)
+            if blocked:
+                return blocked
         draft = _draft_or_error(request)
         if isinstance(draft, Response):
             return draft
@@ -370,6 +388,12 @@ class AuthorityEmailCheckView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("authority_email_check", 5, request)
+            if blocked:
+                return blocked
         email = str(request.data.get("email", "")).strip()
         if not email:
             return Response(
@@ -388,6 +412,12 @@ class AuthorityDeactivateView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("authority_deactivate", 5, request)
+            if blocked:
+                return blocked
         email = str(request.data.get("email", "")).strip()
         confirmed = bool(request.data.get("confirmed", False))
         if not email or not confirmed:
@@ -409,6 +439,12 @@ class ApplicationStatusView(APIView):
     authentication_classes: list = []
 
     def get(self, request: Request, application_id: str) -> Response:
+        from django.conf import settings
+
+        if not getattr(settings, "TESTING", False):
+            blocked = _throttled("application_status", 10, request)
+            if blocked:
+                return blocked
         from apps.onboarding.models import CharterApplication
 
         clean_id = str(application_id).strip()

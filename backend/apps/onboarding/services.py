@@ -607,19 +607,17 @@ def check_authority_email(email: str) -> dict[str, Any]:
         .first()
     )
     if assignment:
+        # H3: the directory data (tier / club code / institution and club
+        # names) is NOT returned - that was an anonymous authority-directory
+        # harvest. The boolean is kept so the onboarding wizard can offer the
+        # spec'd de-duplication step; the message names nothing.
         return {
             "exists": True,
             "conflict": True,
-            "tier": assignment.tier,
-            "post": assignment.tier,
-            "club_code": assignment.club.code,
-            "institution_name": assignment.club.institution.name,
-            "club_name": assignment.club.name,
             "message": (
-                f"This email id is already registered as "
-                f"{assignment.get_tier_display()} of "
-                f"{assignment.club.institution.name}."
-                " Would you like to deactivate that account?"
+                "This email id is already registered as an authority of "
+                "another institution. Would you like to deactivate that "
+                "account?"
             ),
         }
     return {

@@ -232,8 +232,9 @@ class CampusModuleTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data["conflict"])
-        self.assertEqual(data["tier"], "President")
-        self.assertEqual(data["club_code"], self.club.code)
+        # H3: the authority directory must not leak through check-email.
+        for field in ("tier", "post", "club_code", "institution_name", "club_name"):
+            self.assertNotIn(field, data)
 
         # Deactivate prior post to allow onboarding on new institution
         deact_resp = self.client.post(

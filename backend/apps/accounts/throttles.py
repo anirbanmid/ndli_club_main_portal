@@ -7,8 +7,10 @@ and password reset. Every lockout is audited by the callers via the
 
 from __future__ import annotations
 
+import ipaddress
 import time
 
+from django.conf import settings
 from django.core.cache import cache
 
 
@@ -31,10 +33,44 @@ def reset(key: str) -> None:
     cache.delete(f"m1:rl:{key}")
 
 
+_TRUSTED_PROXY_DEFAULTS = (
+    "127.0.0.0/8",
+    "::1/128",
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+)
+
+
+def _is_trusted_proxy(ip: str) -> bool:
+    """True when ``ip`` is an edge proxy allowed to speak for the client."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    cidrs = getattr(settings, "TRUSTED_PROXY_CIDRS", _TRUSTED_PROXY_DEFAULTS)
+    for cidr in cidrs:
+        try:
+            if addr in ipaddress.ip_network(cidr):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def client_ip(request: object) -> str:
-    """Best-effort client IP (first X-Forwarded-For hop, else REMOTE_ADDR)."""
+    """Client IP for throttle keys (H1: X-Forwarded-For spoofing fix).
+
+    XFF is honoured ONLY when REMOTE_ADDR is a trusted proxy (edge nginx /
+    platform router), and then the RIGHTMOST hop wins - that is the hop our
+    own proxy appended; anything to its left is client-supplied and ignored.
+    Direct connections never get to choose their throttle key.
+    """
     meta = getattr(request, "META", {})
-    forwarded = str(meta.get("HTTP_X_FORWARDED_FOR", ""))
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return str(meta.get("REMOTE_ADDR", "unknown"))
+    remote = str(meta.get("REMOTE_ADDR", "")).strip()
+    forwarded = str(meta.get("HTTP_X_FORWARDED_FOR", "")).strip()
+    if forwarded and _is_trusted_proxy(remote):
+        hops = [h.strip() for h in forwarded.split(",") if h.strip()]
+        if hops:
+            return hops[-1]
+    return remote or "unknown"

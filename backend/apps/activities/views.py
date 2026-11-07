@@ -712,13 +712,14 @@ class ClubEventListCreateView(APIView):
 
         from django.utils import timezone
 
+        from apps.accounts.models import User
         from apps.activities.models import (
             ClubEvent,
             EventConductor,
             EventScope,
             EventStatus,
         )
-        from apps.domain.models import Club
+        from apps.domain.models import AuthorityAssignment, Club
 
         data = request.data
         club_code = str(data.get("club_code", "")).strip()
@@ -748,18 +749,28 @@ class ClubEventListCreateView(APIView):
         )
 
         user = authenticated_user(request)
-        if not user:
-            from apps.accounts.models import User
-
-            user = (
-                User.objects.filter(authority_assignments__club=club).first()
-                or User.objects.first()
-            )
-
         if not isinstance(user, User):
             return Response(
-                {"detail": "Authenticated authority required to create events."},
+                {"detail": "Authentication required to create events."},
                 status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # H8: only a currently-ACTIVE authority of the host club (or a
+        # superuser) may create its events - deny by default. C6: the old
+        # User.objects.first() fallback let unauthenticated requests attribute
+        # events to arbitrary users; removed.
+        is_host_authority = user.is_superuser or AuthorityAssignment.objects.filter(
+            user=user,
+            club=club,
+            status=AuthorityAssignment.Status.ACTIVE,
+        ).exists()
+        if not is_host_authority:
+            return Response(
+                {
+                    "detail": "Active authority of the host club required.",
+                    "code": "forbidden",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         poster = request.FILES.get("poster")
@@ -971,11 +982,11 @@ class EventParticipateView(APIView):
                 status=400,
             )
 
-        user = authenticated_user(request)
-        if not user:
-            from apps.accounts.models import User
+        from apps.accounts.models import User
 
-            user = User.objects.first()
+        user = authenticated_user(request)
+        if not isinstance(user, User):
+            return Response({"detail": "Authentication required."}, status=401)
 
         attend, created = EventAttendance.objects.get_or_create(
             event=evt,

@@ -30,7 +30,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.models import User
 from apps.accounts.policies import CLUB_AUTHORITY_GATE
 from apps.accounts.throttles import client_ip, sliding_window_allow
 from apps.governance.renewals import record_payload, request_renewal
@@ -427,7 +426,7 @@ def _resolve_club_for_subclubs(club_code: str):
 class SubClubListView(APIView):
     """List or create disciplinary sub-clubs under an HEI main club."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
     def get(self, request: Request, club_code: str) -> Response:
@@ -492,16 +491,18 @@ class SubClubListView(APIView):
 
         user = authenticated_user(request)
         if not user:
-            # Fallback to an admin or club authority
-            user = (
-                User.objects.filter(authority_assignments__club=club).first()
-                or User.objects.first()
-            )
-
-        if not isinstance(user, User):
             return Response(
                 {"detail": "Authenticated authority required to create sub-clubs."},
                 status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # H6: require club authority for sub-club creation
+        from apps.members.views import _is_main_club_authority
+
+        if not _is_main_club_authority(user, club):
+            return Response(
+                {"detail": "Club authority required to create sub-clubs."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         sub_club = SubClub.objects.create(
@@ -532,7 +533,7 @@ class SubClubListView(APIView):
 class SubClubDetailView(APIView):
     """Update or toggle sub-club / coordinator."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
     def patch(self, request: Request, club_code: str, subclub_id: int) -> Response:
@@ -550,6 +551,15 @@ class SubClubDetailView(APIView):
             return Response(
                 {"detail": "Sub-club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # H6: require club authority for sub-club edit
+        from apps.members.views import _is_main_club_authority
+
+        if not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Club authority required."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         data = request.data
@@ -584,8 +594,7 @@ class SubClubDetailView(APIView):
 class ClubBrandingView(APIView):
     """Institutional branding: Transparent PNG logo and Signing Authority Signature."""
 
-    authentication_classes: list = []
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request, club_code: str) -> Response:
@@ -656,6 +665,15 @@ class ClubBrandingView(APIView):
             return Response(
                 {"detail": "Club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # H6: require club authority for branding changes
+        from apps.members.views import _is_main_club_authority
+
+        if not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Club authority required."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         inst = club.institution

@@ -232,7 +232,14 @@ SESSION_COOKIE_SAMESITE = "Lax"
 # the env vars may only widen, never weaken, that guarantee.
 SESSION_COOKIE_SECURE = (not DEBUG) or env_bool("SESSION_COOKIE_SECURE", False)
 CSRF_COOKIE_SECURE = (not DEBUG) or env_bool("CSRF_COOKIE_SECURE", False)
-CSRF_COOKIE_HTTPONLY = True
+# B-3 correction (2026-11-08): CSRF_COOKIE_HTTPONLY must stay False.
+# The SPA (authApi.csrfHeader()) echoes this token via document.cookie — the
+# standard double-submit pattern. HttpOnly hid the cookie and every
+# session-authenticated mutation failed with "CSRF Failed: CSRF token
+# missing" (anonymous login was unaffected because DRF enforces CSRF only
+# for session-authenticated requests). Django's default is False for exactly
+# this reason; the XSS concern is covered by script-src 'self' CSP.
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True

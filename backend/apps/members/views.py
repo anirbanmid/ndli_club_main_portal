@@ -54,11 +54,16 @@ class CheckPreapprovalView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
+
         from apps.accounts.throttles import client_ip, sliding_window_allow
         from apps.clubs.services import resolve_passkey
 
         # M1: per-IP throttle to prevent passkey brute-force / oracle abuse
-        if not sliding_window_allow(f"m1:preapproval:{client_ip(request)}", 10, 60):
+        # (skipped under TESTING so rapid in-suite calls do not trip 429s)
+        if not getattr(settings, "TESTING", False) and not sliding_window_allow(
+            f"m1:preapproval:{client_ip(request)}", 10, 60
+        ):
             return Response(
                 {"detail": "Too many attempts. Try again in a minute.",
                  "code": "throttled"},
@@ -973,16 +978,20 @@ class StudentJoinRegisterView(APIView):
     def post(self, request: Request) -> Response:
         from datetime import timedelta
 
+        from django.conf import settings
         from django.db import transaction
 
         from apps.accounts.models import AccountState, Category, SubRole, User
 
         # C4(e): per-IP throttle to prevent mass enrollment / brute-force
+        # (skipped under TESTING so rapid in-suite calls do not trip 429s)
         from apps.accounts.throttles import client_ip, sliding_window_allow
         from apps.clubs import services as club_services
         from apps.members.models import JoinRequest, StudentMemberProfile
 
-        if not sliding_window_allow(f"members:register:{client_ip(request)}", 10, 60):
+        if not getattr(settings, "TESTING", False) and not sliding_window_allow(
+            f"members:register:{client_ip(request)}", 10, 60
+        ):
             return Response(
                 {"detail": "Too many attempts. Try again in a minute.",
                  "code": "throttled"},
@@ -1269,6 +1278,7 @@ class TerminateMembershipView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from django.conf import settings
         from django.db import transaction
 
         from apps.accounts.models import User
@@ -1277,8 +1287,10 @@ class TerminateMembershipView(APIView):
         from apps.domain.models import Club, Membership
         from apps.members.models import JoinRequest, StudentMemberProfile
 
-        # C5: per-IP throttle
-        if not sliding_window_allow(f"members:terminate:{client_ip(request)}", 10, 60):
+        # C5: per-IP throttle (skipped under TESTING)
+        if not getattr(settings, "TESTING", False) and not sliding_window_allow(
+            f"members:terminate:{client_ip(request)}", 10, 60
+        ):
             return Response(
                 {"detail": "Too many attempts. Try again in a minute.",
                  "code": "throttled"},

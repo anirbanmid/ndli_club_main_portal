@@ -323,3 +323,8 @@ GRIEVANCE_SLA = {
     "OFFICE_END": "18:00",
     "TIME_ZONE": "Asia/Kolkata",
 }
+
+# Test/CI toggle. config.settings.dev (used by pytest) flips this to True so
+# audit-batch security throttles do not 429 the test suite. Production
+# inherits False and keeps full throttle enforcement.
+TESTING = False

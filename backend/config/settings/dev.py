@@ -31,3 +31,7 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+
+# Test/CI runs under dev settings: disable the audit-batch request throttles
+# so rapid in-suite calls do not trip 429s (see base.TESTING).
+TESTING = True

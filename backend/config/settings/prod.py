@@ -41,18 +41,26 @@ if not _database_url.startswith(("postgres://", "postgresql://")):
         "when using config.settings.prod."
     )
 
+# Render (and similar hosts) hand out a transaction-mode POOLER URL on port
+# 6543. Persistent client connections through such a pooler are unsafe and
+# have hung the interpreter at connection close (deploy freeze after
+# "No migrations to apply."), so the pooler is auto-detected and
+# conn_max_age is forced to 0 there. Direct Postgres keeps the M2 defaults.
+_pooled = ":6543" in _database_url or "pgbouncer" in _database_url
 DATABASES = {
     "default": dj_database_url.parse(
         _database_url,
         # M2 capacity hygiene (P2 / BRIEF_M2 §3): persistent connections with
         # health checks. Default 60s suits direct Postgres; behind a
-        # transaction-mode pooler (pgBouncer, the documented 110K setup) set
-        # DJANGO_CONN_MAX_AGE=0 and let the pooler hold the connections
-        # (see M2_DEPLOY_GUIDE.md).
-        conn_max_age=int(env("DJANGO_CONN_MAX_AGE", "60")),
-        conn_health_checks=True,
+        # transaction-mode pooler (pgBouncer, the documented 110K setup) the
+        # pooler holds the connections instead.
+        conn_max_age=0 if _pooled else int(env("DJANGO_CONN_MAX_AGE", "60")),
+        conn_health_checks=not _pooled,
     )
 }
+DATABASES["default"].setdefault("OPTIONS", {}).update(
+    {"connect_timeout": 10, "keepalives": 1, "keepalives_idle": 30}
+)
 
 # Production always uses Redis for cache and Celery.
 #

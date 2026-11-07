@@ -409,6 +409,17 @@ def password_login(
     if not consume_captcha(request, captcha):
         raise ValidationError("The captcha answer is not valid.")
     clean_username = username.strip()
+    existing = (
+        User.objects.filter(username__iexact=clean_username).first()
+        or User.objects.filter(email__iexact=clean_username).first()
+    )
+    # H2(c): enforce the per-account lockout before spending a guess.
+    if (
+        existing is not None
+        and existing.locked_until is not None
+        and existing.locked_until > timezone.now()
+    ):
+        raise PermissionDenied("Account is temporarily locked.", code="account_locked")
     user = authenticate(request, username=clean_username, password=password)
     if user is None:
         matched = User.objects.filter(email__iexact=clean_username).first()
@@ -417,6 +428,9 @@ def password_login(
         if matched:
             user = authenticate(request, username=matched.username, password=password)
     if user is None:
+        if existing is not None:
+            # H2(c): a failed password guess counts toward the lockout.
+            record_login_failure(request=request, username=existing.get_username())
         raise AuthenticationFailed("Invalid username or password.")
     profile = user if isinstance(user, User) else None
     if profile is None:
@@ -444,6 +458,7 @@ def password_login(
     # entry-verified here; sensitive actions get their own Dual-Layer
     # re-auth (CLIENT_SECURITY_STANDARD.md).
     request.session["mfa_verified"] = True
+    clear_login_failures(profile)
     return profile
 
 

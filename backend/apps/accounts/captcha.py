@@ -58,10 +58,11 @@ def consume_captcha(request: Any, answer: str) -> bool:
     clean_ans = answer.strip()
     from django.conf import settings
 
-    # Development-only bypasses (DEV_TEST / 12345 / TEST). Gated on DEBUG so
-    # production (DEBUG=False) always requires the real session challenge —
-    # the anti-bot gate must not be skippable from the public login form.
-    if settings.DEBUG and (
+    # Development-only bypasses (DEV_TEST / 12345 / TEST). H2: gated on
+    # DEBUG AND TESTING so production requires the real session challenge
+    # even if misconfigured with DEBUG=True - only test runs and local dev
+    # tooling may skip the anti-bot gate.
+    if settings.DEBUG and getattr(settings, "TESTING", False) and (
         clean_ans.upper() == "DEV_TEST" or clean_ans in ("12345", "TEST")
     ):
         return True

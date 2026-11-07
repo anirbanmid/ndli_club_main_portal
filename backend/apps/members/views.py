@@ -54,7 +54,16 @@ class CheckPreapprovalView(APIView):
     parser_classes = [JSONParser]
 
     def post(self, request: Request) -> Response:
+        from apps.accounts.throttles import client_ip, sliding_window_allow
         from apps.clubs.services import resolve_passkey
+
+        # M1: per-IP throttle to prevent passkey brute-force / oracle abuse
+        if not sliding_window_allow(f"m1:preapproval:{client_ip(request)}", 10, 60):
+            return Response(
+                {"detail": "Too many attempts. Try again in a minute.",
+                 "code": "throttled"},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
         data = request.data
         passkey = str(data.get("passkey", "")).strip()
@@ -606,6 +615,20 @@ class SchoolRosterUploadView(APIView):
         import csv
         import io
 
+        from apps.domain.models import Club
+
+        # H4: require main-club authority for roster upload
+        club = (
+            Club.objects.select_related("institution")
+            .filter(code__iexact=club_code)
+            .first()
+        )
+        if not club or not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Forbidden.", "code": "forbidden"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if "file" not in request.FILES:
             return Response(
                 {"detail": "CSV file is required.", "code": "missing_file"},
@@ -650,6 +673,13 @@ class SchoolRosterPendingListView(APIView):
             return Response(
                 {"detail": "Club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # H4: require main-club authority for pending roster read
+        if not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Forbidden.", "code": "forbidden"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         entries = (
@@ -703,6 +733,13 @@ class _SchoolRosterDecisionView(APIView):
             return Response(
                 {"detail": "Club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # H4: require main-club authority for roster approve/reject
+        if not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Forbidden.", "code": "forbidden"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         entry_ids = request.data.get("entry_ids", [])
@@ -767,6 +804,13 @@ class SchoolCardsListView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # H4: require main-club authority for school cards
+        if not _is_main_club_authority(request.user, club):
+            return Response(
+                {"detail": "Forbidden.", "code": "forbidden"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         students = SchoolStudentRoster.objects.filter(
             club=club, is_active=True
         ).order_by("student_class", "section", "full_name")
@@ -815,7 +859,8 @@ class StudentProfileListView(APIView):
             actor_club = None
         club_code = str(request.query_params.get("club_code", "")).strip()
 
-        if actor_category == Category.STUDENT_MEMBER and not club_code:
+        # H5: reject ALL student access to roster (not just when club_code absent)
+        if actor_category == Category.STUDENT_MEMBER:
             return Response(
                 {
                     "detail": "Students cannot access club management rosters.",
@@ -824,6 +869,7 @@ class StudentProfileListView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # H5: cross-club reads require main-club authority
         if actor_category == Category.CLUB_ADMIN and actor_club is not None:
             if club_code and actor_club.code.lower() != club_code.lower():
                 return Response(

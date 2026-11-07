@@ -63,10 +63,15 @@ class LibraryListView(APIView):
             if user:
                 qs = qs.filter(library_type=LibraryType.PERSONAL, owner=user)
             else:
-                qs = qs.filter(library_type=LibraryType.PERSONAL)
+                qs = qs.filter(
+                    library_type=LibraryType.PERSONAL,
+                    is_published_to_community=True,
+                )
         elif lib_type == "community":
             qs = qs.filter(is_published_to_community=True)
         elif lib_type:
+            if not user:
+                qs = qs.filter(is_published_to_community=True)
             qs = qs.filter(library_type=lib_type)
 
         results = [
@@ -189,6 +194,17 @@ class LibraryDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # H7: anonymous/unpublished library read — only allow for owner or
+        # published-to-community libraries
+        if not lib.is_published_to_community and lib.owner != request.user:
+            from apps.members.views import _is_main_club_authority
+
+            if not _is_main_club_authority(request.user, lib.club):
+                return Response(
+                    {"detail": "Library not found.", "code": "not_found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
         resources = [
             {
                 "id": r.id,
@@ -230,6 +246,16 @@ class LibraryDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # H7: owner check — only library owner or club authority can edit
+        if lib.owner != request.user:
+            from apps.members.views import _is_main_club_authority
+
+            if not _is_main_club_authority(request.user, lib.club):
+                return Response(
+                    {"detail": "Permission denied.", "code": "forbidden"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         data = request.data
         if "title" in data:
             lib.title = str(data["title"]).strip()
@@ -255,6 +281,17 @@ class LibraryDetailView(APIView):
                 {"detail": "Library not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # H7: owner check — only library owner or club authority can delete
+        if lib.owner != request.user:
+            from apps.members.views import _is_main_club_authority
+
+            if not _is_main_club_authority(request.user, lib.club):
+                return Response(
+                    {"detail": "Permission denied.", "code": "forbidden"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         lib.delete()
         return Response(
             {"message": "Library deleted successfully."}, status=status.HTTP_200_OK
@@ -274,6 +311,16 @@ class ResourceLinkCreateView(APIView):
                 {"detail": "Library not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # H7: owner check — only library owner or club authority can add resources
+        if lib.owner != request.user:
+            from apps.members.views import _is_main_club_authority
+
+            if not _is_main_club_authority(request.user, lib.club):
+                return Response(
+                    {"detail": "Permission denied.", "code": "forbidden"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         data = request.data
         title = str(data.get("title", "")).strip()
@@ -329,6 +376,17 @@ class ResourceLinkDeleteView(APIView):
                 {"detail": "Resource not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # H7: owner check — only library owner or club authority can delete resources
+        if resource.library.owner != request.user:
+            from apps.members.views import _is_main_club_authority
+
+            if not _is_main_club_authority(request.user, resource.library.club):
+                return Response(
+                    {"detail": "Permission denied.", "code": "forbidden"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         resource.delete()
         return Response(
             {"message": "Resource deleted successfully."}, status=status.HTTP_200_OK

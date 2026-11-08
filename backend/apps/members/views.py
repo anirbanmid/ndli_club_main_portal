@@ -955,7 +955,11 @@ class StudentProfileListView(APIView):
             Q(
                 user__category=Category.CLUB_ADMIN,
                 user__sub_role__in=CLUB_AUTHORITY_SUB_ROLES,
-                user__club=F("club"),
+                # user.club is an FK to Club.to_field="code" (varchar
+                # accounts_user.club_code); F("club") would resolve to
+                # members_studentmemberprofile.club_id (bigint) and Postgres
+                # rejects varchar = bigint. Compare code to code instead.
+                user__club=F("club__code"),
             )
         )
 

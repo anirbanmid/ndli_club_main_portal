@@ -31,6 +31,8 @@ import {
   User,
   X,
   Zap,
+  ArrowRight,
+  Building2,
 } from 'lucide-react';
 import { t } from '../../i18n';
 import {
@@ -47,6 +49,7 @@ import {
   updateStudentMeSubClubs,
   fetchMyEventCertificate,
   MyEventCertificateResponse,
+  toggleStudentSuspension,
 } from '../../lib/campusApi';
 import { CuratedLibraryHub } from '../sharing/CuratedLibraryHub';
 
@@ -54,12 +57,14 @@ interface ClubMemberModuleViewProps {
   onSignOut?: () => void;
   onSignIn?: () => void;
   onViewPublicProfile?: () => void;
+  onNavigateToModule2?: (clubCode?: string) => void;
 }
 
 export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   onSignOut,
   onSignIn,
   onViewPublicProfile,
+  onNavigateToModule2,
 }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'profile' | 'libraries'>('events');
   const [data, setData] = useState<StudentMeResponse | null>(null);
@@ -135,20 +140,22 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
     try {
       const res = await fetchStudentMe();
       setData(res);
-      setDob(res.profile.date_of_birth || '');
-      setHobbies(res.profile.hobbies || '');
-      setAddress(res.profile.address || '');
-      setStateName(res.profile.state || '');
-      setPincode(res.profile.pincode || '');
-      setSocialFb(res.profile.social_facebook || '');
-      setSocialInsta(res.profile.social_instagram || '');
-      setSocialX(res.profile.social_x || '');
-      setSelectedSubClubIds((res.profile?.sub_clubs || []).map((sc) => sc.id));
+      if (res.profile) {
+        setDob(res.profile.date_of_birth || '');
+        setHobbies(res.profile.hobbies || '');
+        setAddress(res.profile.address || '');
+        setStateName(res.profile.state || '');
+        setPincode(res.profile.pincode || '');
+        setSocialFb(res.profile.social_facebook || '');
+        setSocialInsta(res.profile.social_instagram || '');
+        setSocialX(res.profile.social_x || '');
+        setSelectedSubClubIds((res.profile?.sub_clubs || []).map((sc) => sc.id));
 
-      // Also load events for this club
-      if (res.profile?.club?.code) {
-        void loadEvents(res.profile.club.code);
-        void loadSubClubs(res.profile.club.code);
+        // Also load events for this club
+        if (res.profile?.club?.code) {
+          void loadEvents(res.profile.club.code);
+          void loadSubClubs(res.profile.club.code);
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('Failed to load student profile'));
@@ -437,7 +444,258 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
     );
   }
 
-  const profile = data.profile;
+  // 1. Administrative Member Oversight Desk (Main Admins & Central Admins)
+  if (data.desk === 'admin_oversight') {
+    const oversight = data;
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in">
+        {/* Header Banner */}
+        <div className="bg-gradient-to-r from-[#103125] via-[#164433] to-[#103125] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-900/50">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 bg-emerald-400 text-gray-950 text-xs font-black rounded-full uppercase tracking-wider">
+                Administrative Member Oversight Desk
+              </span>
+              <span className="px-2.5 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full capitalize">
+                {oversight.role.replace('_', ' ')}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              {oversight.user.full_name || oversight.user.username}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-200">
+              {oversight.club.name} • Institutional Authority
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                if (onNavigateToModule2) {
+                  onNavigateToModule2(oversight.club.code);
+                } else {
+                  window.location.href = oversight.module_2_url || `/?view=club_module&club=${oversight.club.code}`;
+                }
+              }}
+              className="px-5 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-gray-950 font-black text-xs transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center space-x-2 cursor-pointer"
+            >
+              <Building2 className="h-4 w-4" />
+              <span>Return to Club Admin (Module 2)</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Telemetry Stat Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Enrolled Members</span>
+            <div className="text-2xl font-black text-gray-900">{oversight.stats.total_members}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Active Status</span>
+            <div className="text-2xl font-black text-emerald-700">{oversight.stats.active_members}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Suspended / Expired</span>
+            <div className="text-2xl font-black text-rose-700">{oversight.stats.suspended_or_expired}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">HEI Sub-Club Units</span>
+            <div className="text-2xl font-black text-indigo-700">{oversight.stats.heis_disciplines}</div>
+          </div>
+        </div>
+
+        {/* Informative Notice & Recent Members Preview */}
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Recent Enrolled Scholars Preview</h3>
+              <p className="text-xs text-gray-500">
+                Main Club Authorities govern the institution from Module 2. For security and architectural consistency, authorities do not have dummy student profiles.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="p-3">Scholar Name</th>
+                  <th className="p-3">Department</th>
+                  <th className="p-3">Roll Number</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Validity Until</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {oversight.recent_members.map((m) => (
+                  <tr key={m.id} className="hover:bg-gray-50/80">
+                    <td className="p-3 font-bold text-gray-900">{m.full_name}</td>
+                    <td className="p-3 text-gray-600">{m.department || '—'}</td>
+                    <td className="p-3 font-mono text-gray-600">{m.roll_number || '—'}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        m.is_suspended ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {m.is_suspended ? 'Suspended' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-500 font-mono">{m.valid_until || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Departmental Sub-Club Coordinator Desk
+  if (data.desk === 'coordinator_desk') {
+    const coord = data;
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-[#103125] via-[#164433] to-[#103125] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-900/50">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="px-3 py-1 bg-amber-400 text-gray-950 text-xs font-black rounded-full uppercase tracking-wider">
+                Departmental Sub-Club Coordinator Desk
+              </span>
+              <span className="px-2.5 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full">
+                Sub-Admin Authority
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              {coord.user.full_name || coord.user.username}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-200">
+              {coord.club.name} • {coord.sub_clubs.map((s) => s.name).join(', ') || 'Departmental Chapter'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Coordinated Chapters</span>
+            <div className="text-2xl font-black text-gray-900">{coord.stats.total_coordinated_sub_clubs}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Enrolled Scholars</span>
+            <div className="text-2xl font-black text-emerald-700">{coord.stats.enrolled_students_count}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Chapter Events</span>
+            <div className="text-2xl font-black text-amber-700">{coord.stats.events_count}</div>
+          </div>
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Curated Libraries</span>
+            <div className="text-2xl font-black text-indigo-700">{coord.stats.curated_libraries_count}</div>
+          </div>
+        </div>
+
+        {/* Enrolled Students Roster with Suspend/Unsuspend action */}
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">Departmental Chapter Roster & Moderation</h3>
+              <p className="text-xs text-gray-500">
+                Manage scholars enrolled under your sub-club. You can temporarily suspend or reinstate scholars.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="p-3">Scholar Name</th>
+                  <th className="p-3">Email</th>
+                  <th className="p-3">Department</th>
+                  <th className="p-3">Roll Number</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Moderation Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {coord.enrolled_students.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-gray-400">
+                      No scholars enrolled in this chapter yet.
+                    </td>
+                  </tr>
+                ) : (
+                  coord.enrolled_students.map((student) => (
+                    <tr key={student.id} className="hover:bg-gray-50/80">
+                      <td className="p-3 font-bold text-gray-900">{student.full_name}</td>
+                      <td className="p-3 font-mono text-gray-600">{student.email}</td>
+                      <td className="p-3 text-gray-600">{student.department || '—'}</td>
+                      <td className="p-3 font-mono text-gray-600">{student.roll_number || '—'}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          student.is_suspended ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {student.is_suspended ? 'Suspended' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={async () => {
+                            await toggleStudentSuspension(student.id, !student.is_suspended);
+                            void loadMe();
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            student.is_suspended
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                          }`}
+                        >
+                          {student.is_suspended ? 'Unsuspend' : 'Suspend Member'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Curated Library Hub */}
+        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-gray-900">Curated Chapter Library Hub</h3>
+          <CuratedLibraryHub clubId={coord.club.code} isAuthority={true} isStudent={false} />
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Full Student Scholar Workspace (Students and Executive Council Members)
+  const profile = data.profile!;
   const stats = data.stats || {
     badge: 'copper',
     badge_label: 'Copper',

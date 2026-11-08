@@ -41,6 +41,7 @@ export interface SessionPayload {
   must_change_password: boolean;
   institution_code: string;
   club_code: string;
+  sub_club_code?: string;
 }
 
 /**
@@ -277,5 +278,16 @@ export function completeJoin(input: JoinCompleteInput): Promise<JoinResult> {
     token: input.token,
     email: input.email,
     code: input.code,
+  });
+}
+
+/** POST /api/v1/accounts/password/change/ — change permanent password (enforced on must_change_password). */
+export function changeAccountPassword(
+  current_password: string,
+  new_password: string,
+): Promise<SessionPayload> {
+  return postJson<SessionPayload>(`${ACCOUNTS_API_BASE}/password/change/`, {
+    current_password,
+    new_password,
   });
 }

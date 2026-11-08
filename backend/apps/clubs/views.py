@@ -30,7 +30,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.policies import CLUB_AUTHORITY_GATE
+from apps.accounts.policies import CLUB_AUTHORITY_GATE, MAIN_CLUB_ADMIN_GATE
 from apps.accounts.throttles import client_ip, sliding_window_allow
 from apps.core.scoping import authenticated_user
 from apps.governance.renewals import record_payload, request_renewal
@@ -216,7 +216,7 @@ class DashboardView(APIView):
 class ShowcaseEditView(APIView):
     """``POST /api/v1/clubs/dashboard/showcase/`` — create/update the showcase."""
 
-    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    permission_classes = [IsAuthenticated, MAIN_CLUB_ADMIN_GATE]
 
     def post(self, request: Request) -> Response:
         try:
@@ -249,7 +249,7 @@ class PasskeyStatusView(APIView):
 class PasskeyIssueView(APIView):
     """``POST /api/v1/clubs/dashboard/passkey/issue/`` — plaintext shown ONCE."""
 
-    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    permission_classes = [IsAuthenticated, MAIN_CLUB_ADMIN_GATE]
 
     def post(self, request: Request) -> Response:
         try:
@@ -268,7 +268,7 @@ class PasskeyIssueView(APIView):
 class PasskeyRegenerateView(APIView):
     """``POST /api/v1/clubs/dashboard/passkey/regenerate/`` — new code, old dead."""
 
-    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    permission_classes = [IsAuthenticated, MAIN_CLUB_ADMIN_GATE]
 
     def post(self, request: Request) -> Response:
         try:
@@ -284,7 +284,7 @@ class PasskeyRegenerateView(APIView):
 class PasskeyRevokeView(APIView):
     """``POST /api/v1/clubs/dashboard/passkey/revoke/`` — bounded repair (P5)."""
 
-    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    permission_classes = [IsAuthenticated, MAIN_CLUB_ADMIN_GATE]
 
     def post(self, request: Request) -> Response:
         try:
@@ -354,7 +354,7 @@ class RenewalRequestView(APIView):
     zone desk. Exactly one open request per club (server-side, P0).
     """
 
-    permission_classes = [IsAuthenticated, CLUB_AUTHORITY_GATE]
+    permission_classes = [IsAuthenticated, MAIN_CLUB_ADMIN_GATE]
 
     def post(self, request: Request) -> Response:
         note = request.data.get("note", "")
@@ -439,7 +439,11 @@ class SubClubListView(APIView):
                 {"detail": "Club not found.", "code": "club_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        sub_clubs = SubClub.objects.filter(club=club, is_active=True).order_by("name")
+        sub_clubs = (
+            SubClub.objects.select_related("coordinator_user")
+            .filter(club=club, is_active=True)
+            .order_by("name")
+        )
         data = [
             {
                 "id": sc.id,
@@ -450,6 +454,11 @@ class SubClubListView(APIView):
                 "coordinator_name": sc.coordinator_name,
                 "coordinator_email": sc.coordinator_email,
                 "coordinator_phone": sc.coordinator_phone,
+                "coordinator_username": (
+                    sc.coordinator_user.username
+                    if sc.coordinator_user
+                    else (sc.coordinator_email or "")
+                ),
                 "is_active": sc.is_active,
                 "created_at": (
                     sc.created_at.isoformat()
@@ -503,14 +512,123 @@ class SubClubListView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # H6: require club authority for sub-club creation
-        from apps.members.views import _is_main_club_authority
+        # Invariant: only Main Club Admins (Patron, President, Secretary)
+        # can form sub-clubs. Student Executives (CLUB_EXECUTIVE) have view-only access.
+        from apps.members.views import _is_main_club_admin
 
-        if not _is_main_club_authority(user, club):
+        if not _is_main_club_admin(user, club):
             return Response(
-                {"detail": "Club authority required to create sub-clubs."},
+                {
+                    "detail": (
+                        "Main club admin (Patron, President, or Secretary) authority "
+                        "required to form sub-clubs."
+                    ),
+                    "code": "permission_denied",
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        coordinator_name = str(data.get("coordinator_name", "")).strip()
+        coordinator_email = str(data.get("coordinator_email", "")).strip()
+        coordinator_phone = str(data.get("coordinator_phone", "")).strip()
+        temporary_password = str(data.get("temporary_password", "")).strip()
+        if not temporary_password:
+            temporary_password = f"CoordPass@{secrets.token_hex(3)}2026!"
+
+        coord_user = None
+        if coordinator_email:
+            from apps.accounts.models import (
+                MAIN_CLUB_ADMIN_SUB_ROLES,
+                AccountState,
+                Category,
+                SubRole,
+                User,
+            )
+
+            coord_user = User.objects.filter(email__iexact=coordinator_email).first()
+            if coord_user:
+                if coord_user.club and coord_user.club != club:
+                    return Response(
+                        {
+                            "detail": (
+                                "A user with this email address is already registered "
+                                "under another institutional club."
+                            ),
+                            "code": "duplicate_email",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if (
+                    coord_user.sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+                    or coord_user.category == Category.IIT_KGP_ADMIN
+                ):
+                    return Response(
+                        {
+                            "detail": (
+                                "Main club administrators and central officers cannot "
+                                "be re-provisioned as sub-club coordinators."
+                            ),
+                            "code": "invalid_coordinator",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            base_username = (
+                re.sub(r"[^a-zA-Z0-9_]", "_", coordinator_email.split("@")[0])
+                or f"{slug_part.lower()}_coord"
+            )
+            if not coord_user:
+                coord_username = base_username
+                counter = 1
+                while User.objects.filter(username__iexact=coord_username).exists():
+                    coord_username = f"{base_username}_{counter}"
+                    counter += 1
+                coord_user = User.objects.create_user(
+                    username=coord_username,
+                    email=coordinator_email,
+                    first_name=coordinator_name[:150] or "Coordinator",
+                    category=Category.CLUB_ADMIN,
+                    sub_role=SubRole.SUBCLUB_COORDINATOR,
+                    account_state=AccountState.ACTIVE,
+                    is_active=True,
+                    must_change_password=True,
+                    club=club,
+                    institution=club.institution,
+                    state=(
+                        club.institution.state
+                        if (club.institution and club.institution.state)
+                        else None
+                    ),
+                    zone=(
+                        club.institution.state.zone
+                        if (
+                            club.institution
+                            and club.institution.state
+                            and club.institution.state.zone
+                        )
+                        else None
+                    ),
+                    phone=coordinator_phone,
+                )
+            else:
+                coord_user.category = Category.CLUB_ADMIN
+                coord_user.sub_role = SubRole.SUBCLUB_COORDINATOR
+                coord_user.account_state = AccountState.ACTIVE
+                coord_user.is_active = True
+                coord_user.must_change_password = True
+                coord_user.club = club
+                coord_user.institution = club.institution
+                if club.institution and club.institution.state:
+                    coord_user.state = club.institution.state
+                    if club.institution.state.zone:
+                        coord_user.zone = club.institution.state.zone
+                if coordinator_phone:
+                    coord_user.phone = coordinator_phone
+                if coordinator_name:
+                    coord_user.first_name = coordinator_name[:150]
+
+            coord_user.set_password(temporary_password)
+            coord_user.save()
 
         sub_club = SubClub.objects.create(
             club=club,
@@ -518,9 +636,10 @@ class SubClubListView(APIView):
             name=name,
             discipline=discipline,
             created_by=user,
-            coordinator_name=str(data.get("coordinator_name", "")).strip(),
-            coordinator_email=str(data.get("coordinator_email", "")).strip(),
-            coordinator_phone=str(data.get("coordinator_phone", "")).strip(),
+            coordinator_name=coordinator_name,
+            coordinator_email=coordinator_email,
+            coordinator_phone=coordinator_phone,
+            coordinator_user=coord_user,
         )
         return Response(
             {
@@ -531,6 +650,8 @@ class SubClubListView(APIView):
                 "coordinator_name": sub_club.coordinator_name,
                 "coordinator_email": sub_club.coordinator_email,
                 "coordinator_phone": sub_club.coordinator_phone,
+                "coordinator_username": coord_user.username if coord_user else "",
+                "temporary_password": temporary_password,
                 "message": "Sub-club created successfully.",
             },
             status=status.HTTP_201_CREATED,
@@ -559,19 +680,36 @@ class SubClubDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        sub_club = SubClub.objects.filter(id=subclub_id, club=club).first()
+        sub_club = (
+            SubClub.objects.select_related("coordinator_user")
+            .filter(id=subclub_id, club=club)
+            .first()
+        )
         if not sub_club:
             return Response(
                 {"detail": "Sub-club not found.", "code": "not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # H6: require club authority for sub-club edit
-        from apps.members.views import _is_main_club_authority
+        from apps.core.scoping import authenticated_user
 
-        if not _is_main_club_authority(authenticated_user(request), club):
+        actor = authenticated_user(request)
+        if not actor:
             return Response(
-                {"detail": "Club authority required."},
+                {"detail": "Authentication required."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        from apps.members.views import _is_main_club_admin
+
+        if not _is_main_club_admin(actor, club):
+            return Response(
+                {
+                    "detail": (
+                        "Main club admin authority required to manage sub-clubs."
+                    ),
+                    "code": "permission_denied",
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -587,6 +725,96 @@ class SubClubDetailView(APIView):
                 setattr(sub_club, field, str(data[field]).strip())
         if "is_active" in data:
             sub_club.is_active = bool(data["is_active"])
+
+        temporary_password = str(data.get("temporary_password", "")).strip()
+        if temporary_password:
+            from apps.accounts.models import (
+                MAIN_CLUB_ADMIN_SUB_ROLES,
+                AccountState,
+                Category,
+                SubRole,
+                User,
+            )
+
+            coord_user = sub_club.coordinator_user
+            if not coord_user and sub_club.coordinator_email:
+                coord_user = User.objects.filter(
+                    email__iexact=sub_club.coordinator_email
+                ).first()
+            if coord_user:
+                if coord_user.club and coord_user.club != club:
+                    return Response(
+                        {
+                            "detail": (
+                                "A user with this email address is already registered "
+                                "under another institutional club."
+                            ),
+                            "code": "duplicate_email",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if (
+                    coord_user.sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+                    or coord_user.category == Category.IIT_KGP_ADMIN
+                ):
+                    return Response(
+                        {
+                            "detail": (
+                                "Main club administrators and central officers cannot "
+                                "be re-provisioned as sub-club coordinators."
+                            ),
+                            "code": "invalid_coordinator",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            if not coord_user and sub_club.coordinator_email:
+                clean_email_prefix = sub_club.coordinator_email.split("@")[0]
+                base_username = (
+                    re.sub(r"[^a-zA-Z0-9_]", "_", clean_email_prefix)
+                    or f"{sub_club.name[:10].lower()}_coord"
+                )
+                coord_username = base_username
+                counter = 1
+                while User.objects.filter(username__iexact=coord_username).exists():
+                    coord_username = f"{base_username}_{counter}"
+                    counter += 1
+                coord_user = User.objects.create_user(
+                    username=coord_username,
+                    email=sub_club.coordinator_email,
+                    first_name=sub_club.coordinator_name[:150] or "Coordinator",
+                    category=Category.CLUB_ADMIN,
+                    sub_role=SubRole.SUBCLUB_COORDINATOR,
+                    account_state=AccountState.ACTIVE,
+                    is_active=True,
+                    must_change_password=True,
+                    club=club,
+                    institution=club.institution,
+                    state=(
+                        club.institution.state
+                        if (club.institution and club.institution.state)
+                        else None
+                    ),
+                    zone=(
+                        club.institution.state.zone
+                        if (
+                            club.institution
+                            and club.institution.state
+                            and club.institution.state.zone
+                        )
+                        else None
+                    ),
+                    phone=sub_club.coordinator_phone,
+                )
+            if coord_user:
+                coord_user.category = Category.CLUB_ADMIN
+                coord_user.sub_role = SubRole.SUBCLUB_COORDINATOR
+                coord_user.account_state = AccountState.ACTIVE
+                coord_user.is_active = True
+                coord_user.must_change_password = True
+                coord_user.set_password(temporary_password)
+                coord_user.save()
+                sub_club.coordinator_user = coord_user
+
         sub_club.save()
 
         return Response(
@@ -598,6 +826,11 @@ class SubClubDetailView(APIView):
                 "coordinator_name": sub_club.coordinator_name,
                 "coordinator_email": sub_club.coordinator_email,
                 "coordinator_phone": sub_club.coordinator_phone,
+                "coordinator_username": (
+                    sub_club.coordinator_user.username
+                    if sub_club.coordinator_user
+                    else ""
+                ),
                 "is_active": sub_club.is_active,
                 "message": "Sub-club updated successfully.",
             }

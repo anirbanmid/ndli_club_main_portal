@@ -279,10 +279,34 @@ class JoinRequestRejectView(APIView):
         return Response({"id": join_request.pk, "status": join_request.status})
 
 
+def _is_main_club_admin(actor: Any, club: Any) -> bool:
+    """Verify if actor is a Main Admin (Patron, President, Secretary) or IIT KGP Admin.
+
+    Executive Council members and Sub-Club Coordinators have NO mutation/admin powers.
+    """
+    from apps.accounts.models import MAIN_CLUB_ADMIN_SUB_ROLES, Category
+
+    if actor is None or not getattr(actor, "is_authenticated", False):
+        return False
+    actor_category = getattr(actor, "category", None)
+    if actor_category == Category.IIT_KGP_ADMIN:
+        return True
+    actor_sub_role = getattr(actor, "sub_role", None)
+    if (
+        actor_category != Category.CLUB_ADMIN
+        or actor_sub_role not in MAIN_CLUB_ADMIN_SUB_ROLES
+    ):
+        return False
+    actor_club = getattr(actor, "club", None)
+    if actor_club is None or club is None or actor_club.pk != club.pk:
+        return False
+    return True
+
+
 def _is_main_club_authority(actor: Any, club: Any) -> bool:
     """Verify if actor is an authorized main club officer.
 
-    Includes Patron, President, Secretary, and Executive Committee members.
+    Includes Patron, President, Secretary, and Executive Committee members (view-only).
     """
     from apps.accounts.models import CLUB_AUTHORITY_SUB_ROLES, Category
 
@@ -309,16 +333,22 @@ def _is_subclub_coordinator(
     """Verify if actor is an assigned coordinator for a sub-club."""
     if actor is None or not getattr(actor, "is_authenticated", False):
         return False
+    from django.db.models import Q
+
     from apps.domain.models import SubClub
 
     actor_email = getattr(actor, "email", "") or ""
-    if not actor_email:
-        return False
     qs = SubClub.objects.filter(
         club=club,
-        coordinator_email__iexact=actor_email,
         is_active=True,
     )
+    coord_q = Q(coordinator_user=actor)
+    if actor_email:
+        coord_q |= Q(coordinator_email__iexact=actor_email)
+    actor_sub_club = getattr(actor, "sub_club", None)
+    if actor_sub_club:
+        coord_q |= Q(id=actor_sub_club.id)
+    qs = qs.filter(coord_q)
     if subclub_ids is not None:
         qs = qs.filter(id__in=subclub_ids)
     return qs.exists()
@@ -351,7 +381,7 @@ class JoinBatchConfirmView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not _is_main_club_authority(actor, target_club):
+        if not _is_main_club_admin(actor, target_club):
             return Response(
                 {
                     "detail": (
@@ -458,16 +488,16 @@ class StudentProfileDetailView(APIView):
             )
 
         student_subclub_ids = list(profile.sub_clubs.values_list("id", flat=True))
-        caller_is_main_auth = _is_main_club_authority(actor, profile.club)
+        caller_is_main_admin = _is_main_club_admin(actor, profile.club)
         caller_is_coord = _is_subclub_coordinator(
             actor, profile.club, student_subclub_ids
         )
 
-        if not caller_is_main_auth and not caller_is_coord:
+        if not caller_is_main_admin and not caller_is_coord:
             return Response(
                 {
                     "detail": (
-                        "Permission denied. Only club authorities or assigned "
+                        "Permission denied. Only main club authorities or assigned "
                         "sub-club coordinators may modify student records."
                     ),
                     "code": "permission_denied",
@@ -477,7 +507,7 @@ class StudentProfileDetailView(APIView):
 
         data = request.data
         if "validity_years" in data:
-            if not caller_is_main_auth:
+            if not caller_is_main_admin:
                 return Response(
                     {
                         "detail": (
@@ -535,7 +565,7 @@ class StudentProfileDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not _is_main_club_authority(actor, profile.club):
+        if not _is_main_club_admin(actor, profile.club):
             return Response(
                 {
                     "detail": (
@@ -591,7 +621,7 @@ class StudentSubClubAssignView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not _is_main_club_authority(actor, profile.club):
+        if not _is_main_club_admin(actor, profile.club):
             return Response(
                 {
                     "detail": (
@@ -631,7 +661,7 @@ class SchoolRosterUploadView(APIView):
             .filter(code__iexact=club_code)
             .first()
         )
-        if not club or not _is_main_club_authority(authenticated_user(request), club):
+        if not club or not _is_main_club_admin(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -744,7 +774,7 @@ class _SchoolRosterDecisionView(APIView):
             )
 
         # H4: require main-club authority for roster approve/reject
-        if not _is_main_club_authority(authenticated_user(request), club):
+        if not _is_main_club_admin(authenticated_user(request), club):
             return Response(
                 {"detail": "Forbidden.", "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -851,7 +881,6 @@ class StudentProfileListView(APIView):
         from django.db.models import Exists, F, OuterRef, Q
 
         from apps.accounts.models import (
-            CLUB_AUTHORITY_SUB_ROLES,
             AccountState,
             Category,
         )
@@ -940,21 +969,23 @@ class StudentProfileListView(APIView):
                 | Q(department__icontains=search)
             )
 
-        # Role territory (owner bug 2026-11-08): club officers (accounts
-        # sub-roles or active AuthorityAssignment tiers) are NOT general
-        # members — they belong to the authority roster. Exclude them here so
-        # e.g. a president can never appear as an "Existing Member".
+        # Role territory (owner bug 2026-11-08): main club officers (Patron,
+        # President, Secretary) belong to the authority roster only — exclude
+        # them here so e.g. a president can never appear as an "Existing Member".
+        # Student Executives and Coordinators are active scholars.
+        from apps.accounts.models import MAIN_CLUB_ADMIN_SUB_ROLES
         from apps.domain.models import AuthorityAssignment
 
         officer_assignments = AuthorityAssignment.objects.filter(
             status=AuthorityAssignment.Status.ACTIVE,
             club=OuterRef("club"),
             user_id=OuterRef("user_id"),
+            tier__in=["Patron", "President", "Secretary"],
         )
         qs = qs.exclude(Exists(officer_assignments)).exclude(
             Q(
                 user__category=Category.CLUB_ADMIN,
-                user__sub_role__in=CLUB_AUTHORITY_SUB_ROLES,
+                user__sub_role__in=MAIN_CLUB_ADMIN_SUB_ROLES,
                 # user.club is an FK to Club.to_field="code" (varchar
                 # accounts_user.club_code); F("club") would resolve to
                 # members_studentmemberprofile.club_id (bigint) and Postgres
@@ -1520,9 +1551,238 @@ class StudentMemberMeView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request) -> Response:
+        from apps.accounts.models import MAIN_CLUB_ADMIN_SUB_ROLES, Category, SubRole
+        from apps.activities.models import ClubEvent
+        from apps.domain.models import Club, SubClub
         from apps.members.models import StudentMemberProfile
+        from apps.sharing.models import CuratedLibrary
 
         user = request.user
+        actor_sub_role = getattr(user, "sub_role", "")
+        actor_category = getattr(user, "category", "")
+
+        # 1. Main Admins & IIT KGP Admins -> Administrative Member Oversight Desk
+        # Prevent fake student profile from being created!
+        is_main_admin = (
+            actor_category == Category.IIT_KGP_ADMIN
+            or (
+                actor_category == Category.CLUB_ADMIN
+                and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+            )
+        )
+        if is_main_admin:
+            club = getattr(user, "club", None)
+            if not club:
+                club = (
+                    Club.objects.filter(is_sample=False, status="active").first()
+                    or Club.objects.first()
+                )
+
+            total_members = 0
+            active_students = 0
+            suspended_students = 0
+            sub_clubs_count = 0
+            events_count = 0
+            recent_members = []
+
+            if club:
+                member_qs = StudentMemberProfile.objects.filter(club=club)
+                total_members = member_qs.count()
+                suspended_students = member_qs.filter(
+                    is_suspended_by_coordinator=True
+                ).count()
+                active_students = total_members - suspended_students
+                sub_clubs_count = SubClub.objects.filter(
+                    club=club, is_active=True
+                ).count()
+                events_count = ClubEvent.objects.filter(host_club=club).count()
+
+                for p in member_qs.select_related("user").order_by("-id")[:10]:
+                    recent_members.append(
+                        {
+                            "id": p.id,
+                            "full_name": p.user.get_full_name() or p.user.username,
+                            "roll_number": p.roll_number,
+                            "department": p.department,
+                            "is_suspended": p.is_suspended_by_coordinator,
+                            "points": p.points,
+                            "badge": p.badge,
+                        }
+                    )
+
+            return Response(
+                {
+                    "desk": "admin_oversight",
+                    "role": actor_sub_role or "club_admin",
+                    "category": actor_category,
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "full_name": user.get_full_name() or user.username,
+                        "sub_role": actor_sub_role,
+                    },
+                    "club": {
+                        "code": club.code if club else "",
+                        "name": club.name if club else "",
+                        "institution_name": (
+                            club.institution.name
+                            if (club and club.institution)
+                            else (club.name if club else "")
+                        ),
+                    },
+                    "oversight": {
+                        "total_members": total_members,
+                        "active_students": active_students,
+                        "suspended_students": suspended_students,
+                        "total_sub_clubs": sub_clubs_count,
+                        "total_events": events_count,
+                        "recent_members": recent_members,
+                    },
+                    "stats": {
+                        "total_members": total_members,
+                        "active_students": active_students,
+                        "suspended_students": suspended_students,
+                        "total_sub_clubs": sub_clubs_count,
+                        "total_events": events_count,
+                    },
+                    "recent_members": recent_members,
+                    "module_2_url": f"/clubs/{club.code}/" if club else "/clubs/",
+                    "navigation": {
+                        "target_module": "club_module",
+                        "target_tab": "club_dashboard",
+                        "label": "Return to Club Administrative Management (Module 2)",
+                    },
+                }
+            )
+
+        # 2. Sub-Club Coordinators -> Departmental Coordinator Desk
+        is_subclub_coord = (
+            actor_sub_role == SubRole.SUBCLUB_COORDINATOR
+            or (
+                actor_category == Category.CLUB_ADMIN
+                and not is_main_admin
+                and actor_sub_role != SubRole.CLUB_EXECUTIVE
+            )
+        )
+        if is_subclub_coord:
+            club = getattr(user, "club", None)
+            if not club:
+                club = (
+                    Club.objects.filter(is_sample=False, status="active").first()
+                    or Club.objects.first()
+                )
+
+            from django.db.models import Q
+
+            coord_qs = SubClub.objects.filter(
+                club=club,
+                is_active=True,
+            )
+            q_cond = Q(coordinator_user=user)
+            if user.email:
+                q_cond |= Q(coordinator_email__iexact=user.email)
+            actor_sub_club = getattr(user, "sub_club", None)
+            if actor_sub_club:
+                q_cond |= Q(id=actor_sub_club.id)
+            coord_subclubs = list(coord_qs.filter(q_cond).distinct())
+
+            subclub_ids = [sc.id for sc in coord_subclubs]
+            enrolled_students = []
+            if subclub_ids:
+                stu_qs = (
+                    StudentMemberProfile.objects.filter(
+                        club=club,
+                        sub_clubs__id__in=subclub_ids,
+                    )
+                    .distinct()
+                    .select_related("user")
+                    .order_by("roll_number", "id")
+                )
+                for s in stu_qs:
+                    enrolled_students.append(
+                        {
+                            "id": s.id,
+                            "full_name": s.user.get_full_name() or s.user.username,
+                            "roll_number": s.roll_number,
+                            "email": s.user.email,
+                            "department": s.department,
+                            "is_suspended": s.is_suspended_by_coordinator,
+                            "points": s.points,
+                            "badge": s.badge,
+                        }
+                    )
+
+            events_data = []
+            if subclub_ids:
+                events_qs = (
+                    ClubEvent.objects.filter(host_club=club)
+                    .filter(
+                        Q(target_sub_clubs__id__in=subclub_ids) | Q(all_sub_clubs=True)
+                    )
+                    .distinct()
+                )
+                events_data = [
+                    {
+                        "id": ev.id,
+                        "title": ev.title,
+                        "start_time": ev.start_time.isoformat(),
+                        "end_time": ev.end_time.isoformat(),
+                        "scope": ev.scope,
+                        "status": ev.status,
+                    }
+                    for ev in events_qs.order_by("-start_time")[:10]
+                ]
+
+            libraries_count = 0
+            if subclub_ids:
+                libraries_count = CuratedLibrary.objects.filter(
+                    club=club, sub_club_id__in=subclub_ids
+                ).count()
+
+            return Response(
+                {
+                    "desk": "coordinator_desk",
+                    "role": "subclub_coordinator",
+                    "category": actor_category,
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "full_name": user.get_full_name() or user.username,
+                        "phone": getattr(user, "phone", ""),
+                    },
+                    "club": {
+                        "code": club.code if club else "",
+                        "name": club.name if club else "",
+                        "institution_name": (
+                            club.institution.name
+                            if (club and club.institution)
+                            else (club.name if club else "")
+                        ),
+                    },
+                    "sub_clubs": [
+                        {
+                            "id": sc.id,
+                            "code": sc.code,
+                            "name": sc.name,
+                            "discipline": sc.discipline,
+                            "member_count": sc.enrolled_students.count(),
+                        }
+                        for sc in coord_subclubs
+                    ],
+                    "enrolled_students": enrolled_students,
+                    "events": events_data,
+                    "stats": {
+                        "total_coordinated_sub_clubs": len(coord_subclubs),
+                        "enrolled_students_count": len(enrolled_students),
+                        "events_count": len(events_data),
+                        "curated_libraries_count": libraries_count,
+                    },
+                }
+            )
+
+        # 3. Student Members & Executive Council Members -> Student Workspace
         profile = getattr(user, "student_profile", None)
         if not profile:
             club = None
@@ -1531,8 +1791,6 @@ class StudentMemberMeView(APIView):
             except Exception:
                 club = None
             if not club:
-                from apps.domain.models import Club
-
                 club = (
                     Club.objects.filter(is_sample=False, status="active").first()
                     or Club.objects.first()
@@ -1580,6 +1838,7 @@ class StudentMemberMeView(APIView):
 
         return Response(
             {
+                "desk": "student_scholar",
                 "profile": {
                     "id": profile.id,
                     "user_id": user.id,
@@ -1809,5 +2068,9 @@ class StudentMemberMePasswordView(APIView):
             )
 
         user.set_password(new_password)
-        user.save(update_fields=["password"])
+        if hasattr(user, "must_change_password") and user.must_change_password:
+            user.must_change_password = False
+            user.save(update_fields=["password", "must_change_password"])
+        else:
+            user.save(update_fields=["password"])
         return Response({"message": "Password updated successfully.", "success": True})

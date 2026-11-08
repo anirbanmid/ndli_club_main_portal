@@ -71,6 +71,7 @@ def _session_payload(user) -> dict[str, object]:
         "must_change_password": bool(getattr(user, "must_change_password", False)),
         "institution_code": getattr(user, "institution_code", ""),
         "club_code": getattr(user, "club_code", ""),
+        "sub_club_code": getattr(user, "sub_club_code", ""),
     }
 
 
@@ -191,7 +192,11 @@ class ChangePasswordView(APIView):
 
     permission_classes = [
         IsAuthenticated,
-        CategoryGate("club", "admin", require_fresh_password=False),
+        CategoryGate(
+            ("club", "admin"),
+            require_fresh_password=False,
+            require_mfa=False,
+        ),
     ]
 
     def post(self, request: Request) -> Response:
@@ -203,6 +208,9 @@ class ChangePasswordView(APIView):
             current_password=str(request.data.get("current_password", "")),
             new_password=str(request.data.get("new_password", "")),
         )
+        from django.contrib.auth import update_session_auth_hash
+
+        update_session_auth_hash(request._request, request.user)
         return Response(_session_payload(request.user))
 
 

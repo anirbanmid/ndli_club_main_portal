@@ -1779,3 +1779,500 @@ class CampusModuleTests(TestCase):
             self.assertFalse(consume_captcha(request, "DEV_TEST"))
         with override_settings(DEBUG=True):
             self.assertTrue(consume_captcha(request, "DEV_TEST"))
+
+    def test_subclub_coordinator_provisioning_and_first_login_password_change(
+        self,
+    ) -> None:
+        """Sub-club creation provisions real coordinator account with
+        must_change_password=True, allowing password rotation and coordinator_desk."""
+        from apps.domain.models import SubClub
+        from apps.members.models import StudentMemberProfile
+
+        self.client.force_login(self.authority_user)
+
+        resp = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Biotech & Genomics Sub-Club",
+                "discipline": "Bioengineering",
+                "coordinator_name": "Dr. Sunita Rao",
+                "coordinator_email": "sunita.rao@delhi.ac.in",
+                "temporary_password": "InitialTempPass@2026!",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()
+        self.assertEqual(data["temporary_password"], "InitialTempPass@2026!")
+        self.assertTrue(data["coordinator_username"])
+
+        # Check created user
+        coord_user = User.objects.filter(email__iexact="sunita.rao@delhi.ac.in").first()
+        self.assertIsNotNone(coord_user)
+        assert coord_user is not None
+        self.assertEqual(coord_user.category, Category.CLUB_ADMIN)
+        self.assertEqual(coord_user.sub_role, SubRole.SUBCLUB_COORDINATOR)
+        self.assertTrue(coord_user.must_change_password)
+        self.assertTrue(coord_user.is_active)
+        self.assertEqual(coord_user.club, self.club)
+        self.assertTrue(coord_user.check_password("InitialTempPass@2026!"))
+
+        # Verify SubClub is linked to coordinator_user
+        sub_club = SubClub.objects.filter(id=data["id"]).first()
+        self.assertIsNotNone(sub_club)
+        assert sub_club is not None
+        self.assertEqual(sub_club.coordinator_user, coord_user)
+        self.assertEqual(coord_user.sub_club, sub_club)
+
+        # Coordinator rotates password via /api/v1/accounts/password/change/
+        coord_client = Client()
+        coord_client.force_login(coord_user)
+        pw_resp = coord_client.post(
+            "/api/v1/accounts/password/change/",
+            data={
+                "current_password": "InitialTempPass@2026!",
+                "new_password": "NewPermanentPass@2026!",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(pw_resp.status_code, 200)
+        coord_user.refresh_from_db()
+        self.assertFalse(coord_user.must_change_password)
+        self.assertTrue(coord_user.check_password("NewPermanentPass@2026!"))
+
+        # Coordinator visits /api/v1/members/me/ -> Departmental Coordinator Desk
+        me_resp = coord_client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertEqual(me_data["desk"], "coordinator_desk")
+        self.assertEqual(me_data["role"], "subclub_coordinator")
+        self.assertEqual(len(me_data["sub_clubs"]), 1)
+        self.assertIn("enrolled_students", me_data)
+        self.assertIn("events", me_data)
+
+        # Coordinator has no dummy StudentMemberProfile
+        self.assertFalse(StudentMemberProfile.objects.filter(user=coord_user).exists())
+
+    def test_student_executive_view_only_cannot_form_subclubs(self) -> None:
+        """Student Executive has view-only access to Module 2."""
+        exec_user = User.objects.create(
+            username="exec.diat",
+            email="exec.diat@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        exec_user.set_password("ExecPass@2026!")
+        exec_user.save()
+
+        exec_client = Client()
+        exec_client.force_login(exec_user)
+
+        # Attempt to create sub-club as executive -> 403 Forbidden
+        create_resp = exec_client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Unauthorized Sub-Club",
+                "discipline": "Arts",
+                "coordinator_name": "Dr. X",
+                "coordinator_email": "x@delhi.ac.in",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(create_resp.status_code, 403)
+        self.assertEqual(create_resp.json().get("code"), "permission_denied")
+
+        # Executive accessing /api/v1/members/me/ gets full student scholar workspace
+        me_resp = exec_client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertEqual(me_data["desk"], "student_scholar")
+        self.assertIn("profile", me_data)
+
+    def test_main_admin_me_endpoint_returns_oversight_desk(self) -> None:
+        """Main club authority visiting /api/v1/members/me/ receives admin_oversight."""
+        from apps.members.models import StudentMemberProfile
+
+        self.client.force_login(self.authority_user)
+        me_resp = self.client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertEqual(me_data["desk"], "admin_oversight")
+        self.assertEqual(me_data["role"], "club_president")
+        self.assertIn("module_2_url", me_data)
+        self.assertIn("stats", me_data)
+        self.assertIn("recent_members", me_data)
+        self.assertFalse(StudentMemberProfile.objects.filter(user=self.authority_user).exists())
+
+    def test_coordinator_can_suspend_and_unsuspend_student(self) -> None:
+        """Coordinator can moderate scholars enrolled under their sub-club."""
+        from apps.domain.models import SubClub
+        from apps.members.models import StudentMemberProfile
+
+        # Setup subclub & coordinator
+        coord_user = User.objects.create(
+            username="coord.chem",
+            email="coord.chem@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.SUBCLUB_COORDINATOR,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        sub_club = SubClub.objects.create(
+            club=self.club,
+            code=f"{self.club.code}-SUB-CHEM-01",
+            name="Chemistry Sub-Club",
+            discipline="Chemical Sciences",
+            coordinator_name="Dr. Chem",
+            coordinator_email="coord.chem@delhi.ac.in",
+            coordinator_user=coord_user,
+            created_by=self.authority_user,
+        )
+
+        # Setup student enrolled in sub_club
+        student_user = User.objects.create(
+            username="student.chem.01",
+            email="student.chem@delhi.ac.in",
+            first_name="Chem Student",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        profile = StudentMemberProfile.objects.create(
+            user=student_user,
+            club=self.club,
+            is_suspended_by_coordinator=False,
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+        profile.sub_clubs.add(sub_club)
+
+        coord_client = Client()
+        coord_client.force_login(coord_user)
+
+        # Suspend student
+        susp_resp = coord_client.patch(
+            f"/api/v1/members/students/{profile.id}/",
+            data={"is_suspended": True},
+            content_type="application/json",
+        )
+        self.assertEqual(susp_resp.status_code, 200)
+        profile.refresh_from_db()
+        self.assertTrue(profile.is_suspended_by_coordinator)
+
+        # Unsuspend student
+        unsusp_resp = coord_client.patch(
+            f"/api/v1/members/students/{profile.id}/",
+            data={"is_suspended": False},
+            content_type="application/json",
+        )
+        self.assertEqual(unsusp_resp.status_code, 200)
+        profile.refresh_from_db()
+        self.assertFalse(profile.is_suspended_by_coordinator)
+
+    def test_subclub_creation_rejects_duplicate_email_from_other_club_and_main_admins(
+        self,
+    ) -> None:
+        """Sub-club creation must not overwrite users across institutions or
+        demote main admins.
+        """
+        from apps.domain.models import Club, Institution
+
+        other_inst = Institution.objects.create(
+            code="INST-OTHER-99",
+            legacy_id="LEGACY-OTHER-99",
+            name="Other University",
+            state=self.state,
+            district=self.district,
+            institution_type=Institution.Type.HIGHER_EDUCATION,
+        )
+        other_club = Club.objects.create(
+            code="CLB-OTHER-99",
+            name="Other Club",
+            institution=other_inst,
+            status=Club.Status.ACTIVE,
+        )
+        User.objects.create(
+            username="foreign_user",
+            email="foreign@other.ac.in",
+            club=other_club,
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            is_active=True,
+        )
+
+        self.client.force_login(self.authority_user)
+
+        # Attempt to provision sub-club with an email belonging to another institution
+        resp = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Math Chapter",
+                "discipline": "Mathematics",
+                "coordinator_name": "Foreign Coord",
+                "coordinator_email": "foreign@other.ac.in",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json().get("code"), "duplicate_email")
+
+        # Attempt to provision sub-club using main club authority's email
+        resp_admin = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Admin Sub-Club",
+                "discipline": "Management",
+                "coordinator_name": "President",
+                "coordinator_email": self.authority_user.email,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp_admin.status_code, 400)
+        self.assertEqual(resp_admin.json().get("code"), "invalid_coordinator")
+
+    def test_event_certificate_approval_role_and_subclub_scoping(self) -> None:
+        """Event certificate approval is strictly restricted to main admins and
+        the assigned sub-club coordinator for targeted sub-club events.
+        Executives and students are forbidden.
+        """
+        from apps.activities.models import (
+            ClubEvent,
+            EventAttendance,
+            EventScope,
+            EventStatus,
+        )
+        from apps.domain.models import SubClub
+
+        # 1. Create subclub & coordinator
+        coord_user = User.objects.create(
+            username="chem_lead",
+            email="chem_lead@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.SUBCLUB_COORDINATOR,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        coord_user.set_password("LeadPass@2026!")
+        coord_user.save()
+
+        sub_club = SubClub.objects.create(
+            club=self.club,
+            code=f"{self.club.code}-SUB-CHEM-EVT",
+            name="Chemistry Department Sub-Club",
+            discipline="Chemical Sciences",
+            coordinator_name="Chem Lead",
+            coordinator_email="chem_lead@delhi.ac.in",
+            coordinator_user=coord_user,
+            created_by=self.authority_user,
+        )
+
+        other_coord_user = User.objects.create(
+            username="math_lead",
+            email="math_lead@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.SUBCLUB_COORDINATOR,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        other_coord_user.set_password("MathPass@2026!")
+        other_coord_user.save()
+
+        # 2. Create student attendee
+        attendee_user = User.objects.create(
+            username="attendee.student",
+            email="attendee@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        attendee_user.set_password("StudentPass@2026!")
+        attendee_user.save()
+
+        # 3. Create subclub-targeted event
+        event = ClubEvent.objects.create(
+            event_ref="EVT-CHEM-001",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            all_sub_clubs=False,
+            title="Annual Chemistry Symposium",
+            start_time=timezone.now() - timedelta(hours=2),
+            end_time=timezone.now() - timedelta(hours=1),
+            status=EventStatus.ACTIVE,
+            created_by=self.authority_user,
+        )
+        event.target_sub_clubs.add(sub_club)
+
+        attendance = EventAttendance.objects.create(
+            event=event,
+            user=attendee_user,
+            participated_at=timezone.now() - timedelta(minutes=90),
+            is_approved=False,
+        )
+
+        # 4. Student Executive cannot approve certificates -> 403
+        exec_user = User.objects.create(
+            username="exec.member",
+            email="exec.member@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        exec_user.set_password("ExecPass@2026!")
+        exec_user.save()
+
+        client = Client()
+        client.force_login(exec_user)
+        exec_resp = client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "ExecPass@2026!", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertEqual(exec_resp.status_code, 403)
+        self.assertEqual(exec_resp.json().get("code"), "permission_denied")
+
+        # 5. Unassigned coordinator (math_lead) cannot approve certificates -> 403
+        client.force_login(other_coord_user)
+        other_resp = client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "MathPass@2026!", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertEqual(other_resp.status_code, 403)
+
+        # 6. Assigned sub-club coordinator (chem_lead) CAN approve certificates -> 200
+        client.force_login(coord_user)
+        coord_resp = client.post(
+            f"/api/v1/activities/events/{event.id}/approve-certificates/",
+            data={"password": "LeadPass@2026!", "approve_all": True},
+            content_type="application/json",
+        )
+        self.assertEqual(coord_resp.status_code, 200)
+        attendance.refresh_from_db()
+        self.assertTrue(attendance.is_approved)
+
+    def test_suspended_student_cannot_participate_in_events(self) -> None:
+        """Suspended students are strictly barred from participating in events."""
+        from apps.activities.models import ClubEvent, EventScope, EventStatus
+        from apps.members.models import StudentMemberProfile
+
+        student_user = User.objects.create(
+            username="suspended.scholar",
+            email="susp@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        profile = StudentMemberProfile.objects.create(
+            user=student_user,
+            club=self.club,
+            is_suspended_by_coordinator=True,
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-SUSP-CHECK",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="Open Science Reading Session",
+            start_time=now,
+            end_time=now + timedelta(hours=1),
+            status=EventStatus.ACTIVE,
+            created_by=self.authority_user,
+        )
+
+        client = Client()
+        client.force_login(student_user)
+
+        # Attempt to participate while suspended -> 403 Forbidden
+        resp = client.post(
+            f"/api/v1/activities/events/{event.id}/participate/",
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json().get("code"), "account_suspended")
+
+        # Re-instate student -> participation succeeds
+        profile.is_suspended_by_coordinator = False
+        profile.save()
+
+        resp_ok = client.post(
+            f"/api/v1/activities/events/{event.id}/participate/",
+            content_type="application/json",
+        )
+        self.assertEqual(resp_ok.status_code, 200)
+
+    def test_student_executive_view_only_mutation_barriers(self) -> None:
+        """Executive Council Members cannot execute mutation actions on Module 2."""
+        from apps.members.models import StudentMemberProfile
+
+        exec_user = User.objects.create(
+            username="exec.audit.lead",
+            email="exec.audit@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        client = Client()
+        client.force_login(exec_user)
+
+        # 1. Cannot assign subclubs
+        student_user = User.objects.create(
+            username="target.student",
+            email="target@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        target_profile = StudentMemberProfile.objects.create(
+            user=student_user,
+            club=self.club,
+            valid_until=timezone.localdate() + timedelta(days=365),
+        )
+        assign_resp = client.post(
+            f"/api/v1/members/students/{target_profile.id}/subclubs/",
+            data={"subclub_ids": []},
+            content_type="application/json",
+        )
+        self.assertEqual(assign_resp.status_code, 403)
+
+        # 2. Cannot suspend student
+        susp_resp = client.patch(
+            f"/api/v1/members/students/{target_profile.id}/",
+            data={"is_suspended": True},
+            content_type="application/json",
+        )
+        self.assertEqual(susp_resp.status_code, 403)
+
+        # 3. Cannot edit showcase
+        showcase_resp = client.post(
+            "/api/v1/clubs/dashboard/showcase/",
+            data={"tagline": "Hijacked Tagline"},
+            content_type="application/json",
+        )
+        self.assertEqual(showcase_resp.status_code, 403)
+
+        # 4. Cannot issue passkey
+        passkey_resp = client.post(
+            "/api/v1/clubs/dashboard/passkey/issue/",
+            content_type="application/json",
+        )
+        self.assertEqual(passkey_resp.status_code, 403)
+

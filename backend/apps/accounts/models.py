@@ -36,13 +36,14 @@ class Category(models.TextChoices):
 
 
 class SubRole(models.TextChoices):
-    """The nine sub-roles of PLAN_ACCESS_ARCHITECTURE.md §3."""
+    """The sub-roles of PLAN_ACCESS_ARCHITECTURE.md §3 + SubClub Coordinator."""
 
     ANONYMOUS = "anonymous"
     CLUB_EXECUTIVE = "club_executive"
     CLUB_SECRETARY = "club_secretary"
     CLUB_PRESIDENT = "club_president"
     CLUB_PATRON = "club_patron"
+    SUBCLUB_COORDINATOR = "subclub_coordinator"
     STUDENT_MEMBER = "student_member"
     CENTRAL_ADMIN = "central_admin"
     REGIONAL_OFFICER = "regional_officer"
@@ -56,6 +57,15 @@ CATEGORY_CHOICES = [
     (Category.STUDENT_MEMBER, "Student Member"),
     (Category.IIT_KGP_ADMIN, "IIT KGP Admin"),
 ]
+
+#: Main Admins with mutation/administrative powers (Patron, President, Secretary)
+MAIN_CLUB_ADMIN_SUB_ROLES = frozenset(
+    {
+        SubRole.CLUB_PATRON,
+        SubRole.CLUB_PRESIDENT,
+        SubRole.CLUB_SECRETARY,
+    }
+)
 
 #: Sub-roles that make up the Club Admin category (the 4 authority tiers).
 CLUB_AUTHORITY_SUB_ROLES = frozenset(
@@ -77,13 +87,14 @@ IIT_KGP_ADMIN_SUB_ROLES = frozenset(
 )
 
 
-#: Explicit display labels for the nine sub-roles (PLAN §3).
+#: Explicit display labels for the ten sub-roles (PLAN §3).
 SUB_ROLE_CHOICES = [
     (SubRole.ANONYMOUS, "Anonymous"),
     (SubRole.CLUB_EXECUTIVE, "Club Executive"),
     (SubRole.CLUB_SECRETARY, "Club Secretary"),
     (SubRole.CLUB_PRESIDENT, "Club President"),
     (SubRole.CLUB_PATRON, "Club Patron"),
+    (SubRole.SUBCLUB_COORDINATOR, "Sub-Club Coordinator"),
     (SubRole.STUDENT_MEMBER, "Student Member"),
     (SubRole.CENTRAL_ADMIN, "Central Admin"),
     (SubRole.REGIONAL_OFFICER, "Regional Officer"),
@@ -277,6 +288,27 @@ class User(AbstractUser):
     @state_code.setter
     def state_code(self, value: str | None) -> None:
         self.state_id = value or ""
+
+    @property
+    def sub_club(self):
+        """Coordinated sub-club (if any)."""
+        manager = getattr(self, "coordinated_sub_clubs", None)
+        first = manager.filter(is_active=True).first() if manager is not None else None
+        if first:
+            return first
+        if self.email:
+            from apps.domain.models import SubClub
+
+            return SubClub.objects.filter(
+                coordinator_email__iexact=self.email, is_active=True
+            ).first()
+        return None
+
+    @property
+    def sub_club_code(self) -> str:
+        """Code string of the scoped sub-club."""
+        sc = self.sub_club
+        return sc.code if sc else ""
 
 
 class EmailOTP(models.Model):

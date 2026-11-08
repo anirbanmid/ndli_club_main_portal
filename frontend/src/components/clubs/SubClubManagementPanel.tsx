@@ -16,7 +16,10 @@ import {
   Edit2,
   Users,
   FileCheck,
-  ExternalLink
+  ExternalLink,
+  KeyRound,
+  Sparkles,
+  Shield,
 } from 'lucide-react';
 import { 
   SubClub, 
@@ -32,6 +35,7 @@ interface SubClubManagementPanelProps {
   clubCode: string;
   clubName: string;
   isAuthority: boolean;
+  isExecutive?: boolean;
   onNavigateToRoster?: (subClubId?: number) => void;
 }
 
@@ -50,6 +54,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
   clubCode,
   clubName,
   isAuthority,
+  isExecutive = false,
   onNavigateToRoster,
 }) => {
   const [subClubs, setSubClubs] = useState<SubClub[]>([]);
@@ -63,10 +68,30 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
   const [coordName, setCoordName] = useState('');
   const [coordEmail, setCoordEmail] = useState('');
   const [coordPhone, setCoordPhone] = useState('');
+  const [coordPassword, setCoordPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    subClubName: string;
+    subClubCode: string;
+    coordinatorName: string;
+    coordinatorEmail: string;
+    coordinatorUsername: string;
+    temporaryPassword: string;
+  } | null>(null);
+  const [copiedCreds, setCopiedCreds] = useState(false);
   const [selectedSubClub, setSelectedSubClub] = useState<SubClub | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  const generateCoordPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    let pwd = 'Coord@';
+    for (let i = 0; i < 6; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pwd += '2026!';
+    setCoordPassword(pwd);
+  };
 
   // Selected Sub-Club Action states (Requirements A.a & D.a)
   const [isEditingCoord, setIsEditingCoord] = useState(false);
@@ -232,14 +257,26 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
         coordinator_name: coordName.trim(),
         coordinator_email: coordEmail.trim(),
         coordinator_phone: coordPhone.trim() || undefined,
+        temporary_password: coordPassword.trim() || undefined,
       });
       setSubClubs(prev => [created, ...prev]);
-      setSuccessMsg(`Sub-Club "${created.name}" created successfully. It is active immediately without central approval.`);
+      if (created.temporary_password || coordPassword) {
+        setCreatedCredentials({
+          subClubName: created.name,
+          subClubCode: created.code,
+          coordinatorName: created.coordinator_name,
+          coordinatorEmail: created.coordinator_email,
+          coordinatorUsername: created.coordinator_username || created.coordinator_email,
+          temporaryPassword: created.temporary_password || coordPassword,
+        });
+      }
+      setSuccessMsg(`Sub-Club "${created.name}" created successfully. Coordinator account provisioned with temporary password.`);
       setName('');
       setDiscipline('');
       setCoordName('');
       setCoordEmail('');
       setCoordPhone('');
+      setCoordPassword('');
       setIsCreateOpen(false);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to create sub-club.');
@@ -328,16 +365,56 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
             <span className="text-xs text-emerald-200 font-medium">
               Click any Sub-Club card below to moderate assigned students, approve event certificates, or edit coordinators.
             </span>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-gray-950 font-bold text-xs rounded-xl transition-all shadow-md flex items-center space-x-1.5 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Form New Sub-Club</span>
-            </button>
+            {isExecutive ? (
+              <div className="px-3.5 py-2 rounded-xl bg-amber-400/20 text-amber-200 text-xs font-bold flex items-center space-x-1.5 border border-amber-300/30">
+                <Shield className="h-4 w-4 text-amber-300" />
+                <span>Executive View-Only Mode</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="px-4 py-2 bg-emerald-400 hover:bg-emerald-300 text-gray-950 font-bold text-xs rounded-xl transition-all shadow-md flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Form New Sub-Club</span>
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {/* Created Coordinator Credentials Banner */}
+      {createdCredentials && (
+        <div className="p-4 bg-emerald-50 border-2 border-emerald-400 rounded-3xl space-y-2 text-xs shadow-md animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-emerald-950 font-black">
+              <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+              <span>Coordinator Account Provisioned — Initial Temporary Credentials</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const text = `NDLI Club Sub-Club Coordinator Credentials:\nSub-Club: ${createdCredentials.subClubName} (${createdCredentials.subClubCode})\nUsername: ${createdCredentials.coordinatorUsername}\nEmail: ${createdCredentials.coordinatorEmail}\nInitial Temporary Password: ${createdCredentials.temporaryPassword}\nLogin Portal: /?view=student_module`;
+                navigator.clipboard.writeText(text);
+                setCopiedCreds(true);
+                setTimeout(() => setCopiedCreds(false), 3000);
+              }}
+              className="px-3 py-1 bg-emerald-700 text-white rounded-xl font-bold flex items-center space-x-1 hover:bg-emerald-800 transition-colors cursor-pointer"
+            >
+              {copiedCreds ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              <span>{copiedCreds ? 'Copied!' : 'Copy Credentials'}</span>
+            </button>
+          </div>
+          <p className="text-emerald-800">
+            Share these temporary credentials with <strong>{createdCredentials.coordinatorName}</strong>. The coordinator signs in and will be immediately prompted to set their own permanent password.
+          </p>
+          <div className="p-3 bg-white rounded-2xl border border-emerald-200 grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+            <div><span className="text-gray-500 font-sans text-[10px] block font-bold">USERNAME:</span>{createdCredentials.coordinatorUsername}</div>
+            <div><span className="text-gray-500 font-sans text-[10px] block font-bold">LOGIN EMAIL:</span>{createdCredentials.coordinatorEmail}</div>
+            <div><span className="text-gray-500 font-sans text-[10px] block font-bold">TEMP PASSWORD:</span><span className="text-rose-700 font-bold">{createdCredentials.temporaryPassword}</span></div>
+          </div>
+        </div>
+      )}
 
       {/* Success Notification */}
       {successMsg && (
@@ -871,6 +948,36 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
                         className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-700">
+                        Initial Temporary Password <span className="text-rose-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={generateCoordPassword}
+                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        <span>1-Click Generate</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={coordPassword}
+                        onChange={(e) => setCoordPassword(e.target.value)}
+                        placeholder="Click generate or enter e.g. CoordPass@2026!"
+                        required
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-600 outline-none pr-10"
+                      />
+                      <KeyRound className="h-4 w-4 text-gray-400 absolute right-3 top-3 pointer-events-none" />
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      The coordinator will sign in with this temporary password and will be prompted to set their own private password upon first sign-in.
+                    </p>
                   </div>
                 </div>
               </div>

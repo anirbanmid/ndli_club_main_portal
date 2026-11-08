@@ -461,6 +461,13 @@ class SubClub(models.Model):
     coordinator_name = models.CharField(max_length=128, blank=True, default="")
     coordinator_email = models.EmailField(blank=True, default="")
     coordinator_phone = models.CharField(max_length=32, blank=True, default="")
+    coordinator_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="coordinated_sub_clubs",
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

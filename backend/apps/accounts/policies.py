@@ -25,6 +25,7 @@ from apps.core import scoping as core_scoping
 from .models import (
     CLUB_AUTHORITY_SUB_ROLES,
     IIT_KGP_ADMIN_SUB_ROLES,
+    MAIN_CLUB_ADMIN_SUB_ROLES,
     AccountState,
     Category,
     SubRole,
@@ -70,18 +71,26 @@ class CategoryGate(BasePermission):
 
     def __init__(
         self,
-        module: str,
+        module: str | Iterable[str],
         sub_roles: Iterable[str] | None = None,
         *,
         require_fresh_password: bool = True,
         require_mfa: bool | None = None,
     ) -> None:
-        if module not in MODULE_CATEGORIES:
-            raise ValueError(f"unknown module namespace: {module!r}")
-        self.module = module
+        if isinstance(module, str):
+            self.module = module
+            self.modules = frozenset([module])
+        else:
+            self.modules = frozenset(module)
+            self.module = next(iter(self.modules))
+        for m in self.modules:
+            if m not in MODULE_CATEGORIES:
+                raise ValueError(f"unknown module namespace: {m!r}")
         self.sub_roles = frozenset(sub_roles) if sub_roles is not None else None
         self.require_fresh_password = require_fresh_password
-        self.require_mfa = require_mfa if require_mfa is not None else module == "admin"
+        self.require_mfa = (
+            require_mfa if require_mfa is not None else "admin" in self.modules
+        )
 
     def __call__(self) -> CategoryGate:
         # DRF instantiates permission classes; shared stateless instance is fine.
@@ -90,7 +99,7 @@ class CategoryGate(BasePermission):
     def has_permission(self, request: Any, view: Any) -> bool:
         # Module 1 (public namespace) is open to everyone, including
         # authenticated callers of every category.
-        if self.module == "public" and self.sub_roles is None:
+        if "public" in self.modules and self.sub_roles is None:
             return True
 
         user = getattr(request, "user", None)
@@ -102,7 +111,8 @@ class CategoryGate(BasePermission):
         if not isinstance(user, User):
             return False
         profile = user
-        if profile.category not in MODULE_CATEGORIES[self.module]:
+        allowed = frozenset().union(*(MODULE_CATEGORIES[m] for m in self.modules))
+        if profile.category not in allowed:
             return False
         if self.sub_roles is not None and profile.sub_role not in self.sub_roles:
             return False
@@ -138,6 +148,7 @@ class ObjectScope(BasePermission):
 
 # Convenience gate constructors used by the views (kept here so ALL policy
 # knowledge stays in this module).
+MAIN_CLUB_ADMIN_GATE = CategoryGate("club", MAIN_CLUB_ADMIN_SUB_ROLES)
 CLUB_AUTHORITY_GATE = CategoryGate("club", CLUB_AUTHORITY_SUB_ROLES)
 STUDENT_GATE = CategoryGate("club", {SubRole.STUDENT_MEMBER})
 ADMIN_OFFICER_GATE = CategoryGate(

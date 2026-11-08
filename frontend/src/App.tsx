@@ -11,7 +11,8 @@ import { AdminModuleView } from './components/AdminModuleView';
 import { EmployeeModule } from './components/EmployeeModule';
 import { SuperAdminConsole } from './components/SuperAdminConsole';
 import { fetchSession } from './lib/adminApi';
-import { passwordLogin, signOut } from './lib/authApi';
+import { passwordLogin, signOut, SessionPayload } from './lib/authApi';
+import { EnforcedPasswordChangeModal } from './components/auth/EnforcedPasswordChangeModal';
 
 import { VerifyCertificateView } from './components/VerifyCertificateView';
 import { CertificateView } from './components/CertificateView';
@@ -85,15 +86,17 @@ export function App({ ssrLocation }: AppProps = {}) {
   };
   const [currentTab, setCurrentTab] = useState<string>(initialRoute.tab);
   const [adminGateError, setAdminGateError] = useState<string | null>(null);
+  const [currentSession, setCurrentSession] = useState<SessionPayload | null>(null);
   const probeAdminSession = () => {
     fetchSession()
       .then((s) => {
+        setCurrentSession(s as SessionPayload | null);
         if (s && s.category === 'iit_kgp_admin') {
           setAdminAuthed(true);
           setAdminRole(s.sub_role ?? '');
           setAdminUsername(s.username ?? '');
           setAdminGateError(null);
-        } else if (s && s.category === 'student_member') {
+        } else if (s && (s.category === 'student_member' || s.sub_role === 'subclub_coordinator')) {
           setCurrentBranch('student_module');
           setCurrentTab('student_home');
         }
@@ -378,6 +381,12 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentTab(route.tab);
                 }}
                 onSignedIn={(session) => {
+                  setCurrentSession(session);
+                  if (session.sub_role === 'subclub_coordinator') {
+                    setCurrentBranch('student_module');
+                    setCurrentTab('student_home');
+                    return;
+                  }
                   if (session.category === 'student_member') {
                     setCurrentBranch('student_module');
                     setCurrentTab('student_home');
@@ -638,6 +647,7 @@ export function App({ ssrLocation }: AppProps = {}) {
             <ClubMemberModuleView
               onSignOut={() => {
                 void signOut().catch(() => null);
+                setCurrentSession(null);
                 setCurrentBranch('landing');
                 setCurrentTab('home');
               }}
@@ -655,6 +665,14 @@ export function App({ ssrLocation }: AppProps = {}) {
                   setCurrentBranch('club_module');
                   setCurrentTab('club_directory');
                 }
+              }}
+              onNavigateToModule2={(clubCode) => {
+                if (clubCode) {
+                  const matched = clubs.find((c) => c.id.toLowerCase() === clubCode.toLowerCase());
+                  if (matched) setActiveClub(matched);
+                }
+                setCurrentBranch('club_module');
+                setCurrentTab('club_dashboard');
               }}
             />
           </ErrorBoundary>
@@ -811,6 +829,16 @@ export function App({ ssrLocation }: AppProps = {}) {
           }
         }}
       />
+
+      {/* Enforced First-Login Password Change Modal */}
+      {currentSession && currentSession.must_change_password && (
+        <EnforcedPasswordChangeModal
+          session={currentSession}
+          onPasswordChanged={(updated) => {
+            setCurrentSession(updated);
+          }}
+        />
+      )}
     </div>
   );
 }

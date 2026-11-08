@@ -1040,6 +1040,19 @@ class EventParticipateView(APIView):
         if not isinstance(user, User):
             return Response({"detail": "Authentication required."}, status=401)
 
+        profile = getattr(user, "student_profile", None)
+        if profile and profile.is_suspended_by_coordinator:
+            return Response(
+                {
+                    "detail": (
+                        "Your membership account has been suspended by your "
+                        "sub-club coordinator."
+                    ),
+                    "code": "account_suspended",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         attend, created = EventAttendance.objects.get_or_create(
             event=evt,
             user=user,
@@ -1173,6 +1186,38 @@ class EventCertificateApprovalView(APIView):
         evt = ClubEvent.objects.select_related("host_club").filter(pk=pk).first()
         if not evt:
             return Response({"detail": "Event not found."}, status=404)
+
+        # Authority authorization check
+        from apps.accounts.models import Category, SubRole
+        from apps.members.views import _is_main_club_admin, _is_subclub_coordinator
+
+        is_kgp_admin = (
+            getattr(user, "category", None) == Category.IIT_KGP_ADMIN
+            or getattr(user, "is_superuser", False)
+        )
+        is_main_admin = _is_main_club_admin(user, evt.host_club)
+
+        # For sub-club coordinators: only authorized if event is scoped
+        # to their sub-club
+        is_event_coord = False
+        if getattr(user, "sub_role", None) == SubRole.SUBCLUB_COORDINATOR:
+            target_ids = list(evt.target_sub_clubs.values_list("id", flat=True))
+            if target_ids and _is_subclub_coordinator(user, evt.host_club, target_ids):
+                is_event_coord = True
+            elif evt.all_sub_clubs and _is_subclub_coordinator(user, evt.host_club):
+                is_event_coord = True
+
+        if not is_kgp_admin and not is_main_admin and not is_event_coord:
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities or assigned sub-club coordinators "
+                        "for this event may sign and approve certificates."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         approve_all = bool(request.data.get("approve_all", False))
         selected_attendee_ids = request.data.get("attendee_ids", [])

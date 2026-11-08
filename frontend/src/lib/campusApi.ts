@@ -31,6 +31,8 @@ export interface SubClub {
   coordinator_name: string;
   coordinator_email: string;
   coordinator_phone: string;
+  coordinator_username?: string;
+  temporary_password?: string;
   is_active: boolean;
   member_count?: number;
   created_at: string;
@@ -42,6 +44,7 @@ export interface SubClubInput {
   coordinator_name: string;
   coordinator_email: string;
   coordinator_phone?: string;
+  temporary_password?: string;
 }
 
 export async function fetchSubClubs(clubCode: string): Promise<SubClub[]> {
@@ -65,6 +68,7 @@ export async function fetchSubClubs(clubCode: string): Promise<SubClub[]> {
     coordinator_name: String(item.coordinator_name || ''),
     coordinator_email: String(item.coordinator_email || ''),
     coordinator_phone: String(item.coordinator_phone || ''),
+    coordinator_username: String(item.coordinator_username || ''),
     is_active: item.is_active !== undefined ? Boolean(item.is_active) : true,
     member_count: Number(item.member_count ?? item.members_count ?? 0),
     created_at: String(item.created_at || ''),
@@ -1213,7 +1217,96 @@ export async function removeStudentMember(profileId: number): Promise<void> {
 
 // --- Dedicated Student Member Portal (Me) -----------------------------------
 
-export interface StudentMeResponse {
+export interface AdminOversightData {
+  desk: 'admin_oversight';
+  role: string;
+  category: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+  };
+  club: {
+    code: string;
+    name: string;
+    institution_name: string;
+  };
+  stats: {
+    total_members: number;
+    active_members: number;
+    suspended_or_expired: number;
+    heis_disciplines: number;
+  };
+  recent_members: Array<{
+    id: number;
+    full_name: string;
+    email: string;
+    department: string;
+    roll_number: string;
+    is_suspended: boolean;
+    valid_until: string;
+  }>;
+  module_2_url: string;
+  message: string;
+  profile?: undefined;
+}
+
+export interface CoordinatorDeskData {
+  desk: 'coordinator_desk';
+  role: string;
+  category: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    full_name: string;
+    phone: string;
+  };
+  club: {
+    code: string;
+    name: string;
+    institution_name: string;
+  };
+  sub_clubs: Array<{
+    id: number;
+    code: string;
+    name: string;
+    discipline: string;
+    member_count: number;
+  }>;
+  enrolled_students: Array<{
+    id: number;
+    user_id: number;
+    full_name: string;
+    email: string;
+    department: string;
+    roll_number: string;
+    is_suspended: boolean;
+    valid_until: string;
+    sub_clubs: Array<{ id: number; name: string }>;
+  }>;
+  events: Array<{
+    id: number;
+    title: string;
+    sub_club_id: number | null;
+    start_time: string;
+    end_time: string;
+    state: string;
+    certificates_issued_count: number;
+  }>;
+  stats: {
+    total_coordinated_sub_clubs: number;
+    enrolled_students_count: number;
+    events_count: number;
+    curated_libraries_count: number;
+  };
+  profile?: undefined;
+}
+
+export interface StudentScholarData {
+  desk?: 'student_scholar';
+  role?: string;
   profile: {
     id: number;
     user_id: number;
@@ -1255,6 +1348,8 @@ export interface StudentMeResponse {
     next_tier_points: number;
   };
 }
+
+export type StudentMeResponse = AdminOversightData | CoordinatorDeskData | StudentScholarData;
 
 export async function fetchStudentMe(): Promise<StudentMeResponse> {
   const res = await fetch(`${MEMBERS_API_BASE}/me/`, {

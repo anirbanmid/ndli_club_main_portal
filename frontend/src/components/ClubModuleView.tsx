@@ -7,6 +7,7 @@ import {
   BarChart3, 
   LifeBuoy, 
   ShieldCheck, 
+  ShieldAlert,
   FileSpreadsheet, 
   UserPlus, 
   PlusCircle, 
@@ -96,6 +97,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   const [activeTab, setActiveTab] = useState<
     'overview' | 'membership_approval' | 'subclubs' | 'school_roster' | 'activities' | 'libraries' | 'tickets' | 'succession'
   >('overview');
+
+  const isExecutive = Boolean(
+    authenticatedAuthority &&
+    (authenticatedAuthority.role?.toLowerCase().includes('executive') || authenticatedAuthority.role === 'club_executive')
+  );
+  const isMainAuthority = isAuthorityAuthenticated && !isExecutive;
 
   // Campus Events & Sub-Clubs state
   const [backendEvents, setBackendEvents] = useState<ClubEvent[]>([]);
@@ -466,6 +473,21 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         </div>
       </div>
 
+      {/* Executive Council Member — View-Only Mode Banner */}
+      {authenticatedAuthority && (authenticatedAuthority.role?.toLowerCase().includes('executive') || authenticatedAuthority.role === 'club_executive') && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex items-start space-x-3 shadow-xs animate-in fade-in">
+          <ShieldAlert className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 text-xs">
+            <p className="font-black text-amber-950 uppercase tracking-wider">
+              Executive Council Member — View-Only Mode
+            </p>
+            <p className="text-amber-800">
+              You are signed in as an Executive Council Member. You have complete read-only visibility into Module 2 club administration dashboards for institutional transparency. Administrative mutations (sub-club creation, passkey resets, student approval/rejections) are reserved for Main Admins (Patron, President, Secretary).
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Internal Navigation Tabs (Requirements 3c.i to 3c.vii) */}
       <div className="tab-scroll flex items-center gap-1.5 overflow-x-auto p-1.5 bg-[#F4F8F6] rounded-2xl border border-[#E2ECE7] shadow-2xs">
         <button
@@ -769,7 +791,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           {/* Institutional Branding (Transparent PNG Logo & Signing Signature) */}
           <InstitutionalBrandingPanel
             clubCode={activeClub.id}
-            isReadOnly={!isAuthorityAuthenticated}
+            isReadOnly={!isMainAuthority}
           />
         </div>
       )}
@@ -780,10 +802,14 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
           <SchoolBulkUploadPanel
             clubCode={activeClub.id}
             schoolName={activeClub.name}
-            isAuthority={Boolean(isAuthorityAuthenticated)}
+            isAuthority={Boolean(isMainAuthority)}
           />
         ) : (
-          <StudentMembershipApprovalPanel clubCode={activeClub.id} clubName={activeClub.name} isMainAuthority={true} />
+          <StudentMembershipApprovalPanel
+            clubCode={activeClub.id}
+            clubName={activeClub.name}
+            isMainAuthority={isMainAuthority}
+          />
         )
       )}
 
@@ -798,17 +824,19 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </h3>
               <p className="text-xs text-[#5A7366] mt-0.5">
                 {t("Organize online/offline activities, send notifications, and approve attendee certificates.")}
-                                            </p>
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setShowInstitutionalEventModal(true)}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
-              >
-                <Calendar className="h-4 w-4 text-amber-300" />
-                <span>{activeClub.category === 'School' ? t("Schedule Event") : t("Schedule Institutional / Multi-Club Event")}</span>
-              </button>
+              {!isExecutive && (
+                <button
+                  onClick={() => setShowInstitutionalEventModal(true)}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
+                >
+                  <Calendar className="h-4 w-4 text-amber-300" />
+                  <span>{activeClub.category === 'School' ? t("Schedule Event") : t("Schedule Institutional / Multi-Club Event")}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -930,13 +958,19 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                                             </p>
             </div>
 
-            <button
-              onClick={() => setShowSuccessionModal(true)}
-              className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs"
-            >
-              <UserPlus className="h-4 w-4 text-amber-300" />
-              <span>{t("Initiate Authority Transfer")}</span>
-            </button>
+            {!isExecutive ? (
+              <button
+                onClick={() => setShowSuccessionModal(true)}
+                className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
+              >
+                <UserPlus className="h-4 w-4 text-amber-300" />
+                <span>{t("Initiate Authority Transfer")}</span>
+              </button>
+            ) : (
+              <span className="text-xs font-semibold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                {t("Authority succession can only be proposed by Main Club Admins (Patron, President, Secretary).")}
+              </span>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -1338,7 +1372,8 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
         <SubClubManagementPanel
           clubCode={activeClub.id}
           clubName={activeClub.name}
-          isAuthority={isAuthorityAuthenticated}
+          isAuthority={isMainAuthority}
+          isExecutive={isExecutive}
           onNavigateToRoster={() => setActiveTab('membership_approval')}
         />
       )}

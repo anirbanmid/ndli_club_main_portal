@@ -59,7 +59,6 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
   // Modal / Form state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [coordName, setCoordName] = useState('');
   const [coordEmail, setCoordEmail] = useState('');
@@ -217,7 +216,7 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !code.trim() || !discipline.trim() || !coordName.trim() || !coordEmail.trim()) {
+    if (!name.trim() || !discipline.trim() || !coordName.trim() || !coordEmail.trim()) {
       setErrorMsg('Please complete all mandatory fields.');
       return;
     }
@@ -229,7 +228,6 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
     try {
       const created = await createSubClub(clubCode, {
         name: name.trim(),
-        code: code.trim().toUpperCase(),
         discipline: discipline.trim(),
         coordinator_name: coordName.trim(),
         coordinator_email: coordEmail.trim(),
@@ -238,7 +236,6 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
       setSubClubs(prev => [created, ...prev]);
       setSuccessMsg(`Sub-Club "${created.name}" created successfully. It is active immediately without central approval.`);
       setName('');
-      setCode('');
       setDiscipline('');
       setCoordName('');
       setCoordEmail('');
@@ -810,34 +807,23 @@ export const SubClubManagementPanel: React.FC<SubClubManagementPanelProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Unique Code <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="e.g. SUB-ROBOT"
-                    required
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none uppercase font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Discipline / Subject <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={discipline}
-                    onChange={(e) => setDiscipline(e.target.value)}
-                    placeholder="e.g. Engineering & Robotics"
-                    required
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Discipline / Subject <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={discipline}
+                  onChange={(e) => setDiscipline(e.target.value)}
+                  placeholder="e.g. Engineering & Robotics"
+                  required
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-600 outline-none"
+                />
               </div>
+
+              <p className="text-[11px] text-gray-500">
+                Sub-club code is generated automatically by the system.
+              </p>
 
               <div className="border-t border-gray-100 pt-3">
                 <span className="block text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">

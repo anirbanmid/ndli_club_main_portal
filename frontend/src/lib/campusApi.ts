@@ -38,7 +38,6 @@ export interface SubClub {
 
 export interface SubClubInput {
   name: string;
-  code: string;
   discipline: string;
   coordinator_name: string;
   coordinator_email: string;
@@ -660,6 +659,11 @@ export interface CuratedLibrary {
   created_at: string;
 }
 
+function normalizeLibrary(lib: CuratedLibrary): CuratedLibrary {
+  // Defense-in-depth: never let a missing resources array white-screen the hub.
+  return { ...lib, resources: Array.isArray(lib.resources) ? lib.resources : [] };
+}
+
 export async function fetchLibraries(clubId?: string, libraryType?: string): Promise<CuratedLibrary[]> {
   const params = new URLSearchParams();
   if (clubId) {
@@ -676,9 +680,12 @@ export async function fetchLibraries(clubId?: string, libraryType?: string): Pro
     throw new ApiError('server', 'Failed to fetch libraries', res.status);
   }
   const body = await res.json();
-  if (Array.isArray(body)) return body;
-  if (body && Array.isArray(body.libraries)) return body.libraries;
-  return [];
+  const list = Array.isArray(body)
+    ? body
+    : body && Array.isArray(body.libraries)
+      ? body.libraries
+      : [];
+  return list.map(normalizeLibrary);
 }
 
 export async function devStudentQuickLogin(
@@ -726,7 +733,7 @@ export async function createLibrary(payload: {
   if (!res.ok) {
     throw new ApiError('server', detailMessage(body) ?? 'Failed to create library', res.status);
   }
-  return body;
+  return normalizeLibrary(body);
 }
 
 export async function addResourceLink(
@@ -1095,6 +1102,8 @@ export interface StudentProfileItem {
   points: number;
   badge: string;
   sub_clubs: Array<{ id: number; name: string }>;
+  role?: 'member' | 'sub-club-coordinator';
+  coordinated_sub_clubs?: string[];
   joined_at: string;
 }
 

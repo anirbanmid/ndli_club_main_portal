@@ -26,6 +26,18 @@ from apps.sharing.models import (
 )
 
 
+def _resource_payload(resource: Any) -> dict[str, Any]:
+    """Serialize a curated resource link for embedding in library payloads."""
+    return {
+        "id": resource.id,
+        "library_id": resource.library_id,
+        "title": resource.title,
+        "ndli_url": resource.ndli_url,
+        "description": resource.description,
+        "created_at": resource.added_at,
+    }
+
+
 class LibraryListView(APIView):
     """List or create curated libraries (Club, Personal, Community)."""
 
@@ -87,11 +99,12 @@ class LibraryListView(APIView):
                 if lib.sub_club
                 else None,
                 "is_published_to_community": lib.is_published_to_community,
+                "resources": [_resource_payload(r) for r in lib.resources.all()],
                 "resources_count": lib.resources.count(),
                 "created_at": lib.created_at,
                 "updated_at": lib.updated_at,
             }
-            for lib in qs.order_by("-updated_at")
+            for lib in qs.prefetch_related("resources").order_by("-updated_at")
         ]
         return Response({"libraries": results, "count": len(results)})
 
@@ -164,9 +177,19 @@ class LibraryListView(APIView):
         return Response(
             {
                 "id": library.id,
-                "title": library.title,
+                "club_code": library.club.code,
                 "library_type": library.library_type,
+                "title": library.title,
                 "topic_category": library.topic_category,
+                "owner_name": library.owner.username,
+                "sub_club": {"id": library.sub_club.id, "name": library.sub_club.name}
+                if library.sub_club
+                else None,
+                "is_published_to_community": library.is_published_to_community,
+                "resources": [],
+                "resources_count": 0,
+                "created_at": library.created_at,
+                "updated_at": library.updated_at,
                 "message": "Library space created successfully.",
             },
             status=status.HTTP_201_CREATED,
@@ -359,9 +382,12 @@ class ResourceLinkCreateView(APIView):
         return Response(
             {
                 "id": resource.id,
+                "library_id": resource.library_id,
                 "title": resource.title,
                 "ndli_url": resource.ndli_url,
+                "description": resource.description,
                 "topic_path": resource.topic_path,
+                "created_at": resource.added_at,
                 "message": "Resource link added to library successfully.",
             },
             status=status.HTTP_201_CREATED,

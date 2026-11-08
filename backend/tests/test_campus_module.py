@@ -510,6 +510,10 @@ class CampusModuleTests(TestCase):
         )
         self.assertEqual(lib_resp.status_code, 201)
         lib_id = lib_resp.json()["id"]
+        # Regression (New Club Library white-screen): create response must be
+        # render-shaped — an embedded resources array, not just a count.
+        self.assertEqual(lib_resp.json()["resources"], [])
+        self.assertEqual(lib_resp.json()["resources_count"], 0)
 
         # Add valid official NDLI resource link
         valid_resp = self.client.post(
@@ -539,6 +543,23 @@ class CampusModuleTests(TestCase):
         )
         self.assertEqual(invalid_resp.status_code, 400)
         self.assertEqual(invalid_resp.json()["code"], "invalid_ndli_url")
+
+        # Regression: library LIST must embed resources (the hub renders
+        # lib.resources.length directly).
+        list_resp = self.client.get(
+            f"/api/v1/sharing/libraries/?club_code={self.club.code}"
+        )
+        self.assertEqual(list_resp.status_code, 200)
+        listed = next(
+            (x for x in list_resp.json()["libraries"] if x["id"] == lib_id), None
+        )
+        self.assertIsNotNone(listed)
+        assert listed is not None
+        self.assertEqual(len(listed["resources"]), 1)
+        self.assertEqual(
+            listed["resources"][0]["title"],
+            "Introduction to Quantum Mechanics Lecture Notes",
+        )
 
     # -------------------------------------------------------------------------
     # 8. Universal Forgot Password & Central Admin Emergency Reset
@@ -1352,6 +1373,132 @@ class CampusModuleTests(TestCase):
         # Cleanup
         pending_prof.delete()
         pending_user.delete()
+
+    def test_roster_role_territory_excludes_officers(self) -> None:
+        '''Owner bug 2026-11-08: a club president must never appear as a general
+        Existing Member; sub-club coordinators must be distinctly tagged.'''
+        from apps.accounts.models import AccountState, Category, User
+        from apps.domain.models import SubClub
+        from apps.members.models import StudentMemberProfile
+
+        # President also holds a (mis-created) member profile — the reported bug.
+        president_prof = StudentMemberProfile.objects.create(
+            user=self.authority_user,
+            club=self.club,
+            gender="male",
+            department="ADMIN",
+            roll_number="PRES-001",
+        )
+        member_user = User.objects.create(
+            username="member_plain",
+            email="member.plain@test.edu",
+            account_state=AccountState.ACTIVE,
+            category=Category.STUDENT_MEMBER,
+            club=self.club,
+        )
+        member_prof = StudentMemberProfile.objects.create(
+            user=member_user,
+            club=self.club,
+            gender="female",
+            department="CSE",
+            roll_number="MEM-001",
+        )
+        coord_user = User.objects.create(
+            username="member_coord",
+            email="member.coord@test.edu",
+            account_state=AccountState.ACTIVE,
+            category=Category.STUDENT_MEMBER,
+            club=self.club,
+        )
+        coord_prof = StudentMemberProfile.objects.create(
+            user=coord_user,
+            club=self.club,
+            gender="male",
+            department="ECE",
+            roll_number="MEM-002",
+        )
+        sub = SubClub.objects.create(
+            club=self.club,
+            code="CLB-DL-DIAT-01-SUB-ROBO-01",
+            name="Robotics Society",
+            discipline="Engineering",
+            created_by=self.authority_user,
+            coordinator_email="member.coord@test.edu",
+        )
+
+        self.client.force_login(self.authority_user)
+        resp = self.client.get(
+            f"/api/v1/members/students/?club_code={self.club.code}"
+        )
+        self.assertEqual(resp.status_code, 200)
+        rows = {r["email"]: r for r in resp.json()["results"]}
+        # President lives in the authority roster, never the member roster.
+        self.assertNotIn(self.authority_user.email, rows)
+        self.assertIn("member.plain@test.edu", rows)
+        self.assertEqual(rows["member.plain@test.edu"]["role"], "member")
+        self.assertIn("member.coord@test.edu", rows)
+        self.assertEqual(
+            rows["member.coord@test.edu"]["role"], "sub-club-coordinator"
+        )
+        self.assertIn(
+            "Robotics Society",
+            rows["member.coord@test.edu"]["coordinated_sub_clubs"],
+        )
+
+        president_prof.delete()
+        member_prof.delete()
+        coord_prof.delete()
+        sub.delete()
+
+    def test_subclub_selection_scores_25_points_each(self) -> None:
+        '''Owner bug 2026-11-08: the dashboard promises "+25 points per sub-club"
+        but the KPI never moved — gamification must count active sub-clubs.'''
+        from apps.accounts.models import AccountState, Category, User
+        from apps.domain.models import SubClub
+        from apps.members.models import StudentMemberProfile
+
+        student = User.objects.create(
+            username="points_student",
+            email="points.student@test.edu",
+            account_state=AccountState.ACTIVE,
+            category=Category.STUDENT_MEMBER,
+            club=self.club,
+        )
+        StudentMemberProfile.objects.create(
+            user=student,
+            club=self.club,
+            gender="female",
+            department="ME",
+            roll_number="PTS-001",
+        )
+        sc1 = SubClub.objects.create(
+            club=self.club,
+            code="CLB-DL-DIAT-01-SUB-PHYS-01",
+            name="Physics Circle",
+            discipline="Physics",
+            created_by=self.authority_user,
+        )
+        sc2 = SubClub.objects.create(
+            club=self.club,
+            code="CLB-DL-DIAT-01-SUB-CHEM-01",
+            name="Chemistry Circle",
+            discipline="Chemistry",
+            created_by=self.authority_user,
+        )
+
+        self.client.force_login(student)
+        resp = self.client.post(
+            "/api/v1/members/me/subclubs/",
+            data={"subclub_ids": [sc1.id, sc2.id]},
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["points"], 50)  # 2 x 25
+
+        # KPI consistency: the profile endpoint must report the same total.
+        me = self.client.get("/api/v1/members/me/")
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.json()["stats"]["points"], 50)
 
     def test_admin_club_list_view_canonical_member_count(self) -> None:
         """Verify AdminClubListView returns canonical calculated member count

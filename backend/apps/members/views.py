@@ -848,9 +848,13 @@ class StudentProfileListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        from django.db.models import Q
+        from django.db.models import Exists, F, OuterRef, Q
 
-        from apps.accounts.models import AccountState, Category
+        from apps.accounts.models import (
+            CLUB_AUTHORITY_SUB_ROLES,
+            AccountState,
+            Category,
+        )
         from apps.members.models import StudentMemberProfile
 
         actor = request.user
@@ -936,9 +940,45 @@ class StudentProfileListView(APIView):
                 | Q(department__icontains=search)
             )
 
+        # Role territory (owner bug 2026-11-08): club officers (accounts
+        # sub-roles or active AuthorityAssignment tiers) are NOT general
+        # members — they belong to the authority roster. Exclude them here so
+        # e.g. a president can never appear as an "Existing Member".
+        from apps.domain.models import AuthorityAssignment
+
+        officer_assignments = AuthorityAssignment.objects.filter(
+            status=AuthorityAssignment.Status.ACTIVE,
+            club=OuterRef("club"),
+            user_id=OuterRef("user_id"),
+        )
+        qs = qs.exclude(Exists(officer_assignments)).exclude(
+            Q(
+                user__category=Category.CLUB_ADMIN,
+                user__sub_role__in=CLUB_AUTHORITY_SUB_ROLES,
+                user__club=F("club"),
+            )
+        )
+
+        rows = list(qs.distinct().order_by("roll_number", "id"))
+
+        # Sub-role identification: tag members who coordinate any active
+        # sub-club of the clubs shown (strict role/sub-role territory).
+        from apps.domain.models import SubClub
+
+        coordinator_map: dict[str, list[str]] = {}
+        if rows:
+            emails = {(p.user.email or "").lower() for p in rows if p.user.email}
+            for sc in SubClub.objects.filter(
+                is_active=True,
+                club_id__in={p.club_id for p in rows},
+            ).exclude(coordinator_email=""):
+                key = (sc.coordinator_email or "").lower()
+                if key in emails:
+                    coordinator_map.setdefault(key, []).append(sc.name)
+
         today = timezone.localdate()
         results = []
-        for p in qs.distinct().order_by("roll_number", "id"):
+        for p in rows:
             is_expired = bool(p.valid_until and p.valid_until < today)
             status_str = (
                 "suspended"
@@ -964,6 +1004,14 @@ class StudentProfileListView(APIView):
                     "sub_clubs": [
                         {"id": sc.id, "name": sc.name} for sc in p.sub_clubs.all()
                     ],
+                    "role": (
+                        "sub-club-coordinator"
+                        if (p.user.email or "").lower() in coordinator_map
+                        else "member"
+                    ),
+                    "coordinated_sub_clubs": coordinator_map.get(
+                        (p.user.email or "").lower(), []
+                    ),
                     "joined_at": p.created_at,
                 }
             )
@@ -1432,10 +1480,15 @@ def _compute_gamification(profile: Any, user: Any) -> tuple[int, str, int, int, 
         owner=user, is_published_to_community=True
     ).count()
 
+    # +25 per active sub-club (documented promise in the member dashboard:
+    # "Earn +25 points per sub-club"; owner bug 2026-11-08: KPI never moved).
+    sub_club_count = profile.sub_clubs.filter(is_active=True).count()
+
     points = (
         (events_attended * 50)
         + (certs_count * 50)
         + (community_libs * 50)
+        + (sub_club_count * 25)
         + (50 if completeness >= 100 else 0)
     )
 

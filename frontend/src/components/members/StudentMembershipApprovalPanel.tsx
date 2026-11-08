@@ -856,6 +856,14 @@ export const StudentMembershipApprovalPanel: React.FC<StudentMembershipApprovalP
                           <td className="py-3 px-4">
                             <div className="font-bold text-[#103125]">{m.full_name}</div>
                             <div className="text-[11px] text-[#5A7366]">{m.email}</div>
+                            {m.role === 'sub-club-coordinator' && (
+                              <span
+                                className="inline-block mt-1 text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.2 rounded font-bold"
+                                title={(m.coordinated_sub_clubs ?? []).join(', ')}
+                              >
+                                {t('Sub-Club Coordinator')}
+                              </span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="font-semibold text-[#2E4A3E]">{m.department}</div>

@@ -647,6 +647,7 @@ export interface CuratedResourceLink {
   title: string;
   ndli_url: string;
   description?: string;
+  clicks_count?: number;
   created_at: string;
 }
 
@@ -805,6 +806,25 @@ export async function deleteResourceLink(linkId: number): Promise<void> {
   });
   if (!res.ok) {
     throw new ApiError('server', 'Failed to delete resource', res.status);
+  }
+}
+
+export async function trackResourceLinkClick(
+  linkId: number,
+): Promise<{ status: string; clicks_count: number } | null> {
+  try {
+    const res = await fetch(`${SHARING_API_BASE}/resources/${linkId}/click/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...csrfHeader(),
+      },
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
   }
 }
 
@@ -1302,6 +1322,97 @@ export interface AdminOversightData {
     points?: number;
     badge?: string;
   }>;
+  administrators?: {
+    main_admins: Array<{
+      role: string;
+      title: string;
+      name: string;
+      email: string;
+      phone: string;
+      is_active: boolean;
+    }>;
+    subclub_coordinators: Array<{
+      id: number;
+      subclub_id: number;
+      subclub_name: string;
+      discipline: string;
+      coordinator_name: string;
+      coordinator_email: string;
+      coordinator_phone: string;
+      is_active: boolean;
+    }>;
+  };
+  scholars?: Array<{
+    id: number;
+    user_id: number;
+    full_name: string;
+    email: string;
+    roll_number: string;
+    department: string;
+    sub_clubs: Array<{ id: number; name: string }>;
+    enrollment_year: number | null;
+    valid_until: string | null;
+    is_suspended: boolean;
+    points: number;
+    badge: string;
+  }>;
+  events?: {
+    total_count: number;
+    completed: Array<{
+      id: number;
+      title: string;
+      event_date: string;
+      start_time?: string;
+      category: string;
+      mode: string;
+      status: string;
+      attendee_count: number;
+    }>;
+    upcoming: Array<{
+      id: number;
+      title: string;
+      event_date: string;
+      start_time?: string;
+      category: string;
+      mode: string;
+      status: string;
+      attendee_count: number;
+    }>;
+  };
+  validity?: {
+    days_remaining: number;
+    is_overdue: boolean;
+    last_renewal_date: string | null;
+    upcoming_renewal_date: string | null;
+  };
+  notifications?: Array<{
+    id: string;
+    type: 'warning_critical' | 'warning' | 'approval' | 'info';
+    title: string;
+    description: string;
+    timestamp: string;
+    read: boolean;
+    action_type: 'open_renewal_modal' | 'view_approval_modal' | 'navigate';
+    action_target: string;
+  }>;
+  telemetry?: {
+    year_trends: Array<{
+      year: number;
+      events_count: number;
+      members_enrolled: number;
+    }>;
+  };
+  libraries_telemetry?: {
+    total_clicks: number;
+    tier_breakdown: {
+      club_tier_clicks: number;
+      personal_tier_clicks: number;
+      community_tier_clicks: number;
+    };
+  };
+  certificates_telemetry?: {
+    total_issued: number;
+  };
   module_2_url?: string;
   message?: string;
   profile?: undefined;

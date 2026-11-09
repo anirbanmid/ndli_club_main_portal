@@ -24,4 +24,9 @@ urlpatterns = [
         views.ResourceLinkDeleteView.as_view(),
         name="resource-delete",
     ),
+    path(
+        "resources/<int:pk>/click/",
+        views.ResourceLinkClickTrackView.as_view(),
+        name="resource-click",
+    ),
 ]

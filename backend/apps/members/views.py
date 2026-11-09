@@ -1571,6 +1571,10 @@ class StudentMemberMeView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request) -> Response:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
         from apps.accounts.models import MAIN_CLUB_ADMIN_SUB_ROLES, Category, SubRole
         from apps.activities.models import ClubEvent
         from apps.domain.models import Club, SubClub
@@ -1588,12 +1592,15 @@ class StudentMemberMeView(APIView):
             and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
         )
         if is_main_admin:
+            from django.db.models import Sum
+
+            from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
+            from apps.certificates.models import Certificate
+            from apps.domain.models import AuthorityAssignment
+            from apps.sharing.models import CuratedResourceLink, LibraryType
+
             club = _linked_club(user)
-            # No arbitrary-club fallback (2026-11-09): a clubless account
-            # must never be shown ANOTHER club's members. IIT Kgp admins
-            # without a club get their duty-scoped aggregate instead
-            # (Central = all clubs, officers = assigned states, ops = none);
-            # any other clubless Main Admin gets an honest empty desk.
+            visible_clubs = None
             if club:
                 member_qs = (
                     StudentMemberProfile.objects.filter(club=club)
@@ -1603,6 +1610,8 @@ class StudentMemberMeView(APIView):
                 )
                 subclub_qs = SubClub.objects.filter(club=club, is_active=True)
                 event_qs = ClubEvent.objects.filter(host_club=club)
+                link_qs = CuratedResourceLink.objects.filter(library__club=club)
+                cert_count = Certificate.objects.filter(club=club).count()
             elif actor_category == Category.IIT_KGP_ADMIN:
                 from apps.core.scoping import scope_clubs
 
@@ -1619,10 +1628,16 @@ class StudentMemberMeView(APIView):
                     club__in=visible_clubs, is_active=True
                 )
                 event_qs = ClubEvent.objects.filter(host_club__in=visible_clubs)
+                link_qs = CuratedResourceLink.objects.filter(
+                    library__club__in=visible_clubs
+                )
+                cert_count = Certificate.objects.filter(club__in=visible_clubs).count()
             else:
                 member_qs = StudentMemberProfile.objects.none()
                 subclub_qs = SubClub.objects.none()
                 event_qs = ClubEvent.objects.none()
+                link_qs = CuratedResourceLink.objects.none()
+                cert_count = 0
 
             total_members = member_qs.count()
             suspended_students = member_qs.filter(
@@ -1631,20 +1646,321 @@ class StudentMemberMeView(APIView):
             active_students = total_members - suspended_students
             sub_clubs_count = subclub_qs.count()
             events_count = event_qs.count()
-            recent_members = []
 
-            for p in member_qs.select_related("user").order_by("-id")[:10]:
-                recent_members.append(
+            # 1. Administrators Roster (Main Admins & Sub-Club Coordinators)
+            main_admins: list[dict[str, Any]] = []
+            if club:
+                assignments = {
+                    a.tier: a
+                    for a in AuthorityAssignment.objects.filter(
+                        club=club,
+                        status="active",
+                        tier__in=["patron", "president", "secretary"],
+                    ).select_related("user")
+                }
+                patron_assign = assignments.get("patron")
+                patron_name = (
+                    club.patron_name
+                    or (patron_assign.user.get_full_name() if patron_assign else "")
+                ).strip() or "Dr. Institutional Patron"
+                patron_email = (
+                    club.patron_email
+                    or (patron_assign.user.email if patron_assign else "")
+                ).strip()
+                main_admins.append(
+                    {
+                        "role": "patron",
+                        "title": "Patron (Head of Institution)",
+                        "name": patron_name,
+                        "email": patron_email,
+                        "phone": (club.patron_phone or "").strip(),
+                        "is_active": True,
+                    }
+                )
+
+                pres_assign = assignments.get("president")
+                pres_name = (
+                    club.president_name
+                    or (pres_assign.user.get_full_name() if pres_assign else "")
+                ).strip() or "Club President"
+                pres_email = (
+                    club.president_email
+                    or (pres_assign.user.email if pres_assign else "")
+                ).strip()
+                main_admins.append(
+                    {
+                        "role": "president",
+                        "title": "Club President",
+                        "name": pres_name,
+                        "email": pres_email,
+                        "phone": (club.president_phone or "").strip(),
+                        "is_active": True,
+                    }
+                )
+
+                sec_assign = assignments.get("secretary")
+                sec_name = (
+                    club.secretary_name
+                    or (sec_assign.user.get_full_name() if sec_assign else "")
+                ).strip() or "Club Secretary"
+                sec_email = (
+                    club.secretary_email
+                    or (sec_assign.user.email if sec_assign else "")
+                ).strip()
+                main_admins.append(
+                    {
+                        "role": "secretary",
+                        "title": "Club Secretary",
+                        "name": sec_name,
+                        "email": sec_email,
+                        "phone": (club.secretary_phone or "").strip(),
+                        "is_active": True,
+                    }
+                )
+
+            subclub_coordinators: list[dict[str, Any]] = []
+            for sc in subclub_qs.select_related("coordinator_user"):
+                coord_name = (
+                    sc.coordinator_name
+                    or (
+                        sc.coordinator_user.get_full_name()
+                        if sc.coordinator_user
+                        else ""
+                    )
+                ).strip() or "Department Coordinator"
+                coord_email = (
+                    sc.coordinator_email
+                    or (sc.coordinator_user.email if sc.coordinator_user else "")
+                ).strip()
+                subclub_coordinators.append(
+                    {
+                        "id": sc.id,
+                        "subclub_id": sc.id,
+                        "subclub_name": sc.name,
+                        "discipline": sc.discipline or sc.name,
+                        "coordinator_name": coord_name,
+                        "coordinator_email": coord_email,
+                        "coordinator_phone": (sc.coordinator_phone or "").strip(),
+                        "is_active": sc.is_active,
+                    }
+                )
+
+            # 2. Scholars Roster (with subclub tags & full details)
+            scholars: list[dict[str, Any]] = []
+            for p in (
+                member_qs.select_related("user")
+                .prefetch_related("sub_clubs")
+                .order_by("-id")[:100]
+            ):
+                scholars.append(
                     {
                         "id": p.id,
+                        "user_id": p.user_id,
                         "full_name": p.user.get_full_name() or p.user.username,
+                        "email": p.user.email,
                         "roll_number": p.roll_number,
                         "department": p.department,
+                        "sub_clubs": [
+                            {"id": sc.id, "name": sc.name}
+                            for sc in p.sub_clubs.all()
+                        ],
+                        "enrollment_year": p.created_at.year if p.created_at else None,
+                        "valid_until": str(p.valid_until) if p.valid_until else None,
                         "is_suspended": p.is_suspended_by_coordinator,
                         "points": p.points,
                         "badge": p.badge,
                     }
                 )
+
+            recent_members = scholars[:10]
+
+            # 3. Events (Completed & Upcoming)
+            now = timezone.now()
+            completed_events: list[dict[str, Any]] = []
+            upcoming_events: list[dict[str, Any]] = []
+            for e in event_qs.order_by("-start_time")[:30]:
+                is_completed = e.status == "completed" or (
+                    e.end_time and e.end_time < now
+                )
+                evt_item = {
+                    "id": e.id,
+                    "title": e.title,
+                    "event_date": e.start_time.strftime("%Y-%m-%d")
+                    if e.start_time
+                    else "",
+                    "start_time": e.start_time.isoformat() if e.start_time else "",
+                    "category": e.scope,
+                    "mode": "Virtual" if e.joining_link else "On-Campus",
+                    "status": e.status,
+                    "attendee_count": e.attendees.count()
+                    if hasattr(e, "attendees")
+                    else 0,
+                }
+                if is_completed:
+                    completed_events.append(evt_item)
+                else:
+                    upcoming_events.append(evt_item)
+
+            # 4. Validity Countdown & Renewal
+            today = timezone.now().date()
+            upcoming_renewal_date = (
+                getattr(club, "upcoming_renewal_date", None) if club else None
+            )
+            last_renewal_date = (
+                getattr(club, "last_renewal_date", None) if club else None
+            )
+
+            if upcoming_renewal_date:
+                days_remaining = (upcoming_renewal_date - today).days
+            elif last_renewal_date:
+                derived_upcoming = last_renewal_date + timedelta(days=365)
+                days_remaining = (derived_upcoming - today).days
+                upcoming_renewal_date = derived_upcoming
+            else:
+                days_remaining = 180
+                upcoming_renewal_date = today + timedelta(days=180)
+
+            is_overdue = days_remaining < 0
+            validity_payload = {
+                "days_remaining": max(0, days_remaining)
+                if not is_overdue
+                else days_remaining,
+                "is_overdue": is_overdue,
+                "last_renewal_date": last_renewal_date.isoformat()
+                if last_renewal_date
+                else None,
+                "upcoming_renewal_date": upcoming_renewal_date.isoformat()
+                if upcoming_renewal_date
+                else None,
+            }
+
+            # 5. Automated Priority Notifications (Renewal due & IIT Kgp approvals)
+            notifications: list[dict[str, Any]] = []
+            if club:
+                if days_remaining <= 30:
+                    is_urgent = days_remaining <= 15
+                    prefix = "Urgent: " if is_urgent else ""
+                    renewal_str = upcoming_renewal_date.strftime("%d %b %Y")
+                    notifications.append(
+                        {
+                            "id": "notif-renewal-due",
+                            "type": "warning_critical" if is_urgent else "warning",
+                            "title": (
+                                f"{prefix}Club Registration Renewal Due "
+                                f"({days_remaining} Days Remaining)"
+                            ),
+                            "description": (
+                                f"Annual club registration is due on {renewal_str}. "
+                                "Ensure institutional documentation and "
+                                "renewal requisites are submitted on time."
+                            ),
+                            "timestamp": timezone.now().isoformat(),
+                            "read": False,
+                            "action_type": "open_renewal_modal",
+                            "action_target": "renewal",
+                        }
+                    )
+
+                approvals = (
+                    ActivityLog.objects.filter(
+                        club_code=club.code,
+                        support_type__in=APPROVAL_LOG_TYPES,
+                    )
+                    .select_related("employee")
+                    .order_by("-timestamp")[:5]
+                )
+                for log in approvals:
+                    officer_name = (
+                        log.employee.get_full_name() or log.employee.username
+                    )
+                    notifications.append(
+                        {
+                            "id": f"notif-appr-{log.activity_id}",
+                            "type": "approval",
+                            "title": f"IIT Kharagpur Endorsement: {log.support_type}",
+                            "description": (
+                                log.notes
+                                or (
+                                    "Official approval recorded by IIT Kharagpur "
+                                    f"Officer ({officer_name})."
+                                )
+                            ),
+                            "timestamp": log.timestamp.isoformat(),
+                            "read": False,
+                            "action_type": "view_approval_modal",
+                            "action_target": str(log.activity_id),
+                        }
+                    )
+
+                if club.date_of_approval:
+                    charter_date_str = club.date_of_approval.strftime("%d %b %Y")
+                    notifications.append(
+                        {
+                            "id": f"notif-charter-{club.code}",
+                            "type": "approval",
+                            "title": "Official Club Charter Approved",
+                            "description": (
+                                "NDLI Club charter certified by IIT Kharagpur on "
+                                f"{charter_date_str}."
+                            ),
+                            "timestamp": (
+                                club.date_of_approval.isoformat()
+                                if hasattr(club.date_of_approval, "isoformat")
+                                else str(club.date_of_approval)
+                            ),
+                            "read": False,
+                            "action_type": "view_approval_modal",
+                            "action_target": "charter",
+                        }
+                    )
+
+            # 6. Telemetry (5-year trends for events and student enrollment)
+            current_year = timezone.now().year
+            year_trends: list[dict[str, Any]] = []
+            for y in range(current_year - 4, current_year + 1):
+                events_in_year = event_qs.filter(start_time__year=y).count()
+                members_in_year = member_qs.filter(created_at__year=y).count()
+                year_trends.append(
+                    {
+                        "year": y,
+                        "events_count": events_in_year,
+                        "members_enrolled": members_in_year,
+                    }
+                )
+
+            # 7. 3-Tier Library Clicks Telemetry
+            total_lib_clicks = link_qs.aggregate(s=Sum("clicks_count"))["s"] or 0
+            tier1_clicks = (
+                link_qs.filter(library__library_type=LibraryType.CLUB).aggregate(
+                    s=Sum("clicks_count")
+                )["s"]
+                or 0
+            )
+            tier2_clicks = (
+                link_qs.filter(library__library_type=LibraryType.PERSONAL).aggregate(
+                    s=Sum("clicks_count")
+                )["s"]
+                or 0
+            )
+            tier3_clicks = (
+                link_qs.filter(library__library_type=LibraryType.COMMUNITY).aggregate(
+                    s=Sum("clicks_count")
+                )["s"]
+                or 0
+            )
+            libraries_telemetry = {
+                "total_clicks": total_lib_clicks,
+                "tier_breakdown": {
+                    "club_tier_clicks": tier1_clicks,
+                    "personal_tier_clicks": tier2_clicks,
+                    "community_tier_clicks": tier3_clicks,
+                },
+            }
+
+            # 8. Certificate Issuance Telemetry
+            certificates_telemetry = {
+                "total_issued": cert_count,
+            }
 
             return Response(
                 {
@@ -1689,6 +2005,23 @@ class StudentMemberMeView(APIView):
                         "total_events": events_count,
                     },
                     "recent_members": recent_members,
+                    "administrators": {
+                        "main_admins": main_admins,
+                        "subclub_coordinators": subclub_coordinators,
+                    },
+                    "scholars": scholars,
+                    "events": {
+                        "total_count": events_count,
+                        "completed": completed_events,
+                        "upcoming": upcoming_events,
+                    },
+                    "validity": validity_payload,
+                    "notifications": notifications,
+                    "telemetry": {
+                        "year_trends": year_trends,
+                    },
+                    "libraries_telemetry": libraries_telemetry,
+                    "certificates_telemetry": certificates_telemetry,
                     "module_2_url": f"/clubs/{club.code}/" if club else "/clubs/",
                     "navigation": {
                         "target_module": "club_module",

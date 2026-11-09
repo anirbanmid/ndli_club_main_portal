@@ -34,6 +34,7 @@ def _resource_payload(resource: Any) -> dict[str, Any]:
         "title": resource.title,
         "ndli_url": resource.ndli_url,
         "description": resource.description,
+        "clicks_count": getattr(resource, "clicks_count", 0),
         "created_at": resource.added_at,
     }
 
@@ -423,3 +424,29 @@ class ResourceLinkDeleteView(APIView):
         return Response(
             {"message": "Resource deleted successfully."}, status=status.HTTP_200_OK
         )
+
+
+class ResourceLinkClickTrackView(APIView):
+    """Record an access/click event on a curated library link."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request, pk: int) -> Response:
+        resource = CuratedResourceLink.objects.filter(pk=pk).first()
+        if not resource:
+            return Response(
+                {"detail": "Resource link not found.", "code": "not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from django.db.models import F
+
+        CuratedResourceLink.objects.filter(pk=pk).update(
+            clicks_count=F("clicks_count") + 1
+        )
+        resource.refresh_from_db(fields=["clicks_count"])
+        return Response(
+            {"status": "tracked", "clicks_count": resource.clicks_count},
+            status=status.HTTP_200_OK,
+        )
+

@@ -20,7 +20,8 @@ import {
   createLibrary, 
   isValidNDLIUrl,
   addResourceLink, 
-  deleteResourceLink 
+  deleteResourceLink,
+  trackResourceLinkClick 
 } from '../../lib/campusApi';
 
 interface CuratedLibraryHubProps {
@@ -300,6 +301,9 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
                             href={link.ndli_url}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={() => {
+                              trackResourceLinkClick(link.id);
+                            }}
                             className="font-bold text-gray-900 group-hover:text-emerald-950 flex items-center space-x-1 truncate"
                           >
                             <span className="truncate">{link.title}</span>

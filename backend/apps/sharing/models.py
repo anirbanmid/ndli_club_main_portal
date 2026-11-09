@@ -109,6 +109,7 @@ class CuratedResourceLink(models.Model):
         max_length=255, blank=True, default="", help_text="Topic subdirectory path"
     )
     description = models.TextField(blank=True, default="")
+    clicks_count = models.PositiveIntegerField(default=0)
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -575,6 +575,17 @@ class CampusModuleTests(TestCase):
             "Introduction to Quantum Mechanics Lecture Notes",
         )
 
+        # Click tracking telemetry
+        res_id = listed["resources"][0]["id"]
+        click_resp = self.client.post(f"/api/v1/sharing/resources/{res_id}/click/")
+        self.assertEqual(click_resp.status_code, 200)
+        self.assertEqual(click_resp.json()["status"], "tracked")
+        self.assertEqual(click_resp.json()["clicks_count"], 1)
+
+        click_resp2 = self.client.post(f"/api/v1/sharing/resources/{res_id}/click/")
+        self.assertEqual(click_resp2.status_code, 200)
+        self.assertEqual(click_resp2.json()["clicks_count"], 2)
+
     # -------------------------------------------------------------------------
     # 8. Universal Forgot Password & Central Admin Emergency Reset
     # -------------------------------------------------------------------------
@@ -2237,6 +2248,21 @@ class CampusModuleTests(TestCase):
         self.assertFalse(
             StudentMemberProfile.objects.filter(user=self.authority_user).exists()
         )
+        # Verify expanded oversight fields
+        self.assertIn("administrators", me_data)
+        self.assertIn("main_admins", me_data["administrators"])
+        self.assertIn("subclub_coordinators", me_data["administrators"])
+        self.assertIn("scholars", me_data)
+        self.assertIn("events", me_data)
+        self.assertIn("validity", me_data)
+        self.assertIn("days_remaining", me_data["validity"])
+        self.assertIn("notifications", me_data)
+        self.assertIn("telemetry", me_data)
+        self.assertIn("year_trends", me_data["telemetry"])
+        self.assertIn("libraries_telemetry", me_data)
+        self.assertIn("total_clicks", me_data["libraries_telemetry"])
+        self.assertIn("certificates_telemetry", me_data)
+        self.assertIn("total_issued", me_data["certificates_telemetry"])
 
     def test_me_never_falls_back_to_an_arbitrary_club(self) -> None:
         """A clubless account must not see or write into ANOTHER club.

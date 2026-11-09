@@ -52,6 +52,7 @@ import {
   toggleStudentSuspension,
 } from '../../lib/campusApi';
 import { CuratedLibraryHub } from '../sharing/CuratedLibraryHub';
+import { AdminOversightDeskView } from './AdminOversightDeskView';
 
 interface ClubMemberModuleViewProps {
   onSignOut?: () => void;
@@ -446,133 +447,12 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
 
   // 1. Administrative Member Oversight Desk (Main Admins & Central Admins)
   if (data.desk === 'admin_oversight') {
-    const oversight = data;
-    const instName = oversight.club?.institution_name || oversight.club?.name || 'Institutional Club';
-    const totalMembers = oversight.stats?.total_members ?? oversight.oversight?.total_members ?? 0;
-    const activeMembers = oversight.stats?.active_members ?? oversight.stats?.active_students ?? oversight.oversight?.active_students ?? 0;
-    const suspendedMembers = oversight.stats?.suspended_or_expired ?? oversight.stats?.suspended_students ?? oversight.oversight?.suspended_students ?? 0;
-    const subClubUnits = oversight.stats?.heis_disciplines ?? oversight.stats?.total_sub_clubs ?? oversight.oversight?.total_sub_clubs ?? 0;
-    const recentScholars = oversight.recent_members || oversight.oversight?.recent_members || [];
-
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in">
-        {/* Header Banner */}
-        <div className="bg-gradient-to-r from-[#103125] via-[#164433] to-[#103125] rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-emerald-900/50">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <span className="px-3 py-1 bg-emerald-400 text-gray-950 text-xs font-black rounded-full uppercase tracking-wider">
-                Administrative Member Oversight Desk
-              </span>
-              <span className="px-2.5 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full capitalize">
-                {oversight.role.replace(/_/g, ' ')}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {instName}
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-200">
-              Institutional Authority Desk • {oversight.role.replace(/_/g, ' ')} ({oversight.user.full_name || oversight.user.username})
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => {
-                if (onNavigateToModule2) {
-                  onNavigateToModule2(oversight.club.code);
-                } else {
-                  window.location.href = oversight.module_2_url || `/?view=club_module&club=${oversight.club.code}`;
-                }
-              }}
-              className="px-5 py-3 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-gray-950 font-black text-xs transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center space-x-2 cursor-pointer"
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Return to Club Admin (Module 2)</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            {onSignOut && (
-              <button
-                onClick={onSignOut}
-                className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Telemetry Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Enrolled Members</span>
-            <div className="text-2xl font-black text-gray-900">{totalMembers}</div>
-          </div>
-          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Active Status</span>
-            <div className="text-2xl font-black text-emerald-700">{activeMembers}</div>
-          </div>
-          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Suspended / Expired</span>
-            <div className="text-2xl font-black text-rose-700">{suspendedMembers}</div>
-          </div>
-          <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
-            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">HEI Sub-Club Units</span>
-            <div className="text-2xl font-black text-indigo-700">{subClubUnits}</div>
-          </div>
-        </div>
-
-        {/* Informative Notice & Recent Members Preview */}
-        <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-900">Recent Enrolled Scholars Preview</h3>
-              <p className="text-xs text-gray-500">
-                Main Club Authorities govern the institution from Module 2. For security and architectural consistency, authorities do not have dummy student profiles.
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 text-gray-500 uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="p-3">Scholar Name</th>
-                  <th className="p-3">Department</th>
-                  <th className="p-3">Roll Number</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Validity Until</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentScholars.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-4 text-center text-gray-500 italic">
-                      No student scholars currently enrolled.
-                    </td>
-                  </tr>
-                ) : (
-                  recentScholars.map((m) => (
-                    <tr key={m.id} className="hover:bg-gray-50/80">
-                      <td className="p-3 font-bold text-gray-900">{m.full_name}</td>
-                      <td className="p-3 text-gray-600">{m.department || '—'}</td>
-                      <td className="p-3 font-mono text-gray-600">{m.roll_number || '—'}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          m.is_suspended ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {m.is_suspended ? 'Suspended' : 'Active'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-gray-500 font-mono">{m.valid_until || '—'}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <AdminOversightDeskView
+        data={data}
+        onNavigateToModule2={onNavigateToModule2}
+        onSignOut={onSignOut}
+      />
     );
   }
 

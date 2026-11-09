@@ -210,6 +210,51 @@ All verified vulnerabilities from the prior security audit and subsequent refine
 - **B7 (GitHub Actions Workflow Hardening)**: Added top-level `permissions: { contents: read }` and pinned `browser-driver-manager` in CI (`5591b9c`).
 - **B8 (Vendored Swagger Assets)**: Vendored `swagger-init.js` locally, eliminating runtime HTML scraping from production hosts (`9f7d1cb`).
 
+### 7.3 Module 4 Administrative Member Oversight Desk Revamp
+
+In response to institutional governance requirements, the **Module 4 Administrative Member Oversight Desk** was completely re-engineered as an authoritative, real-time command dashboard for all Main Admins (**Patron**, **President**, and **Secretary**) across both HEIs and Schools:
+
+1. **Role Separation & Executive Guardrails**:
+   - Main Admins (Patron, President, Secretary) share the identical comprehensive governance layout.
+   - Student Executives (`CLUB_EXECUTIVE`) remain cleanly partitioned: they have view-only access in Module 2 and retain their dedicated Student Member workspace in Module 4. Non-student administrative accounts never have dummy student profiles.
+
+2. **Interactive Bell Icon Notification Centre**:
+   - Automated server-pushed & client-computed priority notifications:
+     - Renewal warnings at **30 days** and **15 days** prior to club registration expiry.
+     - IIT Kharagpur zonal officer endorsements (charter approvals, activity approvals, renewal logs).
+   - Live Click-to-Modal:
+     - Clicking a renewal alert opens the `RenewalApplicationModal` with renewal requirements and direct navigation to Module 2.
+     - Clicking an endorsement opens the `ApprovalDetailsModal` with the official IIT Kharagpur certification seal and verification timestamp.
+
+3. **5 Dynamic KPI Cards**:
+   - **Event Count KPI**: Total events organized with completed vs upcoming event ratio.
+   - **Validity Countdown Timer KPI**: Dynamic countdown in days (`X Days Remaining`), status indicator (Normal, 30-Day Warning, 15-Day Critical), and subscript displaying the last renewal date.
+   - **3-Tier Library Telemetry KPI**: Real-time click and interaction telemetry tracking usage across Tier 1 (Club Official), Tier 2 (Personal Study), and Tier 3 (Inter-Club Community Hub) libraries.
+   - **Certificates Issued KPI**: Total official certificates issued till date for the institutional club, HMAC-SHA256 verifiable.
+   - **Enrolled Scholars KPI**: Active vs suspended scholar ratio.
+
+4. **Animated Line Graph Telemetry**:
+   - Dual-metric animated SVG trend graph illustrating the last 5 years of activity:
+     - Events Hosted (Emerald trend line).
+     - Scholars Enrolled (Indigo trend line).
+   - Interactive SVG data points with hover tooltips displaying exact annual metrics.
+
+5. **Institutional Administrative Roster**:
+   - Main Club Leaders (Patron, President, Secretary) with direct email, phone, and active authority badges.
+   - Departmental Sub-Club Coordinators with discipline tags, names, and contact channels.
+
+6. **Advanced Filterable Scholars Roster**:
+   - Comprehensive scholar table showing Name, Email, Roll Number, Department, Sub-Club membership badges, Enrollment Year, Validity Date, and Status.
+   - Real-time instant filters: Full-text search, Department dropdown, Sub-Club dropdown, Enrollment Year dropdown, and Status filter (All / Active / Suspended).
+
+7. **Event Lifecycle Hub**:
+   - High-visibility Upcoming Event cards (Date, Category, Mode, Start Time).
+   - Completed Events table with historical participation and attendee counts.
+
+8. **Real-time 3-Tier Library Click Telemetry**:
+   - Model field `clicks_count` added to `CuratedResourceLink` with migration `0002_curatedresourcelink_clicks_count.py`.
+   - Endpoint `POST /api/v1/sharing/resources/<id>/click/` tracks learner interactions without authentication barriers.
+
 ---
 
 ## 8. Verification Suite & CI/CD Status

@@ -1935,6 +1935,7 @@ class StudentMemberMeView(APIView):
                 days_remaining=days_remaining,
                 upcoming_renewal_date=upcoming_renewal_date,
                 is_overdue=is_overdue,
+                user=user,
             )
 
             # 6. Telemetry (5-year trends for events and student enrollment)
@@ -2501,3 +2502,256 @@ class StudentMemberMePasswordView(APIView):
         else:
             user.save(update_fields=["password"])
         return Response({"message": "Password updated successfully.", "success": True})
+
+
+
+class OversightNotificationMarkReadView(APIView):
+    """POST /api/v1/members/notifications/mark-read/
+
+    Persists read status for notifications in the immutable audit log so they
+    remain read across browser refreshes and sessions.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.models import MAIN_CLUB_ADMIN_SUB_ROLES, Category
+        from apps.audit import services as audit_services
+
+        user = request.user
+        actor_sub_role = getattr(user, "sub_role", "")
+        actor_category = getattr(user, "category", "")
+
+        is_main_admin = actor_category == Category.IIT_KGP_ADMIN or (
+            actor_category == Category.CLUB_ADMIN
+            and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+        )
+        if not is_main_admin:
+            return Response(
+                {"detail": "Forbidden: Administrative authority required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        notification_ids = request.data.get("notification_ids") or []
+        mark_all = bool(request.data.get("mark_all", False))
+
+        club = getattr(user, "club", None)
+        inst_code = (
+            club.institution.code
+            if (club and getattr(club, "institution", None))
+            else ""
+        )
+
+        if mark_all:
+            audit_services.record(
+                action="oversight.notification.read_all",
+                request=request,
+                actor_id=user.pk,
+                actor_label=user.username,
+                category=str(user.category),
+                object_type="notification",
+                object_id=f"all_{club.code if club else 'club'}",
+                institution_code=inst_code,
+                detail={"action": "mark_all_read"},
+            )
+            return Response({"success": True, "marked_all": True})
+
+        if isinstance(notification_ids, str):
+            notification_ids = [notification_ids]
+
+        marked_count = 0
+        for n_id in notification_ids:
+            if not n_id:
+                continue
+            audit_services.record(
+                action="oversight.notification.read",
+                request=request,
+                actor_id=user.pk,
+                actor_label=user.username,
+                category=str(user.category),
+                object_type="notification",
+                object_id=str(n_id),
+                institution_code=inst_code,
+                detail={"notification_id": str(n_id)},
+            )
+            marked_count += 1
+
+        return Response({"success": True, "marked_count": marked_count})
+
+
+class OversightNotificationAcknowledgeView(APIView):
+    """POST /api/v1/members/notifications/acknowledge/
+
+    Triggered when a club administrator clicks 'Acknowledge Seal' on an
+    IIT Kharagpur Official Endorsement. Pushes an acknowledgment activity log
+    to the responsible IIT Kharagpur Nodal Officer's desk, appends an immutable
+    AuditLog entry, and returns acknowledgment confirmation.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        from apps.accounts.models import (
+            MAIN_CLUB_ADMIN_SUB_ROLES,
+            Category,
+            SubRole,
+            User,
+        )
+        from apps.accounts.routing import responsible_officer
+        from apps.activities.models import ActivityLog, SupportType
+        from apps.audit import services as audit_services
+
+        user = request.user
+        actor_sub_role = getattr(user, "sub_role", "")
+        actor_category = getattr(user, "category", "")
+
+        is_main_admin = actor_category == Category.IIT_KGP_ADMIN or (
+            actor_category == Category.CLUB_ADMIN
+            and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+        )
+        if not is_main_admin:
+            return Response(
+                {
+                    "detail": (
+                        "Forbidden: Administrative authority required to "
+                        "acknowledge seals."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        notif_id = str(request.data.get("notification_id", "") or "").strip()
+        title = str(request.data.get("title", "") or "Official Endorsement").strip()
+        desc = str(request.data.get("description", "") or "").strip()
+        _ = desc  # detail context
+
+        # 1. Resolve Club
+        club = getattr(user, "club", None)
+        if not club:
+            from apps.domain.models import AuthorityAssignment
+
+            assignment = (
+                AuthorityAssignment.objects.select_related(
+                    "club__institution__state__zone"
+                )
+                .filter(user=user)
+                .first()
+            )
+            if assignment:
+                club = assignment.club
+
+        if not club and getattr(user, "institution", None):
+            from apps.domain.models import Club
+
+            club = Club.objects.filter(institution=user.institution).first()
+
+        club_code = club.code if club else "INST"
+        club_name = club.name if club else "Institutional Club"
+        state_code = (
+            club.institution.state.code
+            if (club and club.institution and club.institution.state)
+            else ""
+        )
+        zone_code = (
+            club.institution.state.zone.code
+            if (
+                club
+                and club.institution
+                and club.institution.state
+                and club.institution.state.zone
+            )
+            else ""
+        )
+        inst_code = club.institution.code if (club and club.institution) else ""
+
+        # 2. Resolve responsible IIT Kharagpur Nodal Officer
+        officer = None
+        if state_code:
+            officer_username = responsible_officer(state_code)
+            if officer_username:
+                officer = User.objects.filter(username=officer_username).first()
+
+        if not officer and notif_id.startswith("notif-appr-"):
+            act_uuid_str = notif_id.replace("notif-appr-", "")
+            orig_log = (
+                ActivityLog.objects.filter(activity_id=act_uuid_str)
+                .select_related("employee")
+                .first()
+            )
+            if orig_log and orig_log.employee:
+                officer = orig_log.employee
+
+        if not officer:
+            officer = (
+                User.objects.filter(
+                    category=Category.IIT_KGP_ADMIN,
+                    sub_role=SubRole.REGIONAL_OFFICER,
+                ).first()
+                or User.objects.filter(category=Category.IIT_KGP_ADMIN).first()
+            )
+
+        actor_name = user.get_full_name() or user.username
+        role_title = actor_sub_role.replace("_", " ").title()
+
+        # 3. Create ActivityLog on responsible Officer's desk
+        act_row = None
+        if officer:
+            act_row = ActivityLog.objects.create(
+                employee=officer,
+                support_type=SupportType.CLUB_APPROVAL,
+                priority_flag=True,
+                club_code=club_code,
+                notes=(
+                    f"[Official Seal Acknowledged] {actor_name} ({role_title}) of "
+                    f"{club_name} acknowledged official seal: '{title}'. " \
+                    "Institutional compliance confirmed."
+                ),
+                call_count=1,
+            )
+
+        # 4. Append immutable AuditLog row (marks notification read)
+        audit_services.record(
+            action="oversight.seal.acknowledged",
+            request=request,
+            actor_id=user.pk,
+            actor_label=user.username,
+            category=str(user.category),
+            object_type="endorsement_seal",
+            object_id=notif_id or f"seal-{club_code}",
+            institution_code=inst_code,
+            zone_code=zone_code,
+            detail={
+                "officer_emp_id": officer.username if officer else "CENTRAL_DESK",
+                "officer_name": (
+                    officer.get_full_name() or officer.username
+                )
+                if officer
+                else "IIT Kharagpur Nodal Desk",
+                "club_code": club_code,
+                "acknowledged_by": actor_name,
+                "role": actor_sub_role,
+                "title": title,
+                "activity_id": str(act_row.activity_id) if act_row else "",
+            },
+        )
+
+        return Response(
+            {
+                "success": True,
+                "acknowledged": True,
+                "notification_id": notif_id,
+                "officer_emp_id": officer.username if officer else "CENTRAL_DESK",
+                "officer_name": (
+                    officer.get_full_name() or officer.username
+                )
+                if officer
+                else "IIT Kharagpur Nodal Desk",
+                "timestamp": timezone.now().isoformat(),
+                "message": (
+                    f"Official Seal acknowledged by {role_title}. "
+                    "Notification dispatched to IIT Kharagpur Nodal Officer "
+                    f"({officer.username if officer else 'Desk'})."
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )

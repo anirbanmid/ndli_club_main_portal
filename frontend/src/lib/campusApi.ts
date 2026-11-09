@@ -1595,3 +1595,57 @@ export async function changeStudentPassword(
   return body;
 }
 
+
+export async function markOversightNotificationsRead(
+  notificationIds?: string[],
+  markAll: boolean = false,
+): Promise<{ success: boolean; marked_count: number }> {
+  const res = await fetch(`${MEMBERS_API_BASE}/notifications/mark-read/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      notification_ids: notificationIds || [],
+      mark_all: markAll,
+    }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to mark notifications read', res.status);
+  }
+  return body;
+}
+
+export async function acknowledgeOversightSeal(payload: {
+  notification_id?: string;
+  title?: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  acknowledged: boolean;
+  notification_id: string;
+  officer_emp_id: string;
+  officer_name: string;
+  timestamp: string;
+  message: string;
+}> {
+  const res = await fetch(`${MEMBERS_API_BASE}/notifications/acknowledge/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...csrfHeader(),
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new ApiError('server', detailMessage(body) ?? 'Failed to acknowledge seal', res.status);
+  }
+  return body;
+}

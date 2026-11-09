@@ -15,6 +15,7 @@ import {
   Filter,
   GraduationCap,
   Layers,
+  Loader2,
   LogOut,
   Mail,
   MousePointerClick,
@@ -31,7 +32,11 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { AdminOversightData } from '../../lib/campusApi';
+import {
+  AdminOversightData,
+  acknowledgeOversightSeal,
+  markOversightNotificationsRead,
+} from '../../lib/campusApi';
 
 interface AdminOversightDeskViewProps {
   data: AdminOversightData;
@@ -50,13 +55,58 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
 
   // Notifications State & Dropdown
   const [showNotifications, setShowNotifications] = useState(false);
-  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
+  const storageKey = useMemo(
+    () => `ndli_read_notifs_${data.club?.code || 'global'}_${data.user?.id || 'admin'}`,
+    [data.club?.code, data.user?.id]
+  );
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(`ndli_read_notifs_${data.club?.code || 'global'}_${data.user?.id || 'admin'}`) : null;
+      const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+      (data.notifications || []).forEach((n) => {
+        if (n.read) set.add(n.id);
+      });
+      return set;
+    } catch {
+      return new Set<string>();
+    }
+  });
   const [activeModal, setActiveModal] = useState<{
+    id?: string;
     type: 'renewal' | 'approval';
     title?: string;
     description?: string;
     timestamp?: string;
   } | null>(null);
+  const [isAcknowledging, setIsAcknowledging] = useState(false);
+  const [acknowledgedNotice, setAcknowledgedNotice] = useState<string | null>(null);
+
+  const markNotificationAsRead = (notifId: string) => {
+    setReadNotifIds((prev) => {
+      const next = new Set(prev).add(notifId);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    void markOversightNotificationsRead([notifId]).catch(() => {});
+  };
+
+  const markAllNotificationsAsRead = () => {
+    const allIds = (data.notifications || []).map((n) => n.id);
+    setReadNotifIds((prev) => {
+      const next = new Set([...prev, ...allIds]);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    void markOversightNotificationsRead(allIds, true).catch(() => {});
+  };
 
   // Scholars Filters State
   const [searchQuery, setSearchQuery] = useState('');
@@ -336,11 +386,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                         {unreadNotifsCount > 0 && (
                           <button
                             type="button"
-                            onClick={() =>
-                              setReadNotifIds(
-                                new Set(notifications.map((n) => n.id))
-                              )
-                            }
+                            onClick={markAllNotificationsAsRead}
                             className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
                           >
                             Mark all read
@@ -372,10 +418,11 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                             <div
                               key={n.id}
                               onClick={() => {
-                                setReadNotifIds((prev) => new Set(prev).add(n.id));
+                                markNotificationAsRead(n.id);
                                 setShowNotifications(false);
                                 if (n.action_type === 'open_renewal_modal') {
                                   setActiveModal({
+                                    id: n.id,
                                     type: 'renewal',
                                     title: n.title,
                                     description: n.description,
@@ -383,6 +430,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                                   });
                                 } else if (n.action_type === 'view_approval_modal') {
                                   setActiveModal({
+                                    id: n.id,
                                     type: 'approval',
                                     title: n.title,
                                     description: n.description,
@@ -1214,8 +1262,11 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setActiveModal(null)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                onClick={() => {
+                  setActiveModal(null);
+                  setAcknowledgedNotice(null);
+                }}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1235,15 +1286,67 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                   Certified Timestamp: {activeModal.timestamp}
                 </div>
               )}
+
+              {acknowledgedNotice && (
+                <div className="p-3 bg-emerald-100 text-emerald-900 rounded-xl text-xs font-bold flex items-center space-x-2 animate-in fade-in">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                  <span className="leading-snug">{acknowledgedNotice}</span>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center justify-end pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span className="text-[10px] text-gray-400">
+                Acknowledge to notify responsible IIT Kharagpur Nodal Officer
+              </span>
               <button
                 type="button"
-                onClick={() => setActiveModal(null)}
-                className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                disabled={isAcknowledging || !!acknowledgedNotice}
+                onClick={async () => {
+                  if (!activeModal) return;
+                  setIsAcknowledging(true);
+                  try {
+                    const res = await acknowledgeOversightSeal({
+                      notification_id: activeModal.id,
+                      title: activeModal.title,
+                      description: activeModal.description,
+                    });
+                    if (activeModal.id) {
+                      markNotificationAsRead(activeModal.id);
+                    }
+                    setAcknowledgedNotice(
+                      res.message ||
+                        `Official Seal acknowledged. Dispatched to IIT Kharagpur Nodal Desk (${res.officer_emp_id || 'Desk'}).`
+                    );
+                    setTimeout(() => {
+                      setActiveModal(null);
+                      setIsAcknowledging(false);
+                      setAcknowledgedNotice(null);
+                    }, 1600);
+                  } catch {
+                    if (activeModal.id) {
+                      markNotificationAsRead(activeModal.id);
+                    }
+                    setActiveModal(null);
+                    setIsAcknowledging(false);
+                    setAcknowledgedNotice(null);
+                  }
+                }}
+                className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-75 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center space-x-2"
               >
-                Acknowledge Seal
+                {isAcknowledging ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+                    <span>Notifying IIT KGP Desk...</span>
+                  </>
+                ) : acknowledgedNotice ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>Dispatched</span>
+                  </>
+                ) : (
+                  <span>Acknowledge Seal</span>
+                )}
               </button>
             </div>
           </div>

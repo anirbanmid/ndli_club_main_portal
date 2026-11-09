@@ -155,4 +155,14 @@ urlpatterns += [
         views.SchoolCardsListView.as_view(),
         name="school-cards-list",
     ),
+    path(
+        "notifications/mark-read/",
+        views.OversightNotificationMarkReadView.as_view(),
+        name="oversight-notifications-mark-read",
+    ),
+    path(
+        "notifications/acknowledge/",
+        views.OversightNotificationAcknowledgeView.as_view(),
+        name="oversight-notifications-acknowledge",
+    ),
 ]

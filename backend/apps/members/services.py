@@ -314,6 +314,7 @@ def generate_club_oversight_notifications(
     days_remaining: int,
     upcoming_renewal_date: Any,
     is_overdue: bool = False,
+    user: Any | None = None,
 ) -> list[dict[str, Any]]:
     """Generate automated notifications for Module 4 Administrative Oversight Desk.
 
@@ -321,12 +322,36 @@ def generate_club_oversight_notifications(
     - Automated renewal due alerts (30-day notice, 15-day critical, overdue).
     - IIT Kharagpur Officer endorsements for this specific club.
     - Official club charter certification notices.
+    - Backend read-state persistence via AuditLog.
     """
     notifications: list[dict[str, Any]] = []
     if not club:
         return notifications
 
     from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
+
+    # Check read / acknowledged notifications in AuditLog for this user
+    read_notif_ids: set[str] = set()
+    mark_all_read = False
+    if user and getattr(user, "is_authenticated", False):
+        try:
+            from apps.audit.models import AuditLog
+
+            audit_actions = AuditLog.objects.filter(
+                actor_id=user.pk,
+                action__in=[
+                    "oversight.notification.read",
+                    "oversight.notification.read_all",
+                    "oversight.seal.acknowledged",
+                ],
+            ).values("action", "object_id")
+            for a in audit_actions:
+                if a["action"] == "oversight.notification.read_all":
+                    mark_all_read = True
+                elif a["object_id"]:
+                    read_notif_ids.add(str(a["object_id"]))
+        except Exception:
+            pass
 
     # 1. Registration Renewal Alerts
     renewal_str = (
@@ -337,9 +362,10 @@ def generate_club_oversight_notifications(
 
     if is_overdue or days_remaining < 0:
         overdue_days = abs(days_remaining)
+        notif_id = f"notif-renewal-overdue-{club.code}"
         notifications.append(
             {
-                "id": f"notif-renewal-overdue-{club.code}",
+                "id": notif_id,
                 "type": "warning_critical",
                 "title": (
                     "Urgent: Club Registration Renewal Overdue "
@@ -351,7 +377,7 @@ def generate_club_oversight_notifications(
                     "immediately to restore active standing."
                 ),
                 "timestamp": timezone.now().isoformat(),
-                "read": False,
+                "read": mark_all_read or (notif_id in read_notif_ids),
                 "action_type": "open_renewal_modal",
                 "action_target": "renewal",
             }
@@ -359,9 +385,10 @@ def generate_club_oversight_notifications(
     elif days_remaining <= 30:
         is_urgent = days_remaining <= 15
         prefix = "Urgent: " if is_urgent else "Notice: "
+        notif_id = f"notif-renewal-due-{club.code}"
         notifications.append(
             {
-                "id": f"notif-renewal-due-{club.code}",
+                "id": notif_id,
                 "type": "warning_critical" if is_urgent else "warning",
                 "title": (
                     f"{prefix}Club Registration Renewal Due "
@@ -373,7 +400,7 @@ def generate_club_oversight_notifications(
                     "requisites are submitted on time."
                 ),
                 "timestamp": timezone.now().isoformat(),
-                "read": False,
+                "read": mark_all_read or (notif_id in read_notif_ids),
                 "action_type": "open_renewal_modal",
                 "action_target": "renewal",
             }
@@ -395,9 +422,10 @@ def generate_club_oversight_notifications(
             else "IIT Kharagpur Officer"
         )
         formatted_type = log.support_type.replace("_", " ").title()
+        notif_id = f"notif-appr-{log.activity_id}"
         notifications.append(
             {
-                "id": f"notif-appr-{log.activity_id}",
+                "id": notif_id,
                 "type": "approval",
                 "title": f"IIT Kharagpur Endorsement: {formatted_type}",
                 "description": (
@@ -408,7 +436,7 @@ def generate_club_oversight_notifications(
                     )
                 ),
                 "timestamp": log.timestamp.isoformat(),
-                "read": False,
+                "read": mark_all_read or (notif_id in read_notif_ids),
                 "action_type": "view_approval_modal",
                 "action_target": str(log.activity_id),
             }
@@ -421,9 +449,10 @@ def generate_club_oversight_notifications(
             if hasattr(club.date_of_approval, "strftime")
             else str(club.date_of_approval)
         )
+        notif_id = f"notif-charter-{club.code}"
         notifications.append(
             {
-                "id": f"notif-charter-{club.code}",
+                "id": notif_id,
                 "type": "approval",
                 "title": "Official Club Charter Approved",
                 "description": (
@@ -435,7 +464,7 @@ def generate_club_oversight_notifications(
                     if hasattr(club.date_of_approval, "isoformat")
                     else str(club.date_of_approval)
                 ),
-                "read": False,
+                "read": mark_all_read or (notif_id in read_notif_ids),
                 "action_type": "view_approval_modal",
                 "action_target": "charter",
             }

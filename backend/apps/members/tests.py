@@ -46,3 +46,152 @@ class JoinRequestModelTests(TestCase):
         row.save(update_fields=["status"])
         fresh = JoinRequest.objects.create(user=user, club=club)
         self.assertEqual(fresh.status, JoinRequest.Status.PENDING)
+
+
+
+class OversightNotificationTests(TestCase):
+    def setUp(self) -> None:
+        from django.contrib.auth import get_user_model
+
+        from apps.accounts.models import Category, SubRole
+        from apps.domain.models import Club, Institution, OfficerAssignment, State, Zone
+
+        self.zone = Zone.objects.create(code="NZ", name="North Zone")
+        self.state = State.objects.create(
+            code="UP", name="Uttar Pradesh", zone=self.zone
+        )
+        self.institution = Institution.objects.create(
+            code="BHU_INST",
+            legacy_id="LEG-BHU",
+            name="Banaras Hindu University",
+            state=self.state,
+        )
+        self.club = Club.objects.create(
+            code="BHU_CLUB",
+            institution=self.institution,
+            name="Banaras Hindu University Club",
+        )
+        self.officer = get_user_model().objects.create_user(
+            username="EMP01",
+            password="x" * 12,
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.REGIONAL_OFFICER,
+            email="emp01@ndli.iitkgp.ac.in",
+        )
+        from datetime import date
+        OfficerAssignment.objects.create(
+            state=self.state,
+            officer=self.officer,
+            from_date=date(2026, 1, 1),
+        )
+        self.president = get_user_model().objects.create_user(
+            username="bhu_president",
+            password="x" * 12,
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_PRESIDENT,
+            institution=self.institution,
+            club=self.club,
+        )
+        self.student = get_user_model().objects.create_user(
+            username="bhu_student",
+            password="x" * 12,
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            institution=self.institution,
+            club=self.club,
+        )
+
+    def test_notification_read_persistence(self) -> None:
+        from datetime import date
+
+        from rest_framework.test import APIClient
+
+        from apps.members.services import generate_club_oversight_notifications
+
+        client = APIClient()
+        client.force_authenticate(user=self.president)
+
+        notif_id = f"notif-renewal-due-{self.club.code}"
+        # Before mark read
+        notifs = generate_club_oversight_notifications(
+            club=self.club,
+            days_remaining=20,
+            upcoming_renewal_date=date(2026, 12, 31),
+            user=self.president,
+        )
+        target_notif = next((n for n in notifs if n["id"] == notif_id), None)
+        self.assertIsNotNone(target_notif)
+        assert target_notif is not None
+        self.assertFalse(target_notif["read"])
+
+        # Mark read via API
+        resp = client.post(
+            "/api/v1/members/notifications/mark-read/",
+            {"notification_ids": [notif_id]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        # After mark read (simulating browser reload)
+        notifs_after = generate_club_oversight_notifications(
+            club=self.club,
+            days_remaining=20,
+            upcoming_renewal_date=date(2026, 12, 31),
+            user=self.president,
+        )
+        target_after = next((n for n in notifs_after if n["id"] == notif_id), None)
+        self.assertIsNotNone(target_after)
+        assert target_after is not None
+        self.assertTrue(target_after["read"])
+
+    def test_notification_acknowledge_seal_pushes_to_nodal_officer_desk(self) -> None:
+        from rest_framework.test import APIClient
+
+        from apps.activities.models import ActivityLog, SupportType
+        from apps.audit.models import AuditLog
+
+        client = APIClient()
+        client.force_authenticate(user=self.president)
+
+        resp = client.post(
+            "/api/v1/members/notifications/acknowledge/",
+            {
+                "notification_id": f"notif-charter-{self.club.code}",
+                "title": "Official Club Charter Approved",
+                "description": "Charter certified by IIT Kharagpur.",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["acknowledged"])
+        self.assertEqual(resp.data["officer_emp_id"], "EMP01")
+
+        # Verify ActivityLog row created for the responsible IIT Kharagpur Nodal Officer
+        act_row = ActivityLog.objects.filter(
+            employee=self.officer, club_code=self.club.code
+        ).first()
+        self.assertIsNotNone(act_row)
+        assert act_row is not None
+        self.assertEqual(act_row.support_type, SupportType.CLUB_APPROVAL)
+        self.assertTrue(act_row.priority_flag)
+        self.assertIn("Official Seal Acknowledged", act_row.notes)
+        self.assertIn("Official Club Charter Approved", act_row.notes)
+
+        # Verify AuditLog row created
+        audit_row = AuditLog.objects.filter(
+            action="oversight.seal.acknowledged", actor_id=self.president.pk
+        ).first()
+        self.assertIsNotNone(audit_row)
+
+    def test_unauthorized_student_cannot_acknowledge(self) -> None:
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        client.force_authenticate(user=self.student)
+
+        resp = client.post(
+            "/api/v1/members/notifications/acknowledge/",
+            {"notification_id": "test-id", "title": "Seal"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)

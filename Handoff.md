@@ -26,6 +26,8 @@ The platform provides:
 7. **Strict Territory & Descriptor Safety**: Zero arbitrary `Club.objects.first()` fallbacks; robust `_linked_club()` descriptor resolution preventing `Club.DoesNotExist` crashes on unlinked accounts.
 8. **Administrative Member Oversight Desk (Module 4)**: Clear separation of Main Admin authority governance from student workstations. Authentic institution banner rendering, single-source-of-truth telemetry (active HEI sub-club units and genuine student enrollments), zero inclusion of administrative personnel in scholar rosters, and database migration (`0008`) purging legacy rogue profiles.
 9. **Multi-Domain Curated Digital Libraries (3-Tier)**: Full resource link validation across all official National Digital Library of India portals (`ndli.iitkgp.ac.in`, `ndl.iitkgp.ac.in`, and `www.ndl.gov.in`).
+10. **IIT Kharagpur Official Endorsement Acknowledgment & Nodal Push**: When club administrators acknowledge an official seal/endorsement from IIT Kharagpur, the system automatically routes an acknowledgement record to the responsible Zonal Nodal Officer's desk via `ActivityLog` (`support_type=SupportType.CLUB_APPROVAL`, high priority) and writes an immutable SHA-256 chained entry into `AuditLog`.
+11. **Dual-Layer Notification Read State Persistence**: Notification read/unread states are preserved both in local browser storage (`localStorage`) and backed by immutable server-side audit records (`AuditLog`). Refreshing the browser or switching devices guarantees read notifications remain cleared and unbadged.
 
 ---
 

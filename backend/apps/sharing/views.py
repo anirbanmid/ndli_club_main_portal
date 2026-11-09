@@ -1,7 +1,7 @@
 """HTTP views for the Sharing app (3-Tier Curated NDLI Libraries).
 
-Strict content law: Only links from the official NDLI site (ndli.iitkgp.ac.in)
-are allowed.
+Strict content law: Only links from official NDLI portals (ndli.iitkgp.ac.in,
+ndl.iitkgp.ac.in, www.ndl.gov.in) are allowed.
 """
 
 from __future__ import annotations
@@ -326,7 +326,7 @@ class LibraryDetailView(APIView):
 
 
 class ResourceLinkCreateView(APIView):
-    """Add an NDLI link to a curated library (strict ndli.iitkgp.ac.in rule)."""
+    """Add an NDLI link to a curated library (official NDLI portal rules)."""
 
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]

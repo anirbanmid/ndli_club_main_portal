@@ -447,6 +447,13 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   // 1. Administrative Member Oversight Desk (Main Admins & Central Admins)
   if (data.desk === 'admin_oversight') {
     const oversight = data;
+    const instName = oversight.club?.institution_name || oversight.club?.name || 'Institutional Club';
+    const totalMembers = oversight.stats?.total_members ?? oversight.oversight?.total_members ?? 0;
+    const activeMembers = oversight.stats?.active_members ?? oversight.stats?.active_students ?? oversight.oversight?.active_students ?? 0;
+    const suspendedMembers = oversight.stats?.suspended_or_expired ?? oversight.stats?.suspended_students ?? oversight.oversight?.suspended_students ?? 0;
+    const subClubUnits = oversight.stats?.heis_disciplines ?? oversight.stats?.total_sub_clubs ?? oversight.oversight?.total_sub_clubs ?? 0;
+    const recentScholars = oversight.recent_members || oversight.oversight?.recent_members || [];
+
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-in fade-in">
         {/* Header Banner */}
@@ -457,14 +464,14 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
                 Administrative Member Oversight Desk
               </span>
               <span className="px-2.5 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full capitalize">
-                {oversight.role.replace('_', ' ')}
+                {oversight.role.replace(/_/g, ' ')}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {oversight.user.full_name || oversight.user.username}
+              {instName}
             </h1>
             <p className="text-xs sm:text-sm text-emerald-200">
-              {oversight.club.name} • Institutional Authority
+              Institutional Authority Desk • {oversight.role.replace(/_/g, ' ')} ({oversight.user.full_name || oversight.user.username})
             </p>
           </div>
 
@@ -499,19 +506,19 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Enrolled Members</span>
-            <div className="text-2xl font-black text-gray-900">{oversight.stats.total_members}</div>
+            <div className="text-2xl font-black text-gray-900">{totalMembers}</div>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Active Status</span>
-            <div className="text-2xl font-black text-emerald-700">{oversight.stats.active_members}</div>
+            <div className="text-2xl font-black text-emerald-700">{activeMembers}</div>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">Suspended / Expired</span>
-            <div className="text-2xl font-black text-rose-700">{oversight.stats.suspended_or_expired}</div>
+            <div className="text-2xl font-black text-rose-700">{suspendedMembers}</div>
           </div>
           <div className="p-5 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-1">
             <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">HEI Sub-Club Units</span>
-            <div className="text-2xl font-black text-indigo-700">{oversight.stats.heis_disciplines}</div>
+            <div className="text-2xl font-black text-indigo-700">{subClubUnits}</div>
           </div>
         </div>
 
@@ -538,21 +545,29 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {oversight.recent_members.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50/80">
-                    <td className="p-3 font-bold text-gray-900">{m.full_name}</td>
-                    <td className="p-3 text-gray-600">{m.department || '—'}</td>
-                    <td className="p-3 font-mono text-gray-600">{m.roll_number || '—'}</td>
-                    <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        m.is_suspended ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        {m.is_suspended ? 'Suspended' : 'Active'}
-                      </span>
+                {recentScholars.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-gray-500 italic">
+                      No student scholars currently enrolled.
                     </td>
-                    <td className="p-3 text-gray-500 font-mono">{m.valid_until || '—'}</td>
                   </tr>
-                ))}
+                ) : (
+                  recentScholars.map((m) => (
+                    <tr key={m.id} className="hover:bg-gray-50/80">
+                      <td className="p-3 font-bold text-gray-900">{m.full_name}</td>
+                      <td className="p-3 text-gray-600">{m.department || '—'}</td>
+                      <td className="p-3 font-mono text-gray-600">{m.roll_number || '—'}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          m.is_suspended ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {m.is_suspended ? 'Suspended' : 'Active'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-gray-500 font-mono">{m.valid_until || '—'}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

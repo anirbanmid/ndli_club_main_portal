@@ -18,6 +18,7 @@ import {
   CuratedResourceLink, 
   fetchLibraries, 
   createLibrary, 
+  isValidNDLIUrl,
   addResourceLink, 
   deleteResourceLink 
 } from '../../lib/campusApi';
@@ -104,8 +105,8 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
     if (!activeLibForResource) return;
 
     // Strict NDLI URL check
-    if (!resourceNdliUrl.trim().startsWith('https://ndli.iitkgp.ac.in/')) {
-      setErrorMsg('NDLI Law Violation: Resource URL must strictly begin with https://ndli.iitkgp.ac.in/.');
+    if (!isValidNDLIUrl(resourceNdliUrl.trim())) {
+      setErrorMsg('NDLI Law Violation: Resource URL must belong to official NDLI portals (ndli.iitkgp.ac.in, ndl.iitkgp.ac.in, or www.ndl.gov.in).');
       return;
     }
 
@@ -169,7 +170,7 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
               Curated NDLI Digital Libraries
             </h2>
             <p className="text-xs text-emerald-100/90 max-w-xl">
-              Strict repository enforcement: All curated resources must belong directly to the main portal (<code className="text-amber-300 font-mono">https://ndli.iitkgp.ac.in/</code>). External URLs are strictly rejected.
+              Strict repository enforcement: All curated resources must belong directly to official NDLI portals (<code className="text-amber-300 font-mono">ndli.iitkgp.ac.in</code>, <code className="text-amber-300 font-mono">ndl.iitkgp.ac.in</code>, <code className="text-amber-300 font-mono">www.ndl.gov.in</code>). External URLs are strictly rejected.
             </p>
           </div>
 
@@ -252,7 +253,7 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
             No {activeTier.toUpperCase()} Libraries Found
           </h3>
           <p className="text-xs text-gray-500 max-w-sm mx-auto">
-            Start curating topic-wise digital collections from https://ndli.iitkgp.ac.in/ for your academic community.
+            Start curating topic-wise digital collections from official NDLI portals for your academic community.
           </p>
           <button
             onClick={() => setIsNewLibModalOpen(true)}
@@ -446,12 +447,12 @@ export const CuratedLibraryHub: React.FC<CuratedLibraryHubProps> = ({
                   type="url"
                   value={resourceNdliUrl}
                   onChange={(e) => setResourceNdliUrl(e.target.value)}
-                  placeholder="https://ndli.iitkgp.ac.in/homelifi/..."
+                  placeholder="https://ndl.gov.in/... or https://ndli.iitkgp.ac.in/..."
                   required
                   className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-600 outline-none"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">
-                  Must strictly begin with <strong className="text-emerald-800">https://ndli.iitkgp.ac.in/</strong>.
+                  Must belong to official NDLI portals: <strong className="text-emerald-800">ndli.iitkgp.ac.in</strong>, <strong className="text-emerald-800">ndl.iitkgp.ac.in</strong>, or <strong className="text-emerald-800">www.ndl.gov.in</strong>.
                 </p>
               </div>
 

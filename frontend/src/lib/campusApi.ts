@@ -6,7 +6,7 @@
  * 2. School Offline-First Tangible Identity: bulk CSV roster upload & printable cards.
  * 3. Events: Institutional & Multi-Club collaboration, 30-min window attendance,
  *    password-gated certificate approvals, and conductor certificate generation.
- * 4. 3-Tier Curated Libraries with strict https://ndli.iitkgp.ac.in/ validation.
+ * 4. 3-Tier Curated Libraries with strict official NDLI portal validation.
  * 5. Universal Forgot Password workflow (72-hour reset token) & Central Admin emergency reset.
  */
 
@@ -740,15 +740,42 @@ export async function createLibrary(payload: {
   return normalizeLibrary(body);
 }
 
+/**
+ * Strict NDLI Content Law: Only links from official NDLI portals are accepted:
+ * - https://ndli.iitkgp.ac.in/
+ * - https://ndl.iitkgp.ac.in/
+ * - https://www.ndl.gov.in/ (and ndl.gov.in)
+ */
+export function isValidNDLIUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const trimmed = url.trim();
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host === 'ndli.iitkgp.ac.in' ||
+      host.endsWith('.ndli.iitkgp.ac.in') ||
+      host === 'ndl.iitkgp.ac.in' ||
+      host.endsWith('.ndl.iitkgp.ac.in') ||
+      host === 'www.ndl.gov.in' ||
+      host === 'ndl.gov.in' ||
+      host.endsWith('.ndl.gov.in')
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function addResourceLink(
   libraryId: number,
   payload: { title: string; ndli_url: string; description?: string },
 ): Promise<CuratedResourceLink> {
   // Client-side mirror check for immediate feedback
-  if (!payload.ndli_url.startsWith('https://ndli.iitkgp.ac.in/')) {
+  if (!isValidNDLIUrl(payload.ndli_url)) {
     throw new ApiError(
       'server',
-      'NDLI Security Law: Only resources hosted on https://ndli.iitkgp.ac.in/ are permitted.',
+      'NDLI Security Law: Only resources hosted on official NDLI portals (ndli.iitkgp.ac.in, ndl.iitkgp.ac.in, or www.ndl.gov.in) are permitted.',
       400,
     );
   }
@@ -1226,6 +1253,7 @@ export interface AdminOversightData {
     username: string;
     email: string;
     full_name: string;
+    sub_role?: string;
   };
   club: {
     code: string;
@@ -1237,18 +1265,45 @@ export interface AdminOversightData {
     active_members: number;
     suspended_or_expired: number;
     heis_disciplines: number;
+    active_students?: number;
+    suspended_students?: number;
+    total_sub_clubs?: number;
+    total_events?: number;
+  };
+  oversight?: {
+    total_members: number;
+    active_students: number;
+    active_members?: number;
+    suspended_students: number;
+    suspended_or_expired?: number;
+    heis_disciplines?: number;
+    total_sub_clubs: number;
+    total_events: number;
+    recent_members: Array<{
+      id: number;
+      full_name: string;
+      email?: string;
+      department?: string;
+      roll_number?: string;
+      is_suspended?: boolean;
+      points?: number;
+      badge?: string;
+      valid_until?: string;
+    }>;
   };
   recent_members: Array<{
     id: number;
     full_name: string;
-    email: string;
-    department: string;
-    roll_number: string;
-    is_suspended: boolean;
-    valid_until: string;
+    email?: string;
+    department?: string;
+    roll_number?: string;
+    is_suspended?: boolean;
+    valid_until?: string;
+    points?: number;
+    badge?: string;
   }>;
-  module_2_url: string;
-  message: string;
+  module_2_url?: string;
+  message?: string;
   profile?: undefined;
 }
 

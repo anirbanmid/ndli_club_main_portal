@@ -515,21 +515,35 @@ class CampusModuleTests(TestCase):
         self.assertEqual(lib_resp.json()["resources"], [])
         self.assertEqual(lib_resp.json()["resources_count"], 0)
 
-        # Add valid official NDLI resource link
-        valid_resp = self.client.post(
-            f"/api/v1/sharing/libraries/{lib_id}/resources/",
-            data={
-                "title": "Introduction to Quantum Mechanics Lecture Notes",
-                "ndli_url": "https://ndli.iitkgp.ac.in/homelibraries/physics/qm_notes.pdf",
-                "content_type": "PDF Document",
-            },
-            content_type="application/json",
-        )
-        self.assertEqual(valid_resp.status_code, 201)
-        self.assertEqual(
-            valid_resp.json()["title"],
-            "Introduction to Quantum Mechanics Lecture Notes",
-        )
+        # Add valid official NDLI resource links across all 3 accepted domains
+        for valid_url, title in [
+            (
+                "https://ndli.iitkgp.ac.in/homelibraries/physics/qm_notes.pdf",
+                "Introduction to Quantum Mechanics Lecture Notes",
+            ),
+            ("https://ndl.iitkgp.ac.in/document/physics-101", "NDL IIT KGP Resource"),
+            (
+                "https://www.ndl.gov.in/handle/12345/6789",
+                "National Digital Library Gov Portal",
+            ),
+            (
+                "https://ndl.gov.in/resources/ai-intro",
+                "National Digital Library Root Domain",
+            ),
+        ]:
+            valid_resp = self.client.post(
+                f"/api/v1/sharing/libraries/{lib_id}/resources/",
+                data={
+                    "title": title,
+                    "ndli_url": valid_url,
+                    "content_type": "PDF Document",
+                },
+                content_type="application/json",
+            )
+            self.assertEqual(
+                valid_resp.status_code, 201, f"Failed for valid URL {valid_url}"
+            )
+            self.assertEqual(valid_resp.json()["title"], title)
 
         # Attempt to add unauthorized external link (YouTube/GDrive) -> Rejected
         invalid_resp = self.client.post(
@@ -555,7 +569,7 @@ class CampusModuleTests(TestCase):
         )
         self.assertIsNotNone(listed)
         assert listed is not None
-        self.assertEqual(len(listed["resources"]), 1)
+        self.assertEqual(len(listed["resources"]), 4)
         self.assertEqual(
             listed["resources"][0]["title"],
             "Introduction to Quantum Mechanics Lecture Notes",
@@ -652,6 +666,7 @@ class CampusModuleTests(TestCase):
 
         # Generate a valid 6-digit TOTP code for the target user's secret.
         import pyotp
+
         totp = pyotp.TOTP(secret, interval=30)
         valid_totp_code = totp.now()
 
@@ -1375,8 +1390,8 @@ class CampusModuleTests(TestCase):
         pending_user.delete()
 
     def test_roster_role_territory_excludes_officers(self) -> None:
-        '''Owner bug 2026-11-08: a club president must never appear as a general
-        Existing Member; sub-club coordinators must be distinctly tagged.'''
+        """Owner bug 2026-11-08: a club president must never appear as a general
+        Existing Member; sub-club coordinators must be distinctly tagged."""
         from apps.accounts.models import AccountState, Category, User
         from apps.domain.models import SubClub
         from apps.members.models import StudentMemberProfile
@@ -1427,9 +1442,7 @@ class CampusModuleTests(TestCase):
         )
 
         self.client.force_login(self.authority_user)
-        resp = self.client.get(
-            f"/api/v1/members/students/?club_code={self.club.code}"
-        )
+        resp = self.client.get(f"/api/v1/members/students/?club_code={self.club.code}")
         self.assertEqual(resp.status_code, 200)
         rows = {r["email"]: r for r in resp.json()["results"]}
         # President lives in the authority roster, never the member roster.
@@ -1437,9 +1450,7 @@ class CampusModuleTests(TestCase):
         self.assertIn("member.plain@test.edu", rows)
         self.assertEqual(rows["member.plain@test.edu"]["role"], "member")
         self.assertIn("member.coord@test.edu", rows)
-        self.assertEqual(
-            rows["member.coord@test.edu"]["role"], "sub-club-coordinator"
-        )
+        self.assertEqual(rows["member.coord@test.edu"]["role"], "sub-club-coordinator")
         self.assertIn(
             "Robotics Society",
             rows["member.coord@test.edu"]["coordinated_sub_clubs"],
@@ -1451,8 +1462,8 @@ class CampusModuleTests(TestCase):
         sub.delete()
 
     def test_subclub_selection_scores_25_points_each(self) -> None:
-        '''Owner bug 2026-11-08: the dashboard promises "+25 points per sub-club"
-        but the KPI never moved — gamification must count active sub-clubs.'''
+        """Owner bug 2026-11-08: the dashboard promises "+25 points per sub-club"
+        but the KPI never moved — gamification must count active sub-clubs."""
         from apps.accounts.models import AccountState, Category, User
         from apps.domain.models import SubClub
         from apps.members.models import StudentMemberProfile
@@ -1904,9 +1915,7 @@ class CampusModuleTests(TestCase):
         )
         pres_client = Client()
         pres_client.force_login(pres)
-        ok = pres_client.post(
-            f"/api/v1/members/joins/{join_request.pk}/confirm/"
-        )
+        ok = pres_client.post(f"/api/v1/members/joins/{join_request.pk}/confirm/")
         self.assertEqual(ok.status_code, 201, ok.content)
 
     def test_student_executive_cannot_edit_institutional_branding(self) -> None:
@@ -1982,9 +1991,7 @@ class CampusModuleTests(TestCase):
                 "club_code": self.club.code,
                 "title": title,
                 "start_time": (timezone.now() + timedelta(days=2)).isoformat(),
-                "end_time": (
-                    timezone.now() + timedelta(days=2, hours=2)
-                ).isoformat(),
+                "end_time": (timezone.now() + timedelta(days=2, hours=2)).isoformat(),
             }
 
         exec_client = Client()
@@ -1995,9 +2002,7 @@ class CampusModuleTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(denied.status_code, 403)
-        self.assertFalse(
-            ClubEvent.objects.filter(title="Exec Created Event").exists()
-        )
+        self.assertFalse(ClubEvent.objects.filter(title="Exec Created Event").exists())
 
         student_client = Client()
         student_client.force_login(student)
@@ -2056,9 +2061,7 @@ class CampusModuleTests(TestCase):
         self.assertEqual(fallback.status_code, 201, fallback.content)
         data = fallback.json()
         self.assertTrue(data["temporary_password"])
-        coord = User.objects.filter(
-            email__iexact="fallback.coord@delhi.ac.in"
-        ).first()
+        coord = User.objects.filter(email__iexact="fallback.coord@delhi.ac.in").first()
         self.assertIsNotNone(coord)
         assert coord is not None
         self.assertTrue(coord.check_password(data["temporary_password"]))
@@ -2227,7 +2230,13 @@ class CampusModuleTests(TestCase):
         self.assertIn("module_2_url", me_data)
         self.assertIn("stats", me_data)
         self.assertIn("recent_members", me_data)
-        self.assertFalse(StudentMemberProfile.objects.filter(user=self.authority_user).exists())
+        self.assertIn("heis_disciplines", me_data["stats"])
+        self.assertIn("active_members", me_data["stats"])
+        self.assertIn("suspended_or_expired", me_data["stats"])
+        self.assertTrue(me_data["club"]["institution_name"])
+        self.assertFalse(
+            StudentMemberProfile.objects.filter(user=self.authority_user).exists()
+        )
 
     def test_me_never_falls_back_to_an_arbitrary_club(self) -> None:
         """A clubless account must not see or write into ANOTHER club.
@@ -2272,9 +2281,7 @@ class CampusModuleTests(TestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.json().get("code"), "not_found")
         self.assertEqual(StudentMemberProfile.objects.count(), before)
-        self.assertFalse(
-            StudentMemberProfile.objects.filter(user=student).exists()
-        )
+        self.assertFalse(StudentMemberProfile.objects.filter(user=student).exists())
 
         # 2. Clubless Main Admin -> honest empty desk, never the real
         #    club's data.
@@ -2682,4 +2689,3 @@ class CampusModuleTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(passkey_resp.status_code, 403)
-

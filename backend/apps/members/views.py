@@ -69,8 +69,10 @@ class CheckPreapprovalView(APIView):
             f"m1:preapproval:{client_ip(request)}", 10, 60
         ):
             return Response(
-                {"detail": "Too many attempts. Try again in a minute.",
-                 "code": "throttled"},
+                {
+                    "detail": "Too many attempts. Try again in a minute.",
+                    "code": "throttled",
+                },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
@@ -743,10 +745,9 @@ class SchoolRosterPendingListView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        entries = (
-            SchoolStudentRoster.objects.filter(club=club, status="pending")
-            .order_by("student_class", "section", "full_name")
-        )
+        entries = SchoolStudentRoster.objects.filter(
+            club=club, status="pending"
+        ).order_by("student_class", "section", "full_name")
         return Response(
             {
                 "club_code": club.code,
@@ -1102,8 +1103,10 @@ class StudentJoinRegisterView(APIView):
             f"members:register:{client_ip(request)}", 10, 60
         ):
             return Response(
-                {"detail": "Too many attempts. Try again in a minute.",
-                 "code": "throttled"},
+                {
+                    "detail": "Too many attempts. Try again in a minute.",
+                    "code": "throttled",
+                },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
@@ -1118,12 +1121,7 @@ class StudentJoinRegisterView(APIView):
         # C4(b): activation is NEVER client-controlled — the server derives it
         # from the roster pre-approval / settings below.
 
-        if (
-            not passkey
-            or not full_name
-            or not email
-            or not password
-        ):
+        if not passkey or not full_name or not email or not password:
             return Response(
                 {
                     "detail": (
@@ -1172,8 +1170,7 @@ class StudentJoinRegisterView(APIView):
         name_matches = True
         if preapproved_entry is not None and full_name:
             name_matches = (
-                preapproved_entry.name.strip().lower()
-                == full_name.strip().lower()
+                preapproved_entry.name.strip().lower() == full_name.strip().lower()
             )
 
         from django.conf import settings
@@ -1294,7 +1291,7 @@ class StudentJoinRegisterView(APIView):
             default_expiry = timezone.localdate() + timedelta(days=365)
             # Use pre-approved roster data when department/roll_number not provided
             if not department and preapproved_entry is not None:
-                department = preapproved_entry.program or preapproved_entry.name or ''
+                department = preapproved_entry.program or preapproved_entry.name or ""
             if not roll_number and preapproved_entry is not None:
                 email_prefix = preapproved_entry.email.split("@")[0]
                 roll_number = preapproved_entry.admission_no or email_prefix or ""
@@ -1401,8 +1398,10 @@ class TerminateMembershipView(APIView):
             f"members:terminate:{client_ip(request)}", 10, 60
         ):
             return Response(
-                {"detail": "Too many attempts. Try again in a minute.",
-                 "code": "throttled"},
+                {
+                    "detail": "Too many attempts. Try again in a minute.",
+                    "code": "throttled",
+                },
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
@@ -1467,9 +1466,7 @@ class TerminateMembershipView(APIView):
         profile_exists = StudentMemberProfile.objects.filter(
             user=user, club=club
         ).exists()
-        membership_exists = Membership.objects.filter(
-            user=user, club=club
-        ).exists()
+        membership_exists = Membership.objects.filter(user=user, club=club).exists()
         if not profile_exists and not membership_exists:
             return Response(
                 {"detail": "Membership not found.", "code": "membership_not_found"},
@@ -1586,12 +1583,9 @@ class StudentMemberMeView(APIView):
 
         # 1. Main Admins & IIT KGP Admins -> Administrative Member Oversight Desk
         # Prevent fake student profile from being created!
-        is_main_admin = (
-            actor_category == Category.IIT_KGP_ADMIN
-            or (
-                actor_category == Category.CLUB_ADMIN
-                and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
-            )
+        is_main_admin = actor_category == Category.IIT_KGP_ADMIN or (
+            actor_category == Category.CLUB_ADMIN
+            and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
         )
         if is_main_admin:
             club = _linked_club(user)
@@ -1601,7 +1595,12 @@ class StudentMemberMeView(APIView):
             # (Central = all clubs, officers = assigned states, ops = none);
             # any other clubless Main Admin gets an honest empty desk.
             if club:
-                member_qs = StudentMemberProfile.objects.filter(club=club)
+                member_qs = (
+                    StudentMemberProfile.objects.filter(club=club)
+                    .exclude(user__category=Category.IIT_KGP_ADMIN)
+                    .exclude(user__sub_role__in=MAIN_CLUB_ADMIN_SUB_ROLES)
+                    .exclude(user__sub_role=SubRole.SUBCLUB_COORDINATOR)
+                )
                 subclub_qs = SubClub.objects.filter(club=club, is_active=True)
                 event_qs = ClubEvent.objects.filter(host_club=club)
             elif actor_category == Category.IIT_KGP_ADMIN:
@@ -1610,8 +1609,11 @@ class StudentMemberMeView(APIView):
                 visible_clubs = scope_clubs(
                     Club.objects.filter(is_sample=False, status="active"), user
                 )
-                member_qs = StudentMemberProfile.objects.filter(
-                    club__in=visible_clubs
+                member_qs = (
+                    StudentMemberProfile.objects.filter(club__in=visible_clubs)
+                    .exclude(user__category=Category.IIT_KGP_ADMIN)
+                    .exclude(user__sub_role__in=MAIN_CLUB_ADMIN_SUB_ROLES)
+                    .exclude(user__sub_role=SubRole.SUBCLUB_COORDINATOR)
                 )
                 subclub_qs = SubClub.objects.filter(
                     club__in=visible_clubs, is_active=True
@@ -1667,16 +1669,22 @@ class StudentMemberMeView(APIView):
                     },
                     "oversight": {
                         "total_members": total_members,
+                        "active_members": active_students,
                         "active_students": active_students,
+                        "suspended_or_expired": suspended_students,
                         "suspended_students": suspended_students,
+                        "heis_disciplines": sub_clubs_count,
                         "total_sub_clubs": sub_clubs_count,
                         "total_events": events_count,
                         "recent_members": recent_members,
                     },
                     "stats": {
                         "total_members": total_members,
+                        "active_members": active_students,
                         "active_students": active_students,
+                        "suspended_or_expired": suspended_students,
                         "suspended_students": suspended_students,
+                        "heis_disciplines": sub_clubs_count,
                         "total_sub_clubs": sub_clubs_count,
                         "total_events": events_count,
                     },
@@ -1691,13 +1699,10 @@ class StudentMemberMeView(APIView):
             )
 
         # 2. Sub-Club Coordinators -> Departmental Coordinator Desk
-        is_subclub_coord = (
-            actor_sub_role == SubRole.SUBCLUB_COORDINATOR
-            or (
-                actor_category == Category.CLUB_ADMIN
-                and not is_main_admin
-                and actor_sub_role != SubRole.CLUB_EXECUTIVE
-            )
+        is_subclub_coord = actor_sub_role == SubRole.SUBCLUB_COORDINATOR or (
+            actor_category == Category.CLUB_ADMIN
+            and not is_main_admin
+            and actor_sub_role != SubRole.CLUB_EXECUTIVE
         )
         if is_subclub_coord:
             # No arbitrary-club fallback: a clubless coordinator gets an
@@ -1814,6 +1819,24 @@ class StudentMemberMeView(APIView):
             )
 
         # 3. Student Members & Executive Council Members -> Student Workspace
+        # Non-student accounts (Main Admins, Central Admins, Coordinators)
+        # MUST NEVER have student profiles auto-created.
+        # Executive Council (CLUB_EXECUTIVE) represent student leaders.
+        if (
+            actor_category == Category.IIT_KGP_ADMIN
+            or actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
+            or actor_sub_role == SubRole.SUBCLUB_COORDINATOR
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Administrative accounts do not have student member profiles."
+                    ),
+                    "code": "not_a_student",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         profile = getattr(user, "student_profile", None)
         if not profile:
             club = _linked_club(user)

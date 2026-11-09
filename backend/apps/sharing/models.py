@@ -1,7 +1,7 @@
 """Data models for the Sharing app (3-Tier Curated NDLI Libraries).
 
-Strict content law: Only links from the NDLI main site (ndli.iitkgp.ac.in) are
-allowed.
+Strict content law: Only links from official NDLI portals (ndli.iitkgp.ac.in,
+ndl.iitkgp.ac.in, www.ndl.gov.in) are allowed.
 * Club Library: Created by Club Admins & Sub-Club Coordinators; read-only for members.
 * Personal Library: Created by students for their own study.
 * Community Library: Shared inter-club repository of student-contributed libraries.
@@ -18,13 +18,23 @@ from django.db import models
 
 from apps.domain.models import Club
 
-NDLI_URL_REGEX = re.compile(r"^https?://([a-zA-Z0-9-]+\.)*ndli\.iitkgp\.ac\.in(/.*)?$")
+ALLOWED_NDLI_HOSTS = (
+    "ndli.iitkgp.ac.in",
+    "ndl.iitkgp.ac.in",
+    "www.ndl.gov.in",
+    "ndl.gov.in",
+)
+NDLI_URL_REGEX = re.compile(
+    r"^https?://([a-zA-Z0-9-]+\.)*(ndli\.iitkgp\.ac\.in|ndl\.iitkgp\.ac\.in|ndl\.gov\.in)(/.*)?$",
+    re.IGNORECASE,
+)
 
 
 def validate_ndli_url(value: str) -> None:
     if not NDLI_URL_REGEX.match(value):
         raise ValidationError(
-            "Only content links from official NDLI site (ndli.iitkgp.ac.in) allowed."
+            "Only content links from official NDLI portals "
+            "(ndli.iitkgp.ac.in, ndl.iitkgp.ac.in, or www.ndl.gov.in) allowed."
         )
 
 

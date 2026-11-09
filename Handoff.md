@@ -24,6 +24,8 @@ The platform provides:
 5. **Universal Module Navigation**: Persistent high-level navigation across all four functional portal modules via the universal `<Header>`.
 6. **Zero-Trust Security Baseline**: Comprehensive mitigation of all Critical (C1–C6), High (H1–H8), Medium (M1–M7), Low (L1–L4), Frontend (A1–A9), and Infrastructure (B1–B8) vulnerabilities.
 7. **Strict Territory & Descriptor Safety**: Zero arbitrary `Club.objects.first()` fallbacks; robust `_linked_club()` descriptor resolution preventing `Club.DoesNotExist` crashes on unlinked accounts.
+8. **Administrative Member Oversight Desk (Module 4)**: Clear separation of Main Admin authority governance from student workstations. Authentic institution banner rendering, single-source-of-truth telemetry (active HEI sub-club units and genuine student enrollments), zero inclusion of administrative personnel in scholar rosters, and database migration (`0008`) purging legacy rogue profiles.
+9. **Multi-Domain Curated Digital Libraries (3-Tier)**: Full resource link validation across all official National Digital Library of India portals (`ndli.iitkgp.ac.in`, `ndl.iitkgp.ac.in`, and `www.ndl.gov.in`).
 
 ---
 

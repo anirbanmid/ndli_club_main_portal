@@ -306,3 +306,139 @@ def process_school_roster_csv(
         "total_imported": len(created_entries),
         "entries": created_entries,
     }
+
+
+def generate_club_oversight_notifications(
+    *,
+    club: Any | None,
+    days_remaining: int,
+    upcoming_renewal_date: Any,
+    is_overdue: bool = False,
+) -> list[dict[str, Any]]:
+    """Generate automated notifications for Module 4 Administrative Oversight Desk.
+
+    Includes:
+    - Automated renewal due alerts (30-day notice, 15-day critical, overdue).
+    - IIT Kharagpur Officer endorsements for this specific club.
+    - Official club charter certification notices.
+    """
+    notifications: list[dict[str, Any]] = []
+    if not club:
+        return notifications
+
+    from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
+
+    # 1. Registration Renewal Alerts
+    renewal_str = (
+        upcoming_renewal_date.strftime("%d %b %Y")
+        if upcoming_renewal_date and hasattr(upcoming_renewal_date, "strftime")
+        else "scheduled date"
+    )
+
+    if is_overdue or days_remaining < 0:
+        overdue_days = abs(days_remaining)
+        notifications.append(
+            {
+                "id": f"notif-renewal-overdue-{club.code}",
+                "type": "warning_critical",
+                "title": (
+                    "Urgent: Club Registration Renewal Overdue "
+                    f"({overdue_days} Days Expired)"
+                ),
+                "description": (
+                    f"Annual club registration expired on {renewal_str}. "
+                    "Submit institutional renewal documentation via Module 2 "
+                    "immediately to restore active standing."
+                ),
+                "timestamp": timezone.now().isoformat(),
+                "read": False,
+                "action_type": "open_renewal_modal",
+                "action_target": "renewal",
+            }
+        )
+    elif days_remaining <= 30:
+        is_urgent = days_remaining <= 15
+        prefix = "Urgent: " if is_urgent else "Notice: "
+        notifications.append(
+            {
+                "id": f"notif-renewal-due-{club.code}",
+                "type": "warning_critical" if is_urgent else "warning",
+                "title": (
+                    f"{prefix}Club Registration Renewal Due "
+                    f"({days_remaining} Days Remaining)"
+                ),
+                "description": (
+                    f"Annual club registration is due on {renewal_str}. "
+                    "Ensure institutional documentation and renewal "
+                    "requisites are submitted on time."
+                ),
+                "timestamp": timezone.now().isoformat(),
+                "read": False,
+                "action_type": "open_renewal_modal",
+                "action_target": "renewal",
+            }
+        )
+
+    # 2. IIT Kharagpur Officer Endorsements & Approvals for this specific club
+    approvals = (
+        ActivityLog.objects.filter(
+            club_code=club.code,
+            support_type__in=APPROVAL_LOG_TYPES,
+        )
+        .select_related("employee")
+        .order_by("-timestamp")[:5]
+    )
+    for log in approvals:
+        officer_name = (
+            log.employee.get_full_name() or log.employee.username
+            if getattr(log, "employee", None)
+            else "IIT Kharagpur Officer"
+        )
+        formatted_type = log.support_type.replace("_", " ").title()
+        notifications.append(
+            {
+                "id": f"notif-appr-{log.activity_id}",
+                "type": "approval",
+                "title": f"IIT Kharagpur Endorsement: {formatted_type}",
+                "description": (
+                    log.notes
+                    or (
+                        "Official approval recorded by IIT Kharagpur Officer "
+                        f"({officer_name})."
+                    )
+                ),
+                "timestamp": log.timestamp.isoformat(),
+                "read": False,
+                "action_type": "view_approval_modal",
+                "action_target": str(log.activity_id),
+            }
+        )
+
+    # 3. Official Charter Approval
+    if club.date_of_approval:
+        charter_date_str = (
+            club.date_of_approval.strftime("%d %b %Y")
+            if hasattr(club.date_of_approval, "strftime")
+            else str(club.date_of_approval)
+        )
+        notifications.append(
+            {
+                "id": f"notif-charter-{club.code}",
+                "type": "approval",
+                "title": "Official Club Charter Approved",
+                "description": (
+                    "NDLI Club charter certified by IIT Kharagpur on "
+                    f"{charter_date_str}."
+                ),
+                "timestamp": (
+                    club.date_of_approval.isoformat()
+                    if hasattr(club.date_of_approval, "isoformat")
+                    else str(club.date_of_approval)
+                ),
+                "read": False,
+                "action_type": "view_approval_modal",
+                "action_target": "charter",
+            }
+        )
+
+    return notifications

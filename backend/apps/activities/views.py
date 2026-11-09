@@ -336,15 +336,18 @@ class ActivityExportCSVView(APIView):
         )
         for r in rows:
             writer.writerow(
-                [neutralize_cell(v) for v in [
-                    str(r.activity_id),
-                    r.timestamp.isoformat(),
-                    r.support_type,
-                    getattr(r, "call_count", 1),
-                    "1" if r.priority_flag else "0",
-                    r.club_code,
-                    r.notes,
-                ]]
+                [
+                    neutralize_cell(v)
+                    for v in [
+                        str(r.activity_id),
+                        r.timestamp.isoformat(),
+                        r.support_type,
+                        getattr(r, "call_count", 1),
+                        "1" if r.priority_flag else "0",
+                        r.club_code,
+                        r.notes,
+                    ]
+                ]
             )
         return response
 
@@ -398,30 +401,33 @@ class EmployeeClubsExportCSVView(APIView):
         clubs = get_all_canonical_clubs()
         for c in clubs:
             writer.writerow(
-                [neutralize_cell(v) for v in [
-                    c["club_id"],
-                    c.get("registration_no") or c.get("registrationNo", ""),
-                    c.get("institution_name") or c.get("name", ""),
-                    c.get("state", ""),
-                    c.get("district", ""),
-                    c.get("zone", ""),
-                    c.get("status", "Active"),
-                    c.get("date_of_approval", ""),
-                    c.get("last_renewal_date", ""),
-                    c.get("upcoming_renewal_date", ""),
-                    c.get("patron_name", ""),
-                    c.get("patron_email", ""),
-                    c.get("president_name", ""),
-                    c.get("president_email", ""),
-                    c.get("secretary_name", ""),
-                    c.get("secretary_email", ""),
-                    c.get("patron_phone", "")
-                    or c.get("president_phone", "")
-                    or c.get("secretary_phone", ""),
-                    str(c.get("member_count", 0)),
-                    str(c.get("solo_activities", 0)),
-                    str(c.get("joint_activities", 0)),
-                ]]
+                [
+                    neutralize_cell(v)
+                    for v in [
+                        c["club_id"],
+                        c.get("registration_no") or c.get("registrationNo", ""),
+                        c.get("institution_name") or c.get("name", ""),
+                        c.get("state", ""),
+                        c.get("district", ""),
+                        c.get("zone", ""),
+                        c.get("status", "Active"),
+                        c.get("date_of_approval", ""),
+                        c.get("last_renewal_date", ""),
+                        c.get("upcoming_renewal_date", ""),
+                        c.get("patron_name", ""),
+                        c.get("patron_email", ""),
+                        c.get("president_name", ""),
+                        c.get("president_email", ""),
+                        c.get("secretary_name", ""),
+                        c.get("secretary_email", ""),
+                        c.get("patron_phone", "")
+                        or c.get("president_phone", "")
+                        or c.get("secretary_phone", ""),
+                        str(c.get("member_count", 0)),
+                        str(c.get("solo_activities", 0)),
+                        str(c.get("joint_activities", 0)),
+                    ]
+                ]
             )
         return response
 
@@ -504,8 +510,10 @@ class PISignatureSettingsView(APIView):
                 img.verify()
                 if len(img_bytes) > 2 * 1024 * 1024:
                     return Response(
-                        {"detail": "Signature image exceeds 2 MB limit.",
-                         "code": "file_too_large"},
+                        {
+                            "detail": "Signature image exceeds 2 MB limit.",
+                            "code": "file_too_large",
+                        },
                         status=400,
                     )
                 with open(sig_file, "wb") as f:
@@ -1191,10 +1199,9 @@ class EventCertificateApprovalView(APIView):
         from apps.accounts.models import Category, SubRole
         from apps.members.views import _is_main_club_admin, _is_subclub_coordinator
 
-        is_kgp_admin = (
-            getattr(user, "category", None) == Category.IIT_KGP_ADMIN
-            or getattr(user, "is_superuser", False)
-        )
+        is_kgp_admin = getattr(
+            user, "category", None
+        ) == Category.IIT_KGP_ADMIN or getattr(user, "is_superuser", False)
         is_main_admin = _is_main_club_admin(user, evt.host_club)
 
         # For sub-club coordinators: only authorized if event is scoped

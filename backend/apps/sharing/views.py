@@ -221,9 +221,8 @@ class LibraryDetailView(APIView):
 
         # H7: anonymous/unpublished library read — only allow for owner or
         # published-to-community libraries
-        if (
-            not lib.is_published_to_community
-            and lib.owner != authenticated_user(request)
+        if not lib.is_published_to_community and lib.owner != authenticated_user(
+            request
         ):
             from apps.members.views import _is_main_club_authority
 
@@ -432,6 +431,19 @@ class ResourceLinkClickTrackView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request: Request, pk: int) -> Response:
+        from apps.accounts.throttles import client_ip, sliding_window_allow
+
+        if not sliding_window_allow(
+            f"resource_click:{client_ip(request)}", limit=120, window_seconds=60
+        ):
+            return Response(
+                {
+                    "detail": "Too many requests. Try again later.",
+                    "code": "throttled",
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         resource = CuratedResourceLink.objects.filter(pk=pk).first()
         if not resource:
             return Response(
@@ -449,4 +461,3 @@ class ResourceLinkClickTrackView(APIView):
             {"status": "tracked", "clicks_count": resource.clicks_count},
             status=status.HTTP_200_OK,
         )
-

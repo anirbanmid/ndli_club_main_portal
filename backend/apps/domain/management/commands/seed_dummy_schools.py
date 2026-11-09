@@ -132,9 +132,7 @@ def _create_draft_and_authorities(school: dict) -> OnboardingDraft:
         status=OnboardingDraft.Status.DRAFT,
     )
 
-    patron_email = (
-        f"patron.{school['club_name'].lower().replace(' ', '')}@school.test"
-    )
+    patron_email = f"patron.{school['club_name'].lower().replace(' ', '')}@school.test"
     secretary_email = (
         f"secretary.{school['club_name'].lower().replace(' ', '')}@school.test"
     )
@@ -186,9 +184,7 @@ def _get_officer(employee_username: str) -> User:
         "central_admin",
         "super_admin_ops",
     ):
-        raise CommandError(
-            f"Officer {employee_username} is not a charter decider."
-        )
+        raise CommandError(f"Officer {employee_username} is not a charter decider.")
     return officer
 
 
@@ -202,21 +198,13 @@ def _clean_dummy_data() -> None:
         if cm.institution.name in school_names:
             cm.delete()
 
-    CharterApplication.objects.filter(
-        institution_name__in=school_names
-    ).delete()
+    CharterApplication.objects.filter(institution_name__in=school_names).delete()
 
-    OnboardingDraft.objects.filter(
-        institution_name__in=school_names
-    ).delete()
+    OnboardingDraft.objects.filter(institution_name__in=school_names).delete()
 
-    Club.objects.filter(
-        institution__name__in=school_names
-    ).delete()
+    Club.objects.filter(institution__name__in=school_names).delete()
 
-    Institution.objects.filter(
-        name__in=school_names
-    ).delete()
+    Institution.objects.filter(name__in=school_names).delete()
 
     User.objects.filter(email__endswith="@school.test").delete()
 
@@ -271,17 +259,13 @@ class Command(BaseCommand):
                 application_id=application.pk,
                 user=officer,
                 decision=DECISION_SANCTION,
-                reason=(
-                    "Dummy school for testing — clean before client handover."
-                ),
+                reason=("Dummy school for testing — clean before client handover."),
                 request=mock_request,
             )
             self.stdout.write(f"  Charter sanctioned: status={sanctioned.status}")
 
             # 4. Verify Institution + Club exist
-            inst = Institution.objects.filter(
-                name=school["institution_name"]
-            ).first()
+            inst = Institution.objects.filter(name=school["institution_name"]).first()
             club = Club.objects.filter(name=school["club_name"]).first()
             if not inst or not club:
                 raise CommandError(

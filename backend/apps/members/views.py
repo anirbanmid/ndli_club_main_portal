@@ -1592,14 +1592,20 @@ class StudentMemberMeView(APIView):
             and actor_sub_role in MAIN_CLUB_ADMIN_SUB_ROLES
         )
         if is_main_admin:
-            from django.db.models import Sum
+            from django.db.models import Count, Q, Sum
 
-            from apps.activities.models import APPROVAL_LOG_TYPES, ActivityLog
             from apps.certificates.models import Certificate
             from apps.domain.models import AuthorityAssignment
+            from apps.members.models import SchoolStudentRoster
+            from apps.members.services import generate_club_oversight_notifications
             from apps.sharing.models import CuratedResourceLink, LibraryType
 
             club = _linked_club(user)
+            is_school = bool(
+                club
+                and getattr(club, "institution", None)
+                and getattr(club.institution, "institution_type", "") == "school"
+            )
             visible_clubs = None
             if club:
                 member_qs = (
@@ -1608,6 +1614,7 @@ class StudentMemberMeView(APIView):
                     .exclude(user__sub_role__in=MAIN_CLUB_ADMIN_SUB_ROLES)
                     .exclude(user__sub_role=SubRole.SUBCLUB_COORDINATOR)
                 )
+                school_qs = SchoolStudentRoster.objects.filter(club=club)
                 subclub_qs = SubClub.objects.filter(club=club, is_active=True)
                 event_qs = ClubEvent.objects.filter(host_club=club)
                 link_qs = CuratedResourceLink.objects.filter(library__club=club)
@@ -1624,6 +1631,7 @@ class StudentMemberMeView(APIView):
                     .exclude(user__sub_role__in=MAIN_CLUB_ADMIN_SUB_ROLES)
                     .exclude(user__sub_role=SubRole.SUBCLUB_COORDINATOR)
                 )
+                school_qs = SchoolStudentRoster.objects.filter(club__in=visible_clubs)
                 subclub_qs = SubClub.objects.filter(
                     club__in=visible_clubs, is_active=True
                 )
@@ -1634,38 +1642,72 @@ class StudentMemberMeView(APIView):
                 cert_count = Certificate.objects.filter(club__in=visible_clubs).count()
             else:
                 member_qs = StudentMemberProfile.objects.none()
+                school_qs = SchoolStudentRoster.objects.none()
                 subclub_qs = SubClub.objects.none()
                 event_qs = ClubEvent.objects.none()
                 link_qs = CuratedResourceLink.objects.none()
                 cert_count = 0
 
-            total_members = member_qs.count()
-            suspended_students = member_qs.filter(
-                is_suspended_by_coordinator=True
-            ).count()
-            active_students = total_members - suspended_students
+            if is_school:
+                total_members = school_qs.count()
+                active_students = school_qs.filter(
+                    is_active=True, status=SchoolStudentRoster.Status.APPROVED
+                ).count()
+                suspended_students = total_members - active_students
+            elif actor_category == Category.IIT_KGP_ADMIN:
+                hei_total = member_qs.count()
+                hei_suspended = member_qs.filter(
+                    is_suspended_by_coordinator=True
+                ).count()
+                school_total = school_qs.count()
+                school_active = school_qs.filter(
+                    is_active=True, status=SchoolStudentRoster.Status.APPROVED
+                ).count()
+                school_suspended = school_total - school_active
+                total_members = hei_total + school_total
+                suspended_students = hei_suspended + school_suspended
+                active_students = total_members - suspended_students
+            else:
+                total_members = member_qs.count()
+                suspended_students = member_qs.filter(
+                    is_suspended_by_coordinator=True
+                ).count()
+                active_students = total_members - suspended_students
+
             sub_clubs_count = subclub_qs.count()
             events_count = event_qs.count()
 
             # 1. Administrators Roster (Main Admins & Sub-Club Coordinators)
             main_admins: list[dict[str, Any]] = []
             if club:
-                assignments = {
-                    a.tier: a
-                    for a in AuthorityAssignment.objects.filter(
+                # Latest active assignment per tier (ordered by -from_date,
+                # -id so first seen is newest)
+                assignments: dict[str, AuthorityAssignment] = {}
+                for a in (
+                    AuthorityAssignment.objects.filter(
                         club=club,
                         status="active",
                         tier__in=["patron", "president", "secretary"],
-                    ).select_related("user")
-                }
+                    )
+                    .order_by("-from_date", "-id")
+                    .select_related("user")
+                ):
+                    if a.tier not in assignments:
+                        assignments[a.tier] = a
+
                 patron_assign = assignments.get("patron")
                 patron_name = (
-                    club.patron_name
-                    or (patron_assign.user.get_full_name() if patron_assign else "")
+                    (patron_assign.user.get_full_name() if patron_assign else "")
+                    or club.patron_name
                 ).strip() or "Dr. Institutional Patron"
                 patron_email = (
-                    club.patron_email
-                    or (patron_assign.user.email if patron_assign else "")
+                    (patron_assign.user.email if patron_assign else "")
+                    or club.patron_email
+                ).strip()
+                patron_phone = (
+                    (getattr(patron_assign.user, "phone", "") if patron_assign else "")
+                    or club.patron_phone
+                    or ""
                 ).strip()
                 main_admins.append(
                     {
@@ -1673,19 +1715,24 @@ class StudentMemberMeView(APIView):
                         "title": "Patron (Head of Institution)",
                         "name": patron_name,
                         "email": patron_email,
-                        "phone": (club.patron_phone or "").strip(),
+                        "phone": patron_phone,
                         "is_active": True,
                     }
                 )
 
                 pres_assign = assignments.get("president")
                 pres_name = (
-                    club.president_name
-                    or (pres_assign.user.get_full_name() if pres_assign else "")
+                    (pres_assign.user.get_full_name() if pres_assign else "")
+                    or club.president_name
                 ).strip() or "Club President"
                 pres_email = (
-                    club.president_email
-                    or (pres_assign.user.email if pres_assign else "")
+                    (pres_assign.user.email if pres_assign else "")
+                    or club.president_email
+                ).strip()
+                pres_phone = (
+                    (getattr(pres_assign.user, "phone", "") if pres_assign else "")
+                    or club.president_phone
+                    or ""
                 ).strip()
                 main_admins.append(
                     {
@@ -1693,19 +1740,24 @@ class StudentMemberMeView(APIView):
                         "title": "Club President",
                         "name": pres_name,
                         "email": pres_email,
-                        "phone": (club.president_phone or "").strip(),
+                        "phone": pres_phone,
                         "is_active": True,
                     }
                 )
 
                 sec_assign = assignments.get("secretary")
                 sec_name = (
-                    club.secretary_name
-                    or (sec_assign.user.get_full_name() if sec_assign else "")
+                    (sec_assign.user.get_full_name() if sec_assign else "")
+                    or club.secretary_name
                 ).strip() or "Club Secretary"
                 sec_email = (
-                    club.secretary_email
-                    or (sec_assign.user.email if sec_assign else "")
+                    (sec_assign.user.email if sec_assign else "")
+                    or club.secretary_email
+                ).strip()
+                sec_phone = (
+                    (getattr(sec_assign.user, "phone", "") if sec_assign else "")
+                    or club.secretary_phone
+                    or ""
                 ).strip()
                 main_admins.append(
                     {
@@ -1713,7 +1765,7 @@ class StudentMemberMeView(APIView):
                         "title": "Club Secretary",
                         "name": sec_name,
                         "email": sec_email,
-                        "phone": (club.secretary_phone or "").strip(),
+                        "phone": sec_phone,
                         "is_active": True,
                     }
                 )
@@ -1721,16 +1773,21 @@ class StudentMemberMeView(APIView):
             subclub_coordinators: list[dict[str, Any]] = []
             for sc in subclub_qs.select_related("coordinator_user"):
                 coord_name = (
-                    sc.coordinator_name
-                    or (
-                        sc.coordinator_user.get_full_name()
+                    (sc.coordinator_user.get_full_name() if sc.coordinator_user else "")
+                    or sc.coordinator_name
+                ).strip() or "Department Coordinator"
+                coord_email = (
+                    (sc.coordinator_user.email if sc.coordinator_user else "")
+                    or sc.coordinator_email
+                ).strip()
+                coord_phone = (
+                    (
+                        getattr(sc.coordinator_user, "phone", "")
                         if sc.coordinator_user
                         else ""
                     )
-                ).strip() or "Department Coordinator"
-                coord_email = (
-                    sc.coordinator_email
-                    or (sc.coordinator_user.email if sc.coordinator_user else "")
+                    or sc.coordinator_phone
+                    or ""
                 ).strip()
                 subclub_coordinators.append(
                     {
@@ -1740,45 +1797,85 @@ class StudentMemberMeView(APIView):
                         "discipline": sc.discipline or sc.name,
                         "coordinator_name": coord_name,
                         "coordinator_email": coord_email,
-                        "coordinator_phone": (sc.coordinator_phone or "").strip(),
+                        "coordinator_phone": coord_phone,
                         "is_active": sc.is_active,
                     }
                 )
 
-            # 2. Scholars Roster (with subclub tags & full details)
+            # 2. Scholars Roster (with subclub tags & full details, up to 1,000 entries)
             scholars: list[dict[str, Any]] = []
-            for p in (
-                member_qs.select_related("user")
-                .prefetch_related("sub_clubs")
-                .order_by("-id")[:100]
-            ):
-                scholars.append(
-                    {
-                        "id": p.id,
-                        "user_id": p.user_id,
-                        "full_name": p.user.get_full_name() or p.user.username,
-                        "email": p.user.email,
-                        "roll_number": p.roll_number,
-                        "department": p.department,
-                        "sub_clubs": [
-                            {"id": sc.id, "name": sc.name}
-                            for sc in p.sub_clubs.all()
-                        ],
-                        "enrollment_year": p.created_at.year if p.created_at else None,
-                        "valid_until": str(p.valid_until) if p.valid_until else None,
-                        "is_suspended": p.is_suspended_by_coordinator,
-                        "points": p.points,
-                        "badge": p.badge,
-                    }
-                )
+            if is_school:
+                for entry in school_qs.order_by("-id")[:1000]:
+                    dept_str = (
+                        f"Class {entry.student_class} - {entry.section}"
+                        if entry.section
+                        else f"Class {entry.student_class}"
+                    )
+                    scholars.append(
+                        {
+                            "id": entry.id,
+                            "user_id": entry.id,
+                            "full_name": entry.full_name,
+                            "email": "",
+                            "roll_number": entry.student_uid,
+                            "department": dept_str,
+                            "sub_clubs": [],
+                            "enrollment_year": (
+                                entry.batch_year
+                                or (entry.created_at.year if entry.created_at else None)
+                            ),
+                            "valid_until": (
+                                f"{entry.batch_year}-12-31"
+                                if entry.batch_year
+                                else None
+                            ),
+                            "is_suspended": (
+                                not entry.is_active
+                                or entry.status != SchoolStudentRoster.Status.APPROVED
+                            ),
+                            "points": 0,
+                            "badge": "copper",
+                        }
+                    )
+            else:
+                for p in (
+                    member_qs.select_related("user")
+                    .prefetch_related("sub_clubs")
+                    .order_by("-id")[:1000]
+                ):
+                    scholars.append(
+                        {
+                            "id": p.id,
+                            "user_id": p.user_id,
+                            "full_name": p.user.get_full_name() or p.user.username,
+                            "email": p.user.email,
+                            "roll_number": p.roll_number,
+                            "department": p.department,
+                            "sub_clubs": [
+                                {"id": sc.id, "name": sc.name}
+                                for sc in p.sub_clubs.all()
+                            ],
+                            "enrollment_year": p.created_at.year
+                            if p.created_at
+                            else None,
+                            "valid_until": str(p.valid_until)
+                            if p.valid_until
+                            else None,
+                            "is_suspended": p.is_suspended_by_coordinator,
+                            "points": p.points,
+                            "badge": p.badge,
+                        }
+                    )
 
             recent_members = scholars[:10]
 
-            # 3. Events (Completed & Upcoming)
+            # 3. Events (Completed & Upcoming) with precomputed attendee counts
             now = timezone.now()
             completed_events: list[dict[str, Any]] = []
             upcoming_events: list[dict[str, Any]] = []
-            for e in event_qs.order_by("-start_time")[:30]:
+            for e in event_qs.annotate(attendee_tally=Count("attendees")).order_by(
+                "-start_time"
+            )[:30]:
                 is_completed = e.status == "completed" or (
                     e.end_time and e.end_time < now
                 )
@@ -1792,9 +1889,7 @@ class StudentMemberMeView(APIView):
                     "category": e.scope,
                     "mode": "Virtual" if e.joining_link else "On-Campus",
                     "status": e.status,
-                    "attendee_count": e.attendees.count()
-                    if hasattr(e, "attendees")
-                    else 0,
+                    "attendee_count": getattr(e, "attendee_tally", 0),
                 }
                 if is_completed:
                     completed_events.append(evt_item)
@@ -1835,91 +1930,32 @@ class StudentMemberMeView(APIView):
             }
 
             # 5. Automated Priority Notifications (Renewal due & IIT Kgp approvals)
-            notifications: list[dict[str, Any]] = []
-            if club:
-                if days_remaining <= 30:
-                    is_urgent = days_remaining <= 15
-                    prefix = "Urgent: " if is_urgent else ""
-                    renewal_str = upcoming_renewal_date.strftime("%d %b %Y")
-                    notifications.append(
-                        {
-                            "id": "notif-renewal-due",
-                            "type": "warning_critical" if is_urgent else "warning",
-                            "title": (
-                                f"{prefix}Club Registration Renewal Due "
-                                f"({days_remaining} Days Remaining)"
-                            ),
-                            "description": (
-                                f"Annual club registration is due on {renewal_str}. "
-                                "Ensure institutional documentation and "
-                                "renewal requisites are submitted on time."
-                            ),
-                            "timestamp": timezone.now().isoformat(),
-                            "read": False,
-                            "action_type": "open_renewal_modal",
-                            "action_target": "renewal",
-                        }
-                    )
-
-                approvals = (
-                    ActivityLog.objects.filter(
-                        club_code=club.code,
-                        support_type__in=APPROVAL_LOG_TYPES,
-                    )
-                    .select_related("employee")
-                    .order_by("-timestamp")[:5]
-                )
-                for log in approvals:
-                    officer_name = (
-                        log.employee.get_full_name() or log.employee.username
-                    )
-                    notifications.append(
-                        {
-                            "id": f"notif-appr-{log.activity_id}",
-                            "type": "approval",
-                            "title": f"IIT Kharagpur Endorsement: {log.support_type}",
-                            "description": (
-                                log.notes
-                                or (
-                                    "Official approval recorded by IIT Kharagpur "
-                                    f"Officer ({officer_name})."
-                                )
-                            ),
-                            "timestamp": log.timestamp.isoformat(),
-                            "read": False,
-                            "action_type": "view_approval_modal",
-                            "action_target": str(log.activity_id),
-                        }
-                    )
-
-                if club.date_of_approval:
-                    charter_date_str = club.date_of_approval.strftime("%d %b %Y")
-                    notifications.append(
-                        {
-                            "id": f"notif-charter-{club.code}",
-                            "type": "approval",
-                            "title": "Official Club Charter Approved",
-                            "description": (
-                                "NDLI Club charter certified by IIT Kharagpur on "
-                                f"{charter_date_str}."
-                            ),
-                            "timestamp": (
-                                club.date_of_approval.isoformat()
-                                if hasattr(club.date_of_approval, "isoformat")
-                                else str(club.date_of_approval)
-                            ),
-                            "read": False,
-                            "action_type": "view_approval_modal",
-                            "action_target": "charter",
-                        }
-                    )
+            notifications = generate_club_oversight_notifications(
+                club=club,
+                days_remaining=days_remaining,
+                upcoming_renewal_date=upcoming_renewal_date,
+                is_overdue=is_overdue,
+            )
 
             # 6. Telemetry (5-year trends for events and student enrollment)
             current_year = timezone.now().year
             year_trends: list[dict[str, Any]] = []
             for y in range(current_year - 4, current_year + 1):
                 events_in_year = event_qs.filter(start_time__year=y).count()
-                members_in_year = member_qs.filter(created_at__year=y).count()
+                if is_school:
+                    members_in_year = school_qs.filter(
+                        Q(batch_year=y) | Q(created_at__year=y)
+                    ).count()
+                elif actor_category == Category.IIT_KGP_ADMIN:
+                    members_in_year = (
+                        member_qs.filter(created_at__year=y).count()
+                        + school_qs.filter(
+                            Q(batch_year=y) | Q(created_at__year=y)
+                        ).count()
+                    )
+                else:
+                    members_in_year = member_qs.filter(created_at__year=y).count()
+
                 year_trends.append(
                     {
                         "year": y,
@@ -1928,7 +1964,7 @@ class StudentMemberMeView(APIView):
                     }
                 )
 
-            # 7. 3-Tier Library Clicks Telemetry
+            # 7. 3-Tier Library Clicks Telemetry (capturing Community Hub publications)
             total_lib_clicks = link_qs.aggregate(s=Sum("clicks_count"))["s"] or 0
             tier1_clicks = (
                 link_qs.filter(library__library_type=LibraryType.CLUB).aggregate(
@@ -1937,15 +1973,17 @@ class StudentMemberMeView(APIView):
                 or 0
             )
             tier2_clicks = (
-                link_qs.filter(library__library_type=LibraryType.PERSONAL).aggregate(
-                    s=Sum("clicks_count")
-                )["s"]
+                link_qs.filter(
+                    library__library_type=LibraryType.PERSONAL,
+                    library__is_published_to_community=False,
+                ).aggregate(s=Sum("clicks_count"))["s"]
                 or 0
             )
             tier3_clicks = (
-                link_qs.filter(library__library_type=LibraryType.COMMUNITY).aggregate(
-                    s=Sum("clicks_count")
-                )["s"]
+                link_qs.filter(
+                    Q(library__library_type=LibraryType.COMMUNITY)
+                    | Q(library__is_published_to_community=True)
+                ).aggregate(s=Sum("clicks_count"))["s"]
                 or 0
             )
             libraries_telemetry = {

@@ -615,8 +615,10 @@ class RosterPreApprovalUploadView(APIView):
             text = raw.decode("utf-8-sig")
         except (UnicodeDecodeError, AttributeError):
             return Response(
-                {"detail": "Unable to read CSV file (UTF-8 required).",
-                 "code": "bad_file"},
+                {
+                    "detail": "Unable to read CSV file (UTF-8 required).",
+                    "code": "bad_file",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -627,8 +629,12 @@ class RosterPreApprovalUploadView(APIView):
         missing = required - set(headers)
         if missing:
             return Response(
-                {"detail": f"Missing required columns: {', '.join(sorted(missing))}.",
-                 "code": "missing_columns"},
+                {
+                    "detail": (
+                        f"Missing required columns: {', '.join(sorted(missing))}."
+                    ),
+                    "code": "missing_columns",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

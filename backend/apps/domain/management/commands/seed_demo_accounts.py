@@ -145,14 +145,20 @@ def _resolve_domain(spec: dict):
         )
     state = None
     if spec.get("state_code"):
-        state = __import__("django.apps", fromlist=["apps"]).apps.get_model(
-            "domain", "State"
-        ).objects.filter(code=spec["state_code"]).first()
+        state = (
+            __import__("django.apps", fromlist=["apps"])
+            .apps.get_model("domain", "State")
+            .objects.filter(code=spec["state_code"])
+            .first()
+        )
     zone = None
     if spec.get("zone_code"):
-        zone = __import__("django.apps", fromlist=["apps"]).apps.get_model(
-            "domain", "Zone"
-        ).objects.filter(code=spec["zone_code"]).first()
+        zone = (
+            __import__("django.apps", fromlist=["apps"])
+            .apps.get_model("domain", "Zone")
+            .objects.filter(code=spec["zone_code"])
+            .first()
+        )
     return inst, club, state, zone
 
 

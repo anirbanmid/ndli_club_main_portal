@@ -50,6 +50,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
 
   // Notifications State & Dropdown
   const [showNotifications, setShowNotifications] = useState(false);
+  const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
   const [activeModal, setActiveModal] = useState<{
     type: 'renewal' | 'approval';
     title?: string;
@@ -111,7 +112,9 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
 
   // Notifications derivation
   const notifications = data.notifications || [];
-  const unreadNotifsCount = notifications.filter((n) => !n.read).length;
+  const unreadNotifsCount = notifications.filter(
+    (n) => !n.read && !readNotifIds.has(n.id)
+  ).length;
 
   // Library Telemetry derivation
   const libTelemetry = data.libraries_telemetry || {
@@ -255,6 +258,15 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
   const eventPathStr = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.yEvents}`).join(' ');
   const memberPathStr = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.yMembers}`).join(' ');
 
+  const eventAreaStr =
+    points.length > 0
+      ? `${eventPathStr} L ${points[points.length - 1].x} ${padY + plotH} L ${points[0].x} ${padY + plotH} Z`
+      : '';
+  const memberAreaStr =
+    points.length > 0
+      ? `${memberPathStr} L ${points[points.length - 1].x} ${padY + plotH} L ${points[0].x} ${padY + plotH} Z`
+      : '';
+
   const completedEvents = data.events?.completed || [];
   const upcomingEvents = data.events?.upcoming || [];
 
@@ -308,77 +320,113 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
 
               {/* Notification Center Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white text-gray-900 rounded-2xl shadow-2xl border border-gray-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-2">
-                      <Bell className="h-4 w-4 text-emerald-700" />
-                      <h3 className="font-bold text-sm text-gray-900">Important Notifications</h3>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      {notifications.length} Alerts
-                    </span>
-                  </div>
-
-                  <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto mt-2 space-y-1">
-                    {notifications.length === 0 ? (
-                      <div className="py-6 text-center text-xs text-gray-500">
-                        No pending alerts. All institutional club statuses are normal.
+                <>
+                  <div
+                    className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
+                    onClick={() => setShowNotifications(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white text-gray-900 rounded-2xl shadow-2xl border border-gray-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div className="flex items-center space-x-2">
+                        <Bell className="h-4 w-4 text-emerald-700" />
+                        <h3 className="font-bold text-sm text-gray-900">Important Notifications</h3>
                       </div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => {
-                            setShowNotifications(false);
-                            if (n.action_type === 'open_renewal_modal') {
-                              setActiveModal({
-                                type: 'renewal',
-                                title: n.title,
-                                description: n.description,
-                                timestamp: n.timestamp,
-                              });
-                            } else if (n.action_type === 'view_approval_modal') {
-                              setActiveModal({
-                                type: 'approval',
-                                title: n.title,
-                                description: n.description,
-                                timestamp: n.timestamp,
-                              });
+                      <div className="flex items-center space-x-2">
+                        {unreadNotifsCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReadNotifIds(
+                                new Set(notifications.map((n) => n.id))
+                              )
                             }
-                          }}
-                          className={`p-3 rounded-xl transition-all cursor-pointer hover:bg-gray-50 flex items-start space-x-3 text-left ${
-                            n.type === 'warning_critical'
-                              ? 'bg-rose-50/60 border-l-4 border-rose-500'
-                              : n.type === 'warning'
-                              ? 'bg-amber-50/60 border-l-4 border-amber-500'
-                              : 'bg-emerald-50/40 border-l-4 border-emerald-600'
-                          }`}
+                            className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                          {notifications.length} Alerts
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowNotifications(false)}
+                          className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 cursor-pointer"
+                          aria-label="Close notifications"
                         >
-                          <div className="mt-0.5 shrink-0">
-                            {n.type === 'warning_critical' ? (
-                              <AlertTriangle className="h-4 w-4 text-rose-600" />
-                            ) : n.type === 'warning' ? (
-                              <Timer className="h-4 w-4 text-amber-600" />
-                            ) : (
-                              <Award className="h-4 w-4 text-emerald-600" />
-                            )}
-                          </div>
-                          <div className="flex-1 space-y-1 min-w-0">
-                            <div className="text-xs font-bold text-gray-900 leading-tight">
-                              {n.title}
-                            </div>
-                            <p className="text-[11px] text-gray-600 line-clamp-2">
-                              {n.description}
-                            </p>
-                            <span className="text-[9px] text-gray-400 block font-mono">
-                              Click to view official modal
-                            </span>
-                          </div>
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto mt-2 space-y-1">
+                      {notifications.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-gray-500">
+                          No pending alerts. All institutional club statuses are normal.
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        notifications.map((n) => {
+                          const isRead = n.read || readNotifIds.has(n.id);
+                          return (
+                            <div
+                              key={n.id}
+                              onClick={() => {
+                                setReadNotifIds((prev) => new Set(prev).add(n.id));
+                                setShowNotifications(false);
+                                if (n.action_type === 'open_renewal_modal') {
+                                  setActiveModal({
+                                    type: 'renewal',
+                                    title: n.title,
+                                    description: n.description,
+                                    timestamp: n.timestamp,
+                                  });
+                                } else if (n.action_type === 'view_approval_modal') {
+                                  setActiveModal({
+                                    type: 'approval',
+                                    title: n.title,
+                                    description: n.description,
+                                    timestamp: n.timestamp,
+                                  });
+                                }
+                              }}
+                              className={`p-3 rounded-xl transition-all cursor-pointer hover:bg-gray-50 flex items-start space-x-3 text-left ${
+                                isRead
+                                  ? 'opacity-65 bg-gray-50/50 border-l-4 border-gray-300'
+                                  : n.type === 'warning_critical'
+                                  ? 'bg-rose-50/60 border-l-4 border-rose-500'
+                                  : n.type === 'warning'
+                                  ? 'bg-amber-50/60 border-l-4 border-amber-500'
+                                  : 'bg-emerald-50/40 border-l-4 border-emerald-600'
+                              }`}
+                            >
+                              <div className="mt-0.5 shrink-0">
+                                {n.type === 'warning_critical' ? (
+                                  <AlertTriangle className="h-4 w-4 text-rose-600" />
+                                ) : n.type === 'warning' ? (
+                                  <Timer className="h-4 w-4 text-amber-600" />
+                                ) : (
+                                  <Award className="h-4 w-4 text-emerald-600" />
+                                )}
+                              </div>
+                              <div className="flex-1 space-y-1 min-w-0">
+                                <div className="text-xs font-bold text-gray-900 leading-tight">
+                                  {n.title}
+                                </div>
+                                <p className="text-[11px] text-gray-600 line-clamp-2">
+                                  {n.description}
+                                </p>
+                                <span className="text-[9px] text-gray-400 block font-mono">
+                                  Click to view official modal
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
 
@@ -452,11 +500,30 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
             }`}
           >
             {validity.is_overdue
-              ? 'Expired'
+              ? '0 Days (Expired)'
               : `${validity.days_remaining} Days`}
           </div>
-          <div className="text-[11px] text-gray-500 truncate font-mono">
-            Last Renewal: {validity.last_renewal_date || 'Charter Active'}
+          <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
+            <span className="truncate">Last Renewal: {validity.last_renewal_date || 'Charter Active'}</span>
+            {(validity.is_overdue || validity.days_remaining <= 30) && (
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveModal({
+                    type: 'renewal',
+                    title: validity.is_overdue
+                      ? 'Registration Renewal Overdue'
+                      : `Renewal Due (${validity.days_remaining} Days Remaining)`,
+                    description: `Annual institutional club renewal is required. Current upcoming renewal date: ${
+                      validity.upcoming_renewal_date || 'immediate'
+                    }. Ensure compliance documents are certified.`,
+                  })
+                }
+                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 underline shrink-0 ml-1 cursor-pointer"
+              >
+                Renew Now
+              </button>
+            )}
           </div>
         </div>
 
@@ -533,7 +600,10 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
         </div>
 
         {/* Animated SVG Graph Container */}
-        <div className="relative w-full overflow-hidden bg-gray-50/70 rounded-2xl p-4 border border-gray-100">
+        <div
+          className="relative w-full overflow-hidden bg-gray-50/70 rounded-2xl p-4 border border-gray-100"
+          onMouseLeave={() => setActiveChartPoint(null)}
+        >
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
             className="w-full h-48 sm:h-60 overflow-visible"
@@ -548,6 +618,22 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                 <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
               </linearGradient>
             </defs>
+            <style>{`
+              @keyframes lineDrawAnimation {
+                from { stroke-dashoffset: 1200; }
+                to { stroke-dashoffset: 0; }
+              }
+              .telemetry-line-draw-event {
+                stroke-dasharray: 1200;
+                stroke-dashoffset: 1200;
+                animation: lineDrawAnimation 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+              }
+              .telemetry-line-draw-member {
+                stroke-dasharray: 1200;
+                stroke-dashoffset: 1200;
+                animation: lineDrawAnimation 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+              }
+            `}</style>
 
             {/* Horizontal Grid lines */}
             {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -566,6 +652,22 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
               );
             })}
 
+            {/* Area Fills under curves */}
+            {eventAreaStr && (
+              <path
+                d={eventAreaStr}
+                fill="url(#eventGrad)"
+                className="transition-opacity duration-500"
+              />
+            )}
+            {memberAreaStr && (
+              <path
+                d={memberAreaStr}
+                fill="url(#memberGrad)"
+                className="transition-opacity duration-500"
+              />
+            )}
+
             {/* Event Trend Path */}
             <path
               d={eventPathStr}
@@ -574,7 +676,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
               strokeWidth="3.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="transition-all duration-1000 ease-out"
+              className="telemetry-line-draw-event"
             />
 
             {/* Member Trend Path */}
@@ -585,7 +687,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
               strokeWidth="3.5"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="transition-all duration-1000 ease-out"
+              className="telemetry-line-draw-member"
             />
 
             {/* Interactive Data Points */}
@@ -793,7 +895,7 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
             onChange={(e) => setDeptFilter(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            <option value="ALL">All Departments</option>
+            <option value="ALL">All Departments / Classes</option>
             {uniqueDepartments.map((dept) => (
               <option key={dept} value={dept}>
                 {dept}
@@ -805,9 +907,18 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
           <select
             value={subClubFilter}
             onChange={(e) => setSubClubFilter(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={uniqueSubClubs.length === 0}
+            className={`w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+              uniqueSubClubs.length === 0
+                ? 'opacity-60 cursor-not-allowed bg-gray-100'
+                : ''
+            }`}
           >
-            <option value="ALL">All Sub-Clubs</option>
+            <option value="ALL">
+              {uniqueSubClubs.length === 0
+                ? 'No Sub-Clubs (School)'
+                : 'All Sub-Clubs'}
+            </option>
             {uniqueSubClubs.map((sc) => (
               <option key={sc.id} value={String(sc.id)}>
                 {sc.name}

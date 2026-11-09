@@ -42,6 +42,7 @@ class OpenApiSchemaSmokeTests(TestCase):
         session = self.client.session
         session["mfa_verified"] = True
         session.save()
+
     def test_schema_endpoint_returns_openapi_document(self) -> None:
         self._gated_session()
         response = self.client.get("/api/schema/")

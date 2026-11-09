@@ -2264,6 +2264,97 @@ class CampusModuleTests(TestCase):
         self.assertIn("certificates_telemetry", me_data)
         self.assertIn("total_issued", me_data["certificates_telemetry"])
 
+    def test_school_main_admin_me_endpoint_returns_oversight_desk_with_school_roster(
+        self,
+    ) -> None:
+        """School authority visiting /api/v1/members/me/ receives school roster data."""
+        from datetime import date
+
+        from apps.members.models import SchoolStudentRoster
+
+        school_inst = Institution.objects.create(
+            code="INST-SCHOOL-DL-01",
+            legacy_id="INST-LEGACY-SCHOOL-DL-01",
+            name="Delhi Public Model School",
+            state=self.state,
+            district=self.district,
+            institution_type="school",
+        )
+        school_club = Club.objects.create(
+            code="CLB-DL-SCH-01",
+            name="Delhi Public Model School Club",
+            institution=school_inst,
+            status=Club.Status.ACTIVE,
+        )
+        school_pres = User.objects.create(
+            username="pres.school",
+            email="pres.school@delhi.edu",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_PRESIDENT,
+            account_state=AccountState.ACTIVE,
+            club=school_club,
+            is_active=True,
+        )
+        AuthorityAssignment.objects.create(
+            user=school_pres,
+            club=school_club,
+            tier="president",
+            from_date=date.today(),
+            status=AuthorityAssignment.Status.ACTIVE,
+        )
+        SchoolStudentRoster.objects.create(
+            club=school_club,
+            student_uid="SCH-DL-001",
+            full_name="Ananya Verma",
+            gender="female",
+            student_class="X",
+            section="B",
+            batch_year=2026,
+            status=SchoolStudentRoster.Status.APPROVED,
+            is_active=True,
+        )
+        SchoolStudentRoster.objects.create(
+            club=school_club,
+            student_uid="SCH-DL-002",
+            full_name="Rohan Mehra",
+            gender="male",
+            student_class="IX",
+            section="A",
+            batch_year=2026,
+            status=SchoolStudentRoster.Status.APPROVED,
+            is_active=True,
+        )
+
+        self.client.force_login(school_pres)
+        me_resp = self.client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertEqual(me_data["desk"], "admin_oversight")
+        self.assertEqual(me_data["stats"]["total_members"], 2)
+        self.assertEqual(me_data["stats"]["active_members"], 2)
+        self.assertEqual(len(me_data["scholars"]), 2)
+        self.assertEqual(me_data["scholars"][0]["roll_number"], "SCH-DL-002")
+        self.assertEqual(me_data["scholars"][0]["department"], "Class IX - A")
+
+    def test_oversight_desk_overdue_renewal_notification(self) -> None:
+        """Overdue club registration generates notice without negative numbers."""
+        from datetime import timedelta
+
+        self.club.upcoming_renewal_date = timezone.now().date() - timedelta(days=12)
+        self.club.save()
+
+        self.client.force_login(self.authority_user)
+        me_resp = self.client.get("/api/v1/members/me/")
+        self.assertEqual(me_resp.status_code, 200)
+        me_data = me_resp.json()
+        self.assertTrue(me_data["validity"]["is_overdue"])
+        notifs = me_data["notifications"]
+        overdue_notif = next((n for n in notifs if "Overdue" in n["title"]), None)
+        self.assertIsNotNone(overdue_notif)
+        assert overdue_notif is not None
+        self.assertNotIn("-", overdue_notif["title"])
+        self.assertIn("12 Days Expired", overdue_notif["title"])
+
     def test_me_never_falls_back_to_an_arbitrary_club(self) -> None:
         """A clubless account must not see or write into ANOTHER club.
 

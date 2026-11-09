@@ -218,42 +218,49 @@ In response to institutional governance requirements, the **Module 4 Administrat
    - Main Admins (Patron, President, Secretary) share the identical comprehensive governance layout.
    - Student Executives (`CLUB_EXECUTIVE`) remain cleanly partitioned: they have view-only access in Module 2 and retain their dedicated Student Member workspace in Module 4. Non-student administrative accounts never have dummy student profiles.
 
-2. **Interactive Bell Icon Notification Centre**:
+2. **Automated Notification Engine & Interactive Bell Centre**:
+   - Centralized, standalone notification generator `generate_club_oversight_notifications(club, days_remaining, upcoming_renewal_date, is_overdue)` in `backend.apps.members.services`.
    - Automated server-pushed & client-computed priority notifications:
      - Renewal warnings at **30 days** and **15 days** prior to club registration expiry.
+     - Grace-period and overdue renewal warnings (`X Days Expired`) with non-negative formatting.
      - IIT Kharagpur zonal officer endorsements (charter approvals, activity approvals, renewal logs).
+   - High-visibility notification centre with unread badge count, "Mark all read", backdrop click dismissal, and close button.
    - Live Click-to-Modal:
      - Clicking a renewal alert opens the `RenewalApplicationModal` with renewal requirements and direct navigation to Module 2.
      - Clicking an endorsement opens the `ApprovalDetailsModal` with the official IIT Kharagpur certification seal and verification timestamp.
 
-3. **5 Dynamic KPI Cards**:
+3. **Multi-Institution Support (HEIs & Schools)**:
+   - For Higher Education Institutions (HEIs), queries `StudentMemberProfile` for genuine student scholars.
+   - For K-12 Schools, automatically queries `SchoolStudentRoster` (offline tangible identity), populating active scholars, roster counts, and enrollment trend lines for school administrative officers without requiring minor online accounts.
+
+4. **5 Dynamic KPI Cards**:
    - **Event Count KPI**: Total events organized with completed vs upcoming event ratio.
-   - **Validity Countdown Timer KPI**: Dynamic countdown in days (`X Days Remaining`), status indicator (Normal, 30-Day Warning, 15-Day Critical), and subscript displaying the last renewal date.
+   - **Validity Countdown Timer KPI**: Dynamic countdown in days (`X Days Remaining`), status indicator (Normal, 30-Day Warning, 15-Day Critical, Expired), quick "Renew Now" action trigger, and subscript displaying the last renewal date.
    - **3-Tier Library Telemetry KPI**: Real-time click and interaction telemetry tracking usage across Tier 1 (Club Official), Tier 2 (Personal Study), and Tier 3 (Inter-Club Community Hub) libraries.
    - **Certificates Issued KPI**: Total official certificates issued till date for the institutional club, HMAC-SHA256 verifiable.
    - **Enrolled Scholars KPI**: Active vs suspended scholar ratio.
 
-4. **Animated Line Graph Telemetry**:
+5. **Animated Line Graph Telemetry**:
    - Dual-metric animated SVG trend graph illustrating the last 5 years of activity:
-     - Events Hosted (Emerald trend line).
-     - Scholars Enrolled (Indigo trend line).
-   - Interactive SVG data points with hover tooltips displaying exact annual metrics.
+     - Events Hosted (Emerald trend line with SVG keyframe stroke animation and translucent emerald fill).
+     - Scholars Enrolled (Indigo trend line with SVG keyframe stroke animation and translucent indigo fill).
+   - Interactive SVG data points with hover tooltips displaying exact annual metrics, with clean dismissal on mouse leave.
 
-5. **Institutional Administrative Roster**:
-   - Main Club Leaders (Patron, President, Secretary) with direct email, phone, and active authority badges.
+6. **Institutional Administrative Roster**:
+   - Main Club Leaders (Patron, President, Secretary) with direct email, phone, and active authority badges. Resolved using latest appointment ordering (`-from_date, -id`) to guarantee SSOT without historical overwrite.
    - Departmental Sub-Club Coordinators with discipline tags, names, and contact channels.
 
-6. **Advanced Filterable Scholars Roster**:
-   - Comprehensive scholar table showing Name, Email, Roll Number, Department, Sub-Club membership badges, Enrollment Year, Validity Date, and Status.
-   - Real-time instant filters: Full-text search, Department dropdown, Sub-Club dropdown, Enrollment Year dropdown, and Status filter (All / Active / Suspended).
+7. **Advanced Filterable Scholars Roster**:
+   - Comprehensive scholar table showing Name, Email, Roll Number, Department / Class, Sub-Club membership badges, Enrollment Year, Validity Date, and Status.
+   - Real-time instant filters: Full-text search, Department / Class dropdown, Sub-Club dropdown, Enrollment Year dropdown, and Status filter (All / Active / Suspended).
 
-7. **Event Lifecycle Hub**:
+8. **Event Lifecycle Hub & Query Optimization**:
    - High-visibility Upcoming Event cards (Date, Category, Mode, Start Time).
-   - Completed Events table with historical participation and attendee counts.
+   - Completed Events table with historical participation and attendee counts, optimized using `annotate(attendee_tally=Count("attendees"))` to eliminate N+1 queries.
 
-8. **Real-time 3-Tier Library Click Telemetry**:
+9. **Secure 3-Tier Library Click Telemetry**:
    - Model field `clicks_count` added to `CuratedResourceLink` with migration `0002_curatedresourcelink_clicks_count.py`.
-   - Endpoint `POST /api/v1/sharing/resources/<id>/click/` tracks learner interactions without authentication barriers.
+   - Endpoint `POST /api/v1/sharing/resources/<id>/click/` tracks learner interactions using atomic `F("clicks_count") + 1` with IP sliding-window rate limiting (120 req/min) to prevent DDoS and click-fraud.
 
 ---
 

@@ -565,9 +565,7 @@ class SubClubListView(APIView):
         try:
             validate_password_strength(temporary_password)
         except ValidationError as exc:
-            messages = (
-                exc.detail if isinstance(exc.detail, list) else [exc.detail]
-            )
+            messages = exc.detail if isinstance(exc.detail, list) else [exc.detail]
             return Response(
                 {
                     "detail": " ".join(str(m) for m in messages),
@@ -789,9 +787,7 @@ class SubClubDetailView(APIView):
             try:
                 validate_password_strength(temporary_password)
             except ValidationError as exc:
-                messages = (
-                    exc.detail if isinstance(exc.detail, list) else [exc.detail]
-                )
+                messages = exc.detail if isinstance(exc.detail, list) else [exc.detail]
                 return Response(
                     {
                         "detail": " ".join(str(m) for m in messages),

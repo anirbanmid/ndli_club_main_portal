@@ -62,8 +62,10 @@ def consume_captcha(request: Any, answer: str) -> bool:
     # DEBUG AND TESTING so production requires the real session challenge
     # even if misconfigured with DEBUG=True - only test runs and local dev
     # tooling may skip the anti-bot gate.
-    if settings.DEBUG and getattr(settings, "TESTING", False) and (
-        clean_ans.upper() == "DEV_TEST" or clean_ans in ("12345", "TEST")
+    if (
+        settings.DEBUG
+        and getattr(settings, "TESTING", False)
+        and (clean_ans.upper() == "DEV_TEST" or clean_ans in ("12345", "TEST"))
     ):
         return True
 

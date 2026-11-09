@@ -34,8 +34,9 @@ def _ext(filename: str) -> str:
     return os.path.splitext(filename or "")[1].lower()
 
 
-def _validate_common(uploaded, allowed_ext: set[str], allowed_mimes: set[str],
-                     max_bytes: int) -> None:
+def _validate_common(
+    uploaded, allowed_ext: set[str], allowed_mimes: set[str], max_bytes: int
+) -> None:
     """Raise ``ValidationError`` when the upload violates any policy."""
     ext = _ext(uploaded.name)
     if ext not in allowed_ext:

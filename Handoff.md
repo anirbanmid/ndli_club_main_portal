@@ -4,12 +4,11 @@
 - **Project:** National Digital Library of India (NDLI) Club Main Portal
 - **Sponsoring Body:** Ministry of Education, Government of India / IIT Kharagpur
 - **Authoritative Branch:** `main`
-- **Current HEAD:** `d1bc5fd` (all 8/8 CI jobs green on GitHub Actions)
+- **Current HEAD:** `90bdf76` (all 8/8 CI jobs green on GitHub Actions — Run ID `42601486585`)
 - **Primary Repositories:**
   - `D:\GitHub\ndli_club_main_portal` (Django 5.2 + React 19 + TypeScript + Vite + PostgreSQL)
   - `c:\Users\HP\Documents\antigravity\calm-faraday` (Local Active Workspace)
-  - `D:\GitHub\ndli-club-management` (Legacy Pilot Reference Repository)
-- **Status:** **Production Ready** — Complete enterprise role separation, offline-first school identity, cryptographic security hardening, and single-source-of-truth governance.
+- **Status:** **Production Ready** — Complete enterprise role separation, offline-first school identity, cryptographic security hardening, safe descriptor resolution, and single-source-of-truth governance.
 
 ---
 
@@ -20,10 +19,11 @@ The **NDLI Club Main Portal** is a mission-critical, national-scale digital infr
 The platform provides:
 1. **Multi-Tier Institutional Governance**: Distinct operational workflows for HEIs (Universities/Colleges) and Schools.
 2. **Offline-First School Tangible Identity**: DPDP Act (2023) compliant student identity management for minors without requiring online accounts or passwords.
-3. **Disciplinary Sub-Club Ecosystem**: Academic departmental sub-clubs ($1 + N$ counting) with isolated faculty coordination and enforced first-login credential rotation.
+3. **Disciplinary Sub-Club Ecosystem**: Academic departmental sub-clubs ($1 + N$ counting) with isolated faculty coordination, temporary password strength enforcement, and student-account hijack protection.
 4. **Tamper-Evident Event Lifecycle**: Dynamic 30-minute attendance gating ($T-10\text{m}$ to $T+20\text{m}$) and HMAC-SHA256 cryptographic certificate minting with DigiLocker integration.
-5. **Universal Module Navigation**: Persistent high-level navigation across all four functional portal modules.
+5. **Universal Module Navigation**: Persistent high-level navigation across all four functional portal modules via the universal `<Header>`.
 6. **Zero-Trust Security Baseline**: Comprehensive mitigation of all Critical (C1–C6), High (H1–H8), Medium (M1–M7), Low (L1–L4), Frontend (A1–A9), and Infrastructure (B1–B8) vulnerabilities.
+7. **Strict Territory & Descriptor Safety**: Zero arbitrary `Club.objects.first()` fallbacks; robust `_linked_club()` descriptor resolution preventing `Club.DoesNotExist` crashes on unlinked accounts.
 
 ---
 
@@ -83,40 +83,64 @@ The application is structured into four primary branches, accessible from the un
 
 ## 4. Multi-Tier Institutional Role Separation & Quorum
 
-To maintain strict security and accountability, the system enforces unambiguous boundaries between institutional officers, faculty coordinators, and student scholars.
+The system enforces unambiguous boundaries between institutional statutory officers, student executives, faculty coordinators, and student scholars.
 
 ### Authority Matrix
 
 | Role | Classification | Module 2: Campus (Institutional) | Module 4: Club Member Module |
 | :--- | :--- | :--- | :--- |
-| **Patron** | Main Admin | **Full Mutation Authority**: Approve rosters, form sub-clubs, set member validity (1–6 yrs), sign events, alter branding & passkeys. | **Administrative Oversight Desk**: Institutional roster telemetry, filtering by Dept/Year/Sub-club, 1-click jump to Module 2. **No fake student profile.** |
-| **President** | Main Admin | **Full Mutation Authority**: Form disciplinary sub-clubs, provision coordinator temporary passwords, sign institutional certificates. | **Administrative Oversight Desk**: Institutional roster oversight. No student reading points or self-participation badges. |
-| **Secretary** | Main Admin | **Full Mutation Authority**: Member approvals, event creation, conductor assignments, roster management. | **Administrative Oversight Desk**: Institutional roster oversight. |
-| **Executive Council Member** *(HEI Only)* | Student Executive | **View-Only Mode**: Complete operational visibility (analytics, rosters, events) for fair transparency. **Forbidden from mutations** (cannot delete members, form sub-clubs, or edit passkeys). | **Full Scholar Access**: Active student scholar workspace with reading points, tier badges (Bronze/Silver/Gold/Platinum), event action window, and certificate vault. |
-| **Sub-Club Coordinator** *(HEI Only)* | Sub-Admin | **No Access**: Completely isolated from central club governance, university-wide branding, and main passkeys. | **Departmental Coordinator Desk**: Manage students assigned to their academic sub-club, temporarily suspend/unsuspend students, and sign off certificates for sub-club events. |
+| **Patron** | Main Admin | **Full Mutation Authority**: Approve/reject rosters and individual join requests, form sub-clubs, set member validity (1–6 yrs), create events, sign event certificates, alter branding & passkeys. | **Administrative Oversight Desk**: Institutional roster telemetry, filtering by Dept/Year/Sub-club, 1-click jump to Module 2. **No fake student profile.** |
+| **President** | Main Admin | **Full Mutation Authority**: Form disciplinary sub-clubs, provision coordinator temporary passwords, approve join requests, update branding, create events. | **Administrative Oversight Desk**: Institutional roster oversight. No student reading points or self-participation badges. |
+| **Secretary** | Main Admin | **Full Mutation Authority**: Member approvals, event creation, conductor assignments, roster management, branding updates. | **Administrative Oversight Desk**: Institutional roster oversight. |
+| **Executive Council Member** *(HEI Only)* | Student Executive | **View-Only Mode**: Complete operational visibility (analytics, rosters, events) for fair transparency. **Forbidden from mutations**: Cannot confirm/reject join requests (`MAIN_CLUB_ADMIN_GATE` 403), cannot update branding (`_is_main_club_admin` 403), cannot create events (403), cannot delete members or alter passkeys. | **Full Scholar Access**: Active student scholar workspace with reading points, tier badges (Bronze/Silver/Gold/Platinum), event action window, and certificate vault. |
+| **Sub-Club Coordinator** *(HEI Only)* | Sub-Admin | **No Access**: Completely isolated from central club governance, university-wide branding, and main passkeys. Cannot create main-club events. | **Departmental Coordinator Desk**: Manage students assigned to their academic sub-club, temporarily suspend/unsuspend students, and sign off certificates for sub-club events. |
 | **Student Member** | Club Member | **No Access**: Restricted from administrative settings and governance actions. | **Student Scholar Workspace**: Reading points telemetry, 30-min event attendance, certificate download, DigiLocker storage, and personal library curation. |
 
-### Sub-Club Coordinator Account Provisioning & Enforced First-Login Reset
+### Sub-Club Coordinator Account Provisioning & Protection Guards
 
-1. **Provisioning by Main Admin**:
-   - In `SubClubManagementPanel.tsx`, a Main Admin (Patron, President, or Secretary) forms a disciplinary sub-club.
-   - The admin inputs Coordinator Name, Email, Phone, and an **Initial Temporary Password** (with a 1-click `Generate Password` generator).
-   - The backend validates password strength, checks that the email is not already an authority in another institution, and creates a real PostgreSQL `User` account:
+1. **Faculty-Only Guard (`_is_student_account`)**:
+   - Sub-club coordinators must be institutional faculty members.
+   - When provisioning (`SubClubListView.post`) or editing (`SubClubDetailView.patch`), the backend rejects existing student accounts (`Category.STUDENT_MEMBER`, `SubRole.STUDENT_MEMBER`, `SubRole.CLUB_EXECUTIVE`, or any user with a `StudentMemberProfile`).
+   - Returns `HTTP 400 Bad Request` with `code="invalid_coordinator"` and detail `"this email already belongs to an existing student account — pick a different action."`
+   - Prevents accidental student role conversions and credential overwrites.
+2. **Temporary Password Strength Enforcement (M6)**:
+   - Initial temporary passwords and password updates for coordinators must strictly pass `validate_password_strength()` before accounts are created or updated.
+   - Weak passwords immediately return `HTTP 400 Bad Request` (`code="invalid_password"`).
+3. **Provisioning by Main Admin**:
+   - In `SubClubManagementPanel.tsx`, a Main Admin inputs Coordinator Name, Email, Phone, and an Initial Temporary Password (with a 1-click generator).
+   - The backend creates a real PostgreSQL `User` account:
      - `category = Category.CLUB_ADMIN`
      - `sub_role = SubRole.SUBCLUB_COORDINATOR`
      - `club = club`
      - `sub_club = sub_club`
      - `must_change_password = True` (Single Source of Truth)
      - `is_active = True`
-2. **First Login Password Interception**:
+4. **First Login Password Interception**:
    - When the coordinator signs in with the temporary password, `EnforcedPasswordChangeModal.tsx` intercepts the session before granting workspace access.
-   - The coordinator defines their own private password. Upon completion, `must_change_password` is set to `False`.
-   - The Main Admin no longer has access to the coordinator's credentials.
-   - **Zero SMTP Dependency**: Completely trustworthy and functional without requiring an external email delivery server.
+   - The coordinator defines their private password, setting `must_change_password = False`.
+   - The Main Admin no longer has access to the coordinator's credentials. Zero SMTP dependency.
 
 ---
 
-## 5. Offline-First School Identity (DPDP Act 2023 Compliance)
+## 5. Safe Descriptor Resolution & Territory Isolation
+
+### 1. `_linked_club(user)` Helper
+`User.club` is a ForeignKey with `default="", null=False, to_field="code", db_constraint=False`. For a clubless account (`club_id=""`), direct attribute access (`user.club`) triggers a database descriptor query that misses and raises `Club.DoesNotExist`. Standard `getattr(user, "club", None)` does not suppress this exception.
+
+The `_linked_club(user)` helper safely catches `Club.DoesNotExist` and returns `None`. It is universally applied across:
+- `_is_main_club_admin`
+- `_is_main_club_authority`
+- All branches of `StudentMemberMeView`
+
+### 2. Elimination of Arbitrary `Club.objects.first()` Fallbacks
+In `StudentMemberMeView` (`/api/v1/members/me/`):
+- **Main Admin Desk**: A clubless Main Admin account is presented with an honest empty desk (`StudentMemberProfile.objects.none()`). IIT Kharagpur Admins without a club receive their duty-scoped aggregate via `scope_clubs()`.
+- **Coordinator Desk**: A clubless coordinator receives an empty desk, never another institution's sub-clubs.
+- **Student Workspace**: A student account without a linked club receives an honest `HTTP 404 Not Found` (`"No club is linked to this account."`), and no profile is created in an arbitrary club.
+
+---
+
+## 6. Offline-First School Identity (DPDP Act 2023 Compliance)
 
 For primary, secondary, and senior secondary schools, individual online accounts for minors are eliminated to adhere strictly to the Digital Personal Data Protection (DPDP) Act 2023.
 
@@ -129,15 +153,15 @@ For primary, secondary, and senior secondary schools, individual online accounts
      - Official NDLI Club logo and Ministry of Education banner.
      - School name, student name, class, section, and deterministic UID.
      - Cryptographic verification QR code linking directly to the portal verification engine.
-     - Print-optimized CSS (`@media print`) for immediate physical issuance by the school principal.
+     - Print-optimized CSS (`@media print`) for physical issuance by the school principal.
 3. **Attendance via Post-Event CSV Upload**:
    - School event participants are recorded offline by teachers and uploaded in batch via `EventParticipantUploadView`, crediting institutional participation metrics without minor authentication credentials.
 
 ---
 
-## 6. Comprehensive Security Hardening & Remediation Index
+## 7. Comprehensive Security Hardening & Remediation Index
 
-All verified vulnerabilities from the prior security audit have been reconciled, unit tested, and permanently deployed to `main`:
+All verified vulnerabilities from the prior security audit and subsequent refinement passes have been reconciled, unit tested, and permanently deployed to `main`:
 
 ### Critical Vulnerabilities (C1 – C6)
 - **C1 (Password Reset Token Leak)**: Fixed in `6214224`. Anonymous `forgot-check` endpoint stopped returning plaintext tokens in HTTP response bodies; tokens are cryptographically hashed, single-use, and throttled.
@@ -147,15 +171,16 @@ All verified vulnerabilities from the prior security audit have been reconciled,
 - **C5 (Unauthenticated Student Membership Termination)**: Fixed in `2582773`. `TerminateMembershipView` requires valid new-club passkey resolution, returns uniform 404s to prevent account enumeration, prevents self-club loops, throttles requests, and records audit logs.
 - **C6 (Hardcoded Master Password Backdoors in Activities)**: Fixed in `8b98d09` & `3d232f6`. Removed all backdoor password strings (`"admin123"`, `"Admin@123"`, `"Password@123"`) from `EventCertificateApprovalView` and `VerifyEmployeePasswordView`; bound approvals strictly to authenticated host-club authority sessions.
 
-### High Vulnerabilities (H1 – H8)
+### High Vulnerabilities & Role Boundaries (H1 – H8)
 - **H1 (X-Forwarded-For Rate Limit Spoofing)**: Fixed in `132e0f9`. Throttling `client_ip()` updated to read the rightmost untrusted hop rather than the client-controlled first hop.
 - **H2 (Captcha Backdoor & Lockout Dead Code)**: Fixed in `2126292`. Gated `DEV_TEST` bypass string strictly to `settings.DEBUG`; wired `record_login_failure` and `locked_until` directly into `password_login`.
 - **H3 (Unauthenticated Authority Revocation)**: Fixed in `60057ce`. Throttled authority deactivation endpoints and unified email check response bodies to prevent directory harvesting.
 - **H4 (School Roster Authorization Scoping)**: Fixed in `ea009ba`. Enforced `_is_main_club_authority(actor, club)` on roster upload, approval, rejection, and card fetch endpoints.
 - **H5 (Student Roster IDOR via URL Parameter)**: Fixed in `ea009ba`. Prohibited cross-club student profile queries for student accounts; scoped access strictly to authenticated club authorities.
-- **H6 (Sub-Club & Branding Unauthenticated Mutations)**: Fixed in `babfa48`. Replaced `AllowAny` with `IsAuthenticated + MAIN_CLUB_ADMIN_GATE`; eliminated `User.objects.first()` fallbacks.
+- **H6 (Sub-Club & Branding Authority Mutations)**: Fixed in `babfa48` and refined in `ec6ffcf`. Replaced `AllowAny` with `IsAuthenticated + MAIN_CLUB_ADMIN_GATE`; eliminated `User.objects.first()` fallbacks; restricted branding updates strictly to Main Admins (Patron, President, Secretary), rejecting Student Executives with 403 Forbidden.
 - **H7 (Curated Library IDOR & Defacement)**: Fixed in `1bfbba7`. Enforced owner/club matching on library PATCH, DELETE, and resource addition endpoints; restricted anonymous reads to `is_published_to_community=True`.
-- **H8 (Unscoped Event Creation & Attendee PII)**: Fixed in `3d232f6`. Restricted event creation to authorized host-club officers; masked attendee PII (emails and phone numbers) from unauthorized viewers.
+- **H8 (Event Creation Authority Scoping)**: Fixed in `3d232f6` and refined in `ec6ffcf`. Restricted event creation strictly to `_is_main_club_admin(user, club)` or superusers; rejected student executives and coordinators with lingering authority assignment records. Masked attendee PII from unauthorized viewers.
+- **Join Decision Scoping**: Refined in `ec6ffcf`. Individual `JoinRequestConfirmView` and `JoinRequestRejectView` upgraded to `MAIN_CLUB_ADMIN_GATE` (returns 403 for student executives).
 
 ### Medium Vulnerabilities (M1 – M7)
 - **M1 (Pre-Approval Passkey Oracle)**: Fixed in `ea009ba`. Added rate-limiting sliding window on `CheckPreapprovalView`.
@@ -163,7 +188,7 @@ All verified vulnerabilities from the prior security audit have been reconciled,
 - **M3 (Arbitrary File Uploads & Unsafe Media Serving)**: Fixed in `5fb6d2f`. Configured canonical `MEDIA_ROOT` and `MEDIA_URL`; validated extensions, file sizes, and image integrity via Pillow; served media with `nosniff` headers.
 - **M4 (CSV Formula Injection / CSV Spreadsheet Exploits)**: Fixed in `6aff3c7`. Applied `roster_csv.neutralize_cell` across all activity CSV exporters and attendance manifest downloads.
 - **M5 (Demo Credentials Leaking in Production Bundle)**: Fixed in `ee68c0c`, `7bd3cff`, `179074f`. Gated all test credential buttons and quick-fill panels behind `import.meta.env.DEV` or `VITE_SHOW_TEST_PANELS==='1'`.
-- **M6 (Admin User Password Policy Bypass)**: Fixed in `8071042`. Wired `validate_password_strength` into admin user creation, update, and club password reset flows.
+- **M6 (Admin & Coordinator Password Policy)**: Fixed in `8071042` and extended in `ec6ffcf`. Enforced `validate_password_strength` on admin user creation, update, club password reset, and coordinator temporary password provisioning.
 - **M7 (Weak Docker-Compose Secrets Defaults)**: Fixed in `8071042`. Required explicit environment variable overrides in compose definitions, removing insecure defaults.
 
 ### Low, Frontend & Infrastructure Findings (L1 – L4, A1 – A9, B1 – B8)
@@ -185,28 +210,26 @@ All verified vulnerabilities from the prior security audit have been reconciled,
 
 ---
 
-## 7. Verification Suite & CI/CD Status
+## 8. Verification Suite & CI/CD Status
 
 The project enforces an automated 8-job GitHub Actions workflow on every push to `main`. Every job must pass green:
 
 ```
-✓ main CI · 42496436758 (commit d1bc5fd)
+✓ main CI · 42601486585 (commit 90bdf76)
 Triggered via push
 
 JOBS:
-  ✓ SAST (bandit)                                Passed in 12s
-  ✓ Type check (mypy)                            Passed in 1m42s (0 issues in 71 files)
-  ✓ Tests (pytest + Postgres)                    Passed in 2m52s (704 passed, 944 subtests passed)
-  ✓ Lint (ruff)                                  Passed in 7s
-  ✓ Frontend build + axe accessibility           Passed in 37s (Clean bundle + 0 a11y violations)
-  ✓ Dependency audit (pip-audit + npm audit)     Passed in 33s (0 known vulnerabilities)
-  ✓ Lighthouse (a11y hard gate)                  Passed in 1m43s (Category score ≥ 0.90)
-  ✓ E2E + axe (Playwright, V8)                   Passed in 1m5s (All 27 integration specs passed)
+  ✓ SAST (bandit)                                Passed in 13s
+  ✓ Type check (mypy)                            Passed in 28s (0 issues in 71 files)
+  ✓ Tests (pytest + Postgres)                    Passed in 4m13s (710 passed, 952 subtests passed)
+  ✓ Lint (ruff)                                  Passed in 8s
+  ✓ Frontend build + axe accessibility           Passed in 47s (Clean bundle + 0 a11y violations)
+  ✓ Dependency audit (pip-audit + npm audit)     Passed in 36s (0 known vulnerabilities)
+  ✓ Lighthouse (a11y hard gate)                  Passed in 1m37s (Category score ≥ 0.90)
+  ✓ E2E + axe (Playwright, V8)                   Passed in 1m12s (All 27 integration specs passed)
 ```
 
 ### Local Verification Commands
-
-To run the local verification suite identical to CI:
 
 ```bash
 # 1. Backend Lint & Type Checks
@@ -225,23 +248,21 @@ npm run build
 
 ---
 
-## 8. Client Handover & Production Deployment Checklist
+## 9. Client Handover & Production Deployment Checklist
 
 When preparing for final institutional handover to the Ministry of Education / IIT Kharagpur operational team:
 
 1. **Purge Development Demo Accounts**:
-   - Run the dedicated purge command to remove ephemeral test accounts while preserving IIT Kharagpur central administrative structures:
-     ```bash
-     python manage.py purge_demo_accounts --confirm
-     ```
+   ```bash
+   python manage.py purge_demo_accounts --confirm
+   ```
 2. **Verify Inactive Demo UI Panels**:
    - Ensure the production environment does NOT set `VITE_SHOW_TEST_PANELS=1`.
    - In production builds (`npm run build`), all quick-fill buttons and demo account badges are automatically excluded from the bundle.
 3. **Database Migrations Sequence**:
-   - Run standard migration command on deployment:
-     ```bash
-     python manage.py migrate --noinput
-     ```
+   ```bash
+   python manage.py migrate --noinput
+   ```
 4. **Environment Variables Configuration**:
    - `DJANGO_SETTINGS_MODULE=config.settings.prod`
    - `DATABASE_URL=postgresql://<user>:<password>@<host>:6543/<db>?sslmode=require`
@@ -255,7 +276,7 @@ When preparing for final institutional handover to the Ministry of Education / I
 
 ---
 
-## 9. Repository File Manifest
+## 10. Repository File Manifest
 
 ```
 ndli_club_main_portal/
@@ -283,7 +304,7 @@ ndli_club_main_portal/
 │   │   ├── onboarding/                  # Registration wizards, resume tokens
 │   │   └── sharing/                     # 3-tier curated libraries & NDLI domain validation
 │   └── tests/
-│       └── test_campus_module.py        # 33+ end-to-end campus security & role tests
+│       └── test_campus_module.py        # 39+ end-to-end campus security & role tests
 ├── frontend/
 │   ├── src/
 │   │   ├── components/

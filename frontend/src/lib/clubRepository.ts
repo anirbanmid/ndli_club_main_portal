@@ -14,6 +14,7 @@
 
 import { InstituteClub } from '../types';
 import { INITIAL_CLUBS } from '../mockData';
+import { broadcastPortalEvent } from './realtimeSync';
 
 const SYNC_CHANNEL_NAME = 'ndli_portal_sync';
 const STORAGE_RENEWALS_KEY = 'ndli_club_renewals';
@@ -242,6 +243,12 @@ export function notifyClubUpdated(
       detail: payload,
     }),
   );
+
+  // 4. Portal-wide realtime sync
+  broadcastPortalEvent('CLUB_UPDATED', {
+    clubId,
+    updates: updates as Record<string, unknown>,
+  });
 }
 
 /**

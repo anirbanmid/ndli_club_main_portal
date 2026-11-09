@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -37,6 +37,7 @@ import {
   acknowledgeOversightSeal,
   markOversightNotificationsRead,
 } from '../../lib/campusApi';
+import { broadcastPortalEvent } from '../../lib/realtimeSync';
 
 interface AdminOversightDeskViewProps {
   data: AdminOversightData;
@@ -81,6 +82,20 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [acknowledgedNotice, setAcknowledgedNotice] = useState<string | null>(null);
 
+  useEffect(() => {
+    try {
+      const raw =
+        typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+      const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+      (data.notifications || []).forEach((n) => {
+        if (n.read) set.add(n.id);
+      });
+      setReadNotifIds(set);
+    } catch {
+      // ignore
+    }
+  }, [data.notifications, storageKey]);
+
   const markNotificationAsRead = (notifId: string) => {
     setReadNotifIds((prev) => {
       const next = new Set(prev).add(notifId);
@@ -92,6 +107,10 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
       return next;
     });
     void markOversightNotificationsRead([notifId]).catch(() => {});
+    broadcastPortalEvent('NOTIFICATION_READ', {
+      notification_id: notifId,
+      club_code: data.club?.code,
+    });
   };
 
   const markAllNotificationsAsRead = () => {
@@ -106,6 +125,10 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
       return next;
     });
     void markOversightNotificationsRead(allIds, true).catch(() => {});
+    broadcastPortalEvent('NOTIFICATION_READ', {
+      action: 'mark_all_read',
+      club_code: data.club?.code,
+    });
   };
 
   // Scholars Filters State
@@ -1314,6 +1337,13 @@ export const AdminOversightDeskView: React.FC<AdminOversightDeskViewProps> = ({
                     if (activeModal.id) {
                       markNotificationAsRead(activeModal.id);
                     }
+                    broadcastPortalEvent('SEAL_ACKNOWLEDGED', {
+                      club_code: data.club?.code,
+                      club_name: data.club?.name,
+                      officer_emp_id: res.officer_emp_id,
+                      notification_id: activeModal.id,
+                      title: activeModal.title,
+                    });
                     setAcknowledgedNotice(
                       res.message ||
                         `Official Seal acknowledged. Dispatched to IIT Kharagpur Nodal Desk (${res.officer_emp_id || 'Desk'}).`

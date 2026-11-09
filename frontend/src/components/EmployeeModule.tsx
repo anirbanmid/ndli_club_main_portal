@@ -32,6 +32,7 @@ import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
 import { NotificationBell, NotificationItem } from './NotificationBell';
 import { ApiError } from '../lib/api';
 import { notifyClubUpdated, subscribeToClubUpdates } from '../lib/clubRepository';
+import { broadcastPortalEvent, subscribeToPortalEvents } from '../lib/realtimeSync';
 import {
   ActivityRow,
   ClubSearchRow,
@@ -514,6 +515,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
         nextRenewalDate: nextRenewal,
         status: 'Active',
       });
+      broadcastPortalEvent('CLUB_RENEWED', { club_id: securityClub.club_id });
 
       // Log activity
       void logActivity({
@@ -545,15 +547,22 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   };
 
   // Load activities
-  const loadActivities = useCallback(async () => {
-    setHistoryLoading(true);
+  const loadActivities = useCallback(async (opts?: unknown) => {
+    const silent = typeof opts === 'boolean' ? opts : Boolean(opts && typeof opts === 'object' && 'silent' in opts && (opts as { silent: boolean }).silent);
+    if (!silent) {
+      setHistoryLoading(true);
+    }
     try {
       const data = await fetchActivities(currentEmpId);
       setRows(data.activities || []);
     } catch {
-      showAlert('Unable to load activity logs from server.', true);
+      if (!silent) {
+        showAlert('Unable to load activity logs from server.', true);
+      }
     } finally {
-      setHistoryLoading(false);
+      if (!silent) {
+        setHistoryLoading(false);
+      }
     }
   }, [currentEmpId, showAlert]);
 
@@ -685,6 +694,56 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     void loadInboundNotifications();
   }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadPISettings, loadInboundNotifications]);
 
+  // Real-time Event Bus Subscription (Cross-Module Instant Sync)
+  useEffect(() => {
+    const unsub = subscribeToPortalEvents((event) => {
+      if (
+        event.type === 'SEAL_ACKNOWLEDGED' ||
+        event.type === 'NOTIFICATION_DISPATCHED' ||
+        event.type === 'NOTIFICATION_READ'
+      ) {
+        void loadInboundNotifications();
+      }
+      if (
+        event.type === 'ACTIVITY_LOGGED' ||
+        event.type === 'ACTIVITY_DELETED'
+      ) {
+        void loadActivities(true);
+      }
+      if (
+        event.type === 'CLUB_RENEWED' ||
+        event.type === 'CLUB_UPDATED'
+      ) {
+        void loadClubs();
+      }
+    });
+
+    return unsub;
+  }, [loadInboundNotifications, loadActivities, loadClubs]);
+
+  // Real-time Polling Heartbeat (every 3 seconds) & Window Focus / Tab-Switch Synchronization
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadInboundNotifications();
+      void loadActivities(true);
+    }, 3000);
+
+    const handleFocus = () => {
+      void loadInboundNotifications();
+      void loadActivities(true);
+      void loadClubs();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [loadInboundNotifications, loadActivities, loadClubs]);
+
   // Pure SSOT Quota counts — directly calculated from live database ledger
   const quota = useMemo(() => {
     let countedClubs = 0;
@@ -769,6 +828,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       setClubId('');
       setNotes('');
       await loadActivities();
+      broadcastPortalEvent('ACTIVITY_LOGGED', { emp_id: currentEmpId });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Failed to record activity log.';
       showAlert(msg, true);
@@ -807,6 +867,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       showAlert(`✓ Deleted ${res.deleted_count ?? deletableIds.length} activity record(s).`);
       setSelected(new Set());
       await loadActivities();
+      broadcastPortalEvent('ACTIVITY_DELETED', { emp_id: currentEmpId, count: deletableIds.length });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Failed to delete activity entries.';
       showAlert(msg, true);
@@ -829,6 +890,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       });
       showAlert('✓ Activity entry deleted successfully.');
       await loadActivities();
+      broadcastPortalEvent('ACTIVITY_DELETED', { emp_id: currentEmpId, count: 1 });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Failed to delete activity entry.';
       showAlert(msg, true);
@@ -1788,7 +1850,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                     <p className="card-subtitle">Real-time activity records verified against central ledger with immutable club approval trail.</p>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button className="btn btn-outline btn-sm" onClick={loadActivities}>
+                    <button className="btn btn-outline btn-sm" onClick={() => void loadActivities()}>
                       Refresh Logs
                     </button>
                     <button

@@ -53,6 +53,7 @@ import {
 } from '../../lib/campusApi';
 import { CuratedLibraryHub } from '../sharing/CuratedLibraryHub';
 import { AdminOversightDeskView } from './AdminOversightDeskView';
+import { subscribeToPortalEvents } from '../../lib/realtimeSync';
 
 interface ClubMemberModuleViewProps {
   onSignOut?: () => void;
@@ -135,13 +136,16 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
   }, []);
 
   // Load Me
-  const loadMe = useCallback(async () => {
-    setLoading(true);
+  const loadMe = useCallback(async (opts?: unknown) => {
+    const silent = typeof opts === 'boolean' ? opts : Boolean(opts && typeof opts === 'object' && 'silent' in opts && (opts as { silent: boolean }).silent);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await fetchStudentMe();
       setData(res);
-      if (res.profile) {
+      if (res.profile && !silent) {
         setDob(res.profile.date_of_birth || '');
         setHobbies(res.profile.hobbies || '');
         setAddress(res.profile.address || '');
@@ -159,14 +163,50 @@ export const ClubMemberModuleView: React.FC<ClubMemberModuleViewProps> = ({
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t('Failed to load student profile'));
+      if (!silent) {
+        setError(err instanceof Error ? err.message : t('Failed to load student profile'));
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [loadEvents, loadSubClubs]);
 
   useEffect(() => {
     void loadMe();
+  }, [loadMe]);
+
+  // Real-time synchronization across modules & background polling
+  useEffect(() => {
+    const unsub = subscribeToPortalEvents((event) => {
+      if (
+        event.type === 'CLUB_RENEWED' ||
+        event.type === 'CLUB_UPDATED' ||
+        event.type === 'SEAL_ACKNOWLEDGED' ||
+        event.type === 'EVENT_UPDATED'
+      ) {
+        void loadMe(true);
+      }
+    });
+
+    const intervalId = window.setInterval(() => {
+      void loadMe(true);
+    }, 4000);
+
+    const handleFocus = () => {
+      void loadMe(true);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      unsub();
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, [loadMe]);
 
   const handleQuickLogin = async (username: string) => {

@@ -53,7 +53,7 @@ class OversightNotificationTests(TestCase):
     def setUp(self) -> None:
         from django.contrib.auth import get_user_model
 
-        from apps.accounts.models import Category, SubRole
+        from apps.accounts.models import AccountState, Category, SubRole
         from apps.domain.models import Club, Institution, OfficerAssignment, State, Zone
 
         self.zone = Zone.objects.create(code="NZ", name="North Zone")
@@ -77,6 +77,7 @@ class OversightNotificationTests(TestCase):
             category=Category.IIT_KGP_ADMIN,
             sub_role=SubRole.REGIONAL_OFFICER,
             email="emp01@ndli.iitkgp.ac.in",
+            account_state=AccountState.ACTIVE,
         )
         from datetime import date
         OfficerAssignment.objects.create(
@@ -147,7 +148,7 @@ class OversightNotificationTests(TestCase):
     def test_notification_acknowledge_seal_pushes_to_nodal_officer_desk(self) -> None:
         from rest_framework.test import APIClient
 
-        from apps.activities.models import ActivityLog, SupportType
+        from apps.activities.models import ActivityLog
         from apps.audit.models import AuditLog
 
         client = APIClient()
@@ -166,22 +167,37 @@ class OversightNotificationTests(TestCase):
         self.assertTrue(resp.data["acknowledged"])
         self.assertEqual(resp.data["officer_emp_id"], "EMP01")
 
-        # Verify ActivityLog row created for the responsible IIT Kharagpur Nodal Officer
-        act_row = ActivityLog.objects.filter(
-            employee=self.officer, club_code=self.club.code
-        ).first()
-        self.assertIsNotNone(act_row)
-        assert act_row is not None
-        self.assertEqual(act_row.support_type, SupportType.CLUB_APPROVAL)
-        self.assertTrue(act_row.priority_flag)
-        self.assertIn("Official Seal Acknowledged", act_row.notes)
-        self.assertIn("Official Club Charter Approved", act_row.notes)
+        # SSOT Architectural Verification: ActivityLog MUST NOT be polluted
+        self.assertFalse(
+            ActivityLog.objects.filter(
+                employee=self.officer, club_code=self.club.code
+            ).exists()
+        )
 
-        # Verify AuditLog row created
+        # Verify AuditLog row created (authoritative single source)
         audit_row = AuditLog.objects.filter(
             action="oversight.seal.acknowledged", actor_id=self.president.pk
         ).first()
         self.assertIsNotNone(audit_row)
+        assert audit_row is not None
+        self.assertEqual(audit_row.detail.get("officer_emp_id"), "EMP01")
+        self.assertEqual(audit_row.detail.get("club_code"), self.club.code)
+
+        # Verify Officer's inbound notifications endpoint returns the item
+        officer_client = APIClient()
+        officer_client.force_authenticate(user=self.officer)
+        session = officer_client.session
+        session["mfa_verified"] = True
+        session.save()
+        notif_resp = officer_client.get(
+            "/admin/api/v1/activities/notifications/?emp_id=EMP01"
+        )
+        self.assertEqual(notif_resp.status_code, 200)
+        self.assertGreaterEqual(notif_resp.data["count"], 1)
+        notif_item = notif_resp.data["notifications"][0]
+        self.assertIn("Seal Acknowledged", notif_item["title"])
+        self.assertEqual(notif_item["club_code"], self.club.code)
+        self.assertEqual(notif_item["type"], "approval")
 
     def test_unauthorized_student_cannot_acknowledge(self) -> None:
         from rest_framework.test import APIClient

@@ -256,3 +256,26 @@ export interface LedgerIntegrityReport {
 export function fetchLedgerIntegrity(): Promise<LedgerIntegrityReport> {
   return request<LedgerIntegrityReport>(BASE + '/integrity/');
 }
+
+export interface OfficerInboundNotification {
+  id: string;
+  type: 'succession' | 'reminder' | 'renewal' | 'approval' | 'system';
+  title: string;
+  description: string;
+  timestamp: string;
+  read: boolean;
+  actionTab?: string;
+  club_code?: string;
+  club_name?: string;
+  acknowledged_by?: string;
+  notification_id?: string;
+}
+
+export async function fetchOfficerInboundNotifications(
+  empId?: string
+): Promise<{ count: number; notifications: OfficerInboundNotification[] }> {
+  const query = empId ? `?emp_id=${encodeURIComponent(empId)}` : '';
+  return request<{ count: number; notifications: OfficerInboundNotification[] }>(
+    BASE + '/notifications/' + query
+  );
+}

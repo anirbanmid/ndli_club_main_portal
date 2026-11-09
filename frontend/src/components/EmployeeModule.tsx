@@ -39,6 +39,7 @@ import {
   deleteActivities,
   fetchActivities,
   fetchClubRows,
+  fetchOfficerInboundNotifications,
   fetchPISignatureSettings,
   getActivityExportUrl,
   getClubsExportUrl,
@@ -662,13 +663,27 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     }
   }, []);
 
+  const [inboundNotifications, setInboundNotifications] = useState<NotificationItem[]>([]);
+
+  const loadInboundNotifications = useCallback(async () => {
+    try {
+      const resp = await fetchOfficerInboundNotifications(currentEmpId);
+      if (resp && resp.notifications) {
+        setInboundNotifications(resp.notifications);
+      }
+    } catch {
+      // Inbound notifications are best-effort; fallback gracefully
+    }
+  }, [currentEmpId]);
+
   useEffect(() => {
     void loadActivities();
     void loadClubs();
     void loadGrievances();
     void loadCharters();
     void loadPISettings();
-  }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadPISettings]);
+    void loadInboundNotifications();
+  }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadPISettings, loadInboundNotifications]);
 
   // Pure SSOT Quota counts — directly calculated from live database ledger
   const quota = useMemo(() => {
@@ -945,6 +960,9 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
 
   const employeeNotifications: NotificationItem[] = useMemo(() => {
     const list: NotificationItem[] = [];
+    if (inboundNotifications.length > 0) {
+      list.push(...inboundNotifications);
+    }
     const pendingSuccession = (authorityRequests || []).filter(
       (r) => r.status === 'Pending Admin Review'
     );
@@ -986,7 +1004,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       });
     }
     return list;
-  }, [authorityRequests, grievances, charters]);
+  }, [inboundNotifications, authorityRequests, grievances, charters]);
 
   const pendingApprovals = useMemo(() => {
     return charters.filter((c) => c.status === 'queued' || c.status === 'under_review').length;

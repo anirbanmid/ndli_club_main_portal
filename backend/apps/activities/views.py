@@ -36,6 +36,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import AccountState, SubRole
 from apps.accounts.policies import (
     BUSINESS_ADMIN_SUB_ROLES,
+    CENTRAL_ADMIN_SUB_ROLES,
     CategoryGate,
     may_delete_approval_log,
     resolve_activity_target,
@@ -664,6 +665,84 @@ class LedgerIntegrityView(APIView):
 
         report = LedgerIntegrityEngine.audit_and_heal()
         return Response(report.to_dict(), status=status.HTTP_200_OK)
+
+
+class OfficerNotificationsListView(APIView):
+    """GET /admin/api/v1/activities/notifications/ -- Officer desk notifications."""
+
+    permission_classes = [
+        IsAuthenticated,
+        CategoryGate("admin", BUSINESS_ADMIN_SUB_ROLES),
+    ]
+
+    def get(self, request: Request) -> Response:
+        emp_id = str(request.query_params.get("emp_id", "") or "").strip()
+        try:
+            target = resolve_activity_target(request, emp_id)
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except LookupError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.audit.models import AuditLog
+
+        # Retrieve seal acknowledgment rows from audit log
+        qs = AuditLog.objects.filter(
+            action="oversight.seal.acknowledged"
+        ).order_by("-timestamp")[:100]
+
+        user_sub_role = str(getattr(request.user, "sub_role", "") or "")
+        is_central = user_sub_role in CENTRAL_ADMIN_SUB_ROLES
+
+        notifications = []
+        for row in qs:
+            detail = row.detail or {}
+            officer_emp_id = str(detail.get("officer_emp_id", "")).strip().upper()
+            target_username = str(getattr(target, "username", "")).strip().upper()
+
+            # Filter by officer_emp_id unless central admin viewing all
+            if not is_central or emp_id:
+                if (
+                    officer_emp_id
+                    and target_username
+                    and officer_emp_id != target_username
+                ):
+                    continue
+
+            club_code = str(detail.get("club_code") or row.object_id or "")
+            club_name = str(detail.get("club_name") or club_code)
+            acknowledged_by = str(detail.get("acknowledged_by") or "Club Authority")
+            role = str(detail.get("role") or "admin").replace("_", " ").title()
+            title = str(detail.get("title") or "IIT Kharagpur Official Endorsement")
+            notif_id = str(detail.get("notification_id") or f"ack-seal-{row.seq}")
+
+            desc = (
+                f"{acknowledged_by} ({role}) confirmed receipt and acknowledged "
+                f"the institutional endorsement seal '{title}'."
+            )
+
+            notifications.append({
+                "id": f"officer-seal-ack-{row.seq}",
+                "type": "approval",
+                "title": f"Seal Acknowledged: {club_name} ({club_code})",
+                "description": desc,
+                "timestamp": (
+                    row.timestamp.strftime("%d %b %Y, %H:%M IST")
+                    if hasattr(row.timestamp, "strftime")
+                    else str(row.timestamp)
+                ),
+                "read": False,
+                "actionTab": "approvals",
+                "club_code": club_code,
+                "club_name": club_name,
+                "acknowledged_by": acknowledged_by,
+                "notification_id": notif_id,
+            })
+
+        return Response({
+            "count": len(notifications),
+            "notifications": notifications,
+        }, status=status.HTTP_200_OK)
 
 
 # ===========================================================================

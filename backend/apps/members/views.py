@@ -2598,7 +2598,7 @@ class OversightNotificationAcknowledgeView(APIView):
             User,
         )
         from apps.accounts.routing import responsible_officer
-        from apps.activities.models import ActivityLog, SupportType
+        from apps.activities.models import ActivityLog
         from apps.audit import services as audit_services
 
         user = request.user
@@ -2693,23 +2693,8 @@ class OversightNotificationAcknowledgeView(APIView):
         actor_name = user.get_full_name() or user.username
         role_title = actor_sub_role.replace("_", " ").title()
 
-        # 3. Create ActivityLog on responsible Officer's desk
-        act_row = None
-        if officer:
-            act_row = ActivityLog.objects.create(
-                employee=officer,
-                support_type=SupportType.CLUB_APPROVAL,
-                priority_flag=True,
-                club_code=club_code,
-                notes=(
-                    f"[Official Seal Acknowledged] {actor_name} ({role_title}) of "
-                    f"{club_name} acknowledged official seal: '{title}'. " \
-                    "Institutional compliance confirmed."
-                ),
-                call_count=1,
-            )
-
-        # 4. Append immutable AuditLog row (marks notification read)
+        # 3. Append immutable AuditLog row (marks notification read & powers bell)
+        # Decoupled from ActivityLog to maintain authentic support metrics (SSOT)
         audit_services.record(
             action="oversight.seal.acknowledged",
             request=request,
@@ -2728,10 +2713,10 @@ class OversightNotificationAcknowledgeView(APIView):
                 if officer
                 else "IIT Kharagpur Nodal Desk",
                 "club_code": club_code,
+                "club_name": club_name,
                 "acknowledged_by": actor_name,
                 "role": actor_sub_role,
                 "title": title,
-                "activity_id": str(act_row.activity_id) if act_row else "",
             },
         )
 

@@ -46,6 +46,11 @@ urlpatterns = [
         views.LedgerIntegrityView.as_view(),
         name="ledger-integrity",
     ),
+    path(
+        "notifications/",
+        views.OfficerNotificationsListView.as_view(),
+        name="officer-notifications",
+    ),
 ]
 
 

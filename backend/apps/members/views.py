@@ -283,6 +283,25 @@ class JoinRequestRejectView(APIView):
         return Response({"id": join_request.pk, "status": join_request.status})
 
 
+def _linked_club(user: Any):
+    """Club linked to ``user``, or ``None`` — never raises.
+
+    ``User.club`` is an FK(default="", null=False, to_field="code",
+    db_constraint=False): a clubless user has ``club_id=""``, so the
+    descriptor query misses and raises ``Club.DoesNotExist``.
+    ``getattr(user, "club", None)`` does NOT catch that — every read of a
+    possibly-clubless user's club must go through this helper.
+    """
+    from apps.domain.models import Club
+
+    if user is None:
+        return None
+    try:
+        return user.club
+    except Club.DoesNotExist:
+        return None
+
+
 def _is_main_club_admin(actor: Any, club: Any) -> bool:
     """Verify if actor is a Main Admin (Patron, President, Secretary) or IIT KGP Admin.
 
@@ -301,7 +320,7 @@ def _is_main_club_admin(actor: Any, club: Any) -> bool:
         or actor_sub_role not in MAIN_CLUB_ADMIN_SUB_ROLES
     ):
         return False
-    actor_club = getattr(actor, "club", None)
+    actor_club = _linked_club(actor)
     if actor_club is None or club is None or actor_club.pk != club.pk:
         return False
     return True
@@ -325,7 +344,7 @@ def _is_main_club_authority(actor: Any, club: Any) -> bool:
         or actor_sub_role not in CLUB_AUTHORITY_SUB_ROLES
     ):
         return False
-    actor_club = getattr(actor, "club", None)
+    actor_club = _linked_club(actor)
     if actor_club is None or club is None or actor_club.pk != club.pk:
         return False
     return True
@@ -1575,44 +1594,55 @@ class StudentMemberMeView(APIView):
             )
         )
         if is_main_admin:
-            club = getattr(user, "club", None)
-            if not club:
-                club = (
-                    Club.objects.filter(is_sample=False, status="active").first()
-                    or Club.objects.first()
-                )
-
-            total_members = 0
-            active_students = 0
-            suspended_students = 0
-            sub_clubs_count = 0
-            events_count = 0
-            recent_members = []
-
+            club = _linked_club(user)
+            # No arbitrary-club fallback (2026-11-09): a clubless account
+            # must never be shown ANOTHER club's members. IIT Kgp admins
+            # without a club get their duty-scoped aggregate instead
+            # (Central = all clubs, officers = assigned states, ops = none);
+            # any other clubless Main Admin gets an honest empty desk.
             if club:
                 member_qs = StudentMemberProfile.objects.filter(club=club)
-                total_members = member_qs.count()
-                suspended_students = member_qs.filter(
-                    is_suspended_by_coordinator=True
-                ).count()
-                active_students = total_members - suspended_students
-                sub_clubs_count = SubClub.objects.filter(
-                    club=club, is_active=True
-                ).count()
-                events_count = ClubEvent.objects.filter(host_club=club).count()
+                subclub_qs = SubClub.objects.filter(club=club, is_active=True)
+                event_qs = ClubEvent.objects.filter(host_club=club)
+            elif actor_category == Category.IIT_KGP_ADMIN:
+                from apps.core.scoping import scope_clubs
 
-                for p in member_qs.select_related("user").order_by("-id")[:10]:
-                    recent_members.append(
-                        {
-                            "id": p.id,
-                            "full_name": p.user.get_full_name() or p.user.username,
-                            "roll_number": p.roll_number,
-                            "department": p.department,
-                            "is_suspended": p.is_suspended_by_coordinator,
-                            "points": p.points,
-                            "badge": p.badge,
-                        }
-                    )
+                visible_clubs = scope_clubs(
+                    Club.objects.filter(is_sample=False, status="active"), user
+                )
+                member_qs = StudentMemberProfile.objects.filter(
+                    club__in=visible_clubs
+                )
+                subclub_qs = SubClub.objects.filter(
+                    club__in=visible_clubs, is_active=True
+                )
+                event_qs = ClubEvent.objects.filter(host_club__in=visible_clubs)
+            else:
+                member_qs = StudentMemberProfile.objects.none()
+                subclub_qs = SubClub.objects.none()
+                event_qs = ClubEvent.objects.none()
+
+            total_members = member_qs.count()
+            suspended_students = member_qs.filter(
+                is_suspended_by_coordinator=True
+            ).count()
+            active_students = total_members - suspended_students
+            sub_clubs_count = subclub_qs.count()
+            events_count = event_qs.count()
+            recent_members = []
+
+            for p in member_qs.select_related("user").order_by("-id")[:10]:
+                recent_members.append(
+                    {
+                        "id": p.id,
+                        "full_name": p.user.get_full_name() or p.user.username,
+                        "roll_number": p.roll_number,
+                        "department": p.department,
+                        "is_suspended": p.is_suspended_by_coordinator,
+                        "points": p.points,
+                        "badge": p.badge,
+                    }
+                )
 
             return Response(
                 {
@@ -1670,12 +1700,9 @@ class StudentMemberMeView(APIView):
             )
         )
         if is_subclub_coord:
-            club = getattr(user, "club", None)
-            if not club:
-                club = (
-                    Club.objects.filter(is_sample=False, status="active").first()
-                    or Club.objects.first()
-                )
+            # No arbitrary-club fallback: a clubless coordinator gets an
+            # empty desk, never another club's sub-clubs.
+            club = _linked_club(user)
 
             from django.db.models import Q
 
@@ -1789,16 +1816,10 @@ class StudentMemberMeView(APIView):
         # 3. Student Members & Executive Council Members -> Student Workspace
         profile = getattr(user, "student_profile", None)
         if not profile:
-            club = None
-            try:
-                club = user.club
-            except Exception:
-                club = None
-            if not club:
-                club = (
-                    Club.objects.filter(is_sample=False, status="active").first()
-                    or Club.objects.first()
-                )
+            club = _linked_club(user)
+            # No arbitrary-club fallback: without a linked club there is
+            # nothing to attach a profile to — never write into someone
+            # else's club (the 404 below tells the student honestly).
             if club:
                 from datetime import timedelta
 
@@ -1815,8 +1836,16 @@ class StudentMemberMeView(APIView):
                 )
 
         if not profile:
+            linked_club = _linked_club(user)
             return Response(
-                {"detail": "Student profile not found.", "code": "not_found"},
+                {
+                    "detail": (
+                        "Student profile not found."
+                        if linked_club
+                        else "No club is linked to this account."
+                    ),
+                    "code": "not_found",
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 

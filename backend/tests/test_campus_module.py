@@ -2063,6 +2063,119 @@ class CampusModuleTests(TestCase):
         assert coord is not None
         self.assertTrue(coord.check_password(data["temporary_password"]))
 
+    def test_subclub_provisioning_rejects_existing_student_accounts(
+        self,
+    ) -> None:
+        """A coordinator email must never hijack an existing student account.
+
+        Sub-club coordinators are faculty: both provisioning paths (create
+        and PATCH) must reject student/member and student-council Executive
+        accounts with an explicit message instead of converting the role
+        and overwriting the password.
+        """
+        from apps.domain.models import SubClub
+        from apps.members.models import StudentMemberProfile
+
+        student = User.objects.create(
+            username="victim.stu",
+            email="victim.stu@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        student.set_password("StudentPass@2026!")
+        student.save()
+        StudentMemberProfile.objects.create(
+            user=student,
+            club=self.club,
+            gender="female",
+            department="CSE",
+            roll_number="ROLL-VICTIM-007",
+        )
+
+        self.client.force_login(self.authority_user)
+        expected_detail = (
+            "this email already belongs to an existing student account "
+            "— pick a different action."
+        )
+
+        # 1. CREATE path: student's email -> 400, nothing converted.
+        resp = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Hijack Sub-Club",
+                "discipline": "History",
+                "coordinator_name": "Fake Coord",
+                "coordinator_email": "victim.stu@delhi.ac.in",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json().get("code"), "invalid_coordinator")
+        self.assertEqual(resp.json().get("detail"), expected_detail)
+        student.refresh_from_db()
+        self.assertEqual(student.category, Category.STUDENT_MEMBER)
+        self.assertEqual(student.sub_role, SubRole.STUDENT_MEMBER)
+        self.assertTrue(student.check_password("StudentPass@2026!"))
+        self.assertFalse(SubClub.objects.filter(name="Hijack Sub-Club").exists())
+
+        # 2. Student-council Executive (view-only) counts as a student too.
+        exec_user = User.objects.create(
+            username="victim.exec",
+            email="victim.exec@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        exec_user.set_password("ExecPass@2026!")
+        exec_user.save()
+        resp_exec = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Exec Hijack Sub-Club",
+                "discipline": "Arts",
+                "coordinator_name": "Exec Coord",
+                "coordinator_email": "victim.exec@delhi.ac.in",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp_exec.status_code, 400)
+        self.assertEqual(resp_exec.json().get("code"), "invalid_coordinator")
+        exec_user.refresh_from_db()
+        self.assertEqual(exec_user.sub_role, SubRole.CLUB_EXECUTIVE)
+        self.assertTrue(exec_user.check_password("ExecPass@2026!"))
+
+        # 3. PATCH path: password rotation on a student email -> 400 too.
+        sub = SubClub.objects.create(
+            club=self.club,
+            code=f"{self.club.code}-SUB-VICTIM-01",
+            name="Victim Sub-Club",
+            discipline="Physics",
+            created_by=self.authority_user,
+            coordinator_name="Victim Coord",
+            coordinator_email="victim.stu@delhi.ac.in",
+        )
+        resp_patch = self.client.patch(
+            f"/api/v1/clubs/{self.club.code}/subclubs/{sub.id}/",
+            data={
+                "coordinator_email": "victim.stu@delhi.ac.in",
+                "temporary_password": "RotatedPass@2026!",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp_patch.status_code, 400)
+        self.assertEqual(resp_patch.json().get("code"), "invalid_coordinator")
+        self.assertEqual(resp_patch.json().get("detail"), expected_detail)
+        sub.refresh_from_db()
+        self.assertIsNone(sub.coordinator_user)
+        student.refresh_from_db()
+        self.assertTrue(student.check_password("StudentPass@2026!"))
+        self.assertEqual(student.category, Category.STUDENT_MEMBER)
+
     def test_student_executive_view_only_cannot_form_subclubs(self) -> None:
         """Student Executive has view-only access to Module 2."""
         exec_user = User.objects.create(
@@ -2115,6 +2228,90 @@ class CampusModuleTests(TestCase):
         self.assertIn("stats", me_data)
         self.assertIn("recent_members", me_data)
         self.assertFalse(StudentMemberProfile.objects.filter(user=self.authority_user).exists())
+
+    def test_me_never_falls_back_to_an_arbitrary_club(self) -> None:
+        """A clubless account must not see or write into ANOTHER club.
+
+        (2026-11-09) The old ``Club.objects.first()`` fallbacks handed a
+        random club to clubless admins and silently CREATED a student
+        profile under it — wrong data on screen, polluted DB rows.
+        """
+        from apps.members.models import StudentMemberProfile
+
+        # Seed one real member so any fallback would be plainly visible.
+        member = User.objects.create(
+            username="real.member",
+            email="real.member@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        StudentMemberProfile.objects.create(
+            user=member,
+            club=self.club,
+            gender="male",
+            department="CSE",
+            roll_number="ROLL-REAL-001",
+        )
+
+        # 1. Clubless student -> honest 404, NO profile written anywhere.
+        student = User.objects.create(
+            username="clubless.stu",
+            email="clubless.stu@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            is_active=True,
+        )
+        stu_client = Client()
+        stu_client.force_login(student)
+        before = StudentMemberProfile.objects.count()
+        resp = stu_client.get("/api/v1/members/me/")
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json().get("code"), "not_found")
+        self.assertEqual(StudentMemberProfile.objects.count(), before)
+        self.assertFalse(
+            StudentMemberProfile.objects.filter(user=student).exists()
+        )
+
+        # 2. Clubless Main Admin -> honest empty desk, never the real
+        #    club's data.
+        pres = User.objects.create(
+            username="clubless.pres",
+            email="clubless.pres@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_PRESIDENT,
+            account_state=AccountState.ACTIVE,
+            is_active=True,
+        )
+        pres_client = Client()
+        pres_client.force_login(pres)
+        me = pres_client.get("/api/v1/members/me/")
+        self.assertEqual(me.status_code, 200)
+        data = me.json()
+        self.assertEqual(data["desk"], "admin_oversight")
+        self.assertEqual(data["club"]["code"], "")
+        self.assertEqual(data["stats"]["total_members"], 0)
+
+        # 3. Clubless IIT Kgp Central Admin -> duty-scoped aggregate over
+        #    ALL active clubs, not one arbitrary club.
+        central = User.objects.create(
+            username="clubless.central",
+            email="central.clubless@delhi.ac.in",
+            category=Category.IIT_KGP_ADMIN,
+            sub_role=SubRole.CENTRAL_ADMIN,
+            account_state=AccountState.ACTIVE,
+            is_active=True,
+        )
+        central_client = Client()
+        central_client.force_login(central)
+        me2 = central_client.get("/api/v1/members/me/")
+        self.assertEqual(me2.status_code, 200)
+        data2 = me2.json()
+        self.assertEqual(data2["desk"], "admin_oversight")
+        self.assertEqual(data2["stats"]["total_members"], 1)
 
     def test_coordinator_can_suspend_and_unsuspend_student(self) -> None:
         """Coordinator can moderate scholars enrolled under their sub-club."""

@@ -54,6 +54,27 @@ JOIN_OTP_ACCEPTED = {
 }
 
 
+def _is_student_account(user: Any) -> bool:
+    """True when the account belongs to a student (never faculty).
+
+    Sub-club coordinators must be faculty of the institution: an existing
+    student account (regular member or student-council Executive) must
+    never be re-provisioned — that would silently convert their role AND
+    overwrite their password.
+    """
+    from apps.accounts.models import Category, SubRole
+
+    if user.category == Category.STUDENT_MEMBER or user.sub_role in (
+        SubRole.STUDENT_MEMBER,
+        SubRole.CLUB_EXECUTIVE,
+    ):
+        return True
+
+    from apps.members.models import StudentMemberProfile
+
+    return StudentMemberProfile.objects.filter(user=user).exists()
+
+
 def _throttled(scope: str, limit: int, request: Request) -> Response | None:
     """429 when the per-IP sliding window is full (P0)."""
     key = f"clubs:{scope}:{client_ip(request)}"
@@ -592,6 +613,17 @@ class SubClubListView(APIView):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
+                if _is_student_account(coord_user):
+                    return Response(
+                        {
+                            "detail": (
+                                "this email already belongs to an existing "
+                                "student account — pick a different action."
+                            ),
+                            "code": "invalid_coordinator",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
             base_username = (
                 re.sub(r"[^a-zA-Z0-9_]", "_", coordinator_email.split("@")[0])
@@ -801,6 +833,17 @@ class SubClubDetailView(APIView):
                             "detail": (
                                 "Main club administrators and central officers cannot "
                                 "be re-provisioned as sub-club coordinators."
+                            ),
+                            "code": "invalid_coordinator",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if _is_student_account(coord_user):
+                    return Response(
+                        {
+                            "detail": (
+                                "this email already belongs to an existing "
+                                "student account — pick a different action."
                             ),
                             "code": "invalid_coordinator",
                         },

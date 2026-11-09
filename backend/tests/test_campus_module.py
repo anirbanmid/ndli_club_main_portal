@@ -1853,6 +1853,216 @@ class CampusModuleTests(TestCase):
         # Coordinator has no dummy StudentMemberProfile
         self.assertFalse(StudentMemberProfile.objects.filter(user=coord_user).exists())
 
+    def test_student_executive_cannot_decide_join_requests(self) -> None:
+        """Executive is view-only: single confirm/reject of joins -> 403
+        (batch-confirm already required a Main Admin)."""
+        from apps.members.models import JoinRequest
+
+        exec_user = User.objects.create(
+            username="exec.join.audit",
+            email="exec.join.audit@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        student = User.objects.create(
+            username="pending.stu.join",
+            email="pending.stu.join@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        join_request = JoinRequest.objects.create(user=student, club=self.club)
+
+        exec_client = Client()
+        exec_client.force_login(exec_user)
+        for action in ("confirm", "reject"):
+            with self.subTest(action=action):
+                resp = exec_client.post(
+                    f"/api/v1/members/joins/{join_request.pk}/{action}/"
+                )
+                self.assertEqual(resp.status_code, 403)
+        join_request.refresh_from_db()
+        self.assertEqual(join_request.status, JoinRequest.Status.PENDING)
+
+        # Positive control: the President still decides. (The fixture
+        # authority_user has no institution FK, and ObjectScope scopes join
+        # requests via club__institution__code -- use a fully-scoped officer.)
+        pres = User.objects.create(
+            username="pres.join.audit",
+            email="pres.join.audit@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_PRESIDENT,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            institution=self.institution,
+            is_active=True,
+        )
+        pres_client = Client()
+        pres_client.force_login(pres)
+        ok = pres_client.post(
+            f"/api/v1/members/joins/{join_request.pk}/confirm/"
+        )
+        self.assertEqual(ok.status_code, 201, ok.content)
+
+    def test_student_executive_cannot_edit_institutional_branding(self) -> None:
+        """Branding POST is a Main Admin power; executive -> 403."""
+        exec_user = User.objects.create(
+            username="exec.branding.audit",
+            email="exec.branding.audit@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        exec_client = Client()
+        exec_client.force_login(exec_user)
+        resp = exec_client.post(
+            f"/api/v1/clubs/{self.club.code}/branding/",
+            data={"signing_authority_name": "Hijacked By Executive"},
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.club.institution.refresh_from_db()
+        self.assertNotEqual(
+            self.club.institution.signing_authority_name,
+            "Hijacked By Executive",
+        )
+
+        # Positive control: the President saves branding.
+        self.client.force_login(self.authority_user)
+        ok = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/branding/",
+            data={"signing_authority_name": "Prof. In Charge"},
+            content_type="application/json",
+        )
+        self.assertEqual(ok.status_code, 200, ok.content)
+        self.club.institution.refresh_from_db()
+        self.assertEqual(
+            self.club.institution.signing_authority_name, "Prof. In Charge"
+        )
+
+    def test_event_creation_restricted_to_main_admins(self) -> None:
+        """Event POST is a Main Admin power: an executive (even holding an
+        ACTIVE AuthorityAssignment) and a student get 403; the President 201."""
+        exec_user = User.objects.create(
+            username="exec.event.audit",
+            email="exec.event.audit@delhi.ac.in",
+            category=Category.CLUB_ADMIN,
+            sub_role=SubRole.CLUB_EXECUTIVE,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        # A lingering assignment must NOT be enough any more.
+        AuthorityAssignment.objects.create(
+            user=exec_user,
+            club=self.club,
+            tier="Executive",
+            from_date=timezone.now().date(),
+            status=AuthorityAssignment.Status.ACTIVE,
+        )
+        student = User.objects.create(
+            username="stu.event.audit",
+            email="stu.event.audit@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+
+        def payload(title: str) -> dict[str, str]:
+            return {
+                "club_code": self.club.code,
+                "title": title,
+                "start_time": (timezone.now() + timedelta(days=2)).isoformat(),
+                "end_time": (
+                    timezone.now() + timedelta(days=2, hours=2)
+                ).isoformat(),
+            }
+
+        exec_client = Client()
+        exec_client.force_login(exec_user)
+        denied = exec_client.post(
+            "/api/v1/activities/events/",
+            data=payload("Exec Created Event"),
+            content_type="application/json",
+        )
+        self.assertEqual(denied.status_code, 403)
+        self.assertFalse(
+            ClubEvent.objects.filter(title="Exec Created Event").exists()
+        )
+
+        student_client = Client()
+        student_client.force_login(student)
+        denied_student = student_client.post(
+            "/api/v1/activities/events/",
+            data=payload("Student Created Event"),
+            content_type="application/json",
+        )
+        self.assertEqual(denied_student.status_code, 403)
+
+        # Positive control: the President (Main Admin) creates the event.
+        self.client.force_login(self.authority_user)
+        created = self.client.post(
+            "/api/v1/activities/events/",
+            data=payload("President Created Event"),
+            content_type="application/json",
+        )
+        self.assertEqual(created.status_code, 201, created.content)
+        self.assertTrue(
+            ClubEvent.objects.filter(title="President Created Event").exists()
+        )
+
+    def test_subclub_provisioning_rejects_weak_temporary_password(self) -> None:
+        """Coordinator temp passwords obey the shared strength policy."""
+        self.client.force_login(self.authority_user)
+
+        weak = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Weak Pass Sub-Club",
+                "discipline": "Mathematics",
+                "coordinator_name": "Dr. Weak",
+                "coordinator_email": "weak.coord@delhi.ac.in",
+                "temporary_password": "abc",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(weak.status_code, 400)
+        self.assertEqual(weak.json().get("code"), "invalid_password")
+        self.assertFalse(
+            User.objects.filter(email__iexact="weak.coord@delhi.ac.in").exists()
+        )
+
+        # The server-side fallback (auto-generated) satisfies the policy and
+        # still provisions the coordinator account.
+        fallback = self.client.post(
+            f"/api/v1/clubs/{self.club.code}/subclubs/",
+            data={
+                "name": "Fallback Pass Sub-Club",
+                "discipline": "Physics",
+                "coordinator_name": "Dr. Fallback",
+                "coordinator_email": "fallback.coord@delhi.ac.in",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(fallback.status_code, 201, fallback.content)
+        data = fallback.json()
+        self.assertTrue(data["temporary_password"])
+        coord = User.objects.filter(
+            email__iexact="fallback.coord@delhi.ac.in"
+        ).first()
+        self.assertIsNotNone(coord)
+        assert coord is not None
+        self.assertTrue(coord.check_password(data["temporary_password"]))
+
     def test_student_executive_view_only_cannot_form_subclubs(self) -> None:
         """Student Executive has view-only access to Module 2."""
         exec_user = User.objects.create(

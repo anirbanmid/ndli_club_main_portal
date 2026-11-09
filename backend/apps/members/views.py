@@ -21,7 +21,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.policies import CLUB_AUTHORITY_GATE, ObjectScope
+from apps.accounts.policies import (
+    CLUB_AUTHORITY_GATE,
+    MAIN_CLUB_ADMIN_GATE,
+    ObjectScope,
+)
 from apps.core import scoping
 from apps.core.scoping import authenticated_user
 
@@ -227,7 +231,7 @@ class JoinRequestConfirmView(APIView):
 
     permission_classes = [
         IsAuthenticated,
-        CLUB_AUTHORITY_GATE,
+        MAIN_CLUB_ADMIN_GATE,
         ObjectScope("clubs"),
     ]
 
@@ -261,7 +265,7 @@ class JoinRequestRejectView(APIView):
 
     permission_classes = [
         IsAuthenticated,
-        CLUB_AUTHORITY_GATE,
+        MAIN_CLUB_ADMIN_GATE,
         ObjectScope("clubs"),
     ]
 

@@ -534,6 +534,26 @@ class SubClubListView(APIView):
         temporary_password = str(data.get("temporary_password", "")).strip()
         if not temporary_password:
             temporary_password = f"CoordPass@{secrets.token_hex(3)}2026!"
+        # The temp password is the coordinator's first credential: enforce the
+        # same strength policy as every other password (M6) BEFORE any
+        # account is provisioned.
+        from rest_framework.exceptions import ValidationError
+
+        from apps.accounts.passwords import validate_password_strength
+
+        try:
+            validate_password_strength(temporary_password)
+        except ValidationError as exc:
+            messages = (
+                exc.detail if isinstance(exc.detail, list) else [exc.detail]
+            )
+            return Response(
+                {
+                    "detail": " ".join(str(m) for m in messages),
+                    "code": "invalid_password",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         coord_user = None
         if coordinator_email:
@@ -728,6 +748,25 @@ class SubClubDetailView(APIView):
 
         temporary_password = str(data.get("temporary_password", "")).strip()
         if temporary_password:
+            # Same strength policy as provisioning (M6): reject weak re-sets
+            # BEFORE the coordinator's credential is overwritten.
+            from rest_framework.exceptions import ValidationError
+
+            from apps.accounts.passwords import validate_password_strength
+
+            try:
+                validate_password_strength(temporary_password)
+            except ValidationError as exc:
+                messages = (
+                    exc.detail if isinstance(exc.detail, list) else [exc.detail]
+                )
+                return Response(
+                    {
+                        "detail": " ".join(str(m) for m in messages),
+                        "code": "invalid_password",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             from apps.accounts.models import (
                 MAIN_CLUB_ADMIN_SUB_ROLES,
                 AccountState,
@@ -919,12 +958,14 @@ class ClubBrandingView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # H6: require club authority for branding changes
-        from apps.members.views import _is_main_club_authority
+        # H6 + role guard rails: branding is a Main Admin power (Patron,
+        # President, Secretary); Student Executives are view-only, so the
+        # server refuses even when the UI hides the controls.
+        from apps.members.views import _is_main_club_admin
 
-        if not _is_main_club_authority(authenticated_user(request), club):
+        if not _is_main_club_admin(authenticated_user(request), club):
             return Response(
-                {"detail": "Club authority required."},
+                {"detail": "Main club admin required."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

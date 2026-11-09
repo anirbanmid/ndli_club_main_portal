@@ -745,7 +745,7 @@ class ClubEventListCreateView(APIView):
             EventScope,
             EventStatus,
         )
-        from apps.domain.models import AuthorityAssignment, Club
+        from apps.domain.models import Club
 
         data = request.data
         club_code = str(data.get("club_code", "")).strip()
@@ -781,15 +781,15 @@ class ClubEventListCreateView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        # H8: only a currently-ACTIVE authority of the host club (or a
-        # superuser) may create its events - deny by default. C6: the old
-        # User.objects.first() fallback let unauthenticated requests attribute
-        # events to arbitrary users; removed.
-        is_host_authority = user.is_superuser or AuthorityAssignment.objects.filter(
-            user=user,
-            club=club,
-            status=AuthorityAssignment.Status.ACTIVE,
-        ).exists()
+        # H8: deny by default - C6: the old User.objects.first() fallback let
+        # unauthenticated requests attribute events to arbitrary users;
+        # removed. Role guard rails: event creation is a Main Admin power
+        # (Patron/President/Secretary of THIS club); Student Executives are
+        # view-only and Sub-Club Coordinators cannot create main-club events,
+        # even when a lingering ACTIVE AuthorityAssignment row exists.
+        from apps.members.views import _is_main_club_admin
+
+        is_host_authority = user.is_superuser or _is_main_club_admin(user, club)
         if not is_host_authority:
             return Response(
                 {

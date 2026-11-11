@@ -83,6 +83,7 @@ from apps.onboarding.models import (
     OnboardingUpload,
 )
 from apps.sharing.models import CuratedLibrary, CuratedResourceLink
+from apps.succession.models import SuccessionRequest
 
 #: Handover decision (owner 2026-10-25): the client gets a clean/fresh product,
 #: so the audit trail is wiped too. Set to False only if the client should
@@ -141,6 +142,8 @@ WIPE_MODELS: tuple[Any, ...] = (
     CampusPasskey,
     ShowcaseSection,
     ClubShowcase,
+    # succession (business data; FK PROTECTs Club, so delete first)
+    SuccessionRequest,
     # domain business objects (parents last)
     OfficerAssignment,
     AuthorityAssignment,

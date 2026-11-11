@@ -40,6 +40,8 @@ urlpatterns = [
         include("apps.analytics_reports.urls_admin"),
     ),
     path("admin/api/v1/grievances/", include("apps.grievances.urls_admin")),
+    # M2-A3 succession employee desk — behind the admin door (M1 T3 pin).
+    path("admin/api/v1/succession/", include("apps.succession.urls_admin")),
     # M6 D5 stage 3: the guarded red-zone hard reset. Mounted under /admin/
     # like every other admin-module route, and BEFORE admin.site.urls so the
     # API prefix is never shadowed.

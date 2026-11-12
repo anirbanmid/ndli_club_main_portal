@@ -241,6 +241,10 @@ class SubmissionAPITests(SuccessionFixture):
         self.assertIsNone(body["decided_by"])
         self.assertEqual(body["conflicts"], [])
 
+        # the list rows carry the CURRENT holder (the post the approval ends)
+        listed = self.client.get(CLUB_URL).json()["results"]
+        self.assertEqual(listed[0]["current_holder"], "succ_inc")
+
         # another club's door shows nothing and hides the detail (404)
         self.client.logout()
         self._login(self.outsider)

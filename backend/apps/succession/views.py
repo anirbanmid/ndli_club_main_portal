@@ -63,9 +63,16 @@ def _as_bool(value: Any) -> bool:
 
 
 def _payload(req: SuccessionRequest, *, detail: bool = False) -> dict[str, Any]:
-    """One request row for the API (``conflicts`` = the approver's recheck)."""
+    """One request row for the API (``conflicts`` = the approver's recheck).
+
+    ``current_holder`` comes from the ``_with_current_holder`` annotation when
+    the row travelled through a scoped queryset; a freshly created row (the
+    POST response) has no annotation yet and answers None — honest either way.
+    """
     club = req.club
     state = getattr(getattr(club, "institution", None), "state", None)
+    holder_first = str(getattr(req, "holder_first", "") or "").strip()
+    holder_user = str(getattr(req, "holder_user", "") or "").strip()
     payload: dict[str, Any] = {
         "id": str(req.pk),
         "club_code": club.code,
@@ -79,6 +86,7 @@ def _payload(req: SuccessionRequest, *, detail: bool = False) -> dict[str, Any]:
         "reason": req.reason,
         "conflicts": req.conflict_snapshot or [],
         "conflicts_confirmed": req.conflicts_confirmed,
+        "current_holder": holder_first or holder_user or None,
         "submitted_by": getattr(req.submitted_by, "username", None),
         "created_at": req.created_at,
     }
@@ -93,7 +101,10 @@ def _page(qs: Any, request: Request) -> Response:
     paginator = PageNumberPagination()
     paginator.page_size = _PAGE_SIZE
     page = paginator.paginate_queryset(qs, request)
-    return paginator.get_paginated_response([_payload(r) for r in page or []])
+    # detail=True on lists too: decision stamps + current_holder cost nothing
+    # (already loaded) and the desks render them without a second round-trip.
+    rows = [_payload(r, detail=True) for r in page or []]
+    return paginator.get_paginated_response(rows)
 
 
 def _not_found() -> Response:

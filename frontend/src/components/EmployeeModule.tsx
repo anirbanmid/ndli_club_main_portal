@@ -28,9 +28,17 @@ import {
   Globe,
   Building2,
 } from 'lucide-react';
-import { AuthorityChangeRequest, InstituteClub, RegionalZone } from '../types';
+import { InstituteClub, RegionalZone } from '../types';
 import { NotificationBell, NotificationItem } from './NotificationBell';
 import { ApiError } from '../lib/api';
+import {
+  SuccessionApiError,
+  SuccessionRow,
+  decideDeskSuccession,
+  fetchSuccessionDesk,
+  statusLabel,
+  tierLabel,
+} from '../lib/successionApi';
 import { notifyClubUpdated, subscribeToClubUpdates } from '../lib/clubRepository';
 import { broadcastPortalEvent, subscribeToPortalEvents } from '../lib/realtimeSync';
 import {
@@ -85,9 +93,6 @@ export interface EmployeeModuleProps {
   empId?: string;
   viewOnly?: boolean;
   onNavigateBranch?: (branch: 'landing' | 'club_module', tab?: string) => void;
-  authorityRequests?: AuthorityChangeRequest[];
-  onApproveAuthorityChange?: (reqId: string) => void;
-  onRejectAuthorityChange?: (reqId: string, reason?: string) => void;
   clubs?: InstituteClub[];
   onUpdateClub?: (updated: InstituteClub) => void;
 }
@@ -156,9 +161,6 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   empId,
   viewOnly = false,
   onNavigateBranch,
-  authorityRequests = [],
-  onApproveAuthorityChange,
-  onRejectAuthorityChange,
   clubs = [],
   onUpdateClub,
 }) => {
@@ -234,6 +236,10 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
   const [expandedCharter, setExpandedCharter] = useState<string | null>(null);
   const [charterDetails, setCharterDetails] = useState<Record<string, CharterDetail>>({});
   const [charterBusy, setCharterBusy] = useState<string | null>(null);
+
+  // --- Authority Succession Desk State (M2-A3, real API) --------------
+  const [successionRows, setSuccessionRows] = useState<SuccessionRow[]>([]);
+  const [successionLoading, setSuccessionLoading] = useState(false);
 
   // --- Tool Box / PI Signature State --------------------------------
   const [, setPiSettings] = useState<PISignatureSettings | null>(null);
@@ -646,6 +652,56 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     }
   }, []);
 
+  // Load the duty-scoped succession desk (M2-A3)
+  const loadSuccession = useCallback(async () => {
+    setSuccessionLoading(true);
+    try {
+      const res = await fetchSuccessionDesk();
+      setSuccessionRows(res.results);
+    } catch {
+      // Non-blocking — an empty desk is honest when the door is closed
+    } finally {
+      setSuccessionLoading(false);
+    }
+  }, []);
+
+  // One decision path: the server owns the rules (duty, two-person, tier
+  // split); failures surface its message verbatim.
+  const handleDeskDecision = useCallback(
+    async (req: SuccessionRow, decision: 'approve' | 'reject') => {
+      let note = '';
+      if (decision === 'reject') {
+        const entered = window.prompt('Enter reason for rejecting authority succession:');
+        if (entered === null) return;
+        note = entered;
+      }
+      try {
+        const updated = await decideDeskSuccession(req.id, decision, note);
+        setSuccessionRows((prev) => prev.map((r) => (r.id === req.id ? updated : r)));
+        if (decision === 'approve' && updated.temporary_password) {
+          showAlert(
+            `✓ Approved ${req.club_name}. Temporary password for the new account (shown once — relay it securely): ${updated.temporary_password}`
+          );
+        } else if (decision === 'approve') {
+          showAlert(`✓ Approved authority succession for ${req.club_name}.`);
+        } else {
+          showAlert(`Rejected succession request ${req.id}.`);
+        }
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : 'Decision failed. Please try again.';
+        if (err instanceof SuccessionApiError && err.conflicts.length > 0) {
+          showAlert(
+            `${msg} Conflicts: ${err.conflicts.map((c) => `${tierLabel(c.tier)} @ ${c.club_name}`).join('; ')}`,
+            true
+          );
+        } else {
+          showAlert(msg, true);
+        }
+      }
+    },
+    [showAlert]
+  );
+
   // Load PI signature settings
   const loadPISettings = useCallback(async () => {
     try {
@@ -690,9 +746,10 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     void loadClubs();
     void loadGrievances();
     void loadCharters();
+    void loadSuccession();
     void loadPISettings();
     void loadInboundNotifications();
-  }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadPISettings, loadInboundNotifications]);
+  }, [loadActivities, loadClubs, loadGrievances, loadCharters, loadSuccession, loadPISettings, loadInboundNotifications]);
 
   // Real-time Event Bus Subscription (Cross-Module Instant Sync)
   useEffect(() => {
@@ -1025,9 +1082,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
     if (inboundNotifications.length > 0) {
       list.push(...inboundNotifications);
     }
-    const pendingSuccession = (authorityRequests || []).filter(
-      (r) => r.status === 'Pending Admin Review'
-    );
+    const pendingSuccession = successionRows.filter((r) => r.status === 'pending');
     if (pendingSuccession.length > 0) {
       list.push({
         id: 'emp-succ-1',
@@ -1066,7 +1121,7 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
       });
     }
     return list;
-  }, [inboundNotifications, authorityRequests, grievances, charters]);
+  }, [inboundNotifications, successionRows, grievances, charters]);
 
   const pendingApprovals = useMemo(() => {
     return charters.filter((c) => c.status === 'queued' || c.status === 'under_review').length;
@@ -1156,9 +1211,9 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
           >
             <UserCheck className="h-4 w-4 mr-1 text-indigo-700" />
             Authority Succession
-            {authorityRequests && authorityRequests.filter((r) => r.status === 'Pending Admin Review').length > 0 && (
+            {successionRows.filter((r) => r.status === 'pending').length > 0 && (
               <span className="side-count" style={{ background: '#4F46E5', color: '#fff' }}>
-                {authorityRequests.filter((r) => r.status === 'Pending Admin Review').length}
+                {successionRows.filter((r) => r.status === 'pending').length}
               </span>
             )}
           </button>
@@ -2901,23 +2956,27 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                   <div>
                     <h3 className="card-title">Institutional Authority Succession &amp; Charter Re-Signing Desk</h3>
                     <p className="card-subtitle">
-                      Validate appointment orders and cryptographically sanction leadership changes for colleges.
+                      Duty-scoped queue: re-verify the appointment order and the nominee's active posts elsewhere, then approve or reject. Central Admin has oversight view-only.
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <span className="pill pill-success">
-                      {authorityRequests.filter((r) => r.status === 'Pending Admin Review').length} Pending Requests
+                      {successionRows.filter((r) => r.status === 'pending').length} Pending Requests
                     </span>
                   </div>
                 </div>
 
                 <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {authorityRequests.length === 0 ? (
+                  {successionLoading ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                      Loading succession desk…
+                    </div>
+                  ) : successionRows.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
                       No authority succession requests found in node registry.
                     </div>
                   ) : (
-                    authorityRequests.map((req) => (
+                    successionRows.map((req) => (
                       <div
                         key={req.id}
                         style={{
@@ -2932,18 +2991,18 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#103125' }}>
-                            {req.id} • {req.clubName}
+                            {req.id} • {req.club_name}{req.state_code ? ` (${req.state_code})` : ''}
                           </span>
                           <span
                             className="pill"
                             style={{
                               fontSize: '0.72rem',
                               fontWeight: 700,
-                              background: req.status === 'Approved & Updated' ? '#dcfce7' : '#fef3c7',
-                              color: req.status === 'Approved & Updated' ? '#166534' : '#92400e',
+                              background: req.status === 'approved' ? '#dcfce7' : req.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                              color: req.status === 'approved' ? '#166534' : req.status === 'rejected' ? '#991b1b' : '#92400e',
                             }}
                           >
-                            {req.status}
+                            {statusLabel(req.status)}
                           </span>
                         </div>
 
@@ -2962,56 +3021,94 @@ export const EmployeeModule: React.FC<EmployeeModuleProps> = ({
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#5A7366' }}>
                               Current Officer
                             </span>
-                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.currentName}</div>
-                            <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>Role: {req.role}</div>
+                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.current_holder || '—'}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>Role: {tierLabel(req.tier)}</div>
                           </div>
                           <div>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#0D7751' }}>
                               Incoming Nominee
                             </span>
-                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.proposedName}</div>
+                            <div style={{ fontWeight: 700, color: '#103125', marginTop: '2px' }}>{req.proposed_name}</div>
                             <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>
-                              {req.proposedEmail} ({req.proposedPhone})
+                              {req.proposed_email}{req.proposed_phone ? ` (${req.proposed_phone})` : ''}
                             </div>
                           </div>
                         </div>
 
+                        <div style={{ fontSize: '0.78rem', color: '#5A7366' }}>
+                          <strong style={{ color: '#103125' }}>Reason:</strong> {req.reason}
+                          <span style={{ marginLeft: '0.5rem' }}>
+                            • Submitted {new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{req.submitted_by ? ` by ${req.submitted_by}` : ''}
+                          </span>
+                        </div>
+
+                        {/* The re-verification payload: every active post the
+                            nominee holds elsewhere (frozen at submission). */}
+                        {req.conflicts.length > 0 && (
+                          <div
+                            style={{
+                              background: '#FFFBEB',
+                              border: '1px solid #F59E0B',
+                              borderLeft: '4px solid #D97706',
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '0.7rem 0.85rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.35rem',
+                            }}
+                          >
+                            <strong style={{ fontSize: '0.76rem', color: '#92400e' }}>
+                              ⚠ Conflict info — {req.conflicts.length} active post(s) elsewhere{req.conflicts_confirmed ? ' (confirmed by the requester)' : ''}
+                            </strong>
+                            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#92400e' }}>
+                              {req.conflicts.map((c, i) => (
+                                <li key={`${c.club_code}-${c.tier}-${i}`}>
+                                  {tierLabel(c.tier)} @ {c.club_name} ({c.institution_name}, {c.state_code}) — since {c.from_date}
+                                </li>
+                              ))}
+                            </ul>
+                            <span style={{ fontSize: '0.72rem', color: '#B45309' }}>
+                              Re-verify these against the appointment order before deciding.
+                            </span>
+                          </div>
+                        )}
+
+                        {req.status !== 'pending' && req.decided_by && (
+                          <div style={{ fontSize: '0.76rem', color: '#5A7366' }}>
+                            <strong>{req.status === 'approved' ? 'Approved' : 'Rejected'} by {req.decided_by}</strong>
+                            {req.decided_at ? ` on ${new Date(req.decided_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                            {req.decision_note ? ` — ${req.decision_note}` : ''}
+                          </div>
+                        )}
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: '#5A7366', flexWrap: 'wrap', gap: '0.5rem' }}>
                           <span>
-                            Official Appointment Order: <strong style={{ fontFamily: 'monospace' }}>{req.officialDocName}</strong>
+                            Tier: <strong style={{ fontFamily: 'monospace' }}>{tierLabel(req.tier)}</strong>
                           </span>
-                          {req.status === 'Pending Admin Review' && (
+                          {!viewOnly && req.status === 'pending' && (
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              {onRejectAuthorityChange && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const reason = window.prompt('Enter reason for rejecting authority succession:');
-                                    if (reason !== null) {
-                                      onRejectAuthorityChange(req.id, reason);
-                                      showAlert(`Rejected succession request ${req.id}.`);
-                                    }
-                                  }}
-                                  className="btn btn-outline btn-sm"
-                                  style={{ borderColor: '#dc2626', color: '#dc2626', padding: '4px 10px', fontSize: '0.75rem' }}
-                                >
-                                  Reject
-                                </button>
-                              )}
-                              {onApproveAuthorityChange && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    onApproveAuthorityChange(req.id);
-                                    showAlert(`✓ Approved authority succession for ${req.clubName}. Charter re-signed!`);
-                                  }}
-                                  className="btn btn-primary btn-sm"
-                                  style={{ padding: '4px 12px', fontSize: '0.75rem' }}
-                                >
-                                  Authorize &amp; Re-Sign Charter
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => void handleDeskDecision(req, 'reject')}
+                                className="btn btn-outline btn-sm"
+                                style={{ borderColor: '#dc2626', color: '#dc2626', padding: '4px 10px', fontSize: '0.75rem' }}
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeskDecision(req, 'approve')}
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                              >
+                                Authorize &amp; Re-Sign Charter
+                              </button>
                             </div>
+                          )}
+                          {viewOnly && req.status === 'pending' && (
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#92400e' }}>
+                              Oversight view — the officer on duty decides
+                            </span>
                           )}
                         </div>
                       </div>

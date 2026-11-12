@@ -35,7 +35,6 @@ import {
   INITIAL_ACTIVITIES, 
   INITIAL_STUDENTS, 
   INITIAL_TICKETS, 
-  INITIAL_AUTHORITY_REQUESTS, 
   INITIAL_FORENSIC_RECORDS, 
 } from './mockData';
 import { 
@@ -44,7 +43,6 @@ import {
   ClubActivity, 
   StudentMember, 
   IssueTicket, 
-  AuthorityChangeRequest, 
   ForensicQuarantineRecord, 
   CertificateData
 } from './types';
@@ -119,7 +117,6 @@ export function App({ ssrLocation }: AppProps = {}) {
   const [activities, setActivities] = useState<ClubActivity[]>(INITIAL_ACTIVITIES);
   const [students] = useState<StudentMember[]>(INITIAL_STUDENTS);
   const [tickets, setTickets] = useState<IssueTicket[]>(INITIAL_TICKETS);
-  const [authorityRequests, setAuthorityRequests] = useState<AuthorityChangeRequest[]>(INITIAL_AUTHORITY_REQUESTS);
   const [forensicRecords, setForensicRecords] = useState<ForensicQuarantineRecord[]>(INITIAL_FORENSIC_RECORDS);
 
   // Active selections
@@ -224,37 +221,21 @@ export function App({ ssrLocation }: AppProps = {}) {
     setTickets(prev => [newTkt, ...prev]);
   };
 
-  const handleSubmitAuthorityChange = (req: AuthorityChangeRequest) => {
-    setAuthorityRequests(prev => [req, ...prev]);
-  };
-
-  // --- Handlers for Admin Module (demo desks 3-4 only; desks 1-2 are
-  // real API-driven since D5 slice 2) ---
-  const handleApproveAuthorityChange = (reqId: string) => {
-    const req = authorityRequests.find(r => r.id === reqId);
-    if (!req) return;
-
-    setAuthorityRequests(prev => prev.map(r => r.id === reqId ? { ...r, status: 'Approved & Updated', reviewedBy: 'IIT KGP Office' } : r));
-
-    // Update actual club authority
-    setClubs(prev => prev.map(c => {
-      if (c.id === req.clubId) {
-        return {
-          ...c,
-          authorities: c.authorities.map(a => a.role === req.role ? { ...a, name: req.proposedName, email: req.proposedEmail, phone: req.proposedPhone } : a)
-        };
-      }
-      return c;
-    }));
-  };
-
-  const handleRejectAuthorityChange = (reqId: string, reason?: string) => {
-    setAuthorityRequests(prev => prev.map(r => r.id === reqId ? {
-      ...r,
-      status: 'Rejected',
-      reason: reason || r.reason,
-      reviewedBy: 'IIT KGP Office',
-    } : r));
+  // Refresh the canonical clubs SSOT after a succession decision swaps an
+  // authority (president/secretary names re-hydrate from the backend).
+  const refreshCanonicalClubs = async () => {
+    try {
+      const canonicalClubs = await fetchCanonicalClubs();
+      if (!canonicalClubs) return;
+      setClubs(canonicalClubs);
+      setActiveClub((current) =>
+        current
+          ? (canonicalClubs.find((c) => c.id === current.id) ?? current)
+          : (canonicalClubs[0] ?? null)
+      );
+    } catch {
+      // Non-blocking: the decision already succeeded server-side.
+    }
   };
 
   const handleHealForensicRecord = (recordId: string) => {
@@ -575,8 +556,8 @@ export function App({ ssrLocation }: AppProps = {}) {
                   students={students}
                   activities={activities}
                   tickets={tickets}
-                  authorityRequests={authorityRequests}
                   canonicalClubs={clubs}
+                  onSuccessionDecided={() => void refreshCanonicalClubs()}
                   isAuthorityAuthenticated={authenticatedClubId === activeClub.id}
                   authenticatedAuthority={authenticatedAuthority}
                   onAuthoritySignIn={() => {
@@ -614,7 +595,6 @@ export function App({ ssrLocation }: AppProps = {}) {
                   }}
                   onCreateActivity={handleCreateActivity}
                   onRaiseTicket={handleRaiseTicket}
-                  onSubmitAuthorityChange={handleSubmitAuthorityChange}
                   onClaimCertificate={(cert) => {
                     setActiveCertificate(cert);
                     setCurrentBranch('landing');
@@ -704,9 +684,6 @@ export function App({ ssrLocation }: AppProps = {}) {
                   if (tab) setCurrentTab(tab);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                authorityRequests={authorityRequests}
-                onApproveAuthorityChange={handleApproveAuthorityChange}
-                onRejectAuthorityChange={handleRejectAuthorityChange}
                 clubs={clubs}
                 onUpdateClub={(updated) => setClubs(prev => prev.map(c => c.id === updated.id ? updated : c))}
               />
@@ -722,9 +699,6 @@ export function App({ ssrLocation }: AppProps = {}) {
                   if (tab) setCurrentTab(tab);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                authorityRequests={authorityRequests}
-                onApproveAuthorityChange={handleApproveAuthorityChange}
-                onRejectAuthorityChange={handleRejectAuthorityChange}
                 clubs={clubs}
                 onUpdateClub={(updated) => setClubs(prev => prev.map(c => c.id === updated.id ? updated : c))}
               />
@@ -735,9 +709,7 @@ export function App({ ssrLocation }: AppProps = {}) {
               />
             ) : (
               <AdminModuleView
-                authorityRequests={authorityRequests}
                 forensicRecords={forensicRecords}
-                onApproveAuthorityChange={handleApproveAuthorityChange}
                 onHealForensicRecord={handleHealForensicRecord}
                 onSignOut={() => void handleAdminSignOut()}
                 subRole={adminRole}

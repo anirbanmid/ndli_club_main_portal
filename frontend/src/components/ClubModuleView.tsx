@@ -35,9 +35,20 @@ import {
   StudentMember, 
   ClubActivity, 
   IssueTicket, 
-  AuthorityChangeRequest,
   CertificateData 
 } from '../types';
+import { ApiError } from '../lib/api';
+import {
+  SuccessionApiError,
+  SuccessionConflict,
+  SuccessionRow,
+  decideClubSuccession,
+  fetchClubSuccession,
+  roleToTier,
+  statusLabel,
+  submitSuccession,
+  tierLabel,
+} from '../lib/successionApi';
 import { useModalBehavior } from '../utils/useModalBehavior';
 import { t } from "../i18n";
 import { SubClubManagementPanel } from './clubs/SubClubManagementPanel';
@@ -55,7 +66,6 @@ interface ClubModuleViewProps {
   students: StudentMember[];
   activities: ClubActivity[];
   tickets: IssueTicket[];
-  authorityRequests: AuthorityChangeRequest[];
   isAuthorityAuthenticated?: boolean;
   authenticatedAuthority?: {
     name: string;
@@ -69,7 +79,8 @@ interface ClubModuleViewProps {
   onBackToClubsList?: () => void;
   onCreateActivity: (activity: ClubActivity) => void;
   onRaiseTicket: (ticket: IssueTicket) => void;
-  onSubmitAuthorityChange: (req: AuthorityChangeRequest) => void;
+  /** Fired after an in-club (executive) decision so the SSOT clubs refresh. */
+  onSuccessionDecided?: () => void;
   onClaimCertificate: (cert: CertificateData) => void;
   onViewPublicProfile: (club: InstituteClub) => void;
   canonicalClubs?: InstituteClub[];
@@ -80,7 +91,6 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   students,
   activities,
   tickets,
-  authorityRequests,
   isAuthorityAuthenticated = false,
   authenticatedAuthority = null,
   canonicalClubs = [],
@@ -90,7 +100,7 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   onBackToClubsList,
   onCreateActivity,
   onRaiseTicket,
-  onSubmitAuthorityChange,
+  onSuccessionDecided,
   onClaimCertificate,
   onViewPublicProfile,
 }) => {
@@ -147,15 +157,19 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   const [ticketTitle, setTicketTitle] = useState('');
   const [ticketDesc, setTicketDesc] = useState('');
 
-  // Authority Succession Form State
+  // Authority Succession Form State (real API: /api/v1/succession/)
   const [showSuccessionModal, setShowSuccessionModal] = useState(false);
   const [succRole, setSuccRole] = useState<'Patron' | 'President' | 'Secretary' | 'Executive Member'>('President');
   const [succProposedName, setSuccProposedName] = useState('');
   const [succProposedEmail, setSuccProposedEmail] = useState('');
   const [succProposedPhone, setSuccProposedPhone] = useState('');
-  const [succDocName, setSuccDocName] = useState('Official_Appointment_Order_2026.pdf');
   const [succReason, setSuccReason] = useState('Routine institutional rotation / superannuation.');
-  const [succOtpEntered, setSuccOtpEntered] = useState('');
+  const [succRows, setSuccRows] = useState<SuccessionRow[]>([]);
+  const [succLoading, setSuccLoading] = useState(false);
+  const [succError, setSuccError] = useState('');
+  // 409 conflict_confirmation_required parks the submit until explicitly confirmed
+  const [succConflicts, setSuccConflicts] = useState<SuccessionConflict[]>([]);
+  const [succConfirmConflicts, setSuccConfirmConflicts] = useState(false);
 
   // NAAC Preview
   const [showNaacPreview, setShowNaacPreview] = useState(false);
@@ -208,7 +222,26 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
   const clubStudents = students.filter(s => s.clubId === activeClub.id);
 
   const clubTickets = tickets.filter(t => t.clubId === activeClub.id);
-  const clubAuthRequests = authorityRequests.filter(r => r.clubId === activeClub.id);
+
+  // Succession rows come from the real API (server-scoped to the session's
+  // own club); the local filter is belt-and-braces for the active-club view.
+  const clubAuthRequests = succRows.filter(
+    r => r.club_code.toLowerCase() === activeClub.id.toLowerCase()
+  );
+
+  React.useEffect(() => {
+    if (!isAuthorityAuthenticated) {
+      setSuccRows([]);
+      return;
+    }
+    let mounted = true;
+    setSuccLoading(true);
+    fetchClubSuccession()
+      .then((page) => { if (mounted) setSuccRows(page.results); })
+      .catch(() => { if (mounted) setSuccRows([]); })
+      .finally(() => { if (mounted) setSuccLoading(false); });
+    return () => { mounted = false; };
+  }, [isAuthorityAuthenticated, activeClub.id]);
 
   // Handler: Submit Issue Ticket
   const handleCreateTicketSubmit = (e: React.FormEvent) => {
@@ -235,33 +268,70 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
     setShowNewTicketModal(false);
   };
 
-  // Handler: Submit Authority Succession
-  const handleAuthorityChangeSubmit = (e: React.FormEvent) => {
+  // Handler: Submit Authority Succession (real API; conflicts demand explicit
+  // confirmation before the request is queued for IIT KGP review).
+  const handleAuthorityChangeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!succProposedName || !succProposedEmail) return;
+    if (!succProposedName || !succProposedEmail || !succReason) return;
+    setSuccError('');
+    try {
+      const row = await submitSuccession({
+        tier: roleToTier(succRole),
+        name: succProposedName,
+        email: succProposedEmail,
+        phone: succProposedPhone,
+        reason: succReason,
+        confirmConflict: succConfirmConflicts,
+      });
+      setSuccRows(prev => [row, ...prev]);
+      setSuccProposedName('');
+      setSuccProposedEmail('');
+      setSuccProposedPhone('');
+      setSuccReason('Routine institutional rotation / superannuation.');
+      setSuccConflicts([]);
+      setSuccConfirmConflicts(false);
+      setShowSuccessionModal(false);
+    } catch (err) {
+      if (err instanceof SuccessionApiError && err.code === 'conflict_confirmation_required') {
+        // Park the submit: show exactly what the approver will re-verify.
+        setSuccConflicts(err.conflicts);
+        setSuccConfirmConflicts(false);
+        return;
+      }
+      setSuccError(err instanceof ApiError ? err.message : 'Submission failed. Please try again.');
+    }
+  };
 
-    const currentAuth = activeClub.authorities.find(a => a.role === succRole)?.name || 'Incumbent Officer';
-
-    const req: AuthorityChangeRequest = {
-      id: `AUTH-REQ-${Math.floor(100 + Math.random() * 900)}`,
-      clubId: activeClub.id,
-      clubName: activeClub.name,
-      role: succRole,
-      currentName: currentAuth,
-      proposedName: succProposedName,
-      proposedEmail: succProposedEmail,
-      proposedPhone: succProposedPhone,
-      officialDocName: succDocName,
-      reason: succReason,
-      status: 'Pending Admin Review',
-      submittedAt: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    };
-
-    onSubmitAuthorityChange(req);
-    setSuccProposedName('');
-    setSuccProposedEmail('');
-    setSuccOtpEntered('');
-    setShowSuccessionModal(false);
+  // Handler: in-club decision on an EXECUTIVE-tier request (Main Admins only;
+  // the server enforces the two-person rule and answers with its own message).
+  const handleClubDecision = async (id: string, decision: 'approve' | 'reject') => {
+    let note = '';
+    if (decision === 'reject') {
+      const entered = window.prompt('Enter a reason for rejecting this succession request:');
+      if (entered === null) return;
+      note = entered;
+    }
+    try {
+      const updated = await decideClubSuccession(id, decision, note);
+      setSuccRows(prev => prev.map(r => (r.id === id ? updated : r)));
+      if (decision === 'approve' && updated.temporary_password) {
+        window.alert(
+          `Approved. Temporary password for the new account (shown once — relay it securely): ${updated.temporary_password}`
+        );
+      }
+      onSuccessionDecided?.();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Decision failed. Please try again.';
+      if (err instanceof SuccessionApiError && err.conflicts.length > 0) {
+        window.alert(
+          `${msg}\n\nConflicting active posts:\n${err.conflicts
+            .map(c => `• ${tierLabel(c.tier)} @ ${c.club_name} (${c.state_code})`)
+            .join('\n')}`
+        );
+      } else {
+        window.alert(msg);
+      }
+    }
   };
 
   // Point 3: The dashboard remains locked behind authority login screen
@@ -960,7 +1030,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
             {!isExecutive ? (
               <button
-                onClick={() => setShowSuccessionModal(true)}
+                onClick={() => {
+                  setSuccError('');
+                  setSuccConflicts([]);
+                  setSuccConfirmConflicts(false);
+                  setShowSuccessionModal(true);
+                }}
                 className="px-4 py-2 rounded-xl bg-[#1A503E] hover:bg-[#103125] text-white text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-xs cursor-pointer"
               >
                 <UserPlus className="h-4 w-4 text-amber-300" />
@@ -975,28 +1050,76 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
 
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A7366]">{t("Pending & Historical Succession Requests")}</h4>
-            {clubAuthRequests.length > 0 ? (
-              clubAuthRequests.map(req => (
+            {succLoading ? (
+              <div className="text-center py-6 text-xs text-[#5A7366] bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7]">
+                {t("Loading succession requests…")}
+              </div>
+            ) : clubAuthRequests.length > 0 ? (
+              clubAuthRequests.map(req => {
+                const outgoing =
+                  activeClub.authorities.find(a => a.role === tierLabel(req.tier))?.name ||
+                  req.current_holder ||
+                  '—';
+                const statusClass =
+                  req.status === 'approved' ? 'bg-brand-100 text-brand-800' :
+                  req.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
+                  'bg-amber-100 text-amber-800';
+                return (
                 <div key={req.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-2 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="font-mono font-bold text-[#103125]">{req.id} {t("• Role:")} {t(req.role)}</span>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                      req.status === 'Approved & Updated' ? 'bg-brand-100 text-brand-800' :
-                      req.status === 'Rejected' ? 'bg-rose-100 text-rose-800' :
-                      'bg-amber-100 text-amber-800'
-                    }`}>
-                      {t(req.status)}
+                    <span className="font-mono font-bold text-[#103125]">{req.id} {t("• Role:")} {t(tierLabel(req.tier))}</span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${statusClass}`}>
+                      {t(statusLabel(req.status))}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-ink-700">
-                    <div><strong>{t("Outgoing Officer:")}</strong> {t(req.currentName)}</div>
-                    <div><strong>{t("Incoming Officer:")}</strong> {req.proposedName} ({req.proposedEmail})</div>
+                    <div><strong>{t("Outgoing Officer:")}</strong> {t(outgoing)}</div>
+                    <div><strong>{t("Incoming Officer:")}</strong> {req.proposed_name} ({req.proposed_email})</div>
                   </div>
                   <div className="text-[11px] text-[#5A7366]">
-                    {t("Order Doc:")} <span className="font-mono">{req.officialDocName}</span> {t("• Submitted:")} {req.submittedAt}
+                    {t("Reason:")} {req.reason} {t("• Submitted:")} {new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}{req.submitted_by ? ` by ${req.submitted_by}` : ''}
                   </div>
+                  {req.conflicts.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
+                      <span className="font-bold text-amber-900 text-[11px]">
+                        ⚠ {req.conflicts.length} {t("active post(s) elsewhere — confirmed at submission")}
+                      </span>
+                      <ul className="text-[11px] text-amber-800 space-y-0.5">
+                        {req.conflicts.map((c, i) => (
+                          <li key={`${c.club_code}-${c.tier}-${i}`}>
+                            {t(tierLabel(c.tier))} @ {c.club_name} ({c.institution_name}, {c.state_code}) — {t("since")} {c.from_date}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {req.status !== 'pending' && req.decided_by && (
+                    <div className="text-[11px] text-[#5A7366]">
+                      <strong>{req.status === 'approved' ? t("Approved by:") : t("Rejected by:")}</strong> {req.decided_by}
+                      {req.decision_note ? ` — ${req.decision_note}` : ''}
+                    </div>
+                  )}
+                  {req.tier === 'executive' && req.status === 'pending' && isMainAuthority && (
+                    <div className="flex justify-end gap-2 pt-2 border-t border-[#E2ECE7]">
+                      <button
+                        type="button"
+                        onClick={() => void handleClubDecision(req.id, 'reject')}
+                        className="px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 font-bold hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        {t("Reject")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleClubDecision(req.id, 'approve')}
+                        className="px-3 py-1.5 rounded-lg bg-[#1A503E] text-white font-bold hover:bg-[#103125] transition-colors cursor-pointer"
+                      >
+                        {t("Approve Transition")}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-6 text-xs text-[#5A7366] bg-[#F4F8F6] rounded-2xl border border-dashed border-[#E2ECE7]">
                 {t("No pending authority transition requests. Quorum is active and stable.")}
@@ -1132,28 +1255,60 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-ink-700 block mb-1">{t("Official Transfer/Appointment Order File")}</label>
+                <label className="font-bold text-ink-700 block mb-1">{t("Contact Phone (optional)")}</label>
                 <input
-                  type="text"
-                  value={succDocName}
-                  onChange={(e) => setSuccDocName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-ink-300 font-mono text-[11px]"
+                  type="tel"
+                  placeholder={t("e.g. +91 98300 00000")}
+                  value={succProposedPhone}
+                  onChange={(e) => setSuccProposedPhone(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
 
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1">
-                <span className="font-bold text-amber-900 block text-[11px]">{t("Two-Factor Authorization Check:")}</span>
-                <p className="text-[11px] text-amber-800">
-                  {t("Enter 6-digit confirmation PIN (Demo code:")} <strong>948201</strong>{t(") to simulate sign-off by incumbent officer.")}
-                                                  </p>
+              <div>
+                <label className="font-bold text-ink-700 block mb-1">{t("Reason for Succession *")}</label>
                 <input
                   type="text"
-                  placeholder={t("Enter 948201")}
-                  value={succOtpEntered}
-                  onChange={(e) => setSuccOtpEntered(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded border border-amber-300 text-center font-mono font-bold tracking-widest text-xs"
+                  placeholder={t("e.g. Routine institutional rotation / superannuation.")}
+                  value={succReason}
+                  onChange={(e) => setSuccReason(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-ink-300"
                 />
               </div>
+
+              {succConflicts.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+                  <span className="font-bold text-amber-900 block text-[11px]">
+                    {t("Active posts elsewhere — confirm the handover")}
+                  </span>
+                  <p className="text-[11px] text-amber-800">
+                    {t("This email already holds active authority posts. On approval they are released (ended) as part of the transfer:")}
+                  </p>
+                  <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc pl-4">
+                    {succConflicts.map((c, i) => (
+                      <li key={`${c.club_code}-${c.tier}-${i}`}>
+                        {t(tierLabel(c.tier))} @ {c.club_name} ({c.institution_name}, {c.state_code}) — {t("since")} {c.from_date}
+                      </li>
+                    ))}
+                  </ul>
+                  <label className="flex items-start gap-2 text-[11px] font-bold text-amber-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={succConfirmConflicts}
+                      onChange={(e) => setSuccConfirmConflicts(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>{t("I confirm this handover and that the IIT KGP approver may re-verify these posts.")}</span>
+                  </label>
+                </div>
+              )}
+
+              {succError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-[11px] font-semibold text-rose-700" role="alert">
+                  {succError}
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
                 <button
@@ -1165,9 +1320,12 @@ export const ClubModuleView: React.FC<ClubModuleViewProps> = ({
                                                   </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-[#1A503E] text-white font-bold"
+                  disabled={succConflicts.length > 0 && !succConfirmConflicts}
+                  className="px-5 py-2 rounded-lg bg-[#1A503E] text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t("Submit for IIT KGP Approval")}
+                  {succConflicts.length > 0
+                    ? t("Confirm & Submit for IIT KGP Approval")
+                    : t("Submit for IIT KGP Approval")}
                                                   </button>
               </div>
             </form>

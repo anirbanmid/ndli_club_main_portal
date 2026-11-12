@@ -39,6 +39,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.db.models import OuterRef, Subquery
 from django.utils import timezone
 
 from apps.accounts.models import (
@@ -196,18 +197,38 @@ def _conflict_keys(rows: Any) -> frozenset[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
+def _with_current_holder(qs: Any) -> Any:
+    """Annotate each row with the CURRENT holder's display name (one SQL).
+
+    The approver re-verifies against "who holds the post TODAY" — the row the
+    approval will end. Two subqueries (first name + username) because
+    ``Subquery`` yields one field each; a post with no active holder
+    annotates NULL (the UI shows an em dash, never a guess).
+    """
+    incumbent = AuthorityAssignment.objects.filter(
+        club=OuterRef("club"),
+        tier=OuterRef("tier"),
+        status=AuthorityAssignment.Status.ACTIVE,
+    ).order_by("-from_date")
+    return qs.annotate(
+        holder_first=Subquery(incumbent.values("user__first_name")[:1]),
+        holder_user=Subquery(incumbent.values("user__username")[:1]),
+    )
+
+
 def club_requests_for(user: Any) -> Any:
     """The caller's own-club rows; a clubless account sees an honest empty desk."""
     club = _linked_club(user)
     if club is None:
         return SuccessionRequest.objects.none()
-    return (
+    qs = (
         SuccessionRequest.objects.select_related(
             "club__institution__state", "submitted_by", "decided_by"
         )
         .filter(club=club)
         .order_by("-created_at")
     )
+    return _with_current_holder(qs)
 
 
 def desk_for(user: Any) -> Any:
@@ -222,11 +243,10 @@ def desk_for(user: Any) -> Any:
       those rows never land on this desk).
     * Anyone else: nothing (deny by default — the view gate also refuses).
     """
-    qs = (
+    qs = _with_current_holder(
         SuccessionRequest.objects.select_related(
             "club__institution__state", "submitted_by", "decided_by"
-        )
-        .order_by("-created_at")
+        ).order_by("-created_at")
     )
     sub_role = str(getattr(user, "sub_role", "") or "")
     if sub_role == SubRole.CENTRAL_ADMIN:

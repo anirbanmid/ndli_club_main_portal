@@ -12,8 +12,10 @@
  *     visible as timers (72h stream -> 7d cycles -> 30d central escalation).
  *
  * Desks 3-4 remain DEMO SHOWCASES, explicitly marked [REVIEW ONLY]:
- *   Authority Succession has no backend yet (M2-A3 milestone); the Forensic
- *   Migration desk is out of M6 scope per owner decision C7 (M6.1 candidate).
+ *   Desk 3 Authority Succession is now REAL (M2-A3): view-only oversight of
+ *   /admin/api/v1/succession/desk/ — Central Admin reads, the duty-scoped
+ *   regional officer decides in the Employee Module; the Forensic Migration
+ *   desk is out of M6 scope per owner decision C7 (M6.1 candidate).
  * Desk 5 (Employee Management) is real since slice 1.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -35,7 +37,13 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { ApiError } from '../lib/api';
-import { AuthorityChangeRequest, ForensicQuarantineRecord } from '../types';
+import { ForensicQuarantineRecord } from '../types';
+import {
+  SuccessionRow,
+  fetchSuccessionDesk,
+  statusLabel,
+  tierLabel,
+} from '../lib/successionApi';
 import { t } from '../i18n';
 import { EmployeeDutyPanel } from './EmployeeDutyPanel';
 import { InsightsPanel, RedZoneReset, RenewalDesk } from './AdminMccPanels';
@@ -57,9 +65,7 @@ import {
 } from '../lib/adminApi';
 
 interface AdminModuleViewProps {
-  authorityRequests: AuthorityChangeRequest[];
   forensicRecords: ForensicQuarantineRecord[];
-  onApproveAuthorityChange: (reqId: string) => void;
   onHealForensicRecord: (recordId: string) => void;
   /** Patch 0016: sign-out control (the admin module had no logout). */
   onSignOut?: () => void;
@@ -124,9 +130,7 @@ function daysSince(iso: string | null): string {
 }
 
 export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
-  authorityRequests,
   forensicRecords,
-  onApproveAuthorityChange,
   onHealForensicRecord,
   onSignOut,
   subRole,
@@ -175,7 +179,7 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
   const canSeeEmployee =
     subRole === 'central_admin' || subRole === 'regional_officer'; // business turf (AUTH-TURF: never SUPEROPS)
   const [selectedZone, setSelectedZone] = useState<string>('All');
-  const [adminTab, setAdminTab] = useState<'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones'>('dashboards');
+  const [adminTab, setAdminTab] = useState<'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones' | 'succession'>('dashboards');
 
   // Desk 1 — charter queue (real API)
   const [charters, setCharters] = useState<CharterRow[]>([]);
@@ -232,11 +236,29 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
     }
   }, []);
 
+  // Desk 3 — authority succession (REAL, M2-A3): Central Admin oversight is
+  // read-only by design; decisions live in the duty-scoped Employee desk.
+  const [successionRows, setSuccessionRows] = useState<SuccessionRow[]>([]);
+  const [successionLoading, setSuccessionLoading] = useState(true);
+
+  const loadSuccession = useCallback(async () => {
+    setSuccessionLoading(true);
+    try {
+      const payload = await fetchSuccessionDesk();
+      setSuccessionRows(payload.results);
+    } catch {
+      // Non-blocking: a closed door shows an honest empty desk
+    } finally {
+      setSuccessionLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadCharters();
     void loadGrievances();
     void loadRenewalAttention();
-  }, [loadCharters, loadGrievances, loadRenewalAttention]);
+    void loadSuccession();
+  }, [loadCharters, loadGrievances, loadRenewalAttention, loadSuccession]);
 
   const toggleCharter = async (id: string) => {
     if (expandedCharter === id) {
@@ -364,11 +386,23 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
         actionTab: 'renewals',
       });
     }
+    const pendingSuccession = successionRows.filter((r) => r.status === 'pending');
+    if (pendingSuccession.length > 0) {
+      list.push({
+        id: `admin-succ-${pendingSuccession.length}`,
+        type: 'succession',
+        title: `${pendingSuccession.length} Authority Succession Request(s)`,
+        description: 'Nomination orders awaiting the nodal officer’s dual-control sanction.',
+        timestamp: 'Succession Desk',
+        read: false,
+        actionTab: 'succession',
+      });
+    }
     return list;
-  }, [filteredCharters, openGrievances, renewalAttentionCount]);
+  }, [filteredCharters, openGrievances, renewalAttentionCount, successionRows]);
 
   const handleAdminNavigateTab = (tab: string) => {
-    let targetTab: 'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones' = 'dashboards';
+    let targetTab: 'dashboards' | 'tickets' | 'renewals' | 'insights' | 'zones' | 'succession' = 'dashboards';
     if (tab === 'tickets' || tab === 'grievances' || tab === 'support') {
       targetTab = 'tickets';
     } else if (tab === 'renewals' || tab === 'charters' || tab === 'clubs' || tab === 'requests') {
@@ -377,6 +411,8 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
       targetTab = 'zones';
     } else if (tab === 'insights' || tab === 'ai' || tab === 'mcc') {
       targetTab = 'insights';
+    } else if (tab === 'succession' || tab === 'authority') {
+      targetTab = 'succession';
     } else if (tab === 'dashboards' || tab === 'performance') {
       targetTab = 'dashboards';
     }
@@ -525,6 +561,15 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
             <span>{t("Renewal Desk")}</span>
           </button>
 
+          <button
+            onClick={() => setAdminTab('succession')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
+              adminTab === 'succession' ? 'bg-[#1A503E] text-white shadow-sm shadow-[#1A503E]/30 scale-[1.02]' : 'text-[#2E4A3E] hover:bg-white/80'
+            }`}
+          >
+            <Lock className="h-4 w-4" />
+            <span>{t("Succession Desk")} ({successionRows.filter((r) => r.status === 'pending').length})</span>
+          </button>
 
         </div>
 
@@ -665,6 +710,97 @@ export const AdminModuleView: React.FC<AdminModuleViewProps> = ({
 
       {/* DESK 6: Renewal Desk (REAL — D5 stage 1 backend, both Q1 paths) */}
       {adminTab === 'renewals' && <RenewalDesk />}
+
+      {/* DESK 3: Authority Succession Oversight (REAL — M2-A3, view-only) */}
+      {adminTab === 'succession' && (
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2ECE7] shadow-xs space-y-6">
+          <div className="border-b border-[#E2ECE7] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-[#103125] flex items-center space-x-2">
+                <Lock className="h-5 w-5 text-[#0D7751]" />
+                <span>{t("Authority Succession — Central Oversight")}</span>
+              </h3>
+              <p className="text-xs text-[#5A7366]">
+                {t("Read-only view of every dual-control succession request. The duty-scoped nodal officer decides in the Employee Module; Central Admin sanctions nothing here.")}
+              </p>
+            </div>
+            <span className="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full self-start">
+              {successionRows.filter((r) => r.status === 'pending').length} {t("Pending")}
+            </span>
+          </div>
+
+          {successionLoading ? (
+            <div className="text-center py-12 text-xs text-[#5A7366]">{t("Loading succession desk…")}</div>
+          ) : successionRows.length === 0 ? (
+            <div className="text-center py-12 text-xs text-[#5A7366]">{t("No authority succession requests found in node registry.")}</div>
+          ) : (
+            <div className="space-y-3">
+              {successionRows.map((req) => (
+                <div key={req.id} className="p-4 rounded-2xl bg-[#F4F8F6] border border-[#E2ECE7] space-y-2 text-xs">
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <div className="flex items-center space-x-2 flex-wrap">
+                      <span className="font-mono font-bold text-[#103125] bg-white px-2 py-0.5 rounded border border-[#E2ECE7]">
+                        {req.id}
+                      </span>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+                        req.status === 'approved' ? 'bg-brand-100 text-brand-800' :
+                        req.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
+                        'bg-amber-100 text-amber-800'
+                      }`}>
+                        {t(statusLabel(req.status))}
+                      </span>
+                      <span className="text-[#5A7366]">
+                        ({req.club_name}{req.state_code ? ` • ${req.state_code}` : ''})
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#2E4A3E] bg-white px-2 py-0.5 rounded border border-[#E2ECE7]">
+                      {t(tierLabel(req.tier))}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-ink-700">
+                    <div><strong>{t("Current Officer:")}</strong> {req.current_holder || '—'}</div>
+                    <div><strong>{t("Incoming Nominee:")}</strong> {req.proposed_name} ({req.proposed_email})</div>
+                  </div>
+
+                  <div className="text-[11px] text-[#5A7366]">
+                    <strong>{t("Reason:")}</strong> {req.reason}
+                    {' • '}{t("Submitted")}{req.submitted_by ? ` ${t("by")} ${req.submitted_by}` : ''} {t("on")} {new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </div>
+
+                  {req.conflicts.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
+                      <span className="font-bold text-amber-900 text-[11px]">
+                        ⚠ {req.conflicts.length} {t("active post(s) elsewhere")}{req.conflicts_confirmed ? ` (${t("confirmed at submission")})` : ''}
+                      </span>
+                      <ul className="text-[11px] text-amber-800 space-y-0.5 list-disc pl-4">
+                        {req.conflicts.map((c, i) => (
+                          <li key={`${c.club_code}-${c.tier}-${i}`}>
+                            {t(tierLabel(c.tier))} @ {c.club_name} ({c.institution_name}, {c.state_code}) — {t("since")} {c.from_date}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {req.status !== 'pending' && req.decided_by && (
+                    <div className="text-[11px] text-[#5A7366] pt-2 border-t border-[#E2ECE7]">
+                      <strong>{req.status === 'approved' ? t("Approved by:") : t("Rejected by:")}</strong> {req.decided_by}
+                      {req.decision_note ? ` — ${req.decision_note}` : ''}
+                    </div>
+                  )}
+
+                  {req.status === 'pending' && (
+                    <div className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 inline-block">
+                      {t("Oversight view — the officer on duty decides")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* DESK 7: MCC Strategic Insights (REAL — D5 stage 2 backend) */}
       {adminTab === 'insights' && canSeeMcc && <InsightsPanel />}

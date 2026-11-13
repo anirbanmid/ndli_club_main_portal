@@ -28,20 +28,27 @@ Single source of truth: this is the ONLY command that creates demo accounts.
 It is idempotent (safe to run multiple times). Every account creation is
 written to the immutable AuditLog via apps.audit.services.record().
 
-Demo accounts are created with must_change_password=False: they are
-development-phase test credentials (repo-public by design, purged at client
-handover) and must have FULL functional access from first login — the
-frontend has no forced password-change redirect.
+Passwords are generated RANDOMLY at first creation and printed to the
+console exactly once (C3 closure 2026-11-13): the repository never holds a
+usable demo credential, and re-runs refresh scope/flags but NEVER rewrite an
+existing account's password. Accounts are created with
+must_change_password=False so they have FULL functional access from first
+login (the enforced password-change modal exists but never triggers for
+them). Demo data is purged at client handover.
 """
 
 from __future__ import annotations
 
+import secrets
+import string
 from datetime import date
 
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError
+from rest_framework.exceptions import ValidationError
 
 from apps.accounts.models import AccountState, Category, SubRole, User
+from apps.accounts.passwords import validate_password_strength
 from apps.audit import services as audit_services
 from apps.domain.models import AuthorityAssignment, Club, Institution, Membership
 from apps.members.models import StudentMemberProfile
@@ -61,7 +68,6 @@ CLUB_ADMINS: list[dict[str, object]] = [
     {
         "username": "demo.club.bhu",
         "email": "demo.club.bhu@ndli.gov.in",
-        "password": "DemoClub1!2026",
         "first_name": "Demo Club",
         "last_name": "BHU",
         "category": Category.CLUB_ADMIN,
@@ -76,7 +82,6 @@ CLUB_ADMINS: list[dict[str, object]] = [
     {
         "username": "demo.club.iitkgp",
         "email": "demo.club.iitkgp@ndli.gov.in",
-        "password": "DemoClub2!2026",
         "first_name": "Demo Club",
         "last_name": "IITKGP",
         "category": Category.CLUB_ADMIN,
@@ -96,7 +101,6 @@ HEI_STUDENT_MEMBERS: list[dict[str, object]] = [
     {
         "username": "demo.member.dati",
         "email": "demo.member.dati@ndli.gov.in",
-        "password": "DemoMem1!2026",
         "first_name": "Demo Student",
         "last_name": "DATI",
         "category": Category.STUDENT_MEMBER,
@@ -111,7 +115,6 @@ HEI_STUDENT_MEMBERS: list[dict[str, object]] = [
     {
         "username": "demo.member.iitkgp",
         "email": "demo.member.iitkgp@ndli.gov.in",
-        "password": "DemoMem2!2026",
         "first_name": "Demo Student",
         "last_name": "IITKGP",
         "category": Category.STUDENT_MEMBER,
@@ -127,6 +130,33 @@ HEI_STUDENT_MEMBERS: list[dict[str, object]] = [
 
 
 # --- Helper functions --------------------------------------------------------
+
+#: Alphabet for generated demo credentials: upper/lower/digit/symbol mix.
+_PASSWORD_ALPHABET = string.ascii_letters + string.digits + "!@#%-_"
+
+
+def _generate_password() -> str:
+    """A random 18-character password that satisfies the M1 policy.
+
+    Generated once, at account creation, and printed to the console — the
+    repository deliberately holds no usable demo credential (C3 closure,
+    2026-11-13). Re-runs never rewrite an existing account's password, so
+    the value shown at first creation stays valid until --clean.
+    """
+    while True:
+        password = "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(18))
+        if not (
+            any(c.islower() for c in password)
+            and any(c.isupper() for c in password)
+            and any(c.isdigit() for c in password)
+            and any(c in "!@#%-_" for c in password)
+        ):
+            continue
+        try:
+            validate_password_strength(password)
+        except ValidationError:
+            continue
+        return password
 
 
 def _resolve_domain(spec: dict):
@@ -194,6 +224,10 @@ def _create_or_update_club_admin(
     """Create or update an institution Club Admin demo account."""
     inst, club, state, zone = _resolve_domain(spec)
 
+    # Fresh random credential: applied ONLY when the account is created —
+    # existing accounts keep the password the operator saved at first run.
+    password = _generate_password()
+
     user, was_created = User.objects.get_or_create(
         username=spec["username"],
         defaults={
@@ -208,13 +242,15 @@ def _create_or_update_club_admin(
             "institution": inst,
             "state": state,
             "zone": zone,
-            "password": make_password(spec["password"]),
+            "password": make_password(password),
             "must_change_password": False,
         },
     )
 
     if not was_created:
-        # Idempotent update: refresh password and scope keys
+        # Idempotent update: refresh scope keys. The credential generated at
+        # creation is NEVER rewritten — re-running must not invalidate the
+        # password saved from the first creation output.
         user.email = spec["email"]
         user.category = spec["category"]
         user.sub_role = spec["sub_role"]
@@ -224,7 +260,6 @@ def _create_or_update_club_admin(
         user.institution = inst
         user.state = state
         user.zone = zone
-        user.password = make_password(spec["password"])
         user.must_change_password = False
         user.save(
             update_fields=[
@@ -237,7 +272,6 @@ def _create_or_update_club_admin(
                 "institution",
                 "state",
                 "zone",
-                "password",
                 "must_change_password",
                 "updated_at",
             ]
@@ -278,7 +312,7 @@ def _create_or_update_club_admin(
             "type": "Club Admin",
             "username": user.username,
             "email": user.email,
-            "password": spec["password"],
+            "password": password if was_created else "(unchanged — first creation)",
             "institution": inst.name,
             "club": club.name,
             "created": was_created,
@@ -291,6 +325,10 @@ def _create_or_update_hei_student_member(
 ) -> None:
     """Create or update a HEI Student Member demo account."""
     inst, club, state, zone = _resolve_domain(spec)
+
+    # Fresh random credential: applied ONLY when the account is created —
+    # existing accounts keep the password the operator saved at first run.
+    password = _generate_password()
 
     user, was_created = User.objects.get_or_create(
         username=spec["username"],
@@ -306,7 +344,7 @@ def _create_or_update_hei_student_member(
             "institution": inst,
             "state": state,
             "zone": zone,
-            "password": make_password(spec["password"]),
+            "password": make_password(password),
             "must_change_password": False,
         },
     )
@@ -321,7 +359,6 @@ def _create_or_update_hei_student_member(
         user.institution = inst
         user.state = state
         user.zone = zone
-        user.password = make_password(spec["password"])
         user.must_change_password = False
         user.save(
             update_fields=[
@@ -334,7 +371,6 @@ def _create_or_update_hei_student_member(
                 "institution",
                 "state",
                 "zone",
-                "password",
                 "must_change_password",
                 "updated_at",
             ]
@@ -389,7 +425,7 @@ def _create_or_update_hei_student_member(
             "type": "HEI Student Member",
             "username": user.username,
             "email": user.email,
-            "password": spec["password"],
+            "password": password if was_created else "(unchanged — first creation)",
             "institution": inst.name,
             "club": club.name,
             "department": spec.get("department", ""),
@@ -547,6 +583,7 @@ class Command(BaseCommand):
                 "using: python manage.py seed_demo_accounts --clean\n"
                 "School access: "
                 "president.{springdale,shreevidya,sunrise,greenvalley,bvb}@school.test "
-                "/ Dummy123456 (from 0012_seed_dummy_schools)"
+                "(initial credentials per 0012_seed_dummy_schools; rotate per "
+                "environment — never republish them)"
             )
         )

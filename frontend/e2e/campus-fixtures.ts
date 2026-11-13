@@ -305,13 +305,3 @@ export function mockLibraries(page: Page, libs: any[] = LIBRARIES): void {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(libs) }),
   );
 }
-
-/** Seed student resume capability in localStorage (like dec2-verdicts.spec.ts). */
-export function seedStudentSession(page: Page): void {
-  page.addInitScript(() => {
-    window.localStorage.setItem(
-      'ndli.student.session',
-      JSON.stringify({ username: 'student.bhu', club_code: 'CLUB-BHU-008' }),
-    );
-  });
-}

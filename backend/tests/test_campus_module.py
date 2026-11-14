@@ -1252,6 +1252,102 @@ class CampusModuleTests(TestCase):
             manifest_text = zf.read("manifest.csv").decode("utf-8")
             self.assertIn("certificate_id,student_uid,recipient_name", manifest_text)
 
+    def test_event_attendee_pii_requires_host_club_authority(self) -> None:
+        """H8: attendee roster, certificate ZIP, and participant upload are
+        gated to the host club's authority — a same-club student is denied,
+        and the ZIP's force-approve side effect never runs for outsiders.
+        """
+        from apps.members.models import SchoolStudentRoster
+
+        now = timezone.now()
+        event = ClubEvent.objects.create(
+            event_ref="EVT-H8-GATE",
+            host_club=self.club,
+            scope=EventScope.INSTITUTIONAL,
+            title="Gated Field Visit",
+            start_time=now - timedelta(hours=2),
+            end_time=now - timedelta(hours=1),
+            status=EventStatus.PUBLISHED,
+            created_by=self.authority_user,
+        )
+        roster_entry = SchoolStudentRoster.objects.create(
+            club=self.club,
+            student_uid="SCH-H8-UID-001",
+            full_name="Arjun Patel",
+            student_class="X",
+            section="A",
+            batch_year=now.year,
+            is_active=True,
+        )
+        att = EventAttendance.objects.create(
+            event=event,
+            school_student=roster_entry,
+            is_approved=False,
+        )
+
+        student = User.objects.create(
+            username="stu.h8gate",
+            email="stu.h8gate@delhi.ac.in",
+            category=Category.STUDENT_MEMBER,
+            sub_role=SubRole.STUDENT_MEMBER,
+            account_state=AccountState.ACTIVE,
+            club=self.club,
+            is_active=True,
+        )
+        student.set_password("StudentPass@2026!")
+        student.save()
+
+        client = Client()
+        client.force_login(student)
+
+        # 1. Attendee roster (PII) — denied.
+        roster_resp = client.get(
+            f"/api/v1/activities/events/{event.id}/attendees/"
+        )
+        self.assertEqual(roster_resp.status_code, 403)
+        self.assertEqual(roster_resp.json().get("code"), "permission_denied")
+
+        # 2. Certificate ZIP (PII + force-approve side effect) — denied.
+        zip_resp = client.get(
+            f"/api/v1/activities/events/{event.id}/download-certificates-zip/"
+        )
+        self.assertEqual(zip_resp.status_code, 403)
+
+        # 3. Participant upload (writes roster PII) — denied.
+        upload_file = SimpleUploadedFile(
+            "h8-gate.csv",
+            b"Full Name,Gender,Class,Section\nMira Rao,female,IX,A\n",
+            content_type="text/csv",
+        )
+        upload_resp = client.post(
+            f"/api/v1/activities/events/{event.id}/upload-participants/",
+            data={"file": upload_file},
+        )
+        self.assertEqual(upload_resp.status_code, 403)
+
+        # 4. No side effects from the denied calls: attendance untouched,
+        #    no certificates minted, no roster rows created.
+        att.refresh_from_db()
+        self.assertFalse(att.is_approved)
+        self.assertIsNone(att.approved_at)
+        self.assertEqual(
+            Certificate.objects.filter(event_ref=event.event_ref).count(), 0
+        )
+        self.assertEqual(
+            SchoolStudentRoster.objects.filter(
+                club=self.club, full_name="Mira Rao"
+            ).count(),
+            0,
+        )
+
+        # 5. Positive control: the host club's president still reads the
+        #    roster — the legitimate approval flow is unharmed.
+        client.force_login(self.authority_user)
+        ok = client.get(f"/api/v1/activities/events/{event.id}/attendees/")
+        self.assertEqual(ok.status_code, 200)
+        names = [a["name"] for a in ok.json()["attendees"]]
+        self.assertIn("Arjun Patel", names)
+
     def test_event_participant_upload_ragged_csv(self) -> None:
         """Verify CSV with ragged columns (missing fields / None values) and
         non-ASCII chars is parsed safely.

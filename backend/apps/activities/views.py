@@ -93,6 +93,34 @@ def _serialize(row: Any) -> dict[str, Any]:
     }
 
 
+def _may_perform_event_operations(user: Any, evt: Any) -> bool:
+    """Authority gate for event attendee-PII and certificate operations (H8).
+
+    Single source of truth for who may read the attendee roster, upload
+    participants, download the certificates ZIP, and approve certificates:
+    superusers / IIT KGP admins, the host club's Main Admins (Patron,
+    President, Secretary), and sub-club coordinators assigned to the event's
+    sub-clubs. Extracted from EventCertificateApprovalView so every endpoint
+    that exposes attendee PII enforces the identical predicate.
+    """
+    from apps.accounts.models import Category, SubRole
+    from apps.members.views import _is_main_club_admin, _is_subclub_coordinator
+
+    if getattr(user, "is_superuser", False):
+        return True
+    if getattr(user, "category", None) == Category.IIT_KGP_ADMIN:
+        return True
+    if _is_main_club_admin(user, evt.host_club):
+        return True
+    if getattr(user, "sub_role", None) == SubRole.SUBCLUB_COORDINATOR:
+        target_ids = list(evt.target_sub_clubs.values_list("id", flat=True))
+        if target_ids and _is_subclub_coordinator(user, evt.host_club, target_ids):
+            return True
+        if evt.all_sub_clubs and _is_subclub_coordinator(user, evt.host_club):
+            return True
+    return False
+
+
 class ActivityLogListView(APIView):
     """GET /api/v1/activities/ -- newest first (parity: reversed list)."""
 
@@ -1274,26 +1302,10 @@ class EventCertificateApprovalView(APIView):
         if not evt:
             return Response({"detail": "Event not found."}, status=404)
 
-        # Authority authorization check
-        from apps.accounts.models import Category, SubRole
-        from apps.members.views import _is_main_club_admin, _is_subclub_coordinator
-
-        is_kgp_admin = getattr(
-            user, "category", None
-        ) == Category.IIT_KGP_ADMIN or getattr(user, "is_superuser", False)
-        is_main_admin = _is_main_club_admin(user, evt.host_club)
-
-        # For sub-club coordinators: only authorized if event is scoped
-        # to their sub-club
-        is_event_coord = False
-        if getattr(user, "sub_role", None) == SubRole.SUBCLUB_COORDINATOR:
-            target_ids = list(evt.target_sub_clubs.values_list("id", flat=True))
-            if target_ids and _is_subclub_coordinator(user, evt.host_club, target_ids):
-                is_event_coord = True
-            elif evt.all_sub_clubs and _is_subclub_coordinator(user, evt.host_club):
-                is_event_coord = True
-
-        if not is_kgp_admin and not is_main_admin and not is_event_coord:
+        # Authority authorization check — shared H8 event-operations gate
+        # (attendee roster / participant upload / certificate ZIP / approve
+        # all enforce the identical predicate).
+        if not _may_perform_event_operations(user, evt):
             return Response(
                 {
                     "detail": (
@@ -1562,6 +1574,19 @@ class EventParticipantUploadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # H8: enrolling participants writes roster + PII — host authority only.
+        if not _may_perform_event_operations(authenticated_user(request), evt):
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities or assigned sub-club "
+                        "coordinators for this event may upload participants."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         rows = []
         if "file" in request.FILES:
             uploaded_file = request.FILES["file"]
@@ -1705,6 +1730,15 @@ class EventCertificatesZipDownloadView(APIView):
         if not evt:
             return HttpResponse("Event not found", status=404)
 
+        # H8: the ZIP exposes every attendee's PII (and force-approves
+        # attendances while minting certificates) — host authority only.
+        if not _may_perform_event_operations(authenticated_user(request), evt):
+            return HttpResponse(
+                "Only main club authorities or assigned sub-club "
+                "coordinators for this event may download certificates.",
+                status=403,
+            )
+
         attendances = EventAttendance.objects.filter(event=evt).select_related(
             "school_student", "user"
         )
@@ -1838,6 +1872,20 @@ class EventAttendeesListView(APIView):
         if not evt:
             return Response(
                 {"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # H8: the roster carries names, emails, roll numbers and guardian
+        # phones — host authority only (same gate as approve-certificates).
+        if not _may_perform_event_operations(authenticated_user(request), evt):
+            return Response(
+                {
+                    "detail": (
+                        "Only main club authorities or assigned sub-club "
+                        "coordinators for this event may view attendees."
+                    ),
+                    "code": "permission_denied",
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         qs = (
